@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -18,9 +18,9 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons"; // Import Ionicons for the eye icon
 import API_URL from "../constants/api";
 
+// Interfaces
 interface FormData {
   name: string;
-  username: string;
   email: string;
   user_type: string;
   password: string;
@@ -30,7 +30,6 @@ interface FormData {
 export default function SignUpScreen() {
   const [form, setForm] = useState<FormData>({
     name: "",
-    username: "",
     email: "",
     user_type: "",
     password: "",
@@ -40,6 +39,9 @@ export default function SignUpScreen() {
   // State for password visibility
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Real-time passwrod validation
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
 
   const backgroundImage = Platform.select({
     web: require("../assets/images/CareLink.BackGround.Web.png"),
@@ -58,16 +60,35 @@ export default function SignUpScreen() {
   const handleChange = (key: keyof FormData, value: string) =>
     setForm({ ...form, [key]: value });
 
-  const handleSignUpScreen = async () => {
-    const { name, username, email, user_type, password, confirmpass } = form;
+  //Real-time validation effect
+  useEffect(() => {
+    const { password, confirmpass } = form;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    const hasLength = password.length >= 8;
+    const isEqual = password === confirmpass && password !== "";
 
-    if (!name || !username || !user_type || !email || !password || !confirmpass) {
+    if(hasUpperCase && hasNumber && hasLength && hasSpecial && isEqual){
+      setIsPasswordValid(true);
+    }
+    else {
+      setIsPasswordValid(false);
+    }
+  }, [form.password, form.confirmpass]);
+
+  const handleSignUpScreen = async () => {
+    const { name, email, user_type, password, confirmpass } = form;
+
+    // 1. Check Empty Fields
+    if (!name || !user_type || !email || !password || !confirmpass) {
       setModalTitle("Missing Fields");
       setModalMessage("Please fill in all required fields.");
       setModalVisible(true);
       return;
     }
 
+    // 2. Check Email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setModalTitle("Invalid Email");
@@ -76,12 +97,12 @@ export default function SignUpScreen() {
       return;
     }
 
-    if (password.length < 8) {
-      setModalTitle("Weak Password");
-      setModalMessage("Password must be at least 8 characters long.");
-      setModalVisible(true);
-      return;
-    }
+    // 3. Password checks
+    // Regex (Regular Expressions) Checks
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    const hasLength = password.length >= 8;
 
     if (password !== confirmpass) {
       setModalTitle("Password Mismatch");
@@ -90,11 +111,43 @@ export default function SignUpScreen() {
       return;
     }
 
+    // Checks if its 8 characters longo or more
+    if (!hasLength) {
+      setModalTitle("Weak Password");
+      setModalMessage("Password must be at least 8 characters long.");
+      setModalVisible(true);
+      return;
+    }
+
+    //checks if it has numbers
+    if (!hasNumber) {
+      setModalTitle("Weak Password");
+      setModalMessage("Password must contain a number.");
+      setModalVisible(true);
+      return;
+    }
+
+    //checks if it has uppercases
+    if (!hasUpperCase) {
+      setModalTitle("Weak Password");
+      setModalMessage("Password must contain an uppercase.");
+      setModalVisible(true);
+      return;
+    }
+
+    //checks if it has special character
+    if(!hasSpecial){
+      setModalTitle("Weak Password");
+      setModalMessage("Password must contain a special character.");
+      setModalVisible(true);
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/signup.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, username, email, user_type, password }),
+        body: JSON.stringify({ name, email, user_type, password }),
       });
 
       const data = await response.json();
@@ -160,14 +213,6 @@ export default function SignUpScreen() {
               />
 
               <TextInput
-                placeholder="Username"
-                style={styles.input}
-                autoCapitalize="none"
-                value={form.username}
-                onChangeText={(v) => handleChange("username", v)}
-              />
-
-              <TextInput
                 placeholder="Email"
                 style={styles.input}
                 keyboardType="email-address"
@@ -229,6 +274,14 @@ export default function SignUpScreen() {
                     style={styles.eyeIcon}
                   />
                 </TouchableOpacity>
+              </View>
+
+              {/* Requirements Indicator for password */}
+              <View style={styles.passwordRequirement}>
+                <Text style={{color: isPasswordValid ? 'green' : '#d9534f', fontWeight: "500"}}>
+                  {isPasswordValid ? '✓' : '*'} Your password must be atleast 8 characters and contain a number, 
+                  uppercase letter, and special characters.
+                </Text>
               </View>
 
               <Pressable
@@ -363,6 +416,12 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     paddingLeft: 10,
+  },
+  passwordRequirement: {
+    paddingTop: 0,
+    padding: 5,
+    marginBottom: 15,
+    
   },
   button: {
     backgroundColor: "#4b4040ff",
