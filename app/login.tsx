@@ -67,7 +67,7 @@ export default function LoginScreen() {
       const newAttempts = attemptsLeft - 1;
       setAttemptsLeft(newAttempts);
 
-      // Clear inputs as requested
+      // Clear inputs
       setEmail("");
       setPassword("");
 
@@ -133,8 +133,27 @@ export default function LoginScreen() {
             setModalMessage(`${data.message}\nYou have ${newAttempts} attempts left.`);
             setModalVisible(true);
           }
+        } else if(data.reason === "Account Pending") {
+          // Can enter but has limited acces
+          // Reset counters on success
+          setAttemptsLeft(5);
+
+          setModalTitle("Welcome Back!");
+          setModalMessage(data.message);
+          setModalVisible(true);
+
+          setTimeout(() => {
+            setModalVisible(false);
+            
+            // Redirect based on role
+            if (data.user_type === "admin") {
+              router.replace("/admin/dashboard"); 
+            } else {
+              router.replace("/(tabs)/home"); 
+            }
+          }, 1500);
         } else {
-          // Other errors (like "User not found" or "Account Pending")
+          // Other errors (like "User not found")
           const newAttempts = attemptsLeft - 1;
           setAttemptsLeft(newAttempts);
 
