@@ -18,9 +18,12 @@ const RootIndexPage = () => {
 
           // 2. SMART REDIRECT: Check the role!
           if (userData.user_type === 'admin') {
-            router.replace("/admin/dashboard");
-          } else {
-            router.replace("/(tabs)/home");
+            router.replace("/admin/adminlogin");
+          } 
+          else if (userData.user_type === 'helper') {
+            router.replace("/(helper)/home");   // Points to app/(helper)/home.tsx
+          } else if (userData.user_type === 'parent') { // or 'parent'
+            router.replace("/(parent)/home"); // Points to app/(parent)/home.tsx
           }
         } else {
           // Not logged in

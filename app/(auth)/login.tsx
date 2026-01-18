@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router"; 
 import { Ionicons } from "@expo/vector-icons";
-import API_URL from "../constants/api";
+import API_URL from "../../constants/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
@@ -35,8 +35,8 @@ export default function LoginScreen() {
   const [isLocked, setIsLocked] = useState(false);
 
   const backgroundImage = Platform.select({
-    web: require("../assets/images/CareLink.BackGround.Web.png"),
-    default: require("../assets/images/CareLink.BackGround.Mobile.png"),
+    web: require("../../assets/images/CareLink.BackGround.Web.png"),
+    default: require("../../assets/images/CareLink.BackGround.Mobile.png"),
   });
 
   // Helper to handle locking
@@ -110,8 +110,10 @@ export default function LoginScreen() {
           // Redirect based on role
           if (data.user_type === "admin") {
             router.replace("/admin/dashboard"); 
+          } else if (data.user_type === "helper"){
+            router.replace("/(helper)/home"); 
           } else {
-            router.replace("/(tabs)/home"); 
+            router.replace("/(parent)/home");
           }
         }, 1500);
 
@@ -148,8 +150,10 @@ export default function LoginScreen() {
             // Redirect based on role
             if (data.user_type === "admin") {
               router.replace("/admin/dashboard"); 
+            } else if (data.user_type === "helper"){
+              router.replace("/(helper)/home"); 
             } else {
-              router.replace("/(tabs)/home"); 
+              router.replace("/(parent)/home");
             }
           }, 1500);
         } else {

@@ -30,7 +30,7 @@ const WelcomeScreen = () => {
           <View style={styles.webNavLinks}>
             
             {/* Admin Link -> Goes to specific Admin Login page */}
-            <Link href="/adminlogin" asChild>
+            <Link href="/admin/adminlogin" asChild>
               <TouchableOpacity>
                 <Text style={styles.webNavLink}>Admin Portal</Text>
               </TouchableOpacity>

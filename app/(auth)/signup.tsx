@@ -16,7 +16,7 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons"; // Import Ionicons for the eye icon
-import API_URL from "../constants/api";
+import API_URL from "../../constants/api";
 
 // Interfaces
 interface FormData {
@@ -44,8 +44,8 @@ export default function SignUpScreen() {
   const [isPasswordValid, setIsPasswordValid] = useState(false);
 
   const backgroundImage = Platform.select({
-    web: require("../assets/images/CareLink.BackGround.Web.png"),
-    default: require("../assets/images/CareLink.BackGround.Mobile.png"),
+    web: require("../../assets/images/CareLink.BackGround.Web.png"),
+    default: require("../../assets/images/CareLink.BackGround.Mobile.png"),
   });
 
   const router = useRouter();

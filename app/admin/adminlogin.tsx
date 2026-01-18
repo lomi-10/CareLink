@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import API_URL from "../constants/api";
+import API_URL from "../../constants/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function AdminLoginScreen() {

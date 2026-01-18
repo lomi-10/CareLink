@@ -27,6 +27,9 @@ type User = {
 export default function HomeScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false); 
 
   useEffect(() => {
     const loadUser = async () => {
@@ -51,23 +54,6 @@ export default function HomeScreen() {
       </View>
     );
   }
-
-  // --- RENDER DIFFERENT SCREENS BASED ON ROLE ---
-  if (user?.user_type === 'helper') {
-    return <HelperDashboard user={user} />;
-  }
-
-  // Default to Parent Dashboard
-  return <ParentDashboard user={user} />;
-}
-
-// ==========================================
-// 👨‍👩‍👧 PARENT DASHBOARD COMPONENT
-// ==========================================
-function ParentDashboard({ user }: { user: User | null }) {
-  const router = useRouter();
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [logoutModalVisible, setLogoutModalVisible] = useState(false); 
 
   // 1. ACTION: Open the confirmation modal
   const openLogoutModal = () => {
@@ -99,7 +85,7 @@ function ParentDashboard({ user }: { user: User | null }) {
 
   const handleSettings = () => {
     setMenuVisible(false);
-    router.push('/(tabs)/settings');
+    router.push('/settings');
   };
 
   return (
@@ -158,7 +144,7 @@ function ParentDashboard({ user }: { user: User | null }) {
         <View style={styles.alertOverlay}>
           <View style={styles.logoutModalContainer}>
             <Text style={styles.modalTitle}>Log Out</Text>
-            <Text style={styles.modalMessage}>Are you sure you want to sign out?</Text>
+            <Text style={styles.modalMessage}>Are you sure you want to Log out?</Text>
             
             <View style={styles.modalButtons}>
               <TouchableOpacity 
@@ -200,16 +186,7 @@ function ParentDashboard({ user }: { user: User | null }) {
         {/* 3. CATEGORIES */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Services</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-            {['Cleaning', 'Nanny', 'Cooking', 'Elderly', 'Laundry'].map((cat, index) => (
-              <TouchableOpacity key={index} style={styles.categoryCard}>
-                <View style={[styles.categoryIcon, { backgroundColor: getCategoryColor(index) }]}>
-                  <Ionicons name={getCategoryIcon(cat)} size={24} color="#fff" />
-                </View>
-                <Text style={styles.categoryText}>{cat}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          
         </View>
 
         {/* 4. FEATURED HELPERS */}
@@ -278,156 +255,7 @@ function ParentDashboard({ user }: { user: User | null }) {
       </ScrollView>
     </View>
   );
-}
 
-// ==========================================
-// 👷‍♀️ HELPER DASHBOARD COMPONENT
-// ==========================================
-function HelperDashboard({ user }: { user: User | null }) {
-  const router = useRouter();
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [logoutModalVisible, setLogoutModalVisible] = useState(false); 
-
-  const openLogoutModal = () => {
-    setMenuVisible(false);
-    setTimeout(() => setLogoutModalVisible(true), 100);
-  };
-
-  const performLogout = async () => {
-    setLogoutModalVisible(false);
-    
-    try {
-      const userId = await AsyncStorage.getItem('user_token');
-      if (userId) {
-        await fetch(`${API_URL}/logout.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userId })
-        });
-      }
-    } catch (e) {
-      console.error("Logout log failed", e);
-    }
-
-    await AsyncStorage.clear();
-    router.replace('/welcome');
-  };
-
-  const handleSettings = () => {
-    setMenuVisible(false);
-    router.push('/(tabs)/settings');
-  };
-
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      
-      {/* Helper Header (Green Theme) */}
-      <View style={[styles.headerBackground, { backgroundColor: '#2E8B57' }]}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.greetingTime}>Welcome Back,</Text>
-            <Text style={styles.greetingName}>{user?.name}</Text>
-          </View>
-          <TouchableOpacity style={styles.menuBtn} onPress={() => setMenuVisible(true)}>
-            <Ionicons name="ellipsis-vertical" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Shared Menu Modal */}
-      <Modal
-        transparent={true}
-        visible={menuVisible}
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
-          <View style={styles.menuOverlay}>
-            <View style={styles.menuDropdown}>
-              <TouchableOpacity style={styles.menuItem} onPress={handleSettings}>
-                <Ionicons name="settings-outline" size={20} color="#333" />
-                <Text style={styles.menuText}>Settings</Text>
-              </TouchableOpacity>
-              <View style={styles.menuDivider} />
-              <TouchableOpacity style={styles.menuItem} onPress={openLogoutModal}>
-                <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
-                <Text style={[styles.menuText, { color: '#FF3B30' }]}>Log Out</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      {/* LOGOUT CONFIRMATION MODAL */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={logoutModalVisible}
-        onRequestClose={() => setLogoutModalVisible(false)}
-      >
-        <View style={styles.alertOverlay}>
-          <View style={styles.logoutModalContainer}>
-            <Text style={styles.modalTitle}>Log Out</Text>
-            <Text style={styles.modalMessage}>Are you sure you want to sign out?</Text>
-            
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
-                onPress={() => setLogoutModalVisible(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.logoutButton]} 
-                onPress={performLogout}
-              >
-                <Text style={styles.logoutButtonText}>Log Out</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <ScrollView style={styles.mainScrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-          <View style={{ backgroundColor: '#fff', padding: 20, borderRadius: 10, shadowColor: "#000", shadowOpacity: 0.05, elevation: 2 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: '#2E8B57' }}>My Profile Status</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
-              <Ionicons name="checkmark-circle" size={24} color="#2E8B57" />
-              <Text style={{ marginLeft: 10, fontSize: 16, color: '#333' }}>Active & Visible</Text>
-            </View>
-          </View>
-
-          <View style={{ marginTop: 20, backgroundColor: '#fff', padding: 20, borderRadius: 10, shadowColor: "#000", shadowOpacity: 0.05, elevation: 2 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: '#333' }}>Job Requests</Text>
-            <View style={{ paddingVertical: 30, alignItems: 'center' }}>
-              <Ionicons name="briefcase-outline" size={40} color="#ccc" />
-              <Text style={{ marginTop: 10, color: '#999' }}>No new requests yet.</Text>
-            </View>
-          </View>
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
-
-// --- UTILS ---
-function getCategoryColor(index: number) {
-  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#96CEB4'];
-  return colors[index % colors.length];
-}
-
-function getCategoryIcon(cat: string) {
-  switch(cat) {
-    case 'Cleaning': return 'water';
-    case 'Nanny': return 'happy';
-    case 'Cooking': return 'restaurant';
-    case 'Elderly': return 'medkit';
-    case 'Laundry': return 'shirt';
-    default: return 'star';
-  }
 }
 
 const styles = StyleSheet.create({
@@ -552,10 +380,22 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
   },
-  cancelButton: { backgroundColor: "#E5E5EA" },
-  logoutButton: { backgroundColor: "#FF3B30" },
-  cancelButtonText: { color: "#333", fontWeight: "600", fontSize: 16 },
-  logoutButtonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
+  cancelButton: { 
+    backgroundColor: "#E5E5EA" 
+  },
+  logoutButton: { 
+    backgroundColor: "#FF3B30" 
+  },
+  cancelButtonText: { 
+    color: "#333", 
+    fontWeight: "600", 
+    fontSize: 16 
+  },
+  logoutButtonText: { 
+    color: "#fff", 
+    fontWeight: "600", 
+    fontSize: 16 
+  },
 
   // SCROLL CONTENT
   mainScrollView: {
