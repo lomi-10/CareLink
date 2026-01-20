@@ -43,6 +43,17 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
         }}
       />
+
+      {/* Tab 3: Profile (HIDDEN FROM BOTTOM BAR) */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          href: null, // <-- This removes it from the bottom tab bar
+          // We can keep the icon config just in case, but it won't show
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }

@@ -438,8 +438,20 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
   },
-  cancelButton: { backgroundColor: "#E5E5EA" },
-  logoutButton: { backgroundColor: "#FF3B30" },
-  cancelButtonText: { color: "#333", fontWeight: "600", fontSize: 16 },
-  logoutButtonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
+  cancelButton: { 
+    backgroundColor: "#E5E5EA" 
+  },
+  logoutButton: { 
+    backgroundColor: "#FF3B30" 
+  },
+  cancelButtonText: { 
+    color: "#333", 
+    fontWeight: "600", 
+    fontSize: 16 
+  },
+  logoutButtonText: { 
+    color: "#fff", 
+    fontWeight: "600", 
+    fontSize: 16 
+  },
 });
