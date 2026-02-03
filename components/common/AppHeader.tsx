@@ -1,3 +1,4 @@
+//components/common/AppHeader.tsx
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';

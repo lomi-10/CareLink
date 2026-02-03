@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+//components/common/RightDrawer.tsx
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   View, Text, Modal, TouchableOpacity, StyleSheet, 
   Animated, Dimensions, Platform, TouchableWithoutFeedback 
@@ -14,23 +15,25 @@ interface RightDrawerProps {
 
 export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerProps) {
   const router = useRouter();
-  const screenWidth = Dimensions.get('window').width;
-  const drawerWidth = 300; // Fixed width for the drawer
+  // State for the Logout Confirmation Modal inside the Drawer
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const drawerWidth = 300; 
 
   // Animation Values
-  // 1. Slide: Starts off-screen to the right (positive value)
   const slideAnim = useRef(new Animated.Value(drawerWidth)).current;
-  // 2. Fade: Starts transparent
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
-      // OPEN: Animate Slide In + Fade In
+      // Reset logout state when drawer opens
+      setShowLogoutConfirm(false); 
+      
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: 0,
           duration: 300,
-          useNativeDriver: true, // 'true' is better for performance
+          useNativeDriver: true,
         }),
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -39,17 +42,21 @@ export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerP
         }),
       ]).start();
     } else {
-        // CLOSE: Reset values (optional, mostly handled by unmounting)
         slideAnim.setValue(drawerWidth);
         fadeAnim.setValue(0);
     }
   }, [visible]);
 
-  // Function to animate OUT before closing the actual Modal
   const handleClose = () => {
+    // Prevent closing if the confirmation modal is open
+    if (showLogoutConfirm) {
+        setShowLogoutConfirm(false);
+        return;
+    }
+
     Animated.parallel([
       Animated.timing(slideAnim, {
-        toValue: drawerWidth, // Slide back out
+        toValue: drawerWidth,
         duration: 250,
         useNativeDriver: true,
       }),
@@ -59,16 +66,29 @@ export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerP
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onClose(); // Tell parent to hide the Modal AFTER animation finishes
+      onClose();
     });
   };
 
   const navigateTo = (path: string) => {
     handleClose();
-    // Small timeout to let the drawer close before pushing new screen
     setTimeout(() => {
         // @ts-ignore
         router.push(path);
+    }, 300);
+  };
+
+  const handleLogoutPress = () => {
+    // Show the confirmation box instead of logging out immediately
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutConfirm(false);
+    handleClose(); // Close animation
+    // Small delay to allow drawer to close before logic runs
+    setTimeout(() => {
+        onLogout();
     }, 300);
   };
 
@@ -77,21 +97,20 @@ export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerP
       transparent={true}
       visible={visible}
       onRequestClose={handleClose}
-      animationType="none" // We use our own custom animation
+      animationType="none"
     >
-      {/* 1. BACKDROP (Dark Overlay) */}
+      {/* 1. BACKDROP */}
       <TouchableWithoutFeedback onPress={handleClose}>
         <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
       </TouchableWithoutFeedback>
 
-      {/* 2. THE DRAWER (Sliding Panel) */}
+      {/* 2. THE DRAWER */}
       <Animated.View 
         style={[
           styles.drawer, 
           { transform: [{ translateX: slideAnim }] } 
         ]}
       >
-        {/* Header Section */}
         <View style={styles.drawerHeader}>
             <Text style={styles.headerTitle}>Menu</Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
@@ -99,7 +118,6 @@ export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerP
             </TouchableOpacity>
         </View>
 
-        {/* Menu Items */}
         <View style={styles.menuItems}>
             <TouchableOpacity style={styles.item} onPress={() => navigateTo('/(helper)/home')}>
                 <Ionicons name="home-outline" size={24} color="#555" />
@@ -116,23 +134,55 @@ export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerP
                 <Text style={styles.itemText}>Settings</Text>
             </TouchableOpacity>
 
-            {/* Divider */}
             <View style={styles.divider} />
 
-            <TouchableOpacity style={styles.item} onPress={() => { handleClose(); onLogout(); }}>
+            {/* LOGOUT BUTTON - Trigger Confirmation */}
+            <TouchableOpacity style={styles.item} onPress={handleLogoutPress}>
                 <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
                 <Text style={[styles.itemText, { color: '#FF3B30' }]}>Logout</Text>
             </TouchableOpacity>
-
         </View>
       </Animated.View>
+
+      {/* 3. LOGOUT CONFIRMATION OVERLAY (Appears on top of everything) */}
+      {showLogoutConfirm && (
+        <View style={styles.confirmOverlay}>
+            <View style={styles.confirmBox}>
+                <View style={styles.confirmHeader}>
+                    <Ionicons name="warning-outline" size={32} color="#FF3B30" />
+                    <Text style={styles.confirmTitle}>Log Out</Text>
+                </View>
+                
+                <Text style={styles.confirmMessage}>
+                    Are you sure you want to log out of your account?
+                </Text>
+
+                <View style={styles.confirmButtons}>
+                    <TouchableOpacity 
+                        style={styles.btnCancel} 
+                        onPress={() => setShowLogoutConfirm(false)}
+                    >
+                        <Text style={styles.btnCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        style={styles.btnLogout} 
+                        onPress={confirmLogout}
+                    >
+                        <Text style={styles.btnLogoutText}>Log Out</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </View>
+      )}
+
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject, // Fills the whole screen
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
     zIndex: 1,
   },
@@ -140,13 +190,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-    bottom: 0, // Fills vertical height
-    width: 300, // Standard Sidebar width
+    bottom: 0,
+    width: 300,
     backgroundColor: 'white',
     zIndex: 2,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20, // Space for status bar
-    
-    // Shadow for depth
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
     shadowColor: "#000",
     shadowOffset: { width: -2, height: 0 },
     shadowOpacity: 0.2,
@@ -172,7 +220,7 @@ const styles = StyleSheet.create({
   },
   menuItems: {
     padding: 20,
-    gap: 15, // Space between items
+    gap: 15,
   },
   item: {
     flexDirection: 'row',
@@ -189,5 +237,71 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#eee',
     marginVertical: 10,
-  }
+  },
+
+  // --- LOGOUT MODAL STYLES ---
+  confirmOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)', // Darker background for focus
+    zIndex: 10, // Must be higher than drawer
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmBox: {
+    width: '80%',
+    maxWidth: 320,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  confirmHeader: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  confirmTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 8,
+  },
+  confirmMessage: {
+    fontSize: 15,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  btnCancel: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#F0F2F5',
+    alignItems: 'center',
+  },
+  btnCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  btnLogout: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#FF3B30',
+    alignItems: 'center',
+  },
+  btnLogoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
 });

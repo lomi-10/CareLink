@@ -138,6 +138,9 @@ export default function LoginScreen() {
         } else if(data.reason === "Account Pending") {
           // Can enter but has limited acces
           // Reset counters on success
+          await AsyncStorage.setItem("user_token", data.user.user_id.toString());
+          await AsyncStorage.setItem("user_data", JSON.stringify(data.user));
+          
           setAttemptsLeft(5);
 
           setModalTitle("Welcome Back!");
@@ -152,7 +155,7 @@ export default function LoginScreen() {
               router.replace("/admin/dashboard"); 
             } else if (data.user_type === "helper"){
               router.replace("/(helper)/home"); 
-            } else {
+            } else if (data.user_type === "parent"){
               router.replace("/(parent)/home");
             }
           }, 1500);

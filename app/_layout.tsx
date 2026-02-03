@@ -29,8 +29,8 @@ export default function RootLayout() {
         <Stack.Screen name="admin" options={{ headerShown: false }} />
 
         {/* 4. The Employer Group (Parents) */}
-        {/* This covers: app/(employer)/home.tsx, etc. */}
-        <Stack.Screen name="(employer)" options={{ headerShown: false }} />
+        {/* This covers: app/(parent)/home.tsx, etc. */}
+        <Stack.Screen name="(parent)" options={{ headerShown: false }} />
 
         {/* 5. The Helper Group (Applicants) */}
         {/* This covers: app/(helper)/home.tsx, etc. */}

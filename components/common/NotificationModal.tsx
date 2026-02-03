@@ -1,46 +1,105 @@
-import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+// components/common/NotificationModal.tsx
+import React, { useEffect } from 'react';
+import { 
+  View, Text, Modal, TouchableOpacity, StyleSheet, 
+  Animated, Dimensions 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface NotificationModalProps {
   visible: boolean;
   message: string;
-  type?: 'success' | 'error'; // Optional, defaults to success
+  type: 'success' | 'error' | 'warning' | 'info';
   onClose: () => void;
+  autoClose?: boolean;
+  duration?: number;
 }
 
 export default function NotificationModal({ 
   visible, 
   message, 
-  type = 'success', 
-  onClose 
+  type = 'info',
+  onClose,
+  autoClose = true,
+  duration = 3000 
 }: NotificationModalProps) {
   
+  const scaleAnim = React.useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    if (visible) {
+      // Animate in
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }).start();
+      
+      // Auto close
+      if (autoClose) {
+        const timer = setTimeout(() => {
+          handleClose();
+        }, duration);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      scaleAnim.setValue(0);
+    }
+  }, [visible]);
+  
+  const handleClose = () => {
+    Animated.timing(scaleAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      onClose();
+    });
+  };
+  
+  const getIconConfig = () => {
+    switch (type) {
+      case 'success':
+        return { name: 'checkmark-circle', color: '#4CAF50', bg: '#E8F5E9' };
+      case 'error':
+        return { name: 'close-circle', color: '#F44336', bg: '#FFEBEE' };
+      case 'warning':
+        return { name: 'warning', color: '#FF9800', bg: '#FFF3E0' };
+      case 'info':
+        return { name: 'information-circle', color: '#2196F3', bg: '#E3F2FD' };
+    }
+  };
+  
+  const iconConfig = getIconConfig();
+  
   return (
-    <Modal visible={visible} transparent={true} animationType="fade">
+    <Modal
+      transparent={true}
+      visible={visible}
+      animationType="none"
+      onRequestClose={handleClose}
+    >
       <View style={styles.overlay}>
-        <View style={styles.container}>
-          
-          {/* Icon based on type */}
-          <View style={[styles.iconCircle, type === 'error' ? styles.errorBg : styles.successBg]}>
-            <Ionicons 
-              name={type === 'error' ? "alert-circle" : "checkmark"} 
-              size={40} 
-              color="#fff" 
-            />
+        <Animated.View 
+          style={[
+            styles.modalContainer,
+            { transform: [{ scale: scaleAnim }] }
+          ]}
+        >
+          <View style={[styles.iconContainer, { backgroundColor: iconConfig.bg }]}>
+            <Ionicons name={iconConfig.name as any} size={40} color={iconConfig.color} />
           </View>
-
-          <Text style={styles.title}>
-            {type === 'error' ? "Ooops!" : "Success!"}
-          </Text>
           
           <Text style={styles.message}>{message}</Text>
-
-          <TouchableOpacity style={styles.button} onPress={onClose}>
-            <Text style={styles.buttonText}>Okay</Text>
+          
+          <TouchableOpacity 
+            style={[styles.closeButton, { backgroundColor: iconConfig.color }]} 
+            onPress={handleClose}
+          >
+            <Text style={styles.closeButtonText}>OK</Text>
           </TouchableOpacity>
-
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -52,56 +111,46 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  container: {
-    backgroundColor: '#fff',
-    width: 300,
-    borderRadius: 20,
     padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 30,
+    width: '100%',
+    maxWidth: 400,
     alignItems: 'center',
-    // Shadows
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
   },
-  iconCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    justifyContent: 'center',
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: 'center',
-    marginTop: -45, // Pulls the icon up to sit on the edge
-    marginBottom: 15,
-    borderWidth: 4,
-    borderColor: '#fff',
-  },
-  successBg: { backgroundColor: '#28a745' },
-  errorBg: { backgroundColor: '#dc3545' },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
+    justifyContent: 'center',
+    marginBottom: 20,
   },
   message: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
-    marginBottom: 20,
+    color: '#333',
+    marginBottom: 25,
+    lineHeight: 24,
   },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    borderRadius: 20,
-    width: '100%',
-    alignItems: 'center',
+  closeButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: 25,
+    minWidth: 120,
   },
-  buttonText: {
+  closeButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
     fontSize: 16,
-  }
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
 });
