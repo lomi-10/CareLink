@@ -1,4 +1,4 @@
-//components/common/RightDrawer.tsx
+// components/common/RightDrawer.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import { 
   View, Text, Modal, TouchableOpacity, StyleSheet, 
@@ -11,12 +11,15 @@ interface RightDrawerProps {
   visible: boolean;
   onClose: () => void;
   onLogout: () => void;
+  userType?: 'helper' | 'parent'; // Added this prop
 }
 
-export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerProps) {
+export default function RightDrawer({ visible, onClose, onLogout, userType = 'helper' }: RightDrawerProps) {
   const router = useRouter();
-  // State for the Logout Confirmation Modal inside the Drawer
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  // Determine the prefix based on userType
+  const pathPrefix = userType === 'parent' ? '/(parent)' : '/(helper)';
 
   const drawerWidth = 300; 
 
@@ -26,20 +29,10 @@ export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerP
 
   useEffect(() => {
     if (visible) {
-      // Reset logout state when drawer opens
       setShowLogoutConfirm(false); 
-      
       Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
       ]).start();
     } else {
         slideAnim.setValue(drawerWidth);
@@ -48,23 +41,14 @@ export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerP
   }, [visible]);
 
   const handleClose = () => {
-    // Prevent closing if the confirmation modal is open
     if (showLogoutConfirm) {
         setShowLogoutConfirm(false);
         return;
     }
 
     Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: drawerWidth,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
+      Animated.timing(slideAnim, { toValue: drawerWidth, duration: 250, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
     ]).start(() => {
       onClose();
     });
@@ -73,44 +57,28 @@ export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerP
   const navigateTo = (path: string) => {
     handleClose();
     setTimeout(() => {
-        // @ts-ignore
-        router.push(path);
+        // Automatically prepends the correct folder based on who is logged in
+        router.push(`${pathPrefix}${path}` as any);
     }, 300);
   };
 
-  const handleLogoutPress = () => {
-    // Show the confirmation box instead of logging out immediately
-    setShowLogoutConfirm(true);
-  };
+  const handleLogoutPress = () => setShowLogoutConfirm(true);
 
   const confirmLogout = () => {
     setShowLogoutConfirm(false);
-    handleClose(); // Close animation
-    // Small delay to allow drawer to close before logic runs
+    handleClose(); 
     setTimeout(() => {
         onLogout();
     }, 300);
   };
 
   return (
-    <Modal
-      transparent={true}
-      visible={visible}
-      onRequestClose={handleClose}
-      animationType="none"
-    >
-      {/* 1. BACKDROP */}
+    <Modal transparent={true} visible={visible} onRequestClose={handleClose} animationType="none">
       <TouchableWithoutFeedback onPress={handleClose}>
         <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
       </TouchableWithoutFeedback>
 
-      {/* 2. THE DRAWER */}
-      <Animated.View 
-        style={[
-          styles.drawer, 
-          { transform: [{ translateX: slideAnim }] } 
-        ]}
-      >
+      <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
         <View style={styles.drawerHeader}>
             <Text style={styles.headerTitle}>Menu</Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
@@ -119,12 +87,14 @@ export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerP
         </View>
 
         <View style={styles.menuItems}>
-            <TouchableOpacity style={styles.item} onPress={() => navigateTo('/(helper)/home')}>
+            {/* Navigates to correct home (parent vs helper) */}
+            <TouchableOpacity style={styles.item} onPress={() => navigateTo('/home')}>
                 <Ionicons name="home-outline" size={24} color="#555" />
                 <Text style={styles.itemText}>Home</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.item} onPress={() => navigateTo('/(helper)/profile')}>
+            {/* Navigates to correct profile (parent vs helper) */}
+            <TouchableOpacity style={styles.item} onPress={() => navigateTo('/profile')}>
                 <Ionicons name="person-outline" size={24} color="#555" />
                 <Text style={styles.itemText}>My Profile</Text>
             </TouchableOpacity>
@@ -136,7 +106,6 @@ export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerP
 
             <View style={styles.divider} />
 
-            {/* LOGOUT BUTTON - Trigger Confirmation */}
             <TouchableOpacity style={styles.item} onPress={handleLogoutPress}>
                 <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
                 <Text style={[styles.itemText, { color: '#FF3B30' }]}>Logout</Text>
@@ -144,7 +113,6 @@ export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerP
         </View>
       </Animated.View>
 
-      {/* 3. LOGOUT CONFIRMATION OVERLAY (Appears on top of everything) */}
       {showLogoutConfirm && (
         <View style={styles.confirmOverlay}>
             <View style={styles.confirmBox}>
@@ -152,30 +120,18 @@ export default function RightDrawer({ visible, onClose, onLogout }: RightDrawerP
                     <Ionicons name="warning-outline" size={32} color="#FF3B30" />
                     <Text style={styles.confirmTitle}>Log Out</Text>
                 </View>
-                
-                <Text style={styles.confirmMessage}>
-                    Are you sure you want to log out of your account?
-                </Text>
-
+                <Text style={styles.confirmMessage}>Are you sure you want to log out?</Text>
                 <View style={styles.confirmButtons}>
-                    <TouchableOpacity 
-                        style={styles.btnCancel} 
-                        onPress={() => setShowLogoutConfirm(false)}
-                    >
+                    <TouchableOpacity style={styles.btnCancel} onPress={() => setShowLogoutConfirm(false)}>
                         <Text style={styles.btnCancelText}>Cancel</Text>
                     </TouchableOpacity>
-
-                    <TouchableOpacity 
-                        style={styles.btnLogout} 
-                        onPress={confirmLogout}
-                    >
+                    <TouchableOpacity style={styles.btnLogout} onPress={confirmLogout}>
                         <Text style={styles.btnLogoutText}>Log Out</Text>
                     </TouchableOpacity>
                 </View>
             </View>
         </View>
       )}
-
     </Modal>
   );
 }

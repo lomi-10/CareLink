@@ -212,6 +212,7 @@ export default function ParentHomeScreen() {
         visible={isMenuOpen} 
         onClose={() => setIsMenuOpen(false)} 
         onLogout={handleLogout} 
+        userType='parent'
       />
 
       <ScrollView 

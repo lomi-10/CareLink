@@ -161,6 +161,7 @@ export default function ParentProfileScreen() {
         visible={isMenuOpen} 
         onClose={() => setIsMenuOpen(false)} 
         onLogout={() => router.replace('/(auth)/login')} 
+        userType='parent'
       />
 
       {/* EDIT PROFILE MODAL */}

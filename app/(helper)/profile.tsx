@@ -134,7 +134,12 @@ export default function HelperProfileScreen() {
       <NotificationModal visible={logoutSuccessVisible} message="Logged out successfully." type="success" onClose={() => {}} />
 
       <AppHeader title="My Profile" menu={true} onMenuPress={() => setIsMenuOpen(true)} />
-      <RightDrawer visible={isMenuOpen} onClose={() => setIsMenuOpen(false)} onLogout={handleLogout} />
+      <RightDrawer 
+        visible={isMenuOpen} 
+        onClose={() => setIsMenuOpen(false)} 
+        onLogout={handleLogout} 
+        userType='helper'
+      />
 
       <EditProfileModal visible={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} onSaveSuccess={handleProfileSaved} />
       <DocumentManagementModal visible={isDocumentModalOpen} onClose={() => setIsDocumentModalOpen(false)} onSaveSuccess={handleDocumentsSaved} />

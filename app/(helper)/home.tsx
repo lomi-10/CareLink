@@ -218,6 +218,7 @@ export default function HelperHomeScreen() {
         visible={isMenuOpen} 
         onClose={() => setIsMenuOpen(false)} 
         onLogout={handleLogout} 
+        userType='helper'
       />
 
       {/* MAIN CONTENT */}
