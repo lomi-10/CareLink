@@ -43,6 +43,26 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
         }}
       />
+
+      {/* Tab 3: Profiles */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          href: null,
+          tabBarIcon:({ color }) => <IconSymbol size={28} name="person.circle.fill" color={color}/>,
+        }}
+      />
+
+      {/* Tab 4: Jobs */}
+      <Tabs.Screen
+        name="jobs"
+        options={{
+          title: 'Jobs',
+          href: null,
+          tabBarIcon:({ color }) => <IconSymbol size={28} name="bag.fill" color={color}/>,
+        }}
+      />
     </Tabs>
   );
 }

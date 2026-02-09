@@ -39,22 +39,12 @@ export default function HelperProfileScreen() {
   // --- LIFECYCLE: Load data when screen appears ---
   useEffect(() => {
     loadUserProfile();
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
-  /**
-   * Load user profile data from backend
-   */
   const loadUserProfile = async () => {
     try {
       setLoading(true);
-      
-      console.log("🔍 DEBUG: Starting Profile Load...");
-
-      // Get user ID from AsyncStorage
       const userData = await AsyncStorage.getItem('user_data');
-      
-      console.log("📦 DEBUG: Raw User Data:", userData);
-
       if (!userData) {
         setErrorMessage("Error: You are not logged in. Please log in again.");
         setErrorModalVisible(true);
@@ -62,65 +52,24 @@ export default function HelperProfileScreen() {
         return;
       }
 
-      // Safe JSON Parsing
-      let parsed;
-      try {
-        parsed = JSON.parse(userData);
-      } catch (e) {
-        console.error("❌ JSON Parse Error:", e);
-        setErrorMessage(`Error: Corrupted user data in storage. ${e}`);
-        setErrorModalVisible(true);
-        setLoading(false);
-        return;
-      }
-
-      if (!parsed.user_id) {
-        setErrorMessage("Error: User ID is missing from stored data.");
-        setErrorModalVisible(true);
-        setLoading(false);
-        return;
-      }
-
+      let parsed = JSON.parse(userData);
       setUserId(parsed.user_id);
-      console.log("👤 DEBUG: Fetching for User ID:", parsed.user_id);
 
-      // Fetch profile from backend
       const url = `${API_URL}/helper/get_profile.php?user_id=${parsed.user_id}`;
-      console.log("🌐 DEBUG: Fetching from:", url);
-
       const response = await fetch(url);
       
-      // Check if response is ok
-      if (!response.ok) {
-        throw new Error(`HTTP Error! Status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP Error! Status: ${response.status}`);
 
-      // Get response text first to debug
       const responseText = await response.text();
-      console.log("📄 DEBUG: Raw Response:", responseText);
-
-      // Try to parse JSON
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error("❌ JSON Parse Error on response:", e);
-        setErrorMessage(`Server returned invalid JSON. Response: ${responseText.substring(0, 200)}`);
-        setErrorModalVisible(true);
-        setLoading(false);
-        return;
-      }
-
-      console.log("✅ DEBUG: Parsed API Response:", data);
+      let data = JSON.parse(responseText);
 
       if (data.success) {
         setProfileData(data);
       } else {
-        setErrorMessage(data.message || 'Failed to load profile data from server.');
+        setErrorMessage(data.message || 'Failed to load profile data.');
         setErrorModalVisible(true);
       }
     } catch (error: any) {
-      console.error('❌ Error loading profile:', error);
       setErrorMessage(`Network error: ${error.message || 'Unable to connect to server'}`);
       setErrorModalVisible(true);
     } finally {
@@ -128,137 +77,45 @@ export default function HelperProfileScreen() {
     }
   };
 
-  /**
-   * Refresh profile data
-   */
   const onRefresh = async () => {
     setRefreshing(true);
     await loadUserProfile();
     setRefreshing(false);
   };
 
-  /**
-   * Handle successful profile update
-   */
-  const handleProfileSaved = () => {
-    loadUserProfile();
-  };
+  const handleProfileSaved = () => loadUserProfile();
+  const handleDocumentsSaved = () => loadUserProfile();
 
-  /**
-   * Handle successful document upload
-   */
-  const handleDocumentsSaved = () => {
-    loadUserProfile();
-  };
-
-  /**
-   * Handle retry button click
-   */
-  const handleRetry = () => {
-    setErrorModalVisible(false);
-    setProfileData(null); // Clear any partial data
-    loadUserProfile();
-  };
-
-  /**
-   * Handle Logout with Delay and Notification
-   */
   const handleLogout = async () => {
-    // 1. Close the menu
     setIsMenuOpen(false);
-    
-    // 2. Clear all stored data
     await AsyncStorage.clear();
-    
-    // 3. Show the "Success" modal
     setLogoutSuccessVisible(true);
-
-    // 4. Wait 1.5 seconds so user sees the message, THEN redirect
     setTimeout(() => {
       setLogoutSuccessVisible(false);
       router.replace('/(auth)/login');
     }, 1500);
   };
 
-  /**
-   * Get verification status badge
-   */
   const getVerificationBadge = () => {
     const status = profileData?.profile?.verification_status || 'Unverified';
-    
     switch (status) {
-      case 'Verified':
-        return { 
-          icon: 'checkmark-circle', 
-          text: 'PESO Verified', 
-          style: styles.bgGreen 
-        };
-      case 'Pending':
-        return { 
-          icon: 'time', 
-          text: 'PESO Pending', 
-          style: styles.bgOrange 
-        };
-      case 'Rejected':
-        return { 
-          icon: 'close-circle', 
-          text: 'Verification Failed', 
-          style: styles.bgRed 
-        };
-      default:
-        return { 
-          icon: 'alert-circle', 
-          text: 'Not Verified', 
-          style: styles.bgGray 
-        };
+      case 'Verified': return { icon: 'checkmark-circle', text: 'PESO Verified', style: styles.bgGreen };
+      case 'Pending': return { icon: 'time', text: 'PESO Pending', style: styles.bgOrange };
+      case 'Rejected': return { icon: 'close-circle', text: 'Verification Failed', style: styles.bgRed };
+      default: return { icon: 'alert-circle', text: 'Not Verified', style: styles.bgGray };
     }
   };
 
-  // --- LOADING STATE ---
-  if (loading) {
-    return <LoadingSpinner visible={true} message="Loading profile..." />;
-  }
+  if (loading) return <LoadingSpinner visible={true} message="Loading profile..." />;
 
-  // --- NO PROFILE DATA ---
   if (!profileData) {
     return (
       <View style={styles.screenContainer}>
-        <Stack.Screen options={{ headerShown: false }} />
-        
-        {/* ERROR NOTIFICATION MODAL */}
-        <NotificationModal 
-          visible={errorModalVisible}
-          message={errorMessage}
-          type="error"
-          onClose={() => setErrorModalVisible(false)}
-          autoClose={false}
-        />
-
-        {/* --- ADD THIS: LOGOUT SUCCESS MODAL --- */}
-        <NotificationModal 
-          visible={logoutSuccessVisible}
-          message="You have been logged out successfully."
-          type="success"
-          onClose={() => {}} // Do nothing on close, let the timer handle it
-          autoClose={false}
-        />
-
-        <AppHeader 
-          title="My Profile" 
-          menu={true} 
-          onMenuPress={() => setIsMenuOpen(true)} 
-        />
-        
+        <AppHeader title="My Profile" menu={true} onMenuPress={() => setIsMenuOpen(true)} />
         <View style={styles.emptyState}>
           <Ionicons name="person-circle-outline" size={80} color="#ccc" />
           <Text style={styles.emptyText}>No profile data found</Text>
-          <Text style={styles.emptySubtext}>
-            Unable to load your profile. Please check your connection and try again.
-          </Text>
-          <TouchableOpacity 
-            style={styles.createProfileBtn} 
-            onPress={handleRetry}
-          >
+          <TouchableOpacity style={styles.createProfileBtn} onPress={loadUserProfile}>
             <Text style={styles.createProfileText}>Retry Loading</Text>
           </TouchableOpacity>
         </View>
@@ -273,63 +130,26 @@ export default function HelperProfileScreen() {
 
   return (
     <View style={styles.screenContainer}>
-      
+      <NotificationModal visible={errorModalVisible} message={errorMessage} type="error" onClose={() => setErrorModalVisible(false)} />
+      <NotificationModal visible={logoutSuccessVisible} message="Logged out successfully." type="success" onClose={() => {}} />
 
-      {/* ERROR NOTIFICATION MODAL */}
-      <NotificationModal 
-        visible={errorModalVisible}
-        message={errorMessage}
-        type="error"
-        onClose={() => setErrorModalVisible(false)}
-        autoClose={false}
-      />
+      <AppHeader title="My Profile" menu={true} onMenuPress={() => setIsMenuOpen(true)} />
+      <RightDrawer visible={isMenuOpen} onClose={() => setIsMenuOpen(false)} onLogout={handleLogout} />
 
-      {/* HEADER */}
-      <AppHeader 
-        title="My Profile" 
-        menu={true} 
-        onMenuPress={() => setIsMenuOpen(true)} 
-      />
+      <EditProfileModal visible={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} onSaveSuccess={handleProfileSaved} />
+      <DocumentManagementModal visible={isDocumentModalOpen} onClose={() => setIsDocumentModalOpen(false)} onSaveSuccess={handleDocumentsSaved} />
 
-      {/* NAVIGATION DRAWER */}
-      <RightDrawer 
-        visible={isMenuOpen} 
-        onClose={() => setIsMenuOpen(false)} 
-        onLogout={handleLogout} 
-      />
-
-      {/* EDIT PROFILE MODAL */}
-      <EditProfileModal 
-        visible={isEditModalOpen} 
-        onClose={() => setIsEditModalOpen(false)}
-        onSaveSuccess={handleProfileSaved}
-      />
-
-      {/* DOCUMENT MANAGEMENT MODAL */}
-      <DocumentManagementModal 
-        visible={isDocumentModalOpen} 
-        onClose={() => setIsDocumentModalOpen(false)}
-        onSaveSuccess={handleDocumentsSaved}
-      />
-
-      {/* --- MAIN CONTENT --- */}
       <View style={styles.webCenterContainer}>
         <ScrollView 
           contentContainerStyle={styles.scrollContent} 
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
-
           {/* 1. PROFILE HEADER CARD */}
           <View style={styles.profileHeaderCard}>
             <View style={styles.avatarContainer}>
               {profile?.profile_image ? (
-                <Image 
-                  source={{ uri: profile.profile_image }} 
-                  style={styles.avatar} 
-                />
+                <Image source={{ uri: profile.profile_image }} style={styles.avatar} />
               ) : (
                 <View style={styles.avatarPlaceholder}>
                   <Ionicons name="person" size={60} color="#ccc" />
@@ -338,20 +158,21 @@ export default function HelperProfileScreen() {
             </View>
 
             <Text style={styles.nameText}>{user.name}</Text>
-            {user.username && (
-              <Text style={styles.usernameText}>@{user.username}</Text>
-            )}
+            {user.username && <Text style={styles.usernameText}>@{user.username}</Text>}
             
             <View style={[styles.statusBadge, badge.style]}>
               <Ionicons name={badge.icon as any} size={14} color="#fff" />
               <Text style={styles.statusText}>{badge.text}</Text>
             </View>
 
-            {profile?.municipality && profile?.barangay && (
+            {/* UPDATED: FULL ADDRESS DISPLAY */}
+            {(profile?.address || profile?.municipality) && (
               <View style={styles.locationRow}>
                 <Ionicons name="location-sharp" size={16} color="#666" />
-                <Text style={styles.locationText}>
-                  {profile.barangay}, {profile.municipality}
+                <Text style={styles.locationText} numberOfLines={2}>
+                  {profile.address ? `${profile.address}, ` : ''}
+                  {profile.barangay ? `${profile.barangay}, ` : ''}
+                  {profile.municipality}
                 </Text>
               </View>
             )}
@@ -361,35 +182,26 @@ export default function HelperProfileScreen() {
                 <Ionicons name="mail-outline" size={16} color="#666" />
                 <Text style={styles.contactText}>{user.email}</Text>
               </View>
-              {user.contact && (
-                <View style={styles.contactRow}>
-                  <Ionicons name="call-outline" size={16} color="#666" />
-                  <Text style={styles.contactText}>{user.contact}</Text>
-                </View>
-              )}
+              <View style={styles.contactRow}>
+                <Ionicons name="call-outline" size={16} color="#666" />
+                <Text style={styles.contactText}>{profile?.contact_number || user.contact || 'No contact set'}</Text>
+              </View>
             </View>
           </View>
 
           {/* 2. QUICK ACTIONS */}
           <View style={styles.actionButtonsRow}>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => setIsEditModalOpen(true)}
-            >
+            <TouchableOpacity style={styles.actionButton} onPress={() => setIsEditModalOpen(true)}>
               <Ionicons name="create-outline" size={20} color="#007AFF" />
               <Text style={styles.actionButtonText}>Edit Profile</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => setIsDocumentModalOpen(true)}
-            >
+            <TouchableOpacity style={styles.actionButton} onPress={() => setIsDocumentModalOpen(true)}>
               <Ionicons name="document-text-outline" size={20} color="#007AFF" />
-              <Text style={styles.actionButtonText}>Manage Documents</Text>
+              <Text style={styles.actionButtonText}>Documents</Text>
             </TouchableOpacity>
           </View>
 
-          {/* 3. ABOUT ME SECTION */}
+          {/* 3. ABOUT ME */}
           {profile?.bio && (
             <View style={styles.infoCard}>
               <Text style={styles.cardTitle}>About Me</Text>
@@ -397,123 +209,98 @@ export default function HelperProfileScreen() {
             </View>
           )}
 
-          {/* 4. PROFESSIONAL INFO */}
+          {/* 4. UPDATED: PROFESSIONAL & PERSONAL INFORMATION */}
           <View style={styles.infoCard}>
-            <Text style={styles.cardTitle}>Professional Information</Text>
+            <Text style={styles.cardTitle}>Information Details</Text>
             
-            {profile?.experience_years && (
+            <View style={styles.infoRow}>
+              <Ionicons name="person-outline" size={20} color="#007AFF" />
+              <Text style={styles.infoLabel}>Gender & Status:</Text>
+              <Text style={styles.infoValue}>{profile?.gender || '---'} | {profile?.civil_status || '---'}</Text>
+            </View>
+
+            {profile?.birth_date && (
               <View style={styles.infoRow}>
-                <Ionicons name="briefcase-outline" size={20} color="#007AFF" />
-                <Text style={styles.infoLabel}>Experience:</Text>
-                <Text style={styles.infoValue}>
-                  {profile.experience_years} {profile.experience_years === 1 ? 'year' : 'years'}
-                </Text>
+                <Ionicons name="calendar-outline" size={20} color="#007AFF" />
+                <Text style={styles.infoLabel}>Birth Date:</Text>
+                <Text style={styles.infoValue}>{profile.birth_date}</Text>
               </View>
             )}
 
-            {profile?.work_type_preference && (
+            {profile?.education_level && (
               <View style={styles.infoRow}>
-                <Ionicons name="time-outline" size={20} color="#007AFF" />
-                <Text style={styles.infoLabel}>Work Type:</Text>
-                <Text style={styles.infoValue}>{profile.work_type_preference}</Text>
+                <Ionicons name="school-outline" size={20} color="#007AFF" />
+                <Text style={styles.infoLabel}>Education:</Text>
+                <Text style={styles.infoValue}>{profile.education_level}</Text>
               </View>
             )}
 
-            {profile?.availability_status && (
-              <View style={styles.infoRow}>
-                <Ionicons 
-                  name={profile.availability_status === 'Available' ? 'checkmark-circle' : 'close-circle'} 
-                  size={20} 
-                  color={profile.availability_status === 'Available' ? '#28a745' : '#dc3545'} 
-                />
-                <Text style={styles.infoLabel}>Status:</Text>
-                <Text style={[
-                  styles.infoValue,
-                  profile.availability_status === 'Available' ? styles.textGreen : styles.textRed
-                ]}>
-                  {profile.availability_status}
-                </Text>
-              </View>
-            )}
+            <View style={styles.infoRow}>
+              <Ionicons name="briefcase-outline" size={20} color="#007AFF" />
+              <Text style={styles.infoLabel}>Experience:</Text>
+              <Text style={styles.infoValue}>{profile?.experience_years || '0'} Years</Text>
+            </View>
 
-            {profile?.languages_spoken && (
-              <View style={styles.infoRow}>
-                <Ionicons name="language-outline" size={20} color="#007AFF" />
-                <Text style={styles.infoLabel}>Languages:</Text>
-                <Text style={styles.infoValue}>{profile.languages_spoken}</Text>
-              </View>
-            )}
+            <View style={styles.infoRow}>
+              <Ionicons name="time-outline" size={20} color="#007AFF" />
+              <Text style={styles.infoLabel}>Work Type:</Text>
+              <Text style={styles.infoValue}>{profile?.work_type_preference || 'Both'}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Ionicons 
+                name={profile?.availability_status === 'Available' ? 'checkmark-circle' : 'close-circle'} 
+                size={20} 
+                color={profile?.availability_status === 'Available' ? '#28a745' : '#dc3545'} 
+              />
+              <Text style={styles.infoLabel}>Current Status:</Text>
+              <Text style={[styles.infoValue, profile?.availability_status === 'Available' ? styles.textGreen : styles.textRed]}>
+                {profile?.availability_status || 'Available'}
+              </Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Ionicons name="language-outline" size={20} color="#007AFF" />
+              <Text style={styles.infoLabel}>Languages:</Text>
+              <Text style={styles.infoValue}>{profile?.languages_spoken || 'Tagalog, English'}</Text>
+            </View>
           </View>
 
-          {/* 5. SKILLS & SPECIALTIES */}
+          {/* 5. SKILLS */}
           {skills.length > 0 && (
             <View style={styles.infoCard}>
               <Text style={styles.cardTitle}>Skills & Specialties</Text>
-              <View style={styles.skillRow}>
+              <div style={styles.skillRow as any}>
                 {skills.map((skill: any, index: number) => (
                   <View key={index} style={styles.skillChip}>
                     <Text style={styles.skillText}>{skill.skill_name}</Text>
-                    {skill.proficiency_level && (
-                      <Text style={styles.skillLevel}>
-                        {skill.proficiency_level}
-                      </Text>
-                    )}
                   </View>
                 ))}
-              </View>
+              </div>
             </View>
           )}
 
-          {/* 6. SALARY EXPECTATION */}
-          {(profile?.expected_salary_min || profile?.expected_salary_max) && (
-            <View style={styles.infoCard}>
-              <Text style={styles.cardTitle}>Salary Expectation</Text>
-              <View style={styles.salaryRow}>
-                <Ionicons name="cash-outline" size={24} color="#28a745" />
-                <View style={styles.salaryInfo}>
-                  <Text style={styles.salaryLabel}>Expected Monthly Salary</Text>
-                  <Text style={styles.salaryValue}>
-                    ₱ {formatNumber(profile.expected_salary_min)}
-                    {profile.expected_salary_max && profile.expected_salary_min !== profile.expected_salary_max && 
-                      ` - ₱ ${formatNumber(profile.expected_salary_max)}`
-                    }
-                  </Text>
-                </View>
+          {/* 6. SALARY */}
+          <View style={styles.infoCard}>
+            <Text style={styles.cardTitle}>Salary Expectation</Text>
+            <View style={styles.salaryRow}>
+              <Ionicons name="cash-outline" size={24} color="#28a745" />
+              <View style={styles.salaryInfo}>
+                <Text style={styles.salaryLabel}>Expected {profile?.salary_period || 'Monthly'}</Text>
+                <Text style={styles.salaryValue}>₱ {formatNumber(profile?.expected_salary_min)}</Text>
               </View>
             </View>
-          )}
+          </View>
 
           {/* 7. DOCUMENTS STATUS */}
           <View style={styles.infoCard}>
             <Text style={styles.cardTitle}>Verification Documents</Text>
-            
-            <DocumentStatusRow 
-              icon="card-outline"
-              title="PhilSys ID"
-              status={profile?.government_id ? 'uploaded' : 'pending'}
-            />
-
-            <DocumentStatusRow 
-              icon="shield-checkmark-outline"
-              title="Barangay Clearance"
-              status={profile?.barangay_clearance ? 'uploaded' : 'pending'}
-            />
-
-            <DocumentStatusRow 
-              icon="document-text-outline"
-              title="NBI/Police Clearance"
-              status={profile?.nbi_clearance_image ? 'uploaded' : 'pending'}
-              expiryDate={profile?.nbi_clearance_expiry}
-            />
-
-            <TouchableOpacity 
-              style={styles.uploadDocsBtn}
-              onPress={() => setIsDocumentModalOpen(true)}
-            >
+            <DocumentStatusRow icon="card-outline" title="PhilSys ID" status={profile?.government_id ? 'uploaded' : 'pending'} />
+            <DocumentStatusRow icon="shield-checkmark-outline" title="Barangay Clearance" status={profile?.barangay_clearance ? 'uploaded' : 'pending'} />
+            <DocumentStatusRow icon="document-text-outline" title="NBI/Police Clearance" status={profile?.nbi_clearance_image ? 'uploaded' : 'pending'} expiryDate={profile?.nbi_clearance_expiry} />
+            <TouchableOpacity style={styles.uploadDocsBtn} onPress={() => setIsDocumentModalOpen(true)}>
               <Ionicons name="cloud-upload-outline" size={20} color="#007AFF" />
-              <Text style={styles.uploadDocsBtnText}>
-                {profile?.government_id ? 'Update Documents' : 'Upload Documents'}
-              </Text>
+              <Text style={styles.uploadDocsBtnText}>Manage Documents</Text>
             </TouchableOpacity>
           </View>
 

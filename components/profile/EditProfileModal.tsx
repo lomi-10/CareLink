@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+// components/profile/EditProfileModal.tsx
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, 
-  Image, Platform, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView 
+  Image, Platform, ActivityIndicator, KeyboardAvoidingView 
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import API_URL from "../../constants/api";
 
+import LabeledInput from '../common/LabeledInput';
+import NotificationModal from '../common/NotificationModal';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 interface EditProfileModalProps {
@@ -18,138 +21,149 @@ interface EditProfileModalProps {
 
 export default function EditProfileModal({ visible, onClose, onSaveSuccess }: EditProfileModalProps) {
   
-  // --- STATE ---
+  // STATE - Matches helper_profiles table structure EXACTLY
   const [userId, setUserId] = useState<string | null>(null);
+  
+  // Required fields (NOT NULL in database)
+  const [contactNumber, setContactNumber] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [gender, setGender] = useState<'Male' | 'Female'>('Female');
+  const [address, setAddress] = useState('');
+  const [municipality, setMunicipality] = useState('');
+  const [barangay, setBarangay] = useState('');
+  
+  // Optional fields
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [civilStatus, setCivilStatus] = useState<string>('Single');
+  const [bio, setBio] = useState('');
+  const [languagesSpoken, setLanguagesSpoken] = useState('Tagalog,English');
+  const [educationLevel, setEducationLevel] = useState<string>('High School Grad');
+  const [experienceYears, setExperienceYears] = useState('0');
+  const [workTypePreference, setWorkTypePreference] = useState<string>('Both');
+  const [availabilityStatus, setAvailabilityStatus] = useState<string>('Available');
+  const [expectedSalaryMin, setExpectedSalaryMin] = useState('');
+  const [salaryPeriod, setSalaryPeriod] = useState<string>('Monthly');
+
+  // Skills (from helper_skills table)
+  const [availableSkills, setAvailableSkills] = useState<any[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  
-  // 1. Account & Personal Info
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [username, setUsername] = useState('');
-  const [contactNumber, setContactNumber] = useState('');
-  const [birthdate, setBirthdate] = useState(''); // YYYY-MM-DD
-  const [gender, setGender] = useState(''); // Male, Female
-  const [civilStatus, setCivilStatus] = useState(''); // Single, Married, etc.
-  
-  // 2. Location
-  const [barangay, setBarangay] = useState('');
-  const [municipality, setMunicipality] = useState('');
 
-  // 3. Professional Info
-  const [bio, setBio] = useState('');
-  const [education, setEducation] = useState(''); // Elementary, High School, etc.
-  const [workType, setWorkType] = useState(''); // Stay-in, Stay-out
-  const [experienceYears, setExperienceYears] = useState('');
-  const [languages, setLanguages] = useState(''); // Comma separated
-  const [salaryMin, setSalaryMin] = useState('');
-  const [salaryMax, setSalaryMax] = useState('');
-  
-  // 4. Skills Management
-  const [availableSkills, setAvailableSkills] = useState<any[]>([]); 
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [customSkillText, setCustomSkillText] = useState(''); 
+  // Notification
+  const [notifVisible, setNotifVisible] = useState(false);
+  const [notifMessage, setNotifMessage] = useState('');
+  const [notifType, setNotifType] = useState<'success' | 'error'>('success');
 
-  // --- OPTIONS FOR SELECTORS ---
-  const genderOptions = ['Male', 'Female'];
-  const civilStatusOptions = ['Single', 'Married', 'Widowed', 'Separated'];
-  const workTypeOptions = ['Stay-in', 'Stay-out', 'On-call'];
-  const educationOptions = ['Elementary', 'High School Grad', 'College Undergrad', 'College Grad', 'Vocational'];
-
-  // --- LIFECYCLE ---
+  // ============================================================================
+  // LIFECYCLE
+  // ============================================================================
   useEffect(() => {
-    if (visible) {
-      loadInitialData();
-    }
+    if (visible) loadData();
   }, [visible]);
 
-  const loadInitialData = async () => {
+  const showNotification = (msg: string, type: 'success' | 'error') => {
+    setNotifMessage(msg);
+    setNotifType(type);
+    setNotifVisible(true);
+  };
+
+  const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const userData = await AsyncStorage.getItem('user_data');
-      if (userData) {
-        const parsed = JSON.parse(userData);
-        setUserId(parsed.user_id);
-        
-        await Promise.all([
-            fetchProfileData(parsed.user_id),
-            fetchReferenceSkills()
-        ]);
+      console.log('📥 Loading profile data...');
+      
+      // 1. Fetch reference skills
+      const refResponse = await fetch(`${API_URL}/helper/get_ref_skills.php`);
+      const refText = await refResponse.text();
+      
+      let refResult;
+      try {
+        refResult = JSON.parse(refText);
+      } catch (e) {
+        console.error('Failed to parse skills JSON:', e);
+        throw new Error('Invalid skills data from server');
       }
-    } catch (error) {
-      console.error("Error loading data", error);
+      
+      const refs = refResult.success ? refResult.data : [];
+      setAvailableSkills(refs);
+      console.log('✅ Loaded skills:', refs.length);
+
+      // 2. Fetch user profile
+      const userData = await AsyncStorage.getItem('user_data');
+      if (!userData) {
+        throw new Error('No user data found');
+      }
+      
+      const parsed = JSON.parse(userData);
+      setUserId(parsed.user_id);
+      
+      const profResponse = await fetch(`${API_URL}/helper/get_profile.php?user_id=${parsed.user_id}`);
+      const profText = await profResponse.text();
+      
+      let profData;
+      try {
+        profData = JSON.parse(profText);
+      } catch (e) {
+        console.error('Failed to parse profile JSON:', e);
+        throw new Error('Invalid profile data from server');
+      }
+      
+      if (profData.success && profData.profile) {
+        const p = profData.profile;
+        
+        // Populate all fields matching database structure
+        setContactNumber(p.contact_number || '');
+        setBirthDate(p.birth_date || '');
+        setGender(p.gender || 'Female');
+        setAddress(p.address || '');
+        setMunicipality(p.municipality || '');
+        setBarangay(p.barangay || '');
+        
+        setProfileImage(p.profile_image || null);
+        setCivilStatus(p.civil_status || 'Single');
+        setBio(p.bio || '');
+        setLanguagesSpoken(p.languages_spoken || 'Tagalog, English');
+        setEducationLevel(p.education_level || 'High School Grad');
+        setExperienceYears(p.experience_years ? String(p.experience_years) : '0');
+        setWorkTypePreference(p.work_type_preference || 'Both');
+        setAvailabilityStatus(p.availability_status || 'Available');
+        setExpectedSalaryMin(p.expected_salary_min ? String(p.expected_salary_min) : '');
+        setSalaryPeriod(p.salary_period || 'Monthly');
+        
+        // Populate selected skills
+        if (profData.skills && Array.isArray(profData.skills)) {
+          const userSkillNames = profData.skills.map((s: any) => s.skill_name);
+          const refNames = refs.map((r: any) => r.skill_name);
+          setSelectedSkills(userSkillNames.filter((name: string) => refNames.includes(name)));
+        }
+        
+        console.log('✅ Profile data loaded');
+      }
+    } catch (error: any) {
+      console.error('❌ Load error:', error);
+      showNotification(error.message || 'Failed to load data', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchProfileData = async (uid: string) => {
-    try {
-      const response = await fetch(`${API_URL}/helper/get_profile.php?user_id=${uid}`);
-      const data = await response.json();
-
-      if (data.success) {
-        const p = data.profile || {};
-        const u = data.user || {};
-
-        // 1. Personal
-        setProfileImage(p.profile_image || null);
-        setUsername(u.username || '');
-        setContactNumber(u.contact || p.contact_number || ''); 
-        setBirthdate(p.birthdate || '');
-        setGender(p.gender || '');
-        setCivilStatus(p.civil_status || 'Single');
-        
-        // 2. Location
-        setBarangay(p.barangay || '');
-        setMunicipality(p.municipality || '');
-
-        // 3. Professional
-        setBio(p.bio || '');
-        setEducation(p.education_level || '');
-        setWorkType(p.work_type_preference || 'Stay-out');
-        setExperienceYears(p.experience_years ? p.experience_years.toString() : '');
-        setLanguages(p.languages_spoken || '');
-        setSalaryMin(p.expected_salary_min ? p.expected_salary_min.toString() : '');
-        setSalaryMax(p.expected_salary_max ? p.expected_salary_max.toString() : '');
-
-        // 4. Skills
-        const userSkills = data.skills || [];
-        const userSkillNames = userSkills.map((s: any) => s.skill_name);
-        setSelectedSkills(userSkillNames);
-      }
-    } catch (error) {
-      console.error("Fetch profile error", error);
-    }
-  };
-
-  const fetchReferenceSkills = async () => {
-    try {
-      const response = await fetch(`${API_URL}/helper/get_ref_skills.php`);
-      const data = await response.json();
-      if (data.success) {
-        setAvailableSkills(data.data);
-      }
-    } catch (e) {
-      console.log("Ref skills error", e);
-    }
-  };
-
-  // --- ACTIONS ---
-
+  // ACTIONS
+  
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow access to your photos.');
-      return;
+      return showNotification('Camera permission needed', 'error');
     }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
+    
+    let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,
     });
-
+    
     if (!result.canceled) {
       setProfileImage(result.assets[0].uri);
     }
@@ -163,50 +177,53 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
     }
   };
 
-  const addCustomSkill = () => {
-    const trimmed = customSkillText.trim();
-    if (trimmed.length > 0) {
-      if (!selectedSkills.includes(trimmed)) {
-        setSelectedSkills([...selectedSkills, trimmed]);
-      }
-      setCustomSkillText(''); 
-    }
-  };
-
   const handleSave = async () => {
-    if (!username || !contactNumber || !barangay || !municipality) {
-      Alert.alert("Missing Info", "Please fill in all required personal information.");
-      return;
+    // Validation
+    if (!contactNumber.trim()) {
+      return showNotification('Contact number is required', 'error');
     }
-
+    
+    if (!address.trim() || !municipality.trim() || !barangay.trim()) {
+      return showNotification('Complete address is required', 'error');
+    }
+    
+    if (!expectedSalaryMin || parseFloat(expectedSalaryMin) <= 0) {
+      return showNotification('Valid salary is required', 'error');
+    }
+    
+    if (selectedSkills.length === 0) {
+      return showNotification('Select at least one skill', 'error');
+    }
+    
     setSaving(true);
-
     try {
+      console.log('💾 Saving profile...');
+      
       const formData = new FormData();
       formData.append('user_id', userId || '');
       
-      // Personal
-      formData.append('username', username);
-      formData.append('contact_number', contactNumber);
-      formData.append('birthdate', birthdate);
+      // All fields matching helper_profiles table structure
+      formData.append('contact_number', contactNumber.trim());
+      formData.append('birth_date', birthDate);
       formData.append('gender', gender);
-      formData.append('civil_status', civilStatus);
+      formData.append('address', address.trim());
+      formData.append('municipality', municipality.trim());
+      formData.append('barangay', barangay.trim());
       
-      // Location
-      formData.append('barangay', barangay);
-      formData.append('municipality', municipality);
-
-      // Professional
-      formData.append('bio', bio);
-      formData.append('education_level', education);
-      formData.append('work_type_preference', workType);
+      formData.append('civil_status', civilStatus);
+      formData.append('bio', bio.trim());
+      formData.append('languages_spoken', languagesSpoken);
+      formData.append('education_level', educationLevel);
       formData.append('experience_years', experienceYears);
-      formData.append('languages_spoken', languages);
-      formData.append('expected_salary_min', salaryMin);
-      formData.append('expected_salary_max', salaryMax || salaryMin); 
+      formData.append('work_type_preference', workTypePreference);
+      formData.append('availability_status', availabilityStatus);
+      formData.append('expected_salary_min', expectedSalaryMin);
+      formData.append('salary_period', salaryPeriod);
+
+      // Skills as JSON array
       formData.append('skills', JSON.stringify(selectedSkills));
 
-      // Image
+      // Profile image if changed
       if (profileImage && !profileImage.startsWith('http')) {
         const fileName = profileImage.split('/').pop() || 'profile.jpg';
         // @ts-ignore
@@ -217,332 +234,540 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
         });
       }
 
+      console.log('🌐 Sending request...');
+      
       const response = await fetch(`${API_URL}/helper/update_profile.php`, {
         method: 'POST',
         body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      console.log('📄 Response:', responseText.substring(0, 200));
 
-      if (data.success) {
-        Alert.alert("Success", "Profile updated successfully!");
-        if (onSaveSuccess) onSaveSuccess();
-        onClose();
-      } else {
-        Alert.alert("Error", data.message || "Failed to update profile.");
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('❌ JSON parse error:', e);
+        console.error('Response was:', responseText);
+        throw new Error(`Server error: ${responseText.substring(0, 100)}`);
       }
 
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Network error. Please try again.");
+      console.log('✅ Parsed response:', data);
+
+      if (data.success) {
+        showNotification(data.message || 'Profile saved!', 'success');
+        setTimeout(() => {
+          onClose();
+          if (onSaveSuccess) onSaveSuccess();
+        }, 1500);
+      } else {
+        showNotification(data.message || 'Save failed', 'error');
+      }
+
+    } catch (error: any) {
+      console.error('❌ Save error:', error);
+      showNotification(`Error: ${error.message}`, 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  // Helper to render selection chips
-  const renderChips = (options: string[], selected: string, setSelected: (val: string) => void) => (
-    <View style={styles.chipRow}>
-      {options.map((opt) => (
-        <TouchableOpacity
-          key={opt}
-          style={[styles.chip, selected === opt && styles.chipActive]}
-          onPress={() => setSelected(opt)}
-        >
-          <Text style={[styles.chipText, selected === opt && styles.chipTextActive]}>
-            {opt}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
+  // ============================================================================
+  // HELPER: Group skills by category
+  // ============================================================================
+  const groupedSkills = useMemo(() => {
+    const groups: { [key: string]: any[] } = {};
+    availableSkills.forEach(skill => {
+      const cat = skill.category_name || 'Other';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(skill);
+    });
+    return groups;
+  }, [availableSkills]);
+
+  // Constants for enums
+  const genderOptions = ['Male', 'Female'];
+  const civilStatusOptions = ['Single', 'Married', 'Widowed', 'Separated'];
+  const educationOptions = [
+    'Elementary',
+    'High School Undergrad',
+    'High School Grad',
+    'College Undergrad',
+    'College Grad',
+    'Vocational'
+  ];
+  const workTypeOptions = ['Live-in', 'Live-out', 'Both'];
+  const availabilityOptions = ['Available', 'Employed', 'Not Available'];
+  const salaryPeriodOptions = ['Daily', 'Monthly'];
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-      >
-        {/* HEADER */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
-          <TouchableOpacity onPress={onClose} disabled={saving}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
+    <>
+      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={styles.container}
+        >
+          
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Edit Profile</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
 
-        {loading ? (
-          <LoadingSpinner visible={true} message="Loading..." />
-        ) : (
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            
-            {/* PHOTO SECTION */}
-            <View style={styles.photoSection}>
-              <TouchableOpacity style={styles.photoContainer} onPress={pickImage}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+          ) : (
+            <ScrollView 
+              contentContainerStyle={styles.content} 
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              
+              {/* Profile Image */}
+              <TouchableOpacity onPress={pickImage} style={styles.imageBtn}>
                 {profileImage ? (
-                  <Image source={{ uri: profileImage }} style={styles.photo} />
+                  <Image source={{ uri: profileImage }} style={styles.avatar} />
                 ) : (
-                  <View style={styles.photoPlaceholder}>
-                    <Ionicons name="camera" size={30} color="#007AFF" />
+                  <View style={styles.placeholderAvatar}>
+                    <Ionicons name="camera" size={40} color="#999" />
                   </View>
                 )}
-                <View style={styles.editIconBadge}>
-                  <Ionicons name="pencil" size={14} color="#fff" />
-                </View>
+                <Text style={styles.changePhotoText}>Change Photo</Text>
               </TouchableOpacity>
-              <Text style={styles.photoLabel}>Change Photo</Text>
-            </View>
 
-            {/* 1. PERSONAL INFORMATION */}
-            <View style={styles.section}>
-              <Text style={styles.sectionHeader}>Personal Information</Text>
+              {/* Personal Information */}
+              <Text style={styles.sectionTitle}>Personal Information</Text>
               
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Username <Text style={styles.required}>*</Text></Text>
-                <TextInput style={styles.input} value={username} onChangeText={setUsername} />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Contact Number <Text style={styles.required}>*</Text></Text>
-                <TextInput style={styles.input} value={contactNumber} onChangeText={setContactNumber} keyboardType="phone-pad" />
-              </View>
-
-              <View style={styles.row}>
-                <View style={[styles.formGroup, { flex: 1 }]}>
-                  <Text style={styles.label}>Birthdate (YYYY-MM-DD)</Text>
-                  <TextInput style={styles.input} value={birthdate} onChangeText={setBirthdate} placeholder="1995-01-30" />
-                </View>
-                <View style={[styles.formGroup, { flex: 1 }]}>
-                  <Text style={styles.label}>Gender</Text>
-                   {/* Compact Gender Select */}
-                   <View style={styles.compactRow}>
-                    {genderOptions.map(g => (
-                      <TouchableOpacity key={g} onPress={() => setGender(g)} style={[styles.miniChip, gender === g && styles.chipActive]}>
-                        <Text style={[styles.miniChipText, gender === g && styles.chipTextActive]}>{g}</Text>
-                      </TouchableOpacity>
-                    ))}
-                   </View>
-                </View>
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Civil Status</Text>
-                {renderChips(civilStatusOptions, civilStatus, setCivilStatus)}
-              </View>
-
-              <View style={styles.row}>
-                <View style={[styles.formGroup, { flex: 1 }]}>
-                  <Text style={styles.label}>Barangay <Text style={styles.required}>*</Text></Text>
-                  <TextInput style={styles.input} value={barangay} onChangeText={setBarangay} />
-                </View>
-                <View style={[styles.formGroup, { flex: 1 }]}>
-                  <Text style={styles.label}>Municipality <Text style={styles.required}>*</Text></Text>
-                  <TextInput style={styles.input} value={municipality} onChangeText={setMunicipality} />
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            {/* 2. PROFESSIONAL DETAILS */}
-            <View style={styles.section}>
-              <Text style={styles.sectionHeader}>Professional Details</Text>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Work Preference</Text>
-                {renderChips(workTypeOptions, workType, setWorkType)}
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Education Level</Text>
-                {renderChips(educationOptions, education, setEducation)}
-              </View>
-
-              <View style={styles.row}>
-                <View style={[styles.formGroup, { flex: 1 }]}>
-                  <Text style={styles.label}>Experience (Years)</Text>
-                  <TextInput style={styles.input} value={experienceYears} onChangeText={setExperienceYears} keyboardType="numeric" />
-                </View>
-                <View style={[styles.formGroup, { flex: 1 }]}>
-                   <Text style={styles.label}>Monthly Salary (₱)</Text>
-                   <TextInput style={styles.input} value={salaryMin} onChangeText={setSalaryMin} keyboardType="numeric" placeholder="Minimum" />
-                </View>
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Languages Spoken</Text>
-                <TextInput style={styles.input} value={languages} onChangeText={setLanguages} placeholder="e.g. Tagalog, English, Bisaya" />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Bio / Introduction</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  placeholder="Tell families why they should hire you..."
-                  multiline numberOfLines={4} value={bio} onChangeText={setBio}
-                />
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            {/* 3. SKILLS */}
-            <View style={styles.section}>
-              <Text style={styles.sectionHeader}>Skills & Specialties</Text>
+              <LabeledInput 
+                label="Contact Number *" 
+                value={contactNumber} 
+                onChangeText={setContactNumber} 
+                keyboardType="phone-pad"
+                placeholder="09XX XXX XXXX"
+                required
+              />
               
-              <View style={styles.skillsContainer}>
-                {availableSkills.map((skill: any) => {
-                  const isSelected = selectedSkills.includes(skill.skill_name);
-                  return (
+              <LabeledInput 
+                label="Birth Date (YYYY-MM-DD) *" 
+                value={birthDate} 
+                onChangeText={setBirthDate} 
+                placeholder="2000-01-01"
+                required
+              />
+              
+              <Text style={styles.label}>Gender *</Text>
+              <View style={styles.chipRow}>
+                {genderOptions.map(opt => (
+                  <TouchableOpacity 
+                    key={opt} 
+                    onPress={() => setGender(opt as 'Male' | 'Female')} 
+                    style={[styles.chip, gender === opt && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, gender === opt && styles.chipTextActive]}>
+                      {opt}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Civil Status</Text>
+              <View style={styles.chipRow}>
+                {civilStatusOptions.map(opt => (
+                  <TouchableOpacity 
+                    key={opt} 
+                    onPress={() => setCivilStatus(opt)} 
+                    style={[styles.chip, civilStatus === opt && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, civilStatus === opt && styles.chipTextActive]}>
+                      {opt}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Address */}
+              <Text style={styles.sectionTitle}>Address</Text>
+              
+              <LabeledInput 
+                label="Full Address *" 
+                value={address} 
+                onChangeText={setAddress} 
+                placeholder="Street, Block, Lot..."
+                multiline
+                numberOfLines={2}
+                required
+              />
+              
+              <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                  <LabeledInput 
+                    label="Municipality *" 
+                    value={municipality} 
+                    onChangeText={setMunicipality}
+                    placeholder="City/Municipality"
+                    required
+                  />
+                </View>
+                <View style={{ width: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <LabeledInput 
+                    label="Barangay *" 
+                    value={barangay} 
+                    onChangeText={setBarangay}
+                    placeholder="Barangay"
+                    required
+                  />
+                </View>
+              </View>
+
+              {/* Work Preferences */}
+              <Text style={styles.sectionTitle}>Work Preferences</Text>
+              
+              <LabeledInput 
+                label="Bio / About Me" 
+                value={bio} 
+                onChangeText={setBio} 
+                multiline 
+                numberOfLines={4} 
+                placeholder="Tell employers about yourself..."
+              />
+
+              <LabeledInput 
+                label="Languages Spoken" 
+                value={languagesSpoken} 
+                onChangeText={setLanguagesSpoken} 
+                placeholder="Tagalog,English,Cebuano"
+              />
+              
+              <Text style={styles.label}>Education Level</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.chipRow}>
+                  {educationOptions.map(opt => (
                     <TouchableOpacity 
-                      key={skill.skill_id} 
-                      style={[styles.skillChip, isSelected && styles.skillChipSelected]}
-                      onPress={() => toggleSkill(skill.skill_name)}
+                      key={opt} 
+                      onPress={() => setEducationLevel(opt)} 
+                      style={[styles.chip, educationLevel === opt && styles.chipActive]}
                     >
-                      <Text style={[styles.skillText, isSelected && styles.skillTextSelected]}>
-                        {skill.skill_name}
+                      <Text style={[styles.chipText, educationLevel === opt && styles.chipTextActive]}>
+                        {opt}
                       </Text>
                     </TouchableOpacity>
-                  );
-                })}
+                  ))}
+                </View>
+              </ScrollView>
+
+              <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                  <LabeledInput 
+                    label="Years of Experience" 
+                    value={experienceYears} 
+                    onChangeText={setExperienceYears} 
+                    keyboardType="numeric"
+                    placeholder="0"
+                  />
+                </View>
+                <View style={{ width: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <LabeledInput 
+                    label="Expected Salary *" 
+                    value={expectedSalaryMin} 
+                    onChangeText={setExpectedSalaryMin} 
+                    keyboardType="numeric"
+                    placeholder="8000"
+                    required
+                  />
+                </View>
               </View>
 
-              <Text style={[styles.label, { marginTop: 15 }]}>Add Other Skill:</Text>
-              <View style={styles.addSkillRow}>
-                <TextInput
-                  style={styles.addSkillInput} placeholder="e.g. Driving, Cooking"
-                  value={customSkillText} onChangeText={setCustomSkillText}
-                />
-                <TouchableOpacity style={styles.addSkillBtn} onPress={addCustomSkill}>
-                  <Text style={styles.addSkillBtnText}>Add</Text>
-                </TouchableOpacity>
+              <Text style={styles.label}>Salary Period</Text>
+              <View style={styles.chipRow}>
+                {salaryPeriodOptions.map(opt => (
+                  <TouchableOpacity 
+                    key={opt} 
+                    onPress={() => setSalaryPeriod(opt)} 
+                    style={[styles.chip, salaryPeriod === opt && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, salaryPeriod === opt && styles.chipTextActive]}>
+                      {opt}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
 
-              <View style={{ marginTop: 10 }}>
-                 <Text style={styles.subLabel}>Selected Skills:</Text>
-                 <View style={styles.skillsContainer}>
-                    {selectedSkills.map((skill, index) => (
-                      <View key={index} style={[styles.skillChip, styles.skillChipSelected]}>
-                        <Text style={styles.skillTextSelected}>{skill}</Text>
-                        <TouchableOpacity onPress={() => toggleSkill(skill)} style={styles.removeSkillBtn}>
-                          <Ionicons name="close" size={16} color="#fff" />
+              <Text style={styles.label}>Work Type Preference</Text>
+              <View style={styles.chipRow}>
+                {workTypeOptions.map(opt => (
+                  <TouchableOpacity 
+                    key={opt} 
+                    onPress={() => setWorkTypePreference(opt)} 
+                    style={[styles.chip, workTypePreference === opt && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, workTypePreference === opt && styles.chipTextActive]}>
+                      {opt}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Availability Status</Text>
+              <View style={styles.chipRow}>
+                {availabilityOptions.map(opt => (
+                  <TouchableOpacity 
+                    key={opt} 
+                    onPress={() => setAvailabilityStatus(opt)} 
+                    style={[styles.chip, availabilityStatus === opt && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, availabilityStatus === opt && styles.chipTextActive]}>
+                      {opt}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.divider} />
+
+              {/* Skills */}
+              <Text style={styles.sectionTitle}>Skills & Specialties</Text>
+              <Text style={styles.helperText}>Select at least one skill you are good at.</Text>
+              
+              {Object.keys(groupedSkills).map(category => (
+                <View key={category} style={{ marginBottom: 15 }}>
+                  <Text style={styles.catTitle}>{category}</Text>
+                  <View style={styles.chipRow}>
+                    {groupedSkills[category].map((skill: any) => {
+                      const isActive = selectedSkills.includes(skill.skill_name);
+                      return (
+                        <TouchableOpacity 
+                          key={skill.skill_id} 
+                          onPress={() => toggleSkill(skill.skill_name)} 
+                          style={[styles.skillChip, isActive && styles.skillActive]}
+                        >
+                          <Text style={[styles.skillText, isActive && styles.skillTextActive]}>
+                            {skill.skill_name}
+                          </Text>
+                          {isActive && (
+                            <Ionicons name="checkmark-circle" size={16} color="#007AFF" style={{ marginLeft: 4 }} />
+                          )}
                         </TouchableOpacity>
-                      </View>
-                    ))}
-                 </View>
-              </View>
-            </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
 
-            <View style={{ height: 60 }} />
-          </ScrollView>
-        )}
+              <View style={{ height: 50 }} />
+            </ScrollView>
+          )}
 
-        <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[styles.saveBtn, saving && styles.disabledBtn]} 
-            onPress={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.saveBtnText}>Save Changes</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+          {/* Footer */}
+          <View style={styles.footer}>
+            <TouchableOpacity 
+              style={[styles.saveBtn, (saving || loading) && styles.saveBtnDisabled]} 
+              onPress={handleSave} 
+              disabled={saving || loading}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.saveText}>Save Changes</Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
-      </KeyboardAvoidingView>
-    </Modal>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <NotificationModal 
+        visible={notifVisible} 
+        message={notifMessage} 
+        type={notifType} 
+        onClose={() => setNotifVisible(false)}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: 20, borderBottomWidth: 1, borderBottomColor: '#eee', marginTop: 10
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff', 
+    marginTop: Platform.OS === 'ios' ? 0 : 40 
   },
-  headerTitle: { fontSize: 18, fontWeight: 'bold' },
-  cancelText: { fontSize: 16, color: '#666' },
-  content: { padding: 20 },
-
-  photoSection: { alignItems: 'center', marginBottom: 25 },
-  photoContainer: { position: 'relative', marginBottom: 10 },
-  photo: { width: 100, height: 100, borderRadius: 50 },
-  photoPlaceholder: { 
-    width: 100, height: 100, borderRadius: 50, backgroundColor: '#F0F2F5',
-    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ccc'
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    padding: 20, 
+    borderBottomWidth: 1, 
+    borderColor: '#eee',
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
   },
-  editIconBadge: {
-    position: 'absolute', bottom: 0, right: 0, backgroundColor: '#007AFF',
-    width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: '#fff'
+  title: { 
+    fontSize: 20, 
+    fontWeight: 'bold',
+    color: '#333'
   },
-  photoLabel: { color: '#007AFF', fontSize: 14, fontWeight: '500' },
-
-  section: { marginBottom: 20 },
-  sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#007AFF', marginBottom: 15 },
-  divider: { height: 1, backgroundColor: '#F0F0F0', marginVertical: 15 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#666',
+    fontSize: 14,
+  },
+  content: { 
+    padding: 20,
+    paddingBottom: 40,
+  },
   
-  formGroup: { marginBottom: 15 },
-  label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 6 },
-  required: { color: '#dc3545' },
-  input: {
-    borderWidth: 1, borderColor: '#ddd', borderRadius: 8,
-    paddingHorizontal: 15, paddingVertical: 12, fontSize: 16, color: '#333',
-    backgroundColor: '#FAFAFA'
+  // Image
+  imageBtn: { 
+    alignSelf: 'center', 
+    alignItems: 'center', 
+    marginBottom: 24 
   },
-  textArea: { height: 80, textAlignVertical: 'top' },
-  row: { flexDirection: 'row', gap: 10 },
-  compactRow: { flexDirection: 'row', gap: 5 },
+  avatar: { 
+    width: 110, 
+    height: 110, 
+    borderRadius: 55,
+    borderWidth: 3,
+    borderColor: '#007AFF',
+  },
+  placeholderAvatar: { 
+    width: 110, 
+    height: 110, 
+    borderRadius: 55, 
+    backgroundColor: '#f0f0f0', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ddd',
+  },
+  changePhotoText: { 
+    color: '#007AFF', 
+    marginTop: 8, 
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  
+  // Sections
+  sectionTitle: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    marginTop: 20, 
+    marginBottom: 12, 
+    color: '#333' 
+  },
+  label: { 
+    fontSize: 14, 
+    fontWeight: '600', 
+    color: '#333', 
+    marginBottom: 8, 
+    marginTop: 12 
+  },
+  helperText: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 12,
+  },
+  row: { 
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  divider: { 
+    height: 1, 
+    backgroundColor: '#eee', 
+    marginVertical: 24 
+  },
+  
+  // Chips
+  chipRow: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: 8,
+    marginBottom: 8,
+  },
+  chip: { 
+    paddingVertical: 10, 
+    paddingHorizontal: 16, 
+    borderRadius: 20, 
+    borderWidth: 1, 
+    borderColor: '#ddd', 
+    backgroundColor: '#fff' 
+  },
+  chipActive: { 
+    backgroundColor: '#007AFF', 
+    borderColor: '#007AFF' 
+  },
+  chipText: { 
+    color: '#333', 
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  chipTextActive: { 
+    color: '#fff', 
+    fontWeight: '600' 
+  },
 
-  // CHIPS
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20,
-    backgroundColor: '#fff', borderWidth: 1, borderColor: '#ccc',
+  // Skills
+  catTitle: { 
+    fontSize: 13, 
+    fontWeight: '700', 
+    color: '#888', 
+    marginBottom: 8, 
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  chipActive: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
-  chipText: { fontSize: 13, color: '#666' },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
+  skillChip: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10, 
+    paddingHorizontal: 14, 
+    borderRadius: 10, 
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  skillActive: { 
+    backgroundColor: '#E3F2FD', 
+    borderColor: '#007AFF' 
+  },
+  skillText: { 
+    color: '#444',
+    fontSize: 14,
+  },
+  skillTextActive: { 
+    color: '#007AFF', 
+    fontWeight: '600' 
+  },
 
-  miniChip: {
-    flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#ddd',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAFA'
+  // Footer
+  footer: { 
+    padding: 20, 
+    borderTopWidth: 1, 
+    borderColor: '#eee',
+    backgroundColor: '#fff',
   },
-  miniChipText: { fontSize: 14, color: '#333' },
-
-  // SKILLS
-  skillsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  skillChip: {
-    paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20,
-    backgroundColor: '#F0F2F5', borderWidth: 1, borderColor: '#E0E0E0'
+  saveBtn: { 
+    backgroundColor: '#007AFF', 
+    padding: 16, 
+    borderRadius: 12, 
+    alignItems: 'center' 
   },
-  skillChipSelected: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
-  skillText: { fontSize: 14, color: '#333' },
-  skillTextSelected: { color: '#fff', fontWeight: '500' },
-  removeSkillBtn: { marginLeft: 6 },
-  subLabel: { fontSize: 14, fontWeight: '600', color: '#666', marginBottom: 8 },
-
-  addSkillRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  addSkillInput: { 
-    flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, 
-    paddingHorizontal: 15, paddingVertical: 10, backgroundColor: '#FAFAFA' 
+  saveBtnDisabled: {
+    backgroundColor: '#ccc',
   },
-  addSkillBtn: { 
-    backgroundColor: '#28a745', borderRadius: 8, paddingHorizontal: 20, justifyContent: 'center' 
+  saveText: { 
+    color: '#fff', 
+    fontWeight: 'bold', 
+    fontSize: 16 
   },
-  addSkillBtnText: { color: '#fff', fontWeight: '600' },
-
-  footer: {
-    padding: 20, borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#fff'
-  },
-  saveBtn: {
-    backgroundColor: '#007AFF', borderRadius: 12, paddingVertical: 16, alignItems: 'center'
-  },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  disabledBtn: { backgroundColor: '#ccc' },
 });

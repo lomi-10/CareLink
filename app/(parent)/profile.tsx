@@ -231,10 +231,10 @@ export default function ParentProfileScreen() {
                 <Ionicons name="mail-outline" size={16} color="#666" />
                 <Text style={styles.contactText}>{user.email}</Text>
               </View>
-              {user.contact && (
+              {profile?.contact_number && (
                 <View style={styles.contactRow}>
                   <Ionicons name="call-outline" size={16} color="#666" />
-                  <Text style={styles.contactText}>{user.contact}</Text>
+                  <Text style={styles.contactText}>{profile.contact_number}</Text>
                 </View>
               )}
             </View>
@@ -259,16 +259,33 @@ export default function ParentProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* 3. HOUSEHOLD INFORMATION */}
+          {/* 3. FAMILY BIO (New Section) */}
+          {profile?.bio && (
+            <View style={styles.infoCard}>
+               <Text style={styles.cardTitle}>About Our Family</Text>
+               <Text style={{ fontSize: 14, color: '#444', lineHeight: 22 }}>
+                 {profile.bio}
+               </Text>
+            </View>
+          )}
+
+          {/* 4. HOUSEHOLD INFORMATION */}
           <View style={styles.infoCard}>
             <Text style={styles.cardTitle}>Household Information</Text>
             
-            {/* Address */}
+            {/* Address & Landmark (Updated) */}
             {profile?.address && (
               <View style={styles.infoRow}>
                 <Ionicons name="home-outline" size={20} color="#007AFF" />
                 <Text style={styles.infoLabel}>Address:</Text>
-                <Text style={styles.infoValue}>{profile.address}</Text>
+                <View style={{flex: 1}}>
+                  <Text style={styles.infoValue}>{profile.address}</Text>
+                  {profile.landmark && (
+                    <Text style={{fontSize: 12, color: '#666', marginTop: 2}}>
+                      Landmark: {profile.landmark}
+                    </Text>
+                  )}
+                </View>
               </View>
             )}
 
@@ -281,21 +298,20 @@ export default function ParentProfileScreen() {
               </View>
             )}
 
-            {/* Has Children */}
-            {profile?.has_children !== null && (
-              <View style={styles.infoRow}>
-                <Ionicons 
-                  name={profile.has_children ? "checkmark-circle" : "close-circle"} 
-                  size={20} 
-                  color={profile.has_children ? "#28a745" : "#dc3545"} 
-                />
-                <Text style={styles.infoLabel}>Children:</Text>
-                <Text style={styles.infoValue}>
-                  {profile.has_children ? 'Yes' : 'No'}
-                  {profile.children_ages && ` (Ages: ${profile.children_ages})`}
-                </Text>
-              </View>
-            )}
+            {/* Children (Updated for Count) */}
+            <View style={styles.infoRow}>
+              <Ionicons 
+                name={(profile?.children_count > 0) ? "checkmark-circle" : "close-circle"} 
+                size={20} 
+                color={(profile?.children_count > 0) ? "#28a745" : "#dc3545"} 
+              />
+              <Text style={styles.infoLabel}>Children:</Text>
+              <Text style={styles.infoValue}>
+                {(profile?.children_count > 0) 
+                  ? `${profile.children_count} Children` 
+                  : 'None'}
+              </Text>
+            </View>
 
             {/* Has Elderly */}
             {profile?.has_elderly !== null && (
@@ -327,7 +343,7 @@ export default function ParentProfileScreen() {
             )}
           </View>
 
-          {/* 4. VERIFICATION DOCUMENTS */}
+          {/* 5. VERIFICATION DOCUMENTS */}
           <View style={styles.infoCard}>
             <Text style={styles.cardTitle}>Verification Documents</Text>
             <Text style={styles.cardSubtitle}>
@@ -353,7 +369,7 @@ export default function ParentProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* 5. JOB POSTINGS SUMMARY */}
+          {/* 6. JOB POSTINGS SUMMARY */}
           <View style={styles.infoCard}>
             <View style={styles.cardHeaderRow}>
               <Text style={styles.cardTitle}>My Job Postings</Text>
@@ -416,7 +432,7 @@ function DocumentStatusRow({ icon, title, status }: DocumentStatusRowProps) {
   );
 }
 
-// --- STYLES (Same as helper profile) ---
+// --- STYLES ---
 const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
