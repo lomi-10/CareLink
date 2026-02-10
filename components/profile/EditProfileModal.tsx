@@ -31,6 +31,7 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
   const [address, setAddress] = useState('');
   const [municipality, setMunicipality] = useState('');
   const [barangay, setBarangay] = useState('');
+  const [imageChanged, setImageChanged] = useState(false);
   
   // Optional fields
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -60,7 +61,10 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
   // LIFECYCLE
   // ============================================================================
   useEffect(() => {
-    if (visible) loadData();
+    if (visible){
+      loadData();
+      setImageChanged(false);
+    } 
   }, [visible]);
 
   const showNotification = (msg: string, type: 'success' | 'error') => {
@@ -166,6 +170,7 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
     
     if (!result.canceled) {
       setProfileImage(result.assets[0].uri);
+      setImageChanged(true);
     }
   };
 
@@ -224,14 +229,25 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
       formData.append('skills', JSON.stringify(selectedSkills));
 
       // Profile image if changed
-      if (profileImage && !profileImage.startsWith('http')) {
-        const fileName = profileImage.split('/').pop() || 'profile.jpg';
-        // @ts-ignore
-        formData.append('profile_image', {
-          uri: profileImage,
-          name: fileName,
-          type: 'image/jpeg',
-        });
+      if (profileImage && imageChanged && !profileImage.startsWith('http')) {
+        if (Platform.OS === 'web'){
+          // WEB
+          const res = await fetch(profileImage);
+          const blob = await res.blob();
+
+          formData.append('profile_image', blob, 'profile.jpg');
+        } else {
+          // MOBILE
+          const uriParts = profileImage.split('.');
+          const fileType = uriParts[uriParts.length-1];
+          const fileName = profileImage.split('/').pop() || `profile.${fileType}`;
+
+          formData.append('profile_image', {
+            uri: Platform.OS === 'android' ? profileImage: profileImage.replace('file://',''),
+            name: fileName,
+            type: `image/${fileType === 'png' ? 'png' : 'jpeg'}`,
+          });
+        }
       }
 
       console.log('🌐 Sending request...');
@@ -257,6 +273,11 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
 
       if (data.success) {
         showNotification(data.message || 'Profile saved!', 'success');
+
+        if (data.data && data.data.profile_image){
+          setProfileImage(data.data.profile_image);
+        }
+
         setTimeout(() => {
           onClose();
           if (onSaveSuccess) onSaveSuccess();

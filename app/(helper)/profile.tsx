@@ -46,28 +46,38 @@ export default function HelperProfileScreen() {
       setLoading(true);
       const userData = await AsyncStorage.getItem('user_data');
       if (!userData) {
-        setErrorMessage("Error: You are not logged in. Please log in again.");
+        setErrorMessage("Session Expired. Please log in.");
         setErrorModalVisible(true);
         setLoading(false);
+
+        setTimeout(()=> {
+          setErrorModalVisible(false);
+          router.replace("/(auth)/login");
+        }, 1500);
         return;
       }
 
-      let parsed = JSON.parse(userData);
+      const parsed = JSON.parse(userData);
       setUserId(parsed.user_id);
 
       const url = `${API_URL}/helper/get_profile.php?user_id=${parsed.user_id}`;
       const response = await fetch(url);
       
-      if (!response.ok) throw new Error(`HTTP Error! Status: ${response.status}`);
-
+      if (!response.ok) throw new Error(`Server Error! Status: ${response.status}`);
       const responseText = await response.text();
-      let data = JSON.parse(responseText);
 
-      if (data.success) {
-        setProfileData(data);
-      } else {
-        setErrorMessage(data.message || 'Failed to load profile data.');
-        setErrorModalVisible(true);
+      try{
+        const data = JSON.parse(responseText);
+
+        if (data.success) {
+          setProfileData(data);
+        } else {
+          setErrorMessage(data.message || 'Failed to load profile data.');
+          setErrorModalVisible(true);
+        }
+      }catch (parseError){
+        console.error("Raw response was: ", responseText);
+        throw new Error("Server sent invalid data format.");
       }
     } catch (error: any) {
       setErrorMessage(`Network error: ${error.message || 'Unable to connect to server'}`);
@@ -141,14 +151,25 @@ export default function HelperProfileScreen() {
         userType='helper'
       />
 
-      <EditProfileModal visible={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} onSaveSuccess={handleProfileSaved} />
-      <DocumentManagementModal visible={isDocumentModalOpen} onClose={() => setIsDocumentModalOpen(false)} onSaveSuccess={handleDocumentsSaved} />
+      <EditProfileModal 
+        visible={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        onSaveSuccess={handleProfileSaved} 
+      />
+
+      <DocumentManagementModal 
+        visible={isDocumentModalOpen} 
+        onClose={() => setIsDocumentModalOpen(false)} 
+        onSaveSuccess={handleDocumentsSaved} 
+      />
 
       <View style={styles.webCenterContainer}>
         <ScrollView 
           contentContainerStyle={styles.scrollContent} 
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         >
           {/* 1. PROFILE HEADER CARD */}
           <View style={styles.profileHeaderCard}>
@@ -165,6 +186,7 @@ export default function HelperProfileScreen() {
             <Text style={styles.nameText}>{user.name}</Text>
             {user.username && <Text style={styles.usernameText}>@{user.username}</Text>}
             
+            {/* Verification Badege */}
             <View style={[styles.statusBadge, badge.style]}>
               <Ionicons name={badge.icon as any} size={14} color="#fff" />
               <Text style={styles.statusText}>{badge.text}</Text>
@@ -182,6 +204,7 @@ export default function HelperProfileScreen() {
               </View>
             )}
 
+            {/* Contact Info */}
             <View style={styles.contactInfo}>
               <View style={styles.contactRow}>
                 <Ionicons name="mail-outline" size={16} color="#666" />
@@ -202,7 +225,7 @@ export default function HelperProfileScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionButton} onPress={() => setIsDocumentModalOpen(true)}>
               <Ionicons name="document-text-outline" size={20} color="#007AFF" />
-              <Text style={styles.actionButtonText}>Documents</Text>
+              <Text style={styles.actionButtonText}>Manage Documents</Text>
             </TouchableOpacity>
           </View>
 
@@ -214,7 +237,7 @@ export default function HelperProfileScreen() {
             </View>
           )}
 
-          {/* 4. UPDATED: PROFESSIONAL & PERSONAL INFORMATION */}
+          {/* 4. PERSONAL INFORMATION */}
           <View style={styles.infoCard}>
             <Text style={styles.cardTitle}>Information Details</Text>
             

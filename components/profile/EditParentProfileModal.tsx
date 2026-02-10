@@ -1,10 +1,10 @@
-// components/profile/EditParentProfileModal.tsx
-// components/profile/EditProfileModal.tsx (PARENT VERSION)
-// Covers all fields from parent_profiles table
+// components/profile/EditParentProfileModal.tsx 
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, 
-  Image, Platform, ActivityIndicator, KeyboardAvoidingView, Switch
+  Image, Platform, ActivityIndicator, KeyboardAvoidingView, Switch,
+  TextInput
+  // Alert removed
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,30 +21,36 @@ interface EditProfileModalProps {
   onSaveSuccess?: () => void;
 }
 
+type Child = {
+  child_id?: number;
+  age: string;
+  gender: string;
+  special_needs: string;
+};
+
 export default function EditProfileModal({ visible, onClose, onSaveSuccess }: EditProfileModalProps) {
   
-  // STATE - Matches parent_profiles table structure EXACTLY
+  // STATE 
   const [userId, setUserId] = useState<string | null>(null);
-  
-  // Required fields (NOT NULL in database)
+
+  // Profile fields
   const [contactNumber, setContactNumber] = useState('');
-  const [address, setAddress] = useState('');
+  const [province, setProvince] = useState('');
   const [municipality, setMunicipality] = useState('');
   const [barangay, setBarangay] = useState('');
-  
-  // Optional fields
+  const [bio, setBio] = useState('');
+  const [landmark, setLandmark] = useState('');
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [imageChanged, setImageChanged] = useState(false);
+  
+  // Household fields
   const [householdSize, setHouseholdSize] = useState('');
-  
-  // Children information
-  const [hasChildren, setHasChildren] = useState(false);
-  const [childrenAges, setChildrenAges] = useState(''); // e.g., "3,5,8"
-  
-  // Household details
   const [hasElderly, setHasElderly] = useState(false);
-  const [hasPets, setHasPets] = useState(false);
+  const [hasPets, setHasPets] = useState(false); 
   const [petDetails, setPetDetails] = useState('');
-
+  
+  // Children Fields
+  const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -53,9 +59,15 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
   const [notifMessage, setNotifMessage] = useState('');
   const [notifType, setNotifType] = useState<'success' | 'error'>('success');
 
-  // LIFECYCLE
+  // State for the custom Delete Confirmation Modal
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [childToDeleteIndex, setChildToDeleteIndex] = useState<number | null>(null);
+
   useEffect(() => {
-    if (visible) loadData();
+    if (visible) {
+      loadData();
+      setImageChanged(false);
+    }
   }, [visible]);
 
   const showNotification = (msg: string, type: 'success' | 'error') => {
@@ -67,63 +79,78 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
   const loadData = async () => {
     setLoading(true);
     try {
-      console.log('📥 Loading parent profile data...');
-      
-      // Get user data
       const userData = await AsyncStorage.getItem('user_data');
-      if (!userData) {
-        throw new Error('No user data found');
-      }
+      if (!userData) throw new Error('No user data found');
       
       const parsed = JSON.parse(userData);
       setUserId(parsed.user_id);
       
-      // Fetch profile from API
       const response = await fetch(`${API_URL}/parent/get_profile.php?user_id=${parsed.user_id}`);
       const text = await response.text();
+      let data = JSON.parse(text);
       
-      console.log('📄 Raw response:', text.substring(0, 200));
-      
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.error('❌ JSON parse error:', e);
-        throw new Error('Invalid response from server');
-      }
-      
-      if (data.success && data.profile) {
-        const p = data.profile;
+      if (data.success) {
+        if (data.profile) {
+          const p = data.profile;
+          setContactNumber(p.contact_number || '');
+          setProvince(p.province || 'Cebu');
+          setMunicipality(p.municipality || '');
+          setBarangay(p.barangay || '');
+          setBio(p.bio || '');
+          setLandmark(p.landmark || '');
+          if (p.profile_image) setProfileImage(p.profile_image);
+        }
         
-        // Populate all fields
-        setContactNumber(p.contact_number || '');
-        setAddress(p.address || '');
-        setMunicipality(p.municipality || '');
-        setBarangay(p.barangay || '');
+        if (data.household) {
+          const h = data.household;
+          setHouseholdSize(h.household_size ? String(h.household_size) : '');
+          setHasElderly(h.has_elderly === true || h.has_elderly === 1);
+          setHasPets(h.has_pets === true || h.has_pets === 1);
+          setPetDetails(h.pet_details || '');
+        }
         
-        setProfileImage(p.profile_image || null);
-        setHouseholdSize(p.household_size ? String(p.household_size) : '');
-        
-        // Boolean fields (convert from 0/1 to true/false)
-        setHasChildren(p.has_children === 1 || p.has_children === true);
-        setChildrenAges(p.children_ages || '');
-        
-        setHasElderly(p.has_elderly === 1 || p.has_elderly === true);
-        setHasPets(p.has_pets === 1 || p.has_pets === true);
-        setPetDetails(p.pet_details || '');
-        
-        console.log('✅ Profile data loaded');
+        if (data.children && Array.isArray(data.children)) {
+          const loadedChildren: Child[] = data.children.map((c: any) => ({
+            child_id: c.child_id,
+            age: String(c.age),
+            gender: c.gender || 'Prefer not to say',
+            special_needs: c.special_needs || ''
+          }));
+          setChildren(loadedChildren);
+        }
       }
     } catch (error: any) {
-      console.error('❌ Load error:', error);
       showNotification(error.message || 'Failed to load profile', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // ACTIONS
-  
+  const addChild = () => {
+    setChildren([...children, { age: '', gender: 'Prefer not to say', special_needs: '' }]);
+  };
+
+  // REPLACED Alert.alert with Modal-based logic
+  const requestRemoveChild = (index: number) => {
+    setChildToDeleteIndex(index);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (childToDeleteIndex !== null) {
+      const newChildren = children.filter((_, i) => i !== childToDeleteIndex);
+      setChildren(newChildren);
+      setDeleteModalOpen(false);
+      setChildToDeleteIndex(null);
+    }
+  };
+
+  const updateChild = (index: number, field: keyof Child, value: string) => {
+    const newChildren = [...children];
+    newChildren[index] = { ...newChildren[index], [field]: value };
+    setChildren(newChildren);
+  };
+
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -139,69 +166,74 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
     
     if (!result.canceled) {
       setProfileImage(result.assets[0].uri);
+      setImageChanged(true);
     }
   };
 
   const handleSave = async () => {
-    // Validation
-    if (!contactNumber.trim()) {
-      return showNotification('Contact number is required', 'error');
-    }
-    
-    if (!address.trim() || !municipality.trim() || !barangay.trim()) {
-      return showNotification('Complete address is required', 'error');
-    }
-    
-    // Validate children ages format if has_children is true
-    if (hasChildren && childrenAges.trim()) {
-      const ages = childrenAges.split(',').map(a => a.trim());
-      const allValid = ages.every(age => {
-        const num = parseInt(age);
-        return !isNaN(num) && num >= 0 && num <= 18;
-      });
-      
-      if (!allValid) {
-        return showNotification('Children ages must be numbers 0-18, separated by commas (e.g., "3,5,8")', 'error');
-      }
+    if (!contactNumber.trim()) return showNotification('Contact number is required', 'error');
+    if (!province.trim() || !municipality.trim() || !barangay.trim()) {
+      return showNotification('Address fields are required', 'error');
     }
     
     setSaving(true);
     try {
       console.log('💾 Saving parent profile...');
-      
+
       const formData = new FormData();
       formData.append('user_id', userId || '');
-      
-      // Required fields
       formData.append('contact_number', contactNumber.trim());
-      formData.append('address', address.trim());
+      formData.append('province', province.trim());
       formData.append('municipality', municipality.trim());
       formData.append('barangay', barangay.trim());
-      
-      // Optional fields
+      formData.append('bio', bio.trim());
+      formData.append('landmark', landmark.trim());
       formData.append('household_size', householdSize || '0');
-      
-      // Boolean fields (convert to 0/1)
-      formData.append('has_children', hasChildren ? '1' : '0');
-      formData.append('children_ages', childrenAges.trim());
-      
       formData.append('has_elderly', hasElderly ? '1' : '0');
       formData.append('has_pets', hasPets ? '1' : '0');
       formData.append('pet_details', petDetails.trim());
+      
+      const childrenData = children.map(c => ({
+        age: parseInt(c.age) || 0,
+        gender: c.gender,
+        special_needs: c.special_needs.trim() || null
+      }));
+      formData.append('children', JSON.stringify(childrenData));
 
-      // Profile image if changed
-      if (profileImage && !profileImage.startsWith('http')) {
-        const fileName = profileImage.split('/').pop() || 'profile.jpg';
-        // @ts-ignore
-        formData.append('profile_image', {
-          uri: profileImage,
-          name: fileName,
-          type: 'image/jpeg',
-        });
+      // ============================================================
+      // 2. FIXED IMAGE UPLOAD LOGIC (WEB COMPATIBLE)
+      // ============================================================
+      if (profileImage && imageChanged && !profileImage.startsWith('http')) {
+        
+        if (Platform.OS === 'web') {
+          // --- WEB LOGIC ---
+          // On web, the URI is a blob URL. We must fetch it to get the raw Blob data.
+          const res = await fetch(profileImage);
+          const blob = await res.blob();
+          
+          // Append the actual binary file
+          formData.append('profile_image', blob, 'profile.jpg');
+          
+        } else {
+          // --- MOBILE LOGIC (Android/iOS) ---
+          const uriParts = profileImage.split('.');
+          const fileType = uriParts[uriParts.length - 1];
+          const fileName = profileImage.split('/').pop() || `profile.${fileType}`;
+
+          // Mobile accepts this object format
+          // @ts-ignore
+          formData.append('profile_image', {
+            uri: Platform.OS === 'android' ? profileImage : profileImage.replace('file://', ''),
+            name: fileName,
+            type: `image/${fileType === 'png' ? 'png' : 'jpeg'}`,
+          });
+        }
       }
+      // ============================================================
 
       console.log('🌐 Sending request...');
       
+      // Important: Do not set Content-Type header manually
       const response = await fetch(`${API_URL}/parent/update_profile.php`, {
         method: 'POST',
         body: formData,
@@ -215,14 +247,18 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
         data = JSON.parse(responseText);
       } catch (e) {
         console.error('❌ JSON parse error:', e);
-        console.error('Response was:', responseText);
+        console.error("Response was: ", responseText);
         throw new Error(`Server error: ${responseText.substring(0, 100)}`);
       }
 
-      console.log('✅ Parsed response:', data);
-
       if (data.success) {
         showNotification(data.message || 'Profile saved!', 'success');
+        
+        // Update the local image state if the server returned the new URL
+        if (data.data && data.data.profile_image) {
+           setProfileImage(data.data.profile_image);
+        }
+        
         setTimeout(() => {
           onClose();
           if (onSaveSuccess) onSaveSuccess();
@@ -246,8 +282,6 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
           style={styles.container}
         >
-          
-          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Edit Profile</Text>
             <TouchableOpacity onPress={onClose}>
@@ -258,178 +292,129 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#007AFF" />
-              <Text style={styles.loadingText}>Loading...</Text>
             </View>
           ) : (
-            <ScrollView 
-              contentContainerStyle={styles.content} 
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
+            <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
               
-              {/* Profile Image */}
               <TouchableOpacity onPress={pickImage} style={styles.imageBtn}>
                 {profileImage ? (
                   <Image source={{ uri: profileImage }} style={styles.avatar} />
                 ) : (
-                  <View style={styles.placeholderAvatar}>
-                    <Ionicons name="camera" size={40} color="#999" />
-                  </View>
+                  <View style={styles.placeholderAvatar}><Ionicons name="camera" size={40} color="#999" /></View>
                 )}
-                <Text style={styles.changePhotoText}>Change Photo</Text>
+                <Text style={styles.changePhotoText}>{profileImage ? 'Change Photo' : 'Add Photo'}</Text>
               </TouchableOpacity>
 
-              {/* CONTACT INFORMATION */}
+              <Text style={styles.sectionTitle}>Bio</Text>
+              <LabeledInput
+                label="About Your Household *"
+                value={bio}
+                onChangeText={setBio}
+                multiline
+                numberOfLines={4}
+                placeholder='Tell service-helpers about your household...'
+              />
+
               <Text style={styles.sectionTitle}>Contact Information</Text>
-              
               <LabeledInput 
                 label="Contact Number *" 
                 value={contactNumber} 
                 onChangeText={setContactNumber} 
-                keyboardType="phone-pad"
-                placeholder="09XX XXX XXXX"
-                required
+                keyboardType="phone-pad" 
               />
 
-              {/* ADDRESS */}
               <Text style={styles.sectionTitle}>Address</Text>
-              
-              <LabeledInput 
-                label="Full Address *" 
-                value={address} 
-                onChangeText={setAddress} 
-                placeholder="Street, Block, Lot, Subdivision..."
-                multiline
-                numberOfLines={2}
-                required
-              />
-              
+              <LabeledInput label="Province *" value={province} onChangeText={setProvince} />
               <View style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <LabeledInput 
-                    label="Municipality/City *" 
-                    value={municipality} 
-                    onChangeText={setMunicipality}
-                    placeholder="e.g., Cebu City"
-                    required
-                  />
-                </View>
+                <View style={{ flex: 1 }}><LabeledInput label="Municipality *" value={municipality} onChangeText={setMunicipality} /></View>
                 <View style={{ width: 10 }} />
-                <View style={{ flex: 1 }}>
-                  <LabeledInput 
-                    label="Barangay *" 
-                    value={barangay} 
-                    onChangeText={setBarangay}
-                    placeholder="e.g., Lahug"
-                    required
-                  />
-                </View>
+                <View style={{ flex: 1 }}><LabeledInput label="Barangay *" value={barangay} onChangeText={setBarangay} /></View>
               </View>
 
-              {/* HOUSEHOLD INFORMATION */}
               <Text style={styles.sectionTitle}>Household Information</Text>
-              
-              <LabeledInput 
-                label="Household Size" 
-                value={householdSize} 
-                onChangeText={setHouseholdSize} 
-                keyboardType="numeric"
-                placeholder="Number of people in household"
-              />
+              <LabeledInput label="Household Size" value={householdSize} onChangeText={setHouseholdSize} keyboardType="numeric" />
 
-              {/* HAS CHILDREN SWITCH */}
               <View style={styles.switchRow}>
-                <View style={styles.switchInfo}>
-                  <Text style={styles.switchLabel}>Do you have children?</Text>
-                  <Text style={styles.switchSubtext}>Toggle if you have kids at home</Text>
-                </View>
-                <Switch
-                  value={hasChildren}
-                  onValueChange={setHasChildren}
-                  trackColor={{ false: '#ccc', true: '#007AFF' }}
-                  thumbColor="#fff"
-                />
+                <View style={styles.switchInfo}><Text style={styles.switchLabel}>Elderly members?</Text></View>
+                <Switch value={hasElderly} onValueChange={setHasElderly} />
               </View>
 
-              {/* Children Ages (only show if has_children is true) */}
-              {hasChildren && (
-                <LabeledInput 
-                  label="Children Ages" 
-                  value={childrenAges} 
-                  onChangeText={setChildrenAges} 
-                  placeholder="Enter ages separated by commas (e.g., 3,5,8)"
-                  keyboardType="default"
-                />
-              )}
-
-              {/* HAS ELDERLY SWITCH */}
               <View style={styles.switchRow}>
-                <View style={styles.switchInfo}>
-                  <Text style={styles.switchLabel}>Do you have elderly family members?</Text>
-                  <Text style={styles.switchSubtext}>Senior citizens requiring care</Text>
+                <View style={styles.switchInfo}><Text style={styles.switchLabel}>Do you have pets?</Text></View>
+                <Switch value={hasPets} onValueChange={setHasPets} />
+              </View>
+
+              <View style={styles.childrenSection}>
+                <View style={styles.childrenHeader}>
+                  <Text style={styles.sectionTitle}>Children ({children.length})</Text>
+                  <TouchableOpacity onPress={addChild} style={styles.addChildBtn}>
+                    <Ionicons name="add-circle" size={24} color="#007AFF" /><Text style={styles.addChildText}>Add Child</Text>
+                  </TouchableOpacity>
                 </View>
-                <Switch
-                  value={hasElderly}
-                  onValueChange={setHasElderly}
-                  trackColor={{ false: '#ccc', true: '#007AFF' }}
-                  thumbColor="#fff"
-                />
+
+                {children.map((child, index) => (
+                  <View key={index} style={styles.childCard}>
+                    <View style={styles.childCardHeader}>
+                      <Text style={styles.childCardTitle}>Child {index + 1}</Text>
+                      {/* Changed from removeChild to requestRemoveChild */}
+                      <TouchableOpacity onPress={() => requestRemoveChild(index)}>
+                        <Ionicons name="trash-outline" size={20} color="#dc3545" />
+                      </TouchableOpacity>
+                    </View>
+                    <LabeledInput label="Age *" value={child.age} onChangeText={(val) => updateChild(index, 'age', val)} keyboardType="numeric" />
+                  </View>
+                ))}
               </View>
-
-              {/* HAS PETS SWITCH */}
-              <View style={styles.switchRow}>
-                <View style={styles.switchInfo}>
-                  <Text style={styles.switchLabel}>Do you have pets?</Text>
-                  <Text style={styles.switchSubtext}>Dogs, cats, or other animals</Text>
-                </View>
-                <Switch
-                  value={hasPets}
-                  onValueChange={setHasPets}
-                  trackColor={{ false: '#ccc', true: '#007AFF' }}
-                  thumbColor="#fff"
-                />
-              </View>
-
-              {/* Pet Details (only show if has_pets is true) */}
-              {hasPets && (
-                <LabeledInput 
-                  label="Pet Details" 
-                  value={petDetails} 
-                  onChangeText={setPetDetails} 
-                  placeholder="e.g., 2 dogs (Golden Retriever), 1 cat"
-                  multiline
-                  numberOfLines={2}
-                />
-              )}
-
-              {/* Helper Text */}
-              <View style={styles.helperBox}>
-                <Ionicons name="information-circle" size={20} color="#007AFF" />
-                <Text style={styles.helperText}>
-                  This information helps us match you with the right domestic helpers for your household needs.
-                </Text>
-              </View>
-
-              <View style={{ height: 50 }} />
             </ScrollView>
           )}
 
-          {/* Footer */}
           <View style={styles.footer}>
             <TouchableOpacity 
               style={[styles.saveBtn, (saving || loading) && styles.saveBtnDisabled]} 
               onPress={handleSave} 
               disabled={saving || loading}
             >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.saveText}>Save Changes</Text>
-              )}
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Changes</Text>}
             </TouchableOpacity>
           </View>
-
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* --- CUSTOM DELETE CONFIRMATION MODAL --- */}
+      <Modal
+        visible={isDeleteModalOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDeleteModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalContainer}>
+            <View style={styles.confirmIconContainer}>
+              <Ionicons name="alert-circle" size={40} color="#dc3545" />
+            </View>
+            
+            <Text style={styles.confirmTitle}>Remove Child?</Text>
+            <Text style={styles.confirmMessage}>
+              Are you sure you want to remove this child from your profile? This cannot be undone.
+            </Text>
+
+            <View style={styles.confirmBtnRow}>
+              <TouchableOpacity 
+                style={styles.cancelBtn} 
+                onPress={() => setDeleteModalOpen(false)}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.deleteBtn} 
+                onPress={confirmDelete}
+              >
+                <Text style={styles.deleteBtnText}>Yes, Remove</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       <NotificationModal 
@@ -443,13 +428,8 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
 }
 
 // STYLES
-
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#fff', 
-    marginTop: Platform.OS === 'ios' ? 0 : 40 
-  },
+  container: { flex: 1, backgroundColor: '#fff', marginTop: Platform.OS === 'ios' ? 0 : 40 },
   header: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -459,129 +439,147 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
     paddingTop: Platform.OS === 'ios' ? 50 : 20,
   },
-  title: { 
-    fontSize: 20, 
-    fontWeight: 'bold',
-    color: '#333'
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    color: '#666',
-    fontSize: 14,
-  },
-  content: { 
-    padding: 20,
-    paddingBottom: 40,
-  },
+  title: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 12, color: '#666', fontSize: 14 },
+  content: { padding: 20, paddingBottom: 40 },
   
   // Image
-  imageBtn: { 
-    alignSelf: 'center', 
-    alignItems: 'center', 
-    marginBottom: 24 
-  },
-  avatar: { 
-    width: 110, 
-    height: 110, 
-    borderRadius: 55,
-    borderWidth: 3,
-    borderColor: '#007AFF',
-  },
+  imageBtn: { alignSelf: 'center', alignItems: 'center', marginBottom: 24 },
+  avatar: { width: 110, height: 110, borderRadius: 55, borderWidth: 3, borderColor: '#007AFF' },
   placeholderAvatar: { 
-    width: 110, 
-    height: 110, 
-    borderRadius: 55, 
-    backgroundColor: '#f0f0f0', 
-    justifyContent: 'center', 
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#ddd',
+    width: 110, height: 110, borderRadius: 55, backgroundColor: '#f0f0f0', 
+    justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#ddd' 
   },
-  changePhotoText: { 
-    color: '#007AFF', 
-    marginTop: 8, 
-    fontWeight: '600',
-    fontSize: 14,
-  },
+  changePhotoText: { color: '#007AFF', marginTop: 8, fontWeight: '600', fontSize: 14 },
   
   // Sections
-  sectionTitle: { 
-    fontSize: 18, 
-    fontWeight: 'bold', 
-    marginTop: 20, 
-    marginBottom: 12, 
-    color: '#333' 
-  },
-  row: { 
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginTop: 20, marginBottom: 12, color: '#333' },
+  row: { flexDirection: 'row', alignItems: 'flex-start' },
+
+  // Address Preview
+  addressPreview: { backgroundColor: '#E3F2FD', padding: 14, borderRadius: 10, marginTop: 10, marginBottom: 10 },
+  previewLabel: { fontSize: 12, fontWeight: '600', color: '#1976D2', marginBottom: 4 },
+  previewText: { fontSize: 14, color: '#1976D2', fontWeight: '500' },
 
   // Switch Rows
   switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8F9FA',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#F8F9FA', padding: 16, borderRadius: 12, marginBottom: 12
   },
-  switchInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  switchLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  switchSubtext: {
-    fontSize: 12,
-    color: '#666',
-  },
+  switchInfo: { flex: 1, marginRight: 12 },
+  switchLabel: { fontSize: 15, fontWeight: '600', color: '#333', marginBottom: 4 },
+  switchSubtext: { fontSize: 12, color: '#666' },
 
-  // Helper Box
-  helperBox: {
-    flexDirection: 'row',
-    backgroundColor: '#E3F2FD',
-    padding: 14,
-    borderRadius: 10,
-    marginTop: 20,
-    gap: 10,
+  // Children Section
+  childrenSection: { marginTop: 10 },
+  childrenHeader: { 
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 
   },
-  helperText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#1976D2',
-    lineHeight: 18,
+  addChildBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  addChildText: { color: '#007AFF', fontWeight: '600', fontSize: 14 },
+  
+  noChildrenBox: {
+    backgroundColor: '#F8F9FA', padding: 40, borderRadius: 12, alignItems: 'center'
   },
+  noChildrenText: { fontSize: 16, color: '#666', fontWeight: '600', marginTop: 12 },
+  noChildrenSubtext: { fontSize: 13, color: '#999', marginTop: 4 },
+
+  // Child Card
+  childCard: {
+    backgroundColor: '#F8F9FA', padding: 16, borderRadius: 12, marginBottom: 12,
+    borderWidth: 1, borderColor: '#E0E0E0'
+  },
+  childCardHeader: { 
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 
+  },
+  childCardTitle: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+
+  // Gender Selection
+  inputLabel: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 8 },
+  genderRow: { flexDirection: 'row', gap: 6 },
+  genderChip: {
+    flex: 1, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 8,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', alignItems: 'center'
+  },
+  genderChipActive: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
+  genderChipText: { fontSize: 12, color: '#666', fontWeight: '500' },
+  genderChipTextActive: { color: '#fff', fontWeight: '600' },
 
   // Footer
-  footer: { 
-    padding: 20, 
-    borderTopWidth: 1, 
-    borderColor: '#eee',
+  footer: { padding: 20, borderTopWidth: 1, borderColor: '#eee', backgroundColor: '#fff' },
+  saveBtn: { backgroundColor: '#007AFF', padding: 16, borderRadius: 12, alignItems: 'center' },
+  saveBtnDisabled: { backgroundColor: '#ccc' },
+  saveText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+
+  // MODAL STYLES
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmModalContainer: {
+    width: '85%',
     backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  saveBtn: { 
-    backgroundColor: '#007AFF', 
-    padding: 16, 
-    borderRadius: 12, 
-    alignItems: 'center' 
+  confirmIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#ffebee', // light red
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  saveBtnDisabled: {
-    backgroundColor: '#ccc',
+  confirmTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
   },
-  saveText: { 
-    color: '#fff', 
-    fontWeight: 'bold', 
-    fontSize: 16 
+  confirmMessage: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  confirmBtnRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+  },
+  deleteBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#dc3545', // red
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  deleteBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

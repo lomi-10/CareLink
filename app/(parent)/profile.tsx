@@ -15,6 +15,7 @@ import RightDrawer from '../../components/common/RightDrawer';
 import EditParentProfileModal from '../../components/profile/EditParentProfileModal';
 import ParentDocumentModal from '../../components/profile/ParentDocumentModal';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import NotificationModal from '@/components/common/NotificationModal';
 
 export default function ParentProfileScreen() {
   const router = useRouter();
@@ -25,6 +26,11 @@ export default function ParentProfileScreen() {
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [logoutSuccessVisible, setLogoutSuccessVisible] = useState(false);
+
+  // Error notification state
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   
   // Profile Data State
   const [userId, setUserId] = useState<string | null>(null);
@@ -35,16 +41,20 @@ export default function ParentProfileScreen() {
     loadUserProfile();
   }, []);
 
-  /**
-   * Load parent profile data from backend
-   */
+  //Load parent profile data from backend
   const loadUserProfile = async () => {
     try {
       setLoading(true);
-      
       const userData = await AsyncStorage.getItem('user_data');
       if (!userData) {
-        router.replace('/(auth)/login');
+        setErrorMessage("Error: You are not logged in. Please log in again.");
+        setErrorModalVisible(true);
+        setLoading(false);
+
+        setTimeout(()=> {
+          setErrorModalVisible(false);
+          router.replace("/(auth)/login");
+        }, 1500);
         return;
       }
 
@@ -52,17 +62,28 @@ export default function ParentProfileScreen() {
       setUserId(parsed.user_id);
 
       // Fetch profile from backend
-      const response = await fetch(`${API_URL}/parent/get_profile.php?user_id=${parsed.user_id}`);
-      const data = await response.json();
+      const url = `${API_URL}/parent/get_profile.php?user_id=${parsed.user_id}`;
+      const response = await fetch(url);
 
-      if (data.success) {
-        setProfileData(data);
-      } else {
-        Alert.alert('Error', 'Failed to load profile data');
+      if(!response.ok) throw new Error(`Server Error! Status: ${response.status}`);
+      const responseText = await response.text();
+
+      try{
+        const data = JSON.parse(responseText);
+        if(data.success){
+          setProfileData(data);
+        }
+        else{
+          setErrorMessage(data.message || 'Failed to load profile data.');
+          setErrorModalVisible(true);
+        }
+      }catch(parseError){
+        console.error("Raw response was: ", responseText);
+        throw new Error("Server sent an invalid data format");
       }
-    } catch (error) {
-      console.error('Error loading profile:', error);
-      Alert.alert('Error', 'Failed to load profile. Please try again.');
+    } catch (error: any) {
+      setErrorMessage(`Network error: ${error.message || 'Unable to connect to the server'}`);
+      setErrorModalVisible(true);
     } finally {
       setLoading(false);
     }
@@ -91,25 +112,28 @@ export default function ParentProfileScreen() {
     loadUserProfile();
   };
 
+  const handleLogout = async () => {
+    setIsMenuOpen(false);
+    await AsyncStorage.clear();
+    setLogoutSuccessVisible(true);
+    setTimeout(() => {
+      setLogoutSuccessVisible(false);
+      router.replace('/(auth)/login')
+    }, 1500);
+  }
+
   /**
    * Get verification status badge
    */
   const getVerificationBadge = () => {
-    const verified = profileData?.profile?.verified || 0;
-    
-    if (verified === 1) {
-      return { 
-        icon: 'checkmark-circle', 
-        text: 'Verified Parent', 
-        style: styles.bgGreen 
-      };
-    } else {
-      return { 
-        icon: 'time', 
-        text: 'Pending Verification', 
-        style: styles.bgOrange 
-      };
-    }
+    const status = profileData?.profile?.verification_status || 'Unverified';
+    switch (status) {
+      case 'Verified': return {icon: 'checkmark-circle', text: 'Verified Parent', style: styles.bgGreen };
+      case 'Pending': return {icon: 'time', text: 'Pending Verification', style: styles.bgOrange };
+      case 'Rejected': return {icon: 'close-circle', text: 'Verification Failed', style: styles.bgRed };
+      default: return {icon: 'alert-circle', text: 'Not yet Verified', style: styles.bgGray };
+      
+    } 
   };
 
   // --- LOADING STATE ---
@@ -121,7 +145,6 @@ export default function ParentProfileScreen() {
   if (!profileData) {
     return (
       <View style={styles.screenContainer}>
-        <Stack.Screen options={{ headerShown: false }} />
         <AppHeader 
           title="My Profile" 
           menu={true} 
@@ -134,7 +157,7 @@ export default function ParentProfileScreen() {
             style={styles.createProfileBtn} 
             onPress={() => setIsEditModalOpen(true)}
           >
-            <Text style={styles.createProfileText}>Create Profile</Text>
+            <Text style={styles.createProfileText}>Retry Loading</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -147,7 +170,13 @@ export default function ParentProfileScreen() {
 
   return (
     <View style={styles.screenContainer}>
-      <Stack.Screen options={{ headerShown: false }} />
+      <NotificationModal visible={errorModalVisible} message={errorMessage} type="error" onClose={() => setErrorModalVisible(false)}/>
+      <NotificationModal 
+        visible={logoutSuccessVisible}
+        message="Logged out successfully."
+        type="success"
+        onClose={() => {}}
+      />
 
       {/* HEADER */}
       <AppHeader 
@@ -160,7 +189,7 @@ export default function ParentProfileScreen() {
       <RightDrawer 
         visible={isMenuOpen} 
         onClose={() => setIsMenuOpen(false)} 
-        onLogout={() => router.replace('/(auth)/login')} 
+        onLogout={handleLogout} 
         userType='parent'
       />
 
@@ -199,7 +228,7 @@ export default function ParentProfileScreen() {
                 />
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <Ionicons name="home" size={60} color="#ccc" />
+                  <Ionicons name="person" size={60} color="#ccc" />
                 </View>
               )}
             </View>
@@ -263,10 +292,8 @@ export default function ParentProfileScreen() {
           {/* 3. FAMILY BIO (New Section) */}
           {profile?.bio && (
             <View style={styles.infoCard}>
-               <Text style={styles.cardTitle}>About Our Family</Text>
-               <Text style={{ fontSize: 14, color: '#444', lineHeight: 22 }}>
-                 {profile.bio}
-               </Text>
+               <Text style={styles.cardTitle}>About Our Household</Text>
+               <Text style={styles.bioText}>{profile.bio}</Text>
             </View>
           )}
 
@@ -530,6 +557,8 @@ const styles = StyleSheet.create({
   },
   bgGreen: { backgroundColor: '#28a745' },
   bgOrange: { backgroundColor: '#fd7e14' },
+  bgRed: { backgroundColor: '#dc3545'},
+  bgGray: { backgroundColor: '#6c757d'},
   statusText: { 
     color: '#fff', 
     fontSize: 12, 
@@ -614,6 +643,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#333',
     marginBottom: 8,
+  },
+  bioText: {
+    fontSize: 15,
+    color: '#444',
+    lineHeight: 24,
   },
   cardSubtitle: {
     fontSize: 13,
