@@ -60,7 +60,7 @@ export default function AdminLoginScreen() {
         handleLockout();
       } else {
         setModalTitle("Login Failed");
-        setModalMessage(`Please enter correct admin email and/or password.\nYou have ${newAttempts} attempts left.`);
+        setModalMessage(`Please enter correct PESO/Admin credentials.\nYou have ${newAttempts} attempts left.`);
         setModalVisible(true);
       }
 
@@ -79,20 +79,24 @@ export default function AdminLoginScreen() {
       const data = await response.json();
 
       if (data.success) {
-        if (data.user_type === 'admin') {
+        if (data.user_type === 'admin' || data.user_type === 'peso') {
 
           setAttemptsLeft(5);
           // ✅ Login Success
           await AsyncStorage.setItem("user_token", data.user.user_id.toString());
           await AsyncStorage.setItem("user_data", JSON.stringify(data.user));
           
-          setModalTitle("Welcome Admin");
+          setModalTitle(data.user_type === 'admin' ? "Welcome Super Admin" : "Welcome PESO Admin");
           setModalMessage("Access Granted.");
           setModalVisible(true);
 
           setTimeout(() => {
             setModalVisible(false);
-            router.replace("/admin/dashboard"); // Redirect to Admin Dashboard
+            if (data.user_type === 'admin') {
+              router.replace("/admin/dashboard");
+            } else {
+              router.replace("/(PESO)/home");
+            }
           }, 1500);
         } else {
           // ❌ Correct password, but NOT an admin

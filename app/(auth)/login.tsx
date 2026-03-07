@@ -1,21 +1,21 @@
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
   ImageBackground,
-  StyleSheet,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Alert,
-  ActivityIndicator
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
-import { useRouter } from "expo-router"; 
-import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../constants/api";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -110,6 +110,8 @@ export default function LoginScreen() {
           // Redirect based on role
           if (data.user_type === "admin") {
             router.replace("/admin/dashboard"); 
+          } else if (data.user_type === "peso") {
+            router.replace("/(PESO)/home");
           } else if (data.user_type === "helper"){
             router.replace("/(helper)/home"); 
           } else {
@@ -153,6 +155,8 @@ export default function LoginScreen() {
             // Redirect based on role
             if (data.user_type === "admin") {
               router.replace("/admin/dashboard"); 
+            } else if (data.user_type === "peso") {
+              router.replace("/(PESO)/home");
             } else if (data.user_type === "helper"){
               router.replace("/(helper)/home"); 
             } else if (data.user_type === "parent"){

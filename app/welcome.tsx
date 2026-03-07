@@ -44,7 +44,7 @@ const WelcomeScreen = () => {
             </Link>
 
             {/* Sign Up Button */}
-            <Link href="/signup" asChild>
+            <Link href="/(auth)/role-selection" asChild>
               <TouchableOpacity style={styles.webNavButton}>
                 <Text style={styles.webNavButtonText}>Sign Up</Text>
               </TouchableOpacity>
@@ -114,7 +114,7 @@ const WelcomeScreen = () => {
               </TouchableOpacity>
             </Link>
 
-            <Link href="/signup" asChild>
+            <Link href="/(auth)/role-selection" asChild>
               <TouchableOpacity style={styles.signupButton}>
                 <Text style={styles.signupButtonText}>Create Account</Text>
               </TouchableOpacity>

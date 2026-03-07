@@ -29,9 +29,11 @@ const { width } = Dimensions.get('window');
 
 // Types
 type User = {
-  name: string;
+  first_name: string;
+  middle_name: string;
+  last_name: string;
   user_id: string;
-  user_type: 'service_seeker' | 'service_helper' | 'peso_admin';
+  user_type: 'parent' | 'helper' | 'admin' | 'peso';
 };
 
 type HelperCategory = {

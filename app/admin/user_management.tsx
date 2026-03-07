@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  SafeAreaView,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  TextInput
-} from "react-native";
-import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from "react-native";
 import API_URL from "../../constants/api"; // Adjust path if needed: ../../constants/api
 
 export default function UserManagementScreen() {
@@ -21,10 +21,20 @@ export default function UserManagementScreen() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // 'all' or 'pending'
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentUserType, setCurrentUserType] = useState<string | null>(null);
 
   useEffect(() => {
+    loadUserType();
     fetchUsers();
   }, [filter]); // Re-fetch when filter changes
+
+  const loadUserType = async () => {
+    const userData = await AsyncStorage.getItem("user_data");
+    if (userData) {
+      const user = JSON.parse(userData);
+      setCurrentUserType(user.user_type);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -74,11 +84,18 @@ export default function UserManagementScreen() {
     }
   };
 
-  // Filter locally by search query
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter locally by search query and PESO restriction
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         u.email.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // PESO Restriction: Show only pending users with documents
+    if (currentUserType === 'peso' && filter === 'pending') {
+      return matchesSearch && u.status === 'pending' && u.doc_count > 0;
+    }
+
+    return matchesSearch;
+  });
 
   const renderUserCard = ({ item }: { item: any }) => (
     <View style={styles.card}>
@@ -87,8 +104,18 @@ export default function UserManagementScreen() {
           <Text style={styles.userName}>{item.name}</Text>
           <Text style={styles.userEmail}>{item.email}</Text>
           <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{item.user_type.toUpperCase()}</Text>
+            <Text style={styles.roleText}>
+              {item.user_type === 'admin' ? 'SUPER ADMIN' : 
+               item.user_type === 'peso' ? 'PESO OFFICER' : 
+               item.user_type.toUpperCase()}
+            </Text>
           </View>
+          {item.doc_count > 0 && (
+            <View style={[styles.docBadge, { marginLeft: 8 }]}>
+              <Ionicons name="document-attach" size={10} color="#2ECC71" />
+              <Text style={styles.docBadgeText}>{item.doc_count} Documents</Text>
+            </View>
+          )}
         </View>
         
         {/* Status Badge */}
@@ -269,6 +296,22 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   roleText: { fontSize: 10, fontWeight: "bold", color: "#555" },
+
+  docBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 4,
+    gap: 4,
+  },
+  docBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2ECC71',
+  },
 
   statusBadge: {
     paddingHorizontal: 8,

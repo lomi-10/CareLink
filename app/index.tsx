@@ -1,7 +1,7 @@
-import React, { useEffect } from "react";
-import { ActivityIndicator, View, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import React, { useEffect } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 const RootIndexPage = () => {
   const router = useRouter();
@@ -18,9 +18,10 @@ const RootIndexPage = () => {
 
           // 2. SMART REDIRECT: Check the role!
           if (userData.user_type === 'admin') {
-            router.replace("/admin/adminlogin");
-          } 
-          else if (userData.user_type === 'helper') {
+            router.replace("/admin/dashboard");
+          } else if (userData.user_type === 'peso') {
+            router.replace("/(PESO)/home");
+          } else if (userData.user_type === 'helper') {
             router.replace("/(helper)/home");   // Points to app/(helper)/home.tsx
           } else if (userData.user_type === 'parent') { // or 'parent'
             router.replace("/(parent)/home"); // Points to app/(parent)/home.tsx

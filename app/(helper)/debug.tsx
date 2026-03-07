@@ -1,63 +1,57 @@
-// app/(parent)/profile.tsx
+// app/(helper)/profile.tsx
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    Platform,
-    Modal,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import API_URL from '../../constants/api';
 
 // Custom Components
-import NotificationModal from '@/components/common/NotificationModal';
 import AppHeader from '../../components/common/AppHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import NotificationModal from '../../components/common/NotificationModal';
 import RightDrawer from '../../components/common/RightDrawer';
-import EditParentProfileModal from '../../components/profile/EditParentProfileModal';
-import ParentDocumentModal from '../../components/profile/ParentDocumentModal';
+import DocumentManagementModal from '../../components/profile/DocumentManagementModal';
+import EditProfileModal from '../../components/profile/EditProfileModal';
 
-export default function ParentProfileScreen() {
+export default function HelperProfileScreen() {
   const router = useRouter();
   
   // --- STATE MANAGEMENT ---
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [logoutSuccessVisible, setLogoutSuccessVisible] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [logoutSuccessVisible, setLogoutSuccessVisible] = useState(false);
-
-  // File Viewer State
-  const [viewingFile, setViewingFile] = useState<{url: string, type: string} | null>(null);
-
+  
   // Error notification state
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  
+
   // Profile Data State
   const [userId, setUserId] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
 
-  // --- LIFECYCLE ---
+  // --- LIFECYCLE: Load data when screen appears ---
   useEffect(() => {
     loadUserProfile();
   }, []);
 
-  //Load parent profile data from backend
   const loadUserProfile = async () => {
     try {
       setLoading(true);
       const userData = await AsyncStorage.getItem('user_data');
       if (!userData) {
-        setErrorMessage("Error: You are not logged in. Please log in again.");
+        setErrorMessage("Session Expired. Please log in.");
         setErrorModalVisible(true);
         setLoading(false);
 
@@ -71,56 +65,41 @@ export default function ParentProfileScreen() {
       const parsed = JSON.parse(userData);
       setUserId(parsed.user_id);
 
-      // Fetch profile from backend
-      const url = `${API_URL}/parent/get_profile.php?user_id=${parsed.user_id}`;
+      const url = `${API_URL}/helper/get_profile.php?user_id=${parsed.user_id}`;
       const response = await fetch(url);
-
-      if(!response.ok) throw new Error(`Server Error! Status: ${response.status}`);
+      
+      if (!response.ok) throw new Error(`Server Error! Status: ${response.status}`);
       const responseText = await response.text();
 
       try{
         const data = JSON.parse(responseText);
-        if(data.success){
+
+        if (data.success) {
           setProfileData(data);
-        }
-        else{
+        } else {
           setErrorMessage(data.message || 'Failed to load profile data.');
           setErrorModalVisible(true);
         }
-      }catch(parseError){
+      }catch (parseError){
         console.error("Raw response was: ", responseText);
-        throw new Error("Server sent an invalid data format");
+        throw new Error("Server sent invalid data format.");
       }
     } catch (error: any) {
-      setErrorMessage(`Network error: ${error.message || 'Unable to connect to the server'}`);
+      setErrorMessage(`Network error: ${error.message || 'Unable to connect to server'}`);
       setErrorModalVisible(true);
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Refresh profile data
-   */
   const onRefresh = async () => {
     setRefreshing(true);
     await loadUserProfile();
     setRefreshing(false);
   };
 
-  /**
-   * Handle successful profile update
-   */
-  const handleProfileSaved = () => {
-    loadUserProfile();
-  };
-
-  /**
-   * Handle successful document upload
-   */
-  const handleDocumentsSaved = () => {
-    loadUserProfile();
-  };
+  const handleProfileSaved = () => loadUserProfile();
+  const handleDocumentsSaved = () => loadUserProfile();
 
   const handleLogout = async () => {
     setIsMenuOpen(false);
@@ -128,45 +107,30 @@ export default function ParentProfileScreen() {
     setLogoutSuccessVisible(true);
     setTimeout(() => {
       setLogoutSuccessVisible(false);
-      router.replace('/(auth)/login')
+      router.replace('/(auth)/login');
     }, 1500);
-  }
+  };
 
-  /**
-   * Get verification status badge
-   */
   const getVerificationBadge = () => {
     const status = profileData?.profile?.verification_status || 'Unverified';
     switch (status) {
-      case 'Verified': return {icon: 'checkmark-circle', text: 'Verified Parent', style: styles.bgGreen };
-      case 'Pending': return {icon: 'time', text: 'Pending Verification', style: styles.bgOrange };
-      case 'Rejected': return {icon: 'close-circle', text: 'Verification Failed', style: styles.bgRed };
-      default: return {icon: 'alert-circle', text: 'Not yet Verified', style: styles.bgGray };
-      
-    } 
+      case 'Verified': return { icon: 'checkmark-circle', text: 'PESO Verified', style: styles.bgGreen };
+      case 'Pending': return { icon: 'time', text: 'PESO Pending', style: styles.bgOrange };
+      case 'Rejected': return { icon: 'close-circle', text: 'Verification Failed', style: styles.bgRed };
+      default: return { icon: 'alert-circle', text: 'Not Verified', style: styles.bgGray };
+    }
   };
 
-  // --- LOADING STATE ---
-  if (loading) {
-    return <LoadingSpinner visible={true} message="Loading profile..." />;
-  }
+  if (loading) return <LoadingSpinner visible={true} message="Loading profile..." />;
 
-  // --- NO PROFILE DATA ---
   if (!profileData) {
     return (
       <View style={styles.screenContainer}>
-        <AppHeader 
-          title="My Profile" 
-          menu={true} 
-          onMenuPress={() => setIsMenuOpen(true)} 
-        />
+        <AppHeader title="My Profile" menu={true} onMenuPress={() => setIsMenuOpen(true)} />
         <View style={styles.emptyState}>
           <Ionicons name="person-circle-outline" size={80} color="#ccc" />
           <Text style={styles.emptyText}>No profile data found</Text>
-          <TouchableOpacity 
-            style={styles.createProfileBtn} 
-            onPress={() => setIsEditModalOpen(true)}
-          >
+          <TouchableOpacity style={styles.createProfileBtn} onPress={loadUserProfile}>
             <Text style={styles.createProfileText}>Retry Loading</Text>
           </TouchableOpacity>
         </View>
@@ -177,104 +141,48 @@ export default function ParentProfileScreen() {
   const badge = getVerificationBadge();
   const user = profileData.user;
   const profile = profileData.profile;
-  const household = profileData.household;
-  const children = profileData.children || [];
-  const children_count = profileData.children_count || 0;
+  
+  // Get selected skills with names
+  const availableSkills = profileData.available_skills || [];
+  const selectedSkillIds = profileData.selected_skills || [];
+  const skills = availableSkills.filter((s: any) => selectedSkillIds.includes(s.skill_id));
+  
+  // Get selected jobs with titles
+  const availableJobs = profileData.available_jobs || [];
+  const selectedJobIds = profileData.selected_jobs || [];
+  const jobs = availableJobs.filter((j: any) => selectedJobIds.includes(j.job_id));
+  
+  // Custom skills and jobs from profile
+  const customSkills = profileData.profile?.custom_skills ? JSON.parse(profileData.profile.custom_skills) : [];
+  const customJobs = profileData.profile?.custom_jobs ? JSON.parse(profileData.profile.custom_jobs) : [];
 
   // Format full name
   const fullName = user ? `${user.first_name || ''} ${user.middle_name ? user.middle_name + ' ' : ''}${user.last_name || ''}`.trim() : 'No Name';
 
-  // Helper to find document status/URL
-  const getDoc = (type: string) => {
-    const doc = (profileData.documents || []).find((d: any) => d.document_type === type);
-    return {
-      status: doc ? 'uploaded' : 'pending',
-      url: doc?.file_url || null,
-      file_path: doc?.file_path || ''
-    };
-  };
-
-  const handleViewFile = (doc: any) => {
-    if (!doc.url) return;
-    const isPdf = doc.file_path.toLowerCase().endsWith('.pdf');
-    setViewingFile({ url: doc.url, type: isPdf ? 'pdf' : 'image' });
-  };
-
   return (
     <View style={styles.screenContainer}>
-      <NotificationModal visible={errorModalVisible} message={errorMessage} type="error" onClose={() => setErrorModalVisible(false)}/>
-      <NotificationModal 
-        visible={logoutSuccessVisible}
-        message="Logged out successfully."
-        type="success"
-        onClose={() => {}}
-      />
+      <NotificationModal visible={errorModalVisible} message={errorMessage} type="error" onClose={() => setErrorModalVisible(false)} />
+      <NotificationModal visible={logoutSuccessVisible} message="Logged out successfully." type="success" onClose={() => {}} />
 
       <AppHeader title="My Profile" menu={true} onMenuPress={() => setIsMenuOpen(true)} />
-
       <RightDrawer 
         visible={isMenuOpen} 
         onClose={() => setIsMenuOpen(false)} 
         onLogout={handleLogout} 
-        userType='parent'
+        userType='helper'
       />
 
-      <EditParentProfileModal 
+      <EditProfileModal 
         visible={isEditModalOpen} 
-        onClose={() => setIsEditModalOpen(false)}
-        onSaveSuccess={handleProfileSaved}
+        onClose={() => setIsEditModalOpen(false)} 
+        onSaveSuccess={handleProfileSaved} 
       />
 
-      <ParentDocumentModal 
+      <DocumentManagementModal 
         visible={isDocumentModalOpen} 
-        onClose={() => setIsDocumentModalOpen(false)}
-        onSaveSuccess={handleDocumentsSaved}
+        onClose={() => setIsDocumentModalOpen(false)} 
+        onSaveSuccess={handleDocumentsSaved} 
       />
-
-      {/* --- FILE VIEWER MODAL --- */}
-      <Modal 
-        visible={!!viewingFile} 
-        transparent={true} 
-        animationType="fade"
-        onRequestClose={() => setViewingFile(null)}
-      >
-        <View style={styles.viewerOverlay}>
-          <View style={styles.viewerContainer}>
-            <View style={styles.viewerHeader}>
-              <Text style={styles.viewerTitle}>Document Preview</Text>
-              <TouchableOpacity onPress={() => setViewingFile(null)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.viewerContent}>
-              {viewingFile?.type === 'pdf' ? (
-                <View style={styles.pdfPlaceholder}>
-                  <Ionicons name="document-text" size={80} color="#007AFF" />
-                  <Text style={styles.pdfText}>PDF Document</Text>
-                  <Text style={styles.pdfSubText}>Viewing PDFs is best on a full browser.</Text>
-                  <TouchableOpacity 
-                    style={styles.openBtn}
-                    onPress={() => {
-                      if (Platform.OS === 'web') {
-                        window.open(viewingFile.url, '_blank');
-                      }
-                    }}
-                  >
-                    <Text style={styles.openBtnText}>Open in New Tab</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <Image 
-                  source={{ uri: viewingFile?.url }} 
-                  style={styles.fullImage} 
-                  resizeMode="contain"
-                />
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       <View style={styles.webCenterContainer}>
         <ScrollView 
@@ -284,7 +192,6 @@ export default function ParentProfileScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-
           {/* 1. PROFILE HEADER CARD */}
           <View style={styles.profileHeaderCard}>
             <View style={styles.headerCover} />
@@ -310,30 +217,20 @@ export default function ParentProfileScreen() {
               <View style={[styles.verificationBadge, badge.style]}>
                 <Text style={styles.verificationText}>{badge.text.toUpperCase()}</Text>
               </View>
-
-              {/* Location Summary */}
-              {profile?.municipality && (
-                <View style={styles.locationSummary}>
-                  <Ionicons name="location-sharp" size={14} color="#666" />
-                  <Text style={styles.locationSummaryText}>
-                    {profile.barangay}, {profile.municipality}
-                  </Text>
-                </View>
-              )}
             </View>
 
             <View style={styles.quickStatsRow}>
               <View style={styles.quickStatItem}>
-                <Text style={styles.quickStatValue}>{profileData.job_stats?.active || 0}</Text>
-                <Text style={styles.quickStatLabel}>Active Jobs</Text>
+                <Text style={styles.quickStatValue}>{profile?.experience_years || '0'}</Text>
+                <Text style={styles.quickStatLabel}>Years Exp.</Text>
               </View>
               <View style={[styles.quickStatItem, styles.quickStatBorder]}>
-                <Text style={styles.quickStatValue}>{profileData.job_stats?.total || 0}</Text>
-                <Text style={styles.quickStatLabel}>Total Posts</Text>
+                <Text style={styles.quickStatValue}>{profile?.rating_average || '0.0'}</Text>
+                <Text style={styles.quickStatLabel}>Rating</Text>
               </View>
               <View style={styles.quickStatItem}>
-                <Text style={styles.quickStatValue}>{household?.household_size || '---'}</Text>
-                <Text style={styles.quickStatLabel}>Household</Text>
+                <Text style={styles.quickStatValue}>{profile?.rating_count || '0'}</Text>
+                <Text style={styles.quickStatLabel}>Reviews</Text>
               </View>
             </View>
           </View>
@@ -345,85 +242,148 @@ export default function ParentProfileScreen() {
               <Text style={styles.actionButtonText}>Edit Profile</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionButton, styles.actionButtonSecondary]} onPress={() => setIsDocumentModalOpen(true)}>
-              <Ionicons name="shield-checkmark" size={20} color="#007AFF" />
-              <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>Verification</Text>
+              <Ionicons name="document-attach" size={20} color="#007AFF" />
+              <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>Documents</Text>
             </TouchableOpacity>
           </View>
 
-          {/* 3. ABOUT OUR HOUSEHOLD */}
+          {/* 3. ABOUT ME */}
           {profile?.bio && (
             <View style={styles.infoCard}>
               <View style={styles.cardHeader}>
                 <Ionicons name="information-circle" size={22} color="#007AFF" />
-                <Text style={styles.cardTitle}>About Our Household</Text>
+                <Text style={styles.cardTitle}>About Me</Text>
               </View>
               <Text style={styles.bioText}>{profile.bio}</Text>
             </View>
           )}
 
-          {/* 4. HOUSEHOLD DETAILS */}
+          {/* 4. WORK PREFERENCES */}
           <View style={styles.infoCard}>
             <View style={styles.cardHeader}>
-              <Ionicons name="home" size={22} color="#007AFF" />
-              <Text style={styles.cardTitle}>Household Details</Text>
+              <Ionicons name="briefcase" size={22} color="#007AFF" />
+              <Text style={styles.cardTitle}>Work Preferences</Text>
             </View>
             
             <View style={styles.preferenceGrid}>
               <View style={styles.preferenceItem}>
-                <Text style={styles.prefLabel}>Family Size</Text>
-                <Text style={styles.prefValue}>{household?.household_size ? `${household.household_size} Members` : '---'}</Text>
+                <Text style={styles.prefLabel}>Arrangement</Text>
+                <Text style={styles.prefValue}>{profile?.employment_type || 'Any'}</Text>
               </View>
               <View style={styles.preferenceItem}>
-                <Text style={styles.prefLabel}>Children</Text>
-                <Text style={styles.prefValue}>{children_count > 0 ? `${children_count} Children` : 'None'}</Text>
+                <Text style={styles.prefLabel}>Schedule</Text>
+                <Text style={styles.prefValue}>{profile?.work_schedule || 'Full-time'}</Text>
               </View>
               <View style={styles.preferenceItem}>
-                <Text style={styles.prefLabel}>Elderly Care</Text>
-                <Text style={styles.prefValue}>{household?.has_elderly ? 'Yes' : 'No'}</Text>
+                <Text style={styles.prefLabel}>Availability</Text>
+                <View style={styles.statusRowCompact}>
+                  <View style={[styles.statusDot, profile?.availability_status === 'Available' ? styles.dotGreen : styles.dotRed]} />
+                  <Text style={styles.prefValue}>{profile?.availability_status || 'Available'}</Text>
+                </View>
               </View>
               <View style={styles.preferenceItem}>
-                <Text style={styles.prefLabel}>Pets</Text>
-                <Text style={styles.prefValue}>{household?.has_pets ? (household.pet_details || 'Yes') : 'No'}</Text>
+                <Text style={styles.prefLabel}>Expected Salary</Text>
+                <Text style={styles.prefValue}>₱{formatNumber(profile?.expected_salary)}/{profile?.salary_period === 'Monthly' ? 'mo' : 'day'}</Text>
               </View>
             </View>
+          </View>
 
-            {/* Children List if any */}
-            {children.length > 0 && (
-              <View style={styles.subSection}>
-                <Text style={styles.subSectionTitle}>Children Details</Text>
-                {children.map((child: any, index: number) => (
-                  <View key={`child-${index}`} style={styles.childItem}>
-                    <Ionicons name="person" size={14} color="#007AFF" />
-                    <Text style={styles.childText}>
-                      {child.age} yrs old • {child.gender}
-                      {child.special_needs ? ` • ${child.special_needs}` : ''}
-                    </Text>
-                  </View>
-                ))}
+          {/* 5. SPECIALTIES & SKILLS */}
+          <View style={styles.infoCard}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="star" size={22} color="#007AFF" />
+              <Text style={styles.cardTitle}>Skills & Specialties</Text>
+            </View>
+
+            {/* Jobs */}
+            {(jobs.length > 0 || customJobs.length > 0) && (
+              <View style={styles.skillGroup}>
+                <Text style={styles.skillGroupTitle}>Job Roles</Text>
+                <View style={styles.skillRow}>
+                  {jobs.map((job: any, index: number) => (
+                    <View key={`job-${index}`} style={styles.jobChip}>
+                      <Text style={styles.jobChipText}>{job.job_title}</Text>
+                    </View>
+                  ))}
+                  {customJobs.map((job: string, index: number) => (
+                    <View key={`custom-job-${index}`} style={[styles.jobChip, styles.customChip]}>
+                      <Ionicons name="sparkles" size={12} color="#2E7D32" style={{marginRight: 4}} />
+                      <Text style={[styles.jobChipText, styles.customChipText]}>{job}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Skills */}
+            {(skills.length > 0 || customSkills.length > 0) && (
+              <View style={styles.skillGroup}>
+                <Text style={styles.skillGroupTitle}>Specific Skills</Text>
+                <View style={styles.skillRow}>
+                  {skills.map((skill: any, index: number) => (
+                    <View key={`skill-${index}`} style={styles.skillChip}>
+                      <Text style={styles.skillText}>{skill.skill_name}</Text>
+                    </View>
+                  ))}
+                  {customSkills.map((skill: string, index: number) => (
+                    <View key={`custom-skill-${index}`} style={[styles.skillChip, styles.customChip]}>
+                      <Ionicons name="sparkles" size={12} color="#2E7D32" style={{marginRight: 4}} />
+                      <Text style={[styles.skillText, styles.customChipText]}>{skill}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             )}
           </View>
 
-          {/* 5. CONTACT & LOCATION */}
+          {/* 6. PERSONAL DETAILS */}
+          <View style={styles.infoCard}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="person" size={22} color="#007AFF" />
+              <Text style={styles.cardTitle}>Personal Details</Text>
+            </View>
+            
+            <View style={styles.detailRow}>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Gender</Text>
+                <Text style={styles.detailValue}>{profile?.gender || '---'}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Civil Status</Text>
+                <Text style={styles.detailValue}>{profile?.civil_status || '---'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.detailRow}>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Birth Date</Text>
+                <Text style={styles.detailValue}>{profile?.birth_date || '---'}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Religion</Text>
+                <Text style={styles.detailValue}>{profile?.religion || '---'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.detailRow}>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Education</Text>
+                <Text style={styles.detailValue}>{profile?.education_level || '---'}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Languages</Text>
+                <Text style={styles.detailValue}>{profile?.languages_spoken || 'Tagalog, English'}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* 7. ADDRESS */}
           <View style={styles.infoCard}>
             <View style={styles.cardHeader}>
               <Ionicons name="location" size={22} color="#007AFF" />
-              <Text style={styles.cardTitle}>Contact & Location</Text>
+              <Text style={styles.cardTitle}>Location Details</Text>
             </View>
             
-            <View style={styles.contactSection}>
-              <View style={styles.contactRow}>
-                <Ionicons name="mail" size={18} color="#666" />
-                <Text style={styles.contactValueText}>{user.email}</Text>
-              </View>
-              {profile?.contact_number && (
-                <View style={styles.contactRow}>
-                  <Ionicons name="call" size={18} color="#666" />
-                  <Text style={styles.contactValueText}>{profile.contact_number}</Text>
-                </View>
-              )}
-            </View>
-
             <View style={styles.addressContainer}>
               <Text style={styles.fullAddress}>{profile?.address || 'No address set'}</Text>
               {profile?.landmark && (
@@ -433,57 +393,44 @@ export default function ParentProfileScreen() {
                 </View>
               )}
               <View style={styles.locationMeta}>
-                <Text style={styles.locationMetaText}>
-                  {profile?.barangay}, {profile?.municipality}, {profile?.province}
-                </Text>
+                <Text style={styles.locationMetaText}>{profile?.barangay}, {profile?.municipality}, {profile?.province}</Text>
               </View>
             </View>
           </View>
 
-          {/* 6. VERIFICATION STATUS */}
+          {/* 8. VERIFICATION DOCUMENTS */}
           <View style={styles.infoCard}>
             <View style={styles.cardHeader}>
               <Ionicons name="shield-checkmark" size={22} color="#007AFF" />
-              <Text style={styles.cardTitle}>Identity Verification</Text>
+              <Text style={styles.cardTitle}>Verification Documents</Text>
             </View>
-            <DocumentStatusRow 
-              icon="card-outline" 
-              title="Valid ID" 
-              status={getDoc('Valid ID').status as any} 
-              onPress={() => handleViewFile(getDoc('Valid ID'))}
-            />
+            <DocumentStatusRow icon="card-outline" title="Government ID" status={profile?.verification_status === 'Verified' ? 'uploaded' : 'pending'} />
+            <DocumentStatusRow icon="home-outline" title="Barangay Clearance" status={profile?.verification_status === 'Verified' ? 'uploaded' : 'pending'} />
+            <DocumentStatusRow icon="document-text-outline" title="Police Clearance" status={profile?.verification_status === 'Verified' ? 'uploaded' : 'pending'} />
+            
             <TouchableOpacity style={styles.manageDocsBtn} onPress={() => setIsDocumentModalOpen(true)}>
-              <Text style={styles.manageDocsBtnText}>Update Verification Documents</Text>
+              <Text style={styles.manageDocsBtnText}>Update Documents</Text>
             </TouchableOpacity>
           </View>
 
-          {/* 7. JOB POSTINGS SUMMARY */}
-          <View style={styles.infoCard}>
-            <View style={styles.cardHeaderRow}>
+          {/* 9. RATING & REVIEWS */}
+          {profile?.rating_count > 0 && (
+            <View style={styles.infoCard}>
               <View style={styles.cardHeader}>
-                <Ionicons name="list" size={22} color="#007AFF" />
-                <Text style={styles.cardTitle}>My Job Postings</Text>
+                <Ionicons name="star-half" size={22} color="#FFC107" />
+                <Text style={styles.cardTitle}>Rating & Reviews</Text>
               </View>
-              <TouchableOpacity onPress={() => router.push('/(parent)/jobs')}>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.statsGrid}>
-              <View style={styles.statBox}>
-                <Text style={styles.statNumber}>{profileData.job_stats?.active || 0}</Text>
-                <Text style={styles.statLabel}>Active</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statNumber}>{profileData.job_stats?.filled || 0}</Text>
-                <Text style={styles.statLabel}>Filled</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statNumber}>{profileData.job_stats?.total || 0}</Text>
-                <Text style={styles.statLabel}>Total Posts</Text>
+              <View style={styles.ratingContainer}>
+                <Text style={styles.ratingNumber}>{profile.rating_average}</Text>
+                <View style={styles.starsRow}>
+                  {renderStars(profile.rating_average)}
+                </View>
+                <Text style={styles.ratingCount}>
+                  Based on {profile.rating_count} {profile.rating_count === 1 ? 'review' : 'reviews'}
+                </Text>
               </View>
             </View>
-          </View>
+          )}
 
           <View style={{ height: 100 }} />
         </ScrollView>
@@ -492,35 +439,43 @@ export default function ParentProfileScreen() {
   );
 }
 
-/**
- * HELPER COMPONENT: Document Status Row
- */
+// Helper Components and Functions...
 interface DocumentStatusRowProps {
   icon: string;
   title: string;
-  status: 'uploaded' | 'pending';
-  onPress?: () => void;
+  status: 'uploaded' | 'pending' | 'expired';
+  expiryDate?: string | null;
 }
 
-function DocumentStatusRow({ icon, title, status, onPress }: DocumentStatusRowProps) {
-  const statusConfig = status === 'uploaded' 
-    ? { icon: 'checkmark-circle', color: '#2ECC71', text: 'Verified' }
-    : { icon: 'alert-circle', color: '#FF9500', text: 'Pending' };
+function DocumentStatusRow({ icon, title, status, expiryDate }: DocumentStatusRowProps) {
+  const getStatusConfig = () => {
+    if (expiryDate) {
+      const expiry = new Date(expiryDate);
+      const now = new Date();
+      if (expiry < now) {
+        return { icon: 'close-circle', color: '#dc3545', text: 'Expired' };
+      }
+    }
+    
+    switch (status) {
+      case 'uploaded':
+        return { icon: 'checkmark-circle', color: '#28a745', text: 'Verified' };
+      case 'expired':
+        return { icon: 'close-circle', color: '#dc3545', text: 'Expired' };
+      default:
+        return { icon: 'alert-circle', color: '#ffc107', text: 'Missing' };
+    }
+  };
+
+  const statusConfig = getStatusConfig();
 
   return (
-    <TouchableOpacity 
-      style={styles.docRow} 
-      onPress={onPress}
-      disabled={!onPress || status !== 'uploaded'}
-    >
+    <View style={styles.docRow}>
       <View style={styles.docIcon}>
         <Ionicons name={icon as any} size={20} color="#007AFF" />
       </View>
       <View style={styles.docInfo}>
         <Text style={styles.docTitle}>{title}</Text>
-        {status === 'uploaded' && (
-          <Text style={{fontSize: 10, color: '#007AFF', marginTop: 2}}>Click to view</Text>
-        )}
       </View>
       <View style={styles.docStatus}>
         <Ionicons name={statusConfig.icon as any} size={16} color={statusConfig.color} />
@@ -528,11 +483,34 @@ function DocumentStatusRow({ icon, title, status, onPress }: DocumentStatusRowPr
           {statusConfig.text}
         </Text>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
-// --- STYLES ---
+function renderStars(rating: number) {
+  const stars = [];
+  const fullStars = Math.floor(rating);
+  const hasHalfStar = rating % 1 >= 0.5;
+
+  for (let i = 0; i < 5; i++) {
+    if (i < fullStars) {
+      stars.push(<Ionicons key={i} name="star" size={16} color="#FFC107" />);
+    } else if (i === fullStars && hasHalfStar) {
+      stars.push(<Ionicons key={i} name="star-half" size={16} color="#FFC107" />);
+    } else {
+      stars.push(<Ionicons key={i} name="star-outline" size={16} color="#FFC107" />);
+    }
+  }
+  return stars;
+}
+
+function formatNumber(num: any): string {
+  if (!num) return "0";
+  const n = typeof num === 'string' ? parseFloat(num) : num;
+  return n.toLocaleString();
+}
+
+// Styles remain the same...
 const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
@@ -547,8 +525,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
-  
-  // EMPTY STATE
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -559,7 +535,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginTop: 16,
-    marginBottom: 24,
+    marginBottom: 8,
+    fontWeight: '600',
   },
   createProfileBtn: {
     backgroundColor: '#007AFF',
@@ -572,8 +549,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  
-  // PROFILE HEADER CARD (MODERN STYLE)
   profileHeaderCard: {
     backgroundColor: '#fff',
     borderBottomLeftRadius: 30,
@@ -656,22 +631,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 12,
     borderRadius: 6,
-    marginBottom: 10,
   },
   verificationText: {
     color: '#fff',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
-  },
-  locationSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  locationSummaryText: {
-    fontSize: 13,
-    color: '#666',
   },
   quickStatsRow: {
     flexDirection: 'row',
@@ -703,8 +668,7 @@ const styles = StyleSheet.create({
   bgOrange: { backgroundColor: '#FF9500' },
   bgRed: { backgroundColor: '#FF3B30' },
   bgGray: { backgroundColor: '#ADB5BD' },
-
-  // ACTION BUTTONS
+  
   actionButtonsRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -742,7 +706,6 @@ const styles = StyleSheet.create({
     color: '#007AFF',
   },
 
-  // INFO CARDS
   infoCard: {
     backgroundColor: '#fff',
     borderRadius: 20,
@@ -761,12 +724,6 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 16,
   },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -777,13 +734,7 @@ const styles = StyleSheet.create({
     color: '#495057',
     lineHeight: 22,
   },
-  viewAllText: {
-    fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-
-  // PREFERENCE GRID
+  
   preferenceGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -807,50 +758,88 @@ const styles = StyleSheet.create({
     color: '#1A1C1E',
     fontWeight: '700',
   },
-
-  // SUBSECTIONS
-  subSection: {
-    marginTop: 8,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F3F5',
+  statusRowCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  subSectionTitle: {
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dotGreen: { backgroundColor: '#2ECC71' },
+  dotRed: { backgroundColor: '#FF3B30' },
+
+  skillGroup: {
+    marginBottom: 16,
+  },
+  skillGroupTitle: {
     fontSize: 12,
     color: '#6C757D',
     fontWeight: '700',
     marginBottom: 10,
   },
-  childItem: {
+  skillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  jobChip: {
+    backgroundColor: '#EBF5FF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1E9FF',
+  },
+  jobChipText: {
+    color: '#007AFF',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  skillChip: {
+    backgroundColor: '#F8F9FA',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  skillText: {
+    color: '#495057',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  customChip: {
+    backgroundColor: '#EBFBEE',
+    borderColor: '#D3F9D8',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#F8F9FA',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 6,
   },
-  childText: {
-    fontSize: 13,
-    color: '#495057',
-    fontWeight: '500',
+  customChipText: {
+    color: '#2E7D32',
   },
 
-  // CONTACT & ADDRESS
-  contactSection: {
-    marginBottom: 16,
-    gap: 10,
-  },
-  contactRow: {
+  detailRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    marginBottom: 16,
   },
-  contactValueText: {
+  detailItem: {
+    flex: 1,
+  },
+  detailLabel: {
+    fontSize: 11,
+    color: '#6C757D',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  detailValue: {
     fontSize: 14,
-    color: '#495057',
-    fontWeight: '500',
+    color: '#1A1C1E',
+    fontWeight: '700',
   },
+
   addressContainer: {
     backgroundColor: '#F8F9FA',
     padding: 16,
@@ -884,7 +873,6 @@ const styles = StyleSheet.create({
     color: '#6C757D',
   },
 
-  // DOCUMENTS
   docRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -932,94 +920,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // STATS GRID
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-    padding: 16,
-    borderRadius: 12,
+  ratingContainer: {
     alignItems: 'center',
+    paddingVertical: 10,
   },
-  statNumber: {
-    fontSize: 22,
+  ratingNumber: {
+    fontSize: 40,
     fontWeight: '800',
-    color: '#007AFF',
+    color: '#FF9500',
     marginBottom: 4,
   },
-  statLabel: {
-    fontSize: 11,
-    color: '#6C757D',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-
-  // Viewer Styles
-  viewerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  viewerContainer: {
-    width: Platform.OS === 'web' ? 800 : '95%',
-    height: '80%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  viewerHeader: {
+  starsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    gap: 4,
+    marginBottom: 8,
   },
-  viewerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-  },
-  viewerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f9f9f9',
-  },
-  fullImage: {
-    width: '100%',
-    height: '100%',
-  },
-  pdfPlaceholder: {
-    alignItems: 'center',
-    padding: 20,
-  },
-  pdfText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333',
-    marginTop: 16,
-  },
-  pdfSubText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  openBtn: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  openBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
+  ratingCount: {
+    fontSize: 12,
+    color: '#6C757D',
+    fontWeight: '500',
   },
 });

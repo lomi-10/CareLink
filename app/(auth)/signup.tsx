@@ -1,26 +1,28 @@
+import { Ionicons } from "@expo/vector-icons"; // Import Ionicons for the eye icon
+import { Picker } from "@react-native-picker/picker";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  TouchableOpacity,
   ImageBackground,
-  StyleSheet,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  ScrollView,
+  Pressable,
   SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons"; // Import Ionicons for the eye icon
 import API_URL from "../../constants/api";
 
 // Interfaces
 interface FormData {
-  name: string;
+  first_name: string;
+  middle_name: string,
+  last_name: string,
   email: string;
   user_type: string;
   password: string;
@@ -28,10 +30,14 @@ interface FormData {
 }
 
 export default function SignUpScreen() {
+  const { role } = useLocalSearchParams<{ role?: string }>();
+  
   const [form, setForm] = useState<FormData>({
-    name: "",
+    first_name: "",
+    middle_name: "",
+    last_name: "",
     email: "",
-    user_type: "",
+    user_type: role || "",
     password: "",
     confirmpass: "",
   });
@@ -78,10 +84,10 @@ export default function SignUpScreen() {
   }, [form.password, form.confirmpass]);
 
   const handleSignUpScreen = async () => {
-    const { name, email, user_type, password, confirmpass } = form;
+    const { first_name, middle_name, last_name, email, user_type, password, confirmpass } = form;
 
     // 1. Check Empty Fields
-    if (!name || !user_type || !email || !password || !confirmpass) {
+    if (!first_name || !last_name || !user_type || !email || !password || !confirmpass) {
       setModalTitle("Missing Fields");
       setModalMessage("Please fill in all required fields.");
       setModalVisible(true);
@@ -147,7 +153,7 @@ export default function SignUpScreen() {
       const response = await fetch(`${API_URL}/signup.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, user_type, password }),
+        body: JSON.stringify({ first_name, middle_name, last_name, email, user_type, password }),
       });
 
       const data = await response.json();
@@ -155,7 +161,15 @@ export default function SignUpScreen() {
 
       if (data.success) {
         setModalTitle("✅ Success");
-        setModalMessage(data.message);
+        let successMessage = data.message;
+        if (form.user_type === 'helper') {
+          successMessage = "Registration successful! Your account is now pending for PESO verification. You can log in to complete your profile.";
+        } else if (form.user_type === 'peso') {
+          successMessage = "PESO registration submitted. Your account is pending system approval.";
+        } else if (form.user_type === 'admin') {
+          successMessage = "Super Admin registration successful! You can now access the system management dashboard.";
+        }
+        setModalMessage(successMessage);
         setModalVisible(true);
 
         setTimeout(() => {
@@ -197,7 +211,11 @@ export default function SignUpScreen() {
                 <Text style={styles.closeText}>✕</Text>
               </Pressable>
 
-              <Text style={styles.title}>Register for CareLink</Text>
+              <Text style={styles.title}>
+                {role === 'helper' ? 'Helper Registration' : 
+                 role === 'parent' ? 'Parent Registration' : 
+                 'Register for CareLink'}
+              </Text>
 
               {statusMessage ? (
                 <Text style={[styles.statusText, { color: statusColor }]}>
@@ -205,11 +223,31 @@ export default function SignUpScreen() {
                 </Text>
               ) : null}
 
+              <View style={styles.inputRow}>
+                <View style={{ flex: 1 }}>
+                  <TextInput
+                    placeholder="First Name"
+                    style={styles.input}
+                    value={form.first_name}
+                    onChangeText={(v) => handleChange("first_name", v)}
+                  />
+                </View>
+                <View style={{ width: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <TextInput
+                    placeholder="Last Name"
+                    style={styles.input}
+                    value={form.last_name}
+                    onChangeText={(v) => handleChange("last_name", v)}
+                  />
+                </View>
+              </View>
+
               <TextInput
-                placeholder="Full Name"
+                placeholder="Middle Name (Optional)"
                 style={styles.input}
-                value={form.name}
-                onChangeText={(v) => handleChange("name", v)}
+                value={form.middle_name}
+                onChangeText={(v) => handleChange("middle_name", v)}
               />
 
               <TextInput
@@ -223,17 +261,26 @@ export default function SignUpScreen() {
 
               <View style={styles.pickerContainer}>
                 <Text style={styles.pickerLabel}>I am a:</Text>
-                <View style={styles.pickerWrapper}>
+                <View style={[styles.pickerWrapper, role ? styles.disabledPicker : null]}>
                   <Picker
                     selectedValue={form.user_type}
-                    onValueChange={(value) => handleChange("user_type", value)}
+                    onValueChange={(value) => !role && handleChange("user_type", value)}
                     style={styles.picker}
+                    enabled={!role}
                   >
                     <Picker.Item label="-- Select Role --" value="" />
                     <Picker.Item label="Parent" value="parent" />
                     <Picker.Item label="Helper" value="helper" />
                   </Picker>
                 </View>
+                {role && (
+                  <Text style={styles.roleHint}>
+                    Registering as {role.charAt(0).toUpperCase() + role.slice(1)}
+                  </Text>
+                )}
+                <Text style={styles.adminNote}>
+                  * PESO and Admin accounts are created by system administrators only.
+                </Text>
               </View>
 
               {/* Password Field with Eye Icon */}
@@ -397,6 +444,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     color: "#000",
   },
+  inputRow: {
+    flexDirection: "row",
+    width: "100%",
+  },
   // New styles for Password Container
   passwordContainer: {
     flexDirection: "row",
@@ -498,6 +549,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#ccc",
+  },
+  disabledPicker: {
+    backgroundColor: "#f5f5f5",
+    borderColor: "#e0e0e0",
+  },
+  roleHint: {
+    fontSize: 12,
+    color: "#007AFF",
+    marginTop: 4,
+    fontWeight: "600",
+  },
+  adminNote: {
+    fontSize: 10,
+    color: "#666",
+    fontStyle: "italic",
+    marginTop: 6,
+    textAlign: "center",
   },
   picker: { 
     height: 50, 

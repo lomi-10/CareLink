@@ -1,42 +1,75 @@
-import React, { useEffect, useState } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  SafeAreaView, 
-  Modal,
-  ScrollView,
-  Platform,
-  useWindowDimensions,
-  StatusBar
-} from "react-native";
-import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
+    ActivityIndicator,
+} from "react-native";
+import API_URL from "../../constants/api";
 
 export default function AdminDashboard() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const isWideScreen = width > 768; // Breakpoint for Tablet/Web
+  const isWideScreen = width > 768;
 
-  const [adminName, setAdminName] = useState("Admin");
+  const [adminName, setAdminName] = useState("Super Admin");
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [stats, setStats] = useState({ total: 0, pending: 0, logs: 0, complaints: 0 });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadUser = async () => {
-      const userData = await AsyncStorage.getItem("user_data");
-      if (userData) {
-        const user = JSON.parse(userData);
-        setAdminName(user.name || "Admin");
-      }
-    };
     loadUser();
+    fetchStats();
   }, []);
 
-  const handleLogout = () => {
-    setLogoutModalVisible(true);
+  const loadUser = async () => {
+    const userData = await AsyncStorage.getItem("user_data");
+    if (userData) {
+      const user = JSON.parse(userData);
+      setAdminName(user.first_name || "Super Admin");
+    }
   };
+
+  const fetchStats = async () => {
+    try {
+      // Fetch users count
+      const userResponse = await fetch(`${API_URL}/admin_get_users.php`);
+      const users = await userResponse.json();
+      if (Array.isArray(users)) {
+        setStats(prev => ({ 
+          ...prev, 
+          total: users.length, 
+          pending: users.filter(u => u.status === 'pending').length 
+        }));
+      }
+      
+      // Fetch logs count
+      const logResponse = await fetch(`${API_URL}/admin_get_logs.php`);
+      const logs = await logResponse.json();
+      if (Array.isArray(logs)) {
+        setStats(prev => ({ ...prev, logs: logs.length }));
+      }
+
+      // Placeholder for complaints
+      setStats(prev => ({ ...prev, complaints: 0 }));
+      
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => setLogoutModalVisible(true);
 
   const confirmLogout = async () => {
     await AsyncStorage.clear();
@@ -44,8 +77,6 @@ export default function AdminDashboard() {
     router.replace("/welcome");
   };
 
-  // --- REUSABLE COMPONENTS ---
-  
   const SidebarItem = ({ icon, label, onPress, isActive = false }: any) => (
     <TouchableOpacity 
       style={[styles.sidebarItem, isActive && styles.sidebarItemActive]} 
@@ -54,13 +85,12 @@ export default function AdminDashboard() {
       <Ionicons 
         name={icon} 
         size={22} 
-        color={isActive ? "#007AFF" : "#666"} 
+        color={isActive ? "#5856D6" : "#666"} 
         style={{ marginRight: 12 }}
       />
       <Text style={[styles.sidebarText, isActive && styles.sidebarTextActive]}>
         {label}
       </Text>
-      {/* Chevron only for mobile layout flow usually, but we can hide it in sidebar */}
     </TouchableOpacity>
   );
 
@@ -70,126 +100,113 @@ export default function AdminDashboard() {
       
       <View style={[styles.container, isWideScreen ? styles.containerRow : styles.containerCol]}>
         
-        {/* 1. LEFT SIDEBAR NAVIGATION */}
+        {/* SIDEBAR */}
         <View style={[styles.sidebar, isWideScreen ? styles.sidebarWide : styles.sidebarMobile]}>
           <View style={styles.sidebarHeader}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="shield-checkmark" size={28} color="#fff" />
+            <View style={[styles.logoCircle, { backgroundColor: "#5856D6" }]}>
+              <Ionicons name="settings" size={28} color="#fff" />
             </View>
-            <Text style={styles.logoText}>AdminPanel</Text>
+            <View>
+              <Text style={styles.logoText}>CareLink</Text>
+              <Text style={styles.logoSubtext}>Super Admin Portal</Text>
+            </View>
           </View>
 
           <ScrollView style={styles.navItems}>
-            <Text style={styles.navLabel}>MENU</Text>
-            <SidebarItem 
-              icon="grid" 
-              label="Dashboard" 
-              isActive={true} 
-              onPress={() => {}} 
-            />
+            <Text style={styles.navLabel}>SYSTEM</Text>
+            <SidebarItem icon="grid" label="Dashboard" isActive={true} onPress={() => {}} />
+            <SidebarItem icon="list" label="Log Trail" onPress={() => router.push("/admin/logs")} />
+            <SidebarItem icon="warning" label="Complaints" onPress={() => {}} />
+            
+            <Text style={[styles.navLabel, { marginTop: 20 }]}>MANAGEMENT</Text>
             <SidebarItem 
               icon="people" 
-              label="Manage Users" 
+              label="User Verification" 
               onPress={() => router.push("/admin/user_management")} 
             />
             <SidebarItem 
-              icon="list" 
-              label="Audit Logs" 
-              onPress={() => router.push("/admin/logs")} 
+              icon="person-add" 
+              label="Create Admin/PESO" 
+              onPress={() => router.push("/admin/create_admin_user")} 
             />
           </ScrollView>
 
-          {/* Logout at bottom of sidebar */}
           <TouchableOpacity style={styles.sidebarLogout} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={22} color="#FF3B30" />
             <Text style={styles.logoutTextSide}>Log Out</Text>
           </TouchableOpacity>
         </View>
 
-        {/* 2. MAIN CONTENT AREA (Right Side) */}
+        {/* MAIN CONTENT */}
         <View style={styles.mainContent}>
-          
-          {/* Top Header inside content */}
           <View style={styles.contentHeader}>
             <View>
-              <Text style={styles.pageTitle}>Overview</Text>
-              <Text style={styles.pageSubtitle}>Welcome back, {adminName}</Text>
+              <Text style={styles.pageTitle}>Admin Dashboard</Text>
+              <Text style={styles.pageSubtitle}>System Administrator: {adminName}</Text>
             </View>
             <View style={styles.profilePill}>
               <Ionicons name="person-circle" size={32} color="#ccc" />
             </View>
           </View>
 
-          <ScrollView contentContainerStyle={{paddingBottom: 50}}>
-            {/* Stats Grid */}
-            <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#E3F2FD' }]}>
-                  <Ionicons name="people" size={24} color="#007AFF" />
+          {loading ? (
+            <ActivityIndicator size="large" color="#5856D6" style={{ marginTop: 50 }} />
+          ) : (
+            <ScrollView contentContainerStyle={{paddingBottom: 50}}>
+              <View style={styles.statsGrid}>
+                <View style={styles.statCard}>
+                  <View style={[styles.statIcon, { backgroundColor: '#EBEBF5' }]}>
+                    <Ionicons name="list" size={24} color="#5856D6" />
+                  </View>
+                  <View>
+                    <Text style={styles.statNumber}>{stats.logs}</Text>
+                    <Text style={styles.statLabel}>Audit Logs</Text>
+                  </View>
                 </View>
-                <View>
-                  <Text style={styles.statNumber}>0</Text>
-                  <Text style={styles.statLabel}>Total Users</Text>
+
+                <View style={styles.statCard}>
+                  <View style={[styles.statIcon, { backgroundColor: '#FFD6D6' }]}>
+                    <Ionicons name="warning" size={24} color="#FF3B30" />
+                  </View>
+                  <View>
+                    <Text style={styles.statNumber}>{stats.complaints}</Text>
+                    <Text style={styles.statLabel}>Open Complaints</Text>
+                  </View>
+                </View>
+
+                <View style={styles.statCard}>
+                  <View style={[styles.statIcon, { backgroundColor: '#E8F5E9' }]}>
+                    <Ionicons name="people" size={24} color="#34C759" />
+                  </View>
+                  <View>
+                    <Text style={styles.statNumber}>{stats.total}</Text>
+                    <Text style={styles.statLabel}>Total Users</Text>
+                  </View>
                 </View>
               </View>
 
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#FFF4E5' }]}>
-                  <Ionicons name="time" size={24} color="#FF9500" />
-                </View>
-                <View>
-                  <Text style={styles.statNumber}>0</Text>
-                  <Text style={styles.statLabel}>Pending</Text>
+              <View style={styles.sectionBox}>
+                <Text style={styles.sectionTitle}>Recent System Activity</Text>
+                <View style={styles.placeholderBox}>
+                  <Text style={{color: '#999'}}>System logs and audit trails will appear here</Text>
                 </View>
               </View>
-
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#E8F5E9' }]}>
-                  <Ionicons name="checkmark-circle" size={24} color="#34C759" />
-                </View>
-                <View>
-                  <Text style={styles.statNumber}>0</Text>
-                  <Text style={styles.statLabel}>Approved</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Recent Activity Placeholder (Visual only) */}
-            <View style={styles.sectionBox}>
-              <Text style={styles.sectionTitle}>System Overview</Text>
-              <View style={styles.placeholderBox}>
-                <Text style={{color: '#999'}}>Chart or Activity Graph would go here</Text>
-              </View>
-            </View>
-
-          </ScrollView>
+            </ScrollView>
+          )}
         </View>
       </View>
 
       {/* Logout Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={logoutModalVisible}
-        onRequestClose={() => setLogoutModalVisible(false)}
-      >
+      <Modal animationType="fade" transparent={true} visible={logoutModalVisible}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Logout</Text>
             <Text style={styles.modalMessage}>Are you sure you want to log out?</Text>
-            
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
-                onPress={() => setLogoutModalVisible(false)}
-              >
+              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setLogoutModalVisible(false)}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.logoutButton]} 
-                onPress={confirmLogout}
-              >
+              <TouchableOpacity style={[styles.modalButton, styles.logoutButton]} onPress={confirmLogout}>
                 <Text style={styles.logoutButtonText}>Logout</Text>
               </TouchableOpacity>
             </View>
@@ -253,9 +270,15 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   logoText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "bold",
     color: "#004080",
+  },
+  logoSubtext: {
+    fontSize: 10,
+    color: "#666",
+    fontWeight: "600",
+    letterSpacing: 0.5,
   },
   navLabel: {
     fontSize: 12,

@@ -88,8 +88,8 @@ export default function AdminLogsScreen() {
     
     // Status Colors
     let statusColor = '#666';
-    if (item.status?.includes('Success')) statusColor = '#34C759'; // Green
-    if (item.status?.includes('Fail') || item.status?.includes('Pending')) statusColor = '#FF3B30'; // Red
+    if (item.status?.toLowerCase().includes('success')) statusColor = '#34C759'; // Green
+    if (item.status?.toLowerCase().includes('failed') || item.status?.toLowerCase().includes('pending')) statusColor = '#FF3B30'; // Red
 
     // Role Colors
     const roleBadgeColor = item.role === 'admin' ? '#E6F0FF' : '#F0F0F0';

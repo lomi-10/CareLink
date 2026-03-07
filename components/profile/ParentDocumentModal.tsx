@@ -106,47 +106,7 @@ export default function ParentDocumentModal({
   };
 
   /**
-   * PICK IMAGE FROM GALLERY
-   */
-  const pickImage = async () => {
-    try {
-      // Request permission
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        setNotifMessage("Camera roll permission is required to upload documents.");
-        setNotifType('error');
-        setNotifVisible(true);
-        return;
-      }
-
-      // Launch image picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled) {
-        const asset = result.assets[0];
-        
-        setValidIdDoc({
-          uri: asset.uri,
-          name: asset.uri.split('/').pop() || 'document.jpg',
-          type: 'image/jpeg',
-          base64: asset.base64 || null,
-        });
-      }
-    } catch (error) {
-      console.error('Error picking image:', error);
-      setNotifMessage("Failed to pick image. Please try again.");
-      setNotifType('error');
-      setNotifVisible(true);
-    }
-  };
-
-  /**
-   * PICK DOCUMENT/FILE
+   * PICK DOCUMENT/FILE (Supports Images and PDFs)
    */
   const pickDocument = async () => {
     try {
@@ -155,16 +115,43 @@ export default function ParentDocumentModal({
         copyToCacheDirectory: true,
       });
 
-      if (result.type === 'success') {
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        
+        // Ensure name has an extension, especially for web/blob URIs
+        let fileName = asset.name;
+        const mimeType = asset.mimeType || '';
+        
+        if (!fileName.includes('.')) {
+          if (mimeType.includes('pdf')) fileName += '.pdf';
+          else if (mimeType.includes('png')) fileName += '.png';
+          else fileName += '.jpg';
+        }
+
         setValidIdDoc({
-          uri: result.uri,
-          name: result.name,
-          type: result.mimeType || 'application/pdf',
+          uri: asset.uri,
+          name: fileName,
+          type: mimeType || (fileName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
         });
       }
     } catch (error) {
       console.error('Error picking document:', error);
       setNotifMessage("Failed to pick document. Please try again.");
+      setNotifType('error');
+      setNotifVisible(true);
+    }
+  };
+
+  /**
+   * PICK IMAGE FROM GALLERY
+   */
+  const pickImage = async () => {
+    try {
+      // Use pickDocument which is more flexible and consistent
+      await pickDocument();
+    } catch (error) {
+      console.error('Error picking image:', error);
+      setNotifMessage("Failed to pick image. Please try again.");
       setNotifType('error');
       setNotifVisible(true);
     }
@@ -206,31 +193,49 @@ export default function ParentDocumentModal({
 
       // Add Valid ID
       if (validIdDoc.uri) {
-        const file: any = {
-          uri: validIdDoc.uri,
-          name: validIdDoc.name || 'valid_id.jpg',
-          type: validIdDoc.type || 'image/jpeg',
-        };
-        formData.append('valid_id', file);
+        if (Platform.OS === 'web') {
+          try {
+            const response = await fetch(validIdDoc.uri);
+            const blob = await response.blob();
+            formData.append('valid_id', blob, validIdDoc.name || 'valid_id.jpg');
+          } catch (err) {
+            console.error('Error fetching document blob on web:', err);
+            // Fallback
+            // @ts-ignore
+            formData.append('valid_id', {
+              uri: validIdDoc.uri,
+              name: validIdDoc.name || 'valid_id.jpg',
+              type: validIdDoc.type || 'application/octet-stream',
+            });
+          }
+        } else {
+          // MOBILE
+          // @ts-ignore
+          formData.append('valid_id', {
+            uri: validIdDoc.uri,
+            name: validIdDoc.name || 'valid_id.jpg',
+            type: validIdDoc.type || 'application/octet-stream',
+          });
+        }
       }
 
       // Upload to server
       const response = await fetch(`${API_URL}/parent/upload_document.php`, {
         method: 'POST',
         body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Server response was not JSON:', text);
+        throw new Error('Server sent an invalid response format.');
       }
 
-      const data = await response.json();
-
       if (data.success) {
-        setNotifMessage("Document uploaded successfully! Your profile will be reviewed.");
+        setNotifMessage(data.message || "Document uploaded successfully!");
         setNotifType('success');
         setNotifVisible(true);
 
@@ -239,16 +244,16 @@ export default function ParentDocumentModal({
 
         // Call success callback
         if (onSaveSuccess) {
-          setTimeout(() => onSaveSuccess(), 500);
+          setTimeout(() => onSaveSuccess(), 1500);
         }
       } else {
         setNotifMessage(data.message || "Failed to upload document. Please try again.");
         setNotifType('error');
         setNotifVisible(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
-      setNotifMessage("Network error occurred. Please check your connection and try again.");
+      setNotifMessage(error.message || "Network error occurred. Please try again.");
       setNotifType('error');
       setNotifVisible(true);
     } finally {
