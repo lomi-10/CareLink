@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 // --- THIS IS THE ONLY LINE YOU EVER NEED TO CHANGE ---
 // 1. Find your computer's IP address (run "ipconfig" in cmd)
 // 2. Make sure your XAMPP API folder is named "carelink-api"
-const COMPUTER_IP = '191.168.1.111'; // <-- IMPORTANT: Change this to YOUR IP!
+const COMPUTER_IP = '10.242.155.197'; // <-- IMPORTANT: Change this to YOUR IP!
 // ----------------------------------------------------
 
 // This is the URL for the website (running in your browser)

@@ -1,16 +1,19 @@
 // app/(helper)/profile.tsx
+// Complete Helper Profile with Document Viewing
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Image,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Image,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    Platform,
+    Modal,
 } from 'react-native';
 import API_URL from '../../constants/api';
 
@@ -22,6 +25,83 @@ import RightDrawer from '../../components/common/RightDrawer';
 import DocumentManagementModal from '../../components/profile/DocumentManagementModal';
 import EditProfileModal from '../../components/profile/EditProfileModal';
 
+// ============================================================================
+// DOCUMENT STATUS ROW COMPONENT
+// ============================================================================
+
+interface DocumentStatusRowProps {
+  icon: string;
+  title: string;
+  status: 'uploaded' | 'pending' | 'verified' | 'rejected';
+  required?: boolean;
+  onPress: () => void;
+}
+
+function DocumentStatusRow({ icon, title, status, required = false, onPress }: DocumentStatusRowProps) {
+  const getStatusConfig = () => {
+    switch (status) {
+      case 'verified':
+        return {
+          icon: 'checkmark-circle',
+          color: '#2ECC71',
+          text: 'Verified',
+          bgColor: '#E8F8F0',
+        };
+      case 'uploaded':
+      case 'pending':
+        return {
+          icon: 'time',
+          color: '#FF9500',
+          text: 'Pending Review',
+          bgColor: '#FFF4E6',
+        };
+      case 'rejected':
+        return {
+          icon: 'close-circle',
+          color: '#FF3B30',
+          text: 'Rejected',
+          bgColor: '#FFE8E6',
+        };
+      default:
+        return {
+          icon: 'alert-circle',
+          color: '#ADB5BD',
+          text: required ? 'Required' : 'Optional',
+          bgColor: '#F8F9FA',
+        };
+    }
+  };
+
+  const config = getStatusConfig();
+  const canView = status === 'uploaded' || status === 'pending' || status === 'verified' || status === 'rejected';
+
+  return (
+    <TouchableOpacity 
+      style={styles.documentRow} 
+      onPress={canView ? onPress : undefined}
+      disabled={!canView}
+    >
+      <View style={styles.documentLeft}>
+        <Ionicons name={icon as any} size={22} color="#007AFF" />
+        <View style={styles.documentInfo}>
+          <Text style={styles.documentTitle}>{title}</Text>
+          {required && <Text style={styles.requiredBadge}>REQUIRED</Text>}
+        </View>
+      </View>
+      <View style={[styles.documentStatus, { backgroundColor: config.bgColor }]}>
+        <Ionicons name={config.icon as any} size={16} color={config.color} />
+        <Text style={[styles.documentStatusText, { color: config.color }]}>
+          {config.text}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ============================================================================
+// MAIN PROFILE COMPONENT
+// ============================================================================
+
 export default function HelperProfileScreen() {
   const router = useRouter();
   
@@ -32,6 +112,9 @@ export default function HelperProfileScreen() {
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // File Viewer State
+  const [viewingFile, setViewingFile] = useState<{url: string, type: string} | null>(null);
   
   // Error notification state
   const [errorModalVisible, setErrorModalVisible] = useState(false);
@@ -98,66 +181,52 @@ export default function HelperProfileScreen() {
     setRefreshing(false);
   };
 
-  const handleProfileSaved = () => loadUserProfile();
-  const handleDocumentsSaved = () => loadUserProfile();
-
   const handleLogout = async () => {
-    setIsMenuOpen(false);
-    await AsyncStorage.clear();
+    await AsyncStorage.removeItem('user_data');
     setLogoutSuccessVisible(true);
     setTimeout(() => {
       setLogoutSuccessVisible(false);
       router.replace('/(auth)/login');
-    }, 1500);
+    }, 1000);
   };
+
+  const handleProfileSaved = () => loadUserProfile();
+  const handleDocumentsSaved = () => loadUserProfile();
 
   const getVerificationBadge = () => {
     const status = profileData?.profile?.verification_status || 'Unverified';
+    
     switch (status) {
-      case 'Verified': return { icon: 'checkmark-circle', text: 'PESO Verified', style: styles.bgGreen };
-      case 'Pending': return { icon: 'time', text: 'PESO Pending', style: styles.bgOrange };
+      case 'Verified': return { icon: 'shield-checkmark', text: 'PESO Verified', style: styles.bgGreen };
+      case 'Pending': return { icon: 'time', text: 'Pending Review', style: styles.bgOrange };
       case 'Rejected': return { icon: 'close-circle', text: 'Verification Failed', style: styles.bgRed };
       default: return { icon: 'alert-circle', text: 'Not Verified', style: styles.bgGray };
     }
   };
 
-  if (loading) return <LoadingSpinner visible={true} message="Loading profile..." />;
+  // Helper to find document status/URL
+  const getDoc = (type: string) => {
+    const doc = (profileData?.documents || []).find((d: any) => d.document_type === type);
+    return {
+      status: doc ? 
+        (doc.status === 'Verified' ? 'verified' : 
+         doc.status === 'Rejected' ? 'rejected' : 'uploaded') 
+        : 'pending',
+      url: doc?.file_url || null,
+      file_path: doc?.file_path || '',
+      document: doc || null
+    };
+  };
 
-  if (!profileData) {
-    return (
-      <View style={styles.screenContainer}>
-        <AppHeader title="My Profile" menu={true} onMenuPress={() => setIsMenuOpen(true)} />
-        <View style={styles.emptyState}>
-          <Ionicons name="person-circle-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>No profile data found</Text>
-          <TouchableOpacity style={styles.createProfileBtn} onPress={loadUserProfile}>
-            <Text style={styles.createProfileText}>Retry Loading</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  const badge = getVerificationBadge();
-  const user = profileData.user;
-  const profile = profileData.profile;
-  
-  // Get selected skills with names
-  const availableSkills = profileData.available_skills || [];
-  const selectedSkillIds = profileData.selected_skills || [];
-  const skills = availableSkills.filter((s: any) => selectedSkillIds.includes(s.skill_id));
-  
-  // Get selected jobs with titles
-  const availableJobs = profileData.available_jobs || [];
-  const selectedJobIds = profileData.selected_jobs || [];
-  const jobs = availableJobs.filter((j: any) => selectedJobIds.includes(j.job_id));
-  
-  // Custom skills and jobs from profile
-  const customSkills = profileData.profile?.custom_skills ? JSON.parse(profileData.profile.custom_skills) : [];
-  const customJobs = profileData.profile?.custom_jobs ? JSON.parse(profileData.profile.custom_jobs) : [];
-
-  // Format full name
-  const fullName = user ? `${user.first_name || ''} ${user.middle_name ? user.middle_name + ' ' : ''}${user.last_name || ''}`.trim() : 'No Name';
+  const handleViewFile = (doc: any) => {
+    if (!doc.url || !doc.file_path) {
+      setErrorMessage('No file uploaded yet');
+      setErrorModalVisible(true);
+      return;
+    }
+    const isPdf = doc.file_path.toLowerCase().endsWith('.pdf');
+    setViewingFile({ url: doc.url, type: isPdf ? 'pdf' : 'image' });
+  };
 
   return (
     <View style={styles.screenContainer}>
@@ -184,58 +253,102 @@ export default function HelperProfileScreen() {
         onSaveSuccess={handleDocumentsSaved} 
       />
 
-      <View style={styles.webCenterContainer}>
+      {/* File Viewer Modal */}
+      <Modal visible={!!viewingFile} animationType="fade" transparent={true}>
+        <View style={styles.viewerOverlay}>
+          <View style={styles.viewerContainer}>
+            <View style={styles.viewerHeader}>
+              <Text style={styles.viewerTitle}>Document Preview</Text>
+              <TouchableOpacity onPress={() => setViewingFile(null)}>
+                <Ionicons name="close" size={28} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            {viewingFile?.type === 'pdf' ? (
+              <View style={styles.pdfPlaceholder}>
+                <Ionicons name="document-text" size={80} color="#007AFF" />
+                <Text style={styles.pdfText}>PDF Document</Text>
+                <Text style={styles.pdfHint}>Open in browser to view</Text>
+              </View>
+            ) : (
+              <Image source={{ uri: viewingFile?.url }} style={styles.viewerImage} resizeMode="contain" />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {loading ? (
+        <LoadingSpinner visible={loading} />
+      ) : !profileData?.profile ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="person-add" size={60} color="#CCC" />
+          <Text style={styles.emptyText}>No Profile Yet</Text>
+          <Text style={styles.emptySubtext}>Create your helper profile to get started</Text>
+          <TouchableOpacity style={styles.createProfileBtn} onPress={() => setIsEditModalOpen(true)}>
+            <Text style={styles.createProfileText}>Create Profile</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
         <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          style={Platform.OS === 'web' ? styles.webCenterContainer : undefined}
         >
-          {/* 1. PROFILE HEADER CARD */}
+          {/* PROFILE HEADER CARD */}
           <View style={styles.profileHeaderCard}>
             <View style={styles.headerCover} />
+            
             <View style={styles.avatarWrapper}>
               <View style={styles.avatarContainer}>
-                {profile?.profile_image ? (
-                  <Image source={{ uri: profile.profile_image }} style={styles.avatar} />
+                {profileData.profile.profile_image ? (
+                  <Image source={{ uri: profileData.profile.profile_image }} style={styles.avatar} />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
-                    <Ionicons name="person" size={60} color="#ccc" />
+                    <Ionicons name="person" size={50} color="#CCC" />
                   </View>
                 )}
               </View>
-              <View style={[styles.miniStatusBadge, badge.style]}>
-                <Ionicons name={badge.icon as any} size={12} color="#fff" />
+              <View style={[styles.miniStatusBadge, 
+                profileData.profile.availability_status === 'Available' ? styles.bgGreen :
+                profileData.profile.availability_status === 'Employed' ? styles.bgOrange : styles.bgRed
+              ]}>
+                <Ionicons name="checkmark" size={14} color="#fff" />
               </View>
             </View>
 
             <View style={styles.headerInfo}>
-              <Text style={styles.nameText}>{fullName}</Text>
-              {user.username && <Text style={styles.usernameText}>@{user.username}</Text>}
+              <Text style={styles.nameText}>
+                {profileData.user.first_name} {profileData.user.last_name}
+              </Text>
+              <Text style={styles.usernameText}>@{profileData.user.username}</Text>
               
-              <View style={[styles.verificationBadge, badge.style]}>
-                <Text style={styles.verificationText}>{badge.text.toUpperCase()}</Text>
-              </View>
+              {(() => {
+                const badge = getVerificationBadge();
+                return (
+                  <View style={[styles.verificationBadge, badge.style]}>
+                    <Text style={styles.verificationText}>{badge.text.toUpperCase()}</Text>
+                  </View>
+                );
+              })()}
             </View>
 
             <View style={styles.quickStatsRow}>
               <View style={styles.quickStatItem}>
-                <Text style={styles.quickStatValue}>{profile?.experience_years || '0'}</Text>
-                <Text style={styles.quickStatLabel}>Years Exp.</Text>
-              </View>
-              <View style={[styles.quickStatItem, styles.quickStatBorder]}>
-                <Text style={styles.quickStatValue}>{profile?.rating_average || '0.0'}</Text>
+                <Text style={styles.quickStatValue}>{profileData.profile.rating_average || '0.0'}</Text>
                 <Text style={styles.quickStatLabel}>Rating</Text>
               </View>
-              <View style={styles.quickStatItem}>
-                <Text style={styles.quickStatValue}>{profile?.rating_count || '0'}</Text>
+              <View style={[styles.quickStatItem, styles.quickStatBorder]}>
+                <Text style={styles.quickStatValue}>{profileData.profile.rating_count || '0'}</Text>
                 <Text style={styles.quickStatLabel}>Reviews</Text>
+              </View>
+              <View style={styles.quickStatItem}>
+                <Text style={styles.quickStatValue}>{profileData.profile.experience_years || '0'}</Text>
+                <Text style={styles.quickStatLabel}>Years Exp</Text>
               </View>
             </View>
           </View>
 
-          {/* 2. ACTION BUTTONS */}
+          {/* ACTION BUTTONS */}
           <View style={styles.actionButtonsRow}>
             <TouchableOpacity style={styles.actionButton} onPress={() => setIsEditModalOpen(true)}>
               <Ionicons name="create" size={20} color="#fff" />
@@ -247,242 +360,201 @@ export default function HelperProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* 3. ABOUT ME */}
-          {profile?.bio && (
-            <View style={styles.infoCard}>
-              <View style={styles.cardHeader}>
-                <Ionicons name="information-circle" size={22} color="#007AFF" />
-                <Text style={styles.cardTitle}>About Me</Text>
-              </View>
-              <Text style={styles.bioText}>{profile.bio}</Text>
+          {/* PERSONAL INFO */}
+          <View style={styles.infoCard}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="information-circle" size={22} color="#007AFF" />
+              <Text style={styles.cardTitle}>Personal Information</Text>
             </View>
-          )}
+            <InfoRow icon="call" label="Contact" value={profileData.profile.contact_number || 'N/A'} />
+            <InfoRow icon="mail" label="Email" value={profileData.user.email || 'N/A'} />
+            <InfoRow icon="calendar" label="Birth Date" value={profileData.profile.birth_date || 'N/A'} />
+            <InfoRow icon="person" label="Gender" value={profileData.profile.gender || 'N/A'} />
+            <InfoRow icon="heart" label="Civil Status" value={profileData.profile.civil_status || 'N/A'} />
+            <InfoRow icon="book" label="Religion" value={profileData.profile.religion || 'N/A'} />
+          </View>
 
-          {/* 4. WORK PREFERENCES */}
+          {/* ADDRESS */}
+          <View style={styles.infoCard}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="location" size={22} color="#FF3B30" />
+              <Text style={styles.cardTitle}>Address</Text>
+            </View>
+            <InfoRow icon="map" label="Full Address" value={profileData.profile.address || 'N/A'} />
+            <InfoRow icon="navigate" label="Landmark" value={profileData.profile.landmark || 'N/A'} />
+          </View>
+
+          {/* WORK PREFERENCES */}
           <View style={styles.infoCard}>
             <View style={styles.cardHeader}>
               <Ionicons name="briefcase" size={22} color="#007AFF" />
               <Text style={styles.cardTitle}>Work Preferences</Text>
             </View>
-            
-            <View style={styles.preferenceGrid}>
-              <View style={styles.preferenceItem}>
-                <Text style={styles.prefLabel}>Arrangement</Text>
-                <Text style={styles.prefValue}>{profile?.employment_type || 'Any'}</Text>
-              </View>
-              <View style={styles.preferenceItem}>
-                <Text style={styles.prefLabel}>Schedule</Text>
-                <Text style={styles.prefValue}>{profile?.work_schedule || 'Full-time'}</Text>
-              </View>
-              <View style={styles.preferenceItem}>
-                <Text style={styles.prefLabel}>Availability</Text>
-                <View style={styles.statusRowCompact}>
-                  <View style={[styles.statusDot, profile?.availability_status === 'Available' ? styles.dotGreen : styles.dotRed]} />
-                  <Text style={styles.prefValue}>{profile?.availability_status || 'Available'}</Text>
-                </View>
-              </View>
-              <View style={styles.preferenceItem}>
-                <Text style={styles.prefLabel}>Expected Salary</Text>
-                <Text style={styles.prefValue}>₱{formatNumber(profile?.expected_salary)}/{profile?.salary_period === 'Monthly' ? 'mo' : 'day'}</Text>
-              </View>
-            </View>
+            <InfoRow icon="home" label="Employment Type" value={profileData.profile.employment_type || 'N/A'} />
+            <InfoRow icon="time" label="Work Schedule" value={profileData.profile.work_schedule || 'N/A'} />
+            <InfoRow icon="cash" label="Expected Salary" value={`₱${formatNumber(profileData.profile.expected_salary)} / ${profileData.profile.salary_period}`} />
+            <InfoRow icon="checkmark-circle" label="Availability" value={profileData.profile.availability_status || 'N/A'} />
           </View>
 
-          {/* 5. SPECIALTIES & SKILLS */}
+          {/* BACKGROUND */}
           <View style={styles.infoCard}>
             <View style={styles.cardHeader}>
-              <Ionicons name="star" size={22} color="#007AFF" />
-              <Text style={styles.cardTitle}>Skills & Specialties</Text>
+              <Ionicons name="school" size={22} color="#FFC107" />
+              <Text style={styles.cardTitle}>Background</Text>
             </View>
-
-            {/* Jobs */}
-            {(jobs.length > 0 || customJobs.length > 0) && (
-              <View style={styles.skillGroup}>
-                <Text style={styles.skillGroupTitle}>Job Roles</Text>
-                <View style={styles.skillRow}>
-                  {jobs.map((job: any, index: number) => (
-                    <View key={`job-${index}`} style={styles.jobChip}>
-                      <Text style={styles.jobChipText}>{job.job_title}</Text>
-                    </View>
-                  ))}
-                  {customJobs.map((job: string, index: number) => (
-                    <View key={`custom-job-${index}`} style={[styles.jobChip, styles.customChip]}>
-                      <Ionicons name="sparkles" size={12} color="#2E7D32" style={{marginRight: 4}} />
-                      <Text style={[styles.jobChipText, styles.customChipText]}>{job}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* Skills */}
-            {(skills.length > 0 || customSkills.length > 0) && (
-              <View style={styles.skillGroup}>
-                <Text style={styles.skillGroupTitle}>Specific Skills</Text>
-                <View style={styles.skillRow}>
-                  {skills.map((skill: any, index: number) => (
-                    <View key={`skill-${index}`} style={styles.skillChip}>
-                      <Text style={styles.skillText}>{skill.skill_name}</Text>
-                    </View>
-                  ))}
-                  {customSkills.map((skill: string, index: number) => (
-                    <View key={`custom-skill-${index}`} style={[styles.skillChip, styles.customChip]}>
-                      <Ionicons name="sparkles" size={12} color="#2E7D32" style={{marginRight: 4}} />
-                      <Text style={[styles.skillText, styles.customChipText]}>{skill}</Text>
-                    </View>
-                  ))}
-                </View>
+            <InfoRow icon="book" label="Education" value={profileData.profile.education_level || 'N/A'} />
+            <InfoRow icon="trophy" label="Experience" value={`${profileData.profile.experience_years || '0'} years`} />
+            {profileData.profile.bio && (
+              <View style={styles.bioSection}>
+                <Text style={styles.bioLabel}>About Me:</Text>
+                <Text style={styles.bioText}>{profileData.profile.bio}</Text>
               </View>
             )}
           </View>
 
-          {/* 6. PERSONAL DETAILS */}
-          <View style={styles.infoCard}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="person" size={22} color="#007AFF" />
-              <Text style={styles.cardTitle}>Personal Details</Text>
-            </View>
-            
-            <View style={styles.detailRow}>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Gender</Text>
-                <Text style={styles.detailValue}>{profile?.gender || '---'}</Text>
+          {/* JOB SPECIALTIES */}
+          {profileData.selected_jobs && profileData.selected_jobs.length > 0 && (
+            <View style={styles.infoCard}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="construct" size={22} color="#34C759" />
+                <Text style={styles.cardTitle}>Job Specialties</Text>
               </View>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Civil Status</Text>
-                <Text style={styles.detailValue}>{profile?.civil_status || '---'}</Text>
+              <View style={styles.chipContainer}>
+                {profileData.available_jobs
+                  .filter((job: any) => profileData.selected_jobs.includes(job.job_id))
+                  .map((job: any) => (
+                    <View key={job.job_id} style={styles.chip}>
+                      <Text style={styles.chipText}>{job.job_title}</Text>
+                    </View>
+                  ))}
               </View>
             </View>
+          )}
 
-            <View style={styles.detailRow}>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Birth Date</Text>
-                <Text style={styles.detailValue}>{profile?.birth_date || '---'}</Text>
+          {/* SKILLS */}
+          {profileData.selected_skills && profileData.selected_skills.length > 0 && (
+            <View style={styles.infoCard}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="star" size={22} color="#FFC107" />
+                <Text style={styles.cardTitle}>Skills & Abilities</Text>
               </View>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Religion</Text>
-                <Text style={styles.detailValue}>{profile?.religion || '---'}</Text>
+              <View style={styles.chipContainer}>
+                {profileData.available_skills
+                  .filter((skill: any) => profileData.selected_skills.includes(skill.skill_id))
+                  .map((skill: any) => (
+                    <View key={skill.skill_id} style={styles.chip}>
+                      <Text style={styles.chipText}>{skill.skill_name}</Text>
+                    </View>
+                  ))}
               </View>
             </View>
+          )}
 
-            <View style={styles.detailRow}>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Education</Text>
-                <Text style={styles.detailValue}>{profile?.education_level || '---'}</Text>
+          {/* LANGUAGES */}
+          {profileData.selected_languages && profileData.selected_languages.length > 0 && (
+            <View style={styles.infoCard}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="globe" size={22} color="#007AFF" />
+                <Text style={styles.cardTitle}>Languages</Text>
               </View>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Languages</Text>
-                <Text style={styles.detailValue}>{profile?.languages_spoken || 'Tagalog, English'}</Text>
+              <View style={styles.chipContainer}>
+                {profileData.available_languages
+                  .filter((lang: any) => profileData.selected_languages.includes(lang.language_id))
+                  .map((lang: any) => (
+                    <View key={lang.language_id} style={styles.chip}>
+                      <Text style={styles.chipText}>{lang.language_name}</Text>
+                    </View>
+                  ))}
               </View>
             </View>
-          </View>
+          )}
 
-          {/* 7. ADDRESS */}
-          <View style={styles.infoCard}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="location" size={22} color="#007AFF" />
-              <Text style={styles.cardTitle}>Location Details</Text>
-            </View>
-            
-            <View style={styles.addressContainer}>
-              <Text style={styles.fullAddress}>{profile?.address || 'No address set'}</Text>
-              {profile?.landmark && (
-                <View style={styles.landmarkRow}>
-                  <Ionicons name="flag" size={14} color="#666" />
-                  <Text style={styles.landmarkText}>Landmark: {profile.landmark}</Text>
-                </View>
-              )}
-              <View style={styles.locationMeta}>
-                <Text style={styles.locationMetaText}>{profile?.barangay}, {profile?.municipality}, {profile?.province}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* 8. VERIFICATION DOCUMENTS */}
+          {/* VERIFICATION DOCUMENTS */}
           <View style={styles.infoCard}>
             <View style={styles.cardHeader}>
               <Ionicons name="shield-checkmark" size={22} color="#007AFF" />
               <Text style={styles.cardTitle}>Verification Documents</Text>
             </View>
-            <DocumentStatusRow icon="card-outline" title="Government ID" status={profile?.verification_status === 'Verified' ? 'uploaded' : 'pending'} />
-            <DocumentStatusRow icon="home-outline" title="Barangay Clearance" status={profile?.verification_status === 'Verified' ? 'uploaded' : 'pending'} />
-            <DocumentStatusRow icon="document-text-outline" title="Police Clearance" status={profile?.verification_status === 'Verified' ? 'uploaded' : 'pending'} />
             
-            <TouchableOpacity style={styles.manageDocsBtn} onPress={() => setIsDocumentModalOpen(true)}>
+            <DocumentStatusRow 
+              icon="card-outline" 
+              title="Valid ID" 
+              status={getDoc('Valid ID').status as any} 
+              required={true}
+              onPress={() => handleViewFile(getDoc('Valid ID'))}
+            />
+            <DocumentStatusRow 
+              icon="home-outline" 
+              title="Barangay Clearance" 
+              status={getDoc('Barangay Clearance').status as any} 
+              required={true}
+              onPress={() => handleViewFile(getDoc('Barangay Clearance'))}
+            />
+            <DocumentStatusRow 
+              icon="document-text-outline" 
+              title="Police Clearance" 
+              status={getDoc('Police Clearance').status as any} 
+              required={false}
+              onPress={() => handleViewFile(getDoc('Police Clearance'))}
+            />
+            <DocumentStatusRow 
+              icon="ribbon-outline" 
+              title="TESDA NC2" 
+              status={getDoc('TESDA NC2').status as any} 
+              required={false}
+              onPress={() => handleViewFile(getDoc('TESDA NC2'))}
+            />
+            
+            <TouchableOpacity 
+              style={styles.manageDocsBtn} 
+              onPress={() => setIsDocumentModalOpen(true)}
+            >
+              <Ionicons name="cloud-upload" size={18} color="#007AFF" />
               <Text style={styles.manageDocsBtnText}>Update Documents</Text>
             </TouchableOpacity>
           </View>
 
-          {/* 9. RATING & REVIEWS */}
-          {profile?.rating_count > 0 && (
+          {/* RATING & REVIEWS */}
+          {profileData.profile.rating_count > 0 && (
             <View style={styles.infoCard}>
               <View style={styles.cardHeader}>
                 <Ionicons name="star-half" size={22} color="#FFC107" />
                 <Text style={styles.cardTitle}>Rating & Reviews</Text>
               </View>
-              <View style={styles.ratingContainer}>
-                <Text style={styles.ratingNumber}>{profile.rating_average}</Text>
-                <View style={styles.starsRow}>
-                  {renderStars(profile.rating_average)}
+              <View style={styles.ratingOverview}>
+                <View style={styles.ratingScore}>
+                  <Text style={styles.ratingNumber}>{profileData.profile.rating_average}</Text>
+                  <View style={styles.stars}>{renderStars(profileData.profile.rating_average)}</View>
+                  <Text style={styles.ratingCount}>{profileData.profile.rating_count} reviews</Text>
                 </View>
-                <Text style={styles.ratingCount}>
-                  Based on {profile.rating_count} {profile.rating_count === 1 ? 'review' : 'reviews'}
-                </Text>
               </View>
             </View>
           )}
 
-          <View style={{ height: 100 }} />
         </ScrollView>
-      </View>
+      )}
     </View>
   );
 }
 
-// Helper Components and Functions...
-interface DocumentStatusRowProps {
+// ============================================================================
+// HELPER COMPONENTS
+// ============================================================================
+
+interface InfoRowProps {
   icon: string;
-  title: string;
-  status: 'uploaded' | 'pending' | 'expired';
-  expiryDate?: string | null;
+  label: string;
+  value: string;
 }
 
-function DocumentStatusRow({ icon, title, status, expiryDate }: DocumentStatusRowProps) {
-  const getStatusConfig = () => {
-    if (expiryDate) {
-      const expiry = new Date(expiryDate);
-      const now = new Date();
-      if (expiry < now) {
-        return { icon: 'close-circle', color: '#dc3545', text: 'Expired' };
-      }
-    }
-    
-    switch (status) {
-      case 'uploaded':
-        return { icon: 'checkmark-circle', color: '#28a745', text: 'Verified' };
-      case 'expired':
-        return { icon: 'close-circle', color: '#dc3545', text: 'Expired' };
-      default:
-        return { icon: 'alert-circle', color: '#ffc107', text: 'Missing' };
-    }
-  };
-
-  const statusConfig = getStatusConfig();
-
+function InfoRow({ icon, label, value }: InfoRowProps) {
   return (
-    <View style={styles.docRow}>
-      <View style={styles.docIcon}>
-        <Ionicons name={icon as any} size={20} color="#007AFF" />
+    <View style={styles.infoRow}>
+      <View style={styles.infoLeft}>
+        <Ionicons name={icon as any} size={18} color="#6C757D" />
+        <Text style={styles.infoLabel}>{label}</Text>
       </View>
-      <View style={styles.docInfo}>
-        <Text style={styles.docTitle}>{title}</Text>
-      </View>
-      <View style={styles.docStatus}>
-        <Ionicons name={statusConfig.icon as any} size={16} color={statusConfig.color} />
-        <Text style={[styles.docStatusText, { color: statusConfig.color }]}>
-          {statusConfig.text}
-        </Text>
-      </View>
+      <Text style={styles.infoValue}>{value}</Text>
     </View>
   );
 }
@@ -492,14 +564,15 @@ function renderStars(rating: number) {
   const fullStars = Math.floor(rating);
   const hasHalfStar = rating % 1 >= 0.5;
 
-  for (let i = 0; i < 5; i++) {
-    if (i < fullStars) {
-      stars.push(<Ionicons key={i} name="star" size={16} color="#FFC107" />);
-    } else if (i === fullStars && hasHalfStar) {
-      stars.push(<Ionicons key={i} name="star-half" size={16} color="#FFC107" />);
-    } else {
-      stars.push(<Ionicons key={i} name="star-outline" size={16} color="#FFC107" />);
-    }
+  for (let i = 0; i < fullStars; i++) {
+    stars.push(<Ionicons key={`full-${i}`} name="star" size={16} color="#FFC107" />);
+  }
+  if (hasHalfStar) {
+    stars.push(<Ionicons key="half" name="star-half" size={16} color="#FFC107" />);
+  }
+  const emptyStars = 5 - stars.length;
+  for (let i = 0; i < emptyStars; i++) {
+    stars.push(<Ionicons key={`empty-${i}`} name="star-outline" size={16} color="#FFC107" />);
   }
   return stars;
 }
@@ -510,7 +583,10 @@ function formatNumber(num: any): string {
   return n.toLocaleString();
 }
 
-// Styles remain the same...
+// ============================================================================
+// STYLES
+// ============================================================================
+
 const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
@@ -532,11 +608,16 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#666',
     marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 4,
     fontWeight: '600',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginBottom: 24,
   },
   createProfileBtn: {
     backgroundColor: '#007AFF',
@@ -705,239 +786,221 @@ const styles = StyleSheet.create({
   actionButtonTextSecondary: {
     color: '#007AFF',
   },
-
+  
   infoCard: {
     backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
     marginHorizontal: 16,
     marginBottom: 16,
+    borderRadius: 16,
+    padding: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 3,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
     marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F3F5',
+    gap: 8,
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#1A1C1E',
   },
-  bioText: {
-    fontSize: 14,
-    color: '#495057',
-    lineHeight: 22,
-  },
-  
-  preferenceGrid: {
+  infoRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8F9FA',
   },
-  preferenceItem: {
-    width: '50%',
-    paddingHorizontal: 8,
-    marginBottom: 16,
-  },
-  prefLabel: {
-    fontSize: 11,
-    color: '#6C757D',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  prefValue: {
-    fontSize: 14,
-    color: '#1A1C1E',
-    fontWeight: '700',
-  },
-  statusRowCompact: {
+  infoLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 10,
+    flex: 1,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  infoLabel: {
+    fontSize: 14,
+    color: '#6C757D',
+    fontWeight: '500',
   },
-  dotGreen: { backgroundColor: '#2ECC71' },
-  dotRed: { backgroundColor: '#FF3B30' },
-
-  skillGroup: {
-    marginBottom: 16,
+  infoValue: {
+    fontSize: 14,
+    color: '#1A1C1E',
+    fontWeight: '600',
+    textAlign: 'right',
+    flex: 1,
   },
-  skillGroupTitle: {
+  bioSection: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+  },
+  bioLabel: {
     fontSize: 12,
     color: '#6C757D',
-    fontWeight: '700',
-    marginBottom: 10,
+    fontWeight: '600',
+    marginBottom: 6,
   },
-  skillRow: {
+  bioText: {
+    fontSize: 14,
+    color: '#1A1C1E',
+    lineHeight: 20,
+  },
+  chipContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  jobChip: {
-    backgroundColor: '#EBF5FF',
+  chip: {
+    backgroundColor: '#E3F2FD',
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1E9FF',
+    borderRadius: 16,
   },
-  jobChipText: {
-    color: '#007AFF',
-    fontWeight: '700',
-    fontSize: 12,
+  chipText: {
+    color: '#1976D2',
+    fontSize: 13,
+    fontWeight: '500',
   },
-  skillChip: {
-    backgroundColor: '#F8F9FA',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
+  
+  // Document styles
+  documentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F3F5',
   },
-  skillText: {
-    color: '#495057',
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  customChip: {
-    backgroundColor: '#EBFBEE',
-    borderColor: '#D3F9D8',
+  documentLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  customChipText: {
-    color: '#2E7D32',
-  },
-
-  detailRow: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  detailItem: {
     flex: 1,
-  },
-  detailLabel: {
-    fontSize: 11,
-    color: '#6C757D',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  detailValue: {
-    fontSize: 14,
-    color: '#1A1C1E',
-    fontWeight: '700',
-  },
-
-  addressContainer: {
-    backgroundColor: '#F8F9FA',
-    padding: 16,
-    borderRadius: 12,
-  },
-  fullAddress: {
-    fontSize: 14,
-    color: '#1A1C1E',
-    fontWeight: '700',
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  landmarkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  landmarkText: {
-    fontSize: 12,
-    color: '#6C757D',
-    fontStyle: 'italic',
-  },
-  locationMeta: {
-    borderTopWidth: 1,
-    borderTopColor: '#E9ECEF',
-    paddingTop: 8,
-  },
-  locationMetaText: {
-    fontSize: 12,
-    color: '#6C757D',
-  },
-
-  docRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
     gap: 12,
   },
-  docIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#EBF5FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  docInfo: {
+  documentInfo: {
     flex: 1,
   },
-  docTitle: { 
-    fontSize: 14, 
-    color: '#1A1C1E',
+  documentTitle: {
+    fontSize: 15,
     fontWeight: '600',
-  },
-  docStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  docStatusText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  manageDocsBtn: {
-    marginTop: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    backgroundColor: '#F1F3F5',
-    borderRadius: 12,
-  },
-  manageDocsBtnText: {
-    color: '#495057',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-
-  ratingContainer: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  ratingNumber: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: '#FF9500',
+    color: '#1A1C1E',
     marginBottom: 4,
   },
-  starsRow: {
+  requiredBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FF3B30',
+    letterSpacing: 0.5,
+  },
+  documentStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    gap: 6,
+  },
+  documentStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  manageDocsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E3F2FD',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginTop: 16,
+    gap: 8,
+  },
+  manageDocsBtnText: {
+    color: '#007AFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  
+  // File Viewer
+  viewerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewerContainer: {
+    width: '90%',
+    height: '80%',
+    backgroundColor: '#1A1C1E',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  viewerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#2A2C2E',
+  },
+  viewerTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  viewerImage: {
+    flex: 1,
+    width: '100%',
+  },
+  pdfPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pdfText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+  },
+  pdfHint: {
+    color: '#999',
+    fontSize: 14,
+    marginTop: 8,
+  },
+  
+  // Rating
+  ratingOverview: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  ratingScore: {
+    alignItems: 'center',
+  },
+  ratingNumber: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: '#1A1C1E',
+    marginBottom: 8,
+  },
+  stars: {
     flexDirection: 'row',
     gap: 4,
     marginBottom: 8,
   },
   ratingCount: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#6C757D',
-    fontWeight: '500',
   },
 });

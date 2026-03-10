@@ -1,1093 +1,317 @@
 // app/(parent)/home.tsx
-// Professional Parent Dashboard - Domestic Care Platform
-import React, { useEffect, useState, useCallback } from 'react';
+// Parent Home Screen - Modularized & Clean
+
+import React from 'react';
 import {
   View,
-  Text,
   StyleSheet,
-  TextInput,
   ScrollView,
-  TouchableOpacity,
-  StatusBar,
-  Platform,
   RefreshControl,
-  Image,
-  Dimensions,
+  ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import API_URL from '../../constants/api';
+import { DrawerActions } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+
+// Custom Hooks
+import { useAuth } from '@/hooks/useAuth';
+import { useParentStats } from '@/hooks/useParentStats';
+import { useResponsive } from '@/hooks/useResponsive';
 
 // Components
-import AppHeader from '../../components/common/AppHeader';
-import RightDrawer from '../../components/common/RightDrawer';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
-import NotificationModal from '../../components/common/NotificationModal';
+import { Sidebar } from '@/components/parent/home/Sidebar';
+import {
+  MobileHeader,
+  GreetingCard,
+  StatCard,
+  MobileStatCard,
+  QuickAction,
+  SectionHeader,
+} from '@/components/helper/home'; // Reusing helper components!
 
-const { width } = Dimensions.get('window');
-
-// Types
-type User = {
-  first_name: string;
-  middle_name: string;
-  last_name: string;
-  user_id: string;
-  user_type: 'parent' | 'helper' | 'admin' | 'peso';
-};
-
-type HelperCategory = {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  bgColor: string;
-  count: number;
-};
-
-type FeaturedHelper = {
-  id: number;
-  name: string;
-  role: string;
-  rating: number;
-  reviews: number;
-  experience: number;
-  hourlyRate: number;
-  avatar: string;
-  isVerified: boolean;
-  skills: string[];
-  availability: 'available' | 'busy' | 'unavailable';
-};
-
-export default function ParentHomeScreen() {
+export function ParentHome() {
   const router = useRouter();
+  const navigation = useNavigation();
 
-  // State
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [logoutSuccessVisible, setLogoutSuccessVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Mock data - Replace with API calls
-  const [stats, setStats] = useState({
-    activeJobs: 2,
-    applications: 15,
-    hired: 3,
-  });
+  const { handleLogout, getFullName } = useAuth();
+  const { stats, loading: statsLoading, refresh } = useParentStats();
+  const { isDesktop } = useResponsive();
 
-  // Load user data
-  const loadUserData = useCallback(async () => {
-    try {
-      const userData = await AsyncStorage.getItem('user_data');
-      if (userData) {
-        setUser(JSON.parse(userData));
-      }
-      
-      // TODO: Fetch real stats from API
-      // const response = await fetch(`${API_URL}/parent/get_stats.php?user_id=${user.user_id}`);
-      
-    } catch (e) {
-      console.error("Failed to load user", e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  if (statsLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
-  useEffect(() => {
-    loadUserData();
-  }, [loadUserData]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadUserData();
-    setRefreshing(false);
-  };
-
-  // Actions
-  const handleLogout = async () => {
-    setIsMenuOpen(false);
-    try {
-      const userId = await AsyncStorage.getItem('user_token');
-      if (userId) {
-        await fetch(`${API_URL}/logout.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userId })
-        });
-      }
-    } catch (e) {
-      console.error("Logout failed", e);
-    }
-
-    await AsyncStorage.clear();
-    setLogoutSuccessVisible(true);
-    setTimeout(() => {
-      setLogoutSuccessVisible(false);
-      router.replace('/welcome');
-    }, 1500);
-  };
-
-  const handleSearch = () => {
-    router.push({
-      pathname: '/(parent)/search',
-      params: { query: searchQuery }
-    });
-  };
-
-  // Categories
-  const categories: HelperCategory[] = [
-    { id: '1', name: 'Nanny', icon: 'person', color: '#FF6B9D', bgColor: '#FFE8F0', count: 45 },
-    { id: '2', name: 'Cook', icon: 'restaurant', color: '#FF9800', bgColor: '#FFF3E0', count: 32 },
-    { id: '3', name: 'Maid', icon: 'home', color: '#4CAF50', bgColor: '#E8F5E9', count: 68 },
-    { id: '4', name: 'Caregiver', icon: 'medkit', color: '#2196F3', bgColor: '#E3F2FD', count: 28 },
-    { id: '5', name: 'Driver', icon: 'car', color: '#9C27B0', bgColor: '#F3E5F5', count: 15 },
-    { id: '6', name: 'Gardener', icon: 'leaf', color: '#4CAF50', bgColor: '#E8F5E9', count: 12 },
-  ];
-
-  // Featured Helpers - Mock data
-  const featuredHelpers: FeaturedHelper[] = [
-    {
-      id: 1,
-      name: 'Maria Santos',
-      role: 'Professional Nanny',
-      rating: 4.9,
-      reviews: 127,
-      experience: 8,
-      hourlyRate: 150,
-      avatar: '👩‍🍼',
-      isVerified: true,
-      skills: ['Infant Care', 'First Aid', 'Tutoring'],
-      availability: 'available',
-    },
-    {
-      id: 2,
-      name: 'Elena Cruz',
-      role: 'Expert Cook',
-      rating: 5.0,
-      reviews: 85,
-      experience: 12,
-      hourlyRate: 180,
-      avatar: '👩‍🍳',
-      isVerified: true,
-      skills: ['Filipino', 'Western', 'Baking'],
-      availability: 'available',
-    },
-    {
-      id: 3,
-      name: 'Rosa Garcia',
-      role: 'Housekeeper',
-      rating: 4.8,
-      reviews: 94,
-      experience: 6,
-      hourlyRate: 120,
-      avatar: '🧹',
-      isVerified: true,
-      skills: ['Deep Clean', 'Laundry', 'Organization'],
-      availability: 'busy',
-    },
-  ];
-
-  if (loading) return <LoadingSpinner visible={true} message="Loading dashboard..." />;
-
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-      
-      {/* Logout Success Modal */}
-      <NotificationModal 
-        visible={logoutSuccessVisible} 
-        message="Logged out successfully." 
-        type="success" 
-        onClose={() => {}} 
-      />
-
-      {/* Header & Drawer */}
-      <AppHeader 
-        title="Find Help" 
-        menu={true} 
-        onMenuPress={() => setIsMenuOpen(true)} 
-      />
-      
-      <RightDrawer 
-        visible={isMenuOpen} 
-        onClose={() => setIsMenuOpen(false)} 
-        onLogout={handleLogout} 
-        userType='parent'
-      />
-
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh} 
-            colors={['#007AFF']}
-            tintColor="#007AFF"
-          />
-        }
-      >
-        {/* 1. WELCOME SECTION WITH STATS */}
-        <View style={styles.welcomeSection}>
-          <View>
-            <Text style={styles.greetingTime}>Good {getTimeOfDay()},</Text>
-            <Text style={styles.greetingName}>{user?.name || "Parent"} 👋</Text>
-            <Text style={styles.greetingSubtext}>Find the perfect help for your home</Text>
-          </View>
-        </View>
-
-        {/* Quick Stats */}
-        <View style={styles.statsContainer}>
-          <StatCard 
-            icon="briefcase-outline" 
-            value={stats.activeJobs} 
-            label="Active Jobs" 
-            color="#007AFF"
-            onPress={() => router.push('/(parent)/my-jobs')}
-          />
-          <StatCard 
-            icon="people-outline" 
-            value={stats.applications} 
-            label="Applications" 
-            color="#FF9800"
-            onPress={() => router.push('/(parent)/applications')}
-          />
-          <StatCard 
-            icon="checkmark-circle-outline" 
-            value={stats.hired} 
-            label="Hired" 
-            color="#4CAF50"
-            onPress={() => router.push('/(parent)/hired')}
-          />
-        </View>
-
-        {/* 2. SEARCH BAR */}
-        <View style={styles.searchSection}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#999" />
-            <TextInput 
-              placeholder="Search for nanny, cook, maid..." 
-              placeholderTextColor="#999"
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color="#999" />
-              </TouchableOpacity>
-            )}
-          </View>
-          
-          <TouchableOpacity 
-            style={styles.filterButton}
-            onPress={() => router.push('/(parent)/filters')}
-          >
-            <Ionicons name="options" size={22} color="#fff" />
-          </TouchableOpacity>
-        </View>
-
-        {/* 3. QUICK ACTIONS */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          
-          <View style={styles.quickActionsGrid}>
-            <QuickActionCard
-              icon="add-circle"
+  // DESKTOP LAYOUT
+  if (isDesktop) {
+    return (
+      <View style={styles.container}>
+        <Sidebar onLogout={handleLogout} />
+        <ScrollView
+          style={styles.mainContent}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
+        >
+          {/* Stats Grid */}
+          <View style={styles.statsGrid}>
+            <StatCard
+              icon="briefcase"
               iconColor="#007AFF"
               iconBg="#E3F2FD"
-              title="Post a Job"
-              subtitle="Find helpers"
-              onPress={() => router.push('/(parent)/post-job')}
+              title="Posted Jobs"
+              value={stats.posted_jobs}
+              onPress={() => router.push('/(parent)/jobs')}
             />
-            
-            <QuickActionCard
-              icon="search"
-              iconColor="#4CAF50"
+            <StatCard
+              icon="people"
+              iconColor="#34C759"
               iconBg="#E8F5E9"
-              title="Browse Helpers"
-              subtitle="View profiles"
-              onPress={() => router.push('/(parent)/browse')}
+              title="Applications"
+              value={stats.active_applications}
+              onPress={() => router.push('/(parent)/applications')}
             />
-            
-            <QuickActionCard
-              icon="calendar"
-              iconColor="#FF9800"
-              iconBg="#FFF3E0"
-              title="Manage Bookings"
-              subtitle="View schedule"
-              onPress={() => router.push('/(parent)/bookings')}
-            />
-            
-            <QuickActionCard
+            <StatCard
               icon="chatbubbles"
+              iconColor="#FF9500"
+              iconBg="#FFF4E5"
+              title="Messages"
+              value={stats.messages}
+              onPress={() => router.push('/(parent)/messages')}
+            />
+            <StatCard
+              icon="checkmark-circle"
               iconColor="#9C27B0"
               iconBg="#F3E5F5"
+              title="Hired Helpers"
+              value={stats.hired_helpers}
+            />
+          </View>
+
+          {/* Quick Actions */}
+          <SectionHeader title="Quick Actions" />
+          <View style={styles.quickActionsDesktop}>
+            <QuickActionDesktop
+              icon="add-circle"
+              title="Post a Job"
+              description="Find the perfect helper"
+              color="#007AFF"
+              onPress={() => router.push('/(parent)/post_job')}
+            />
+            <QuickActionDesktop
+              icon="search"
+              title="Browse Helpers"
+              description="View verified helpers"
+              color="#34C759"
+              onPress={() => router.push('/(parent)/helpers')}
+            />
+            <QuickActionDesktop
+              icon="chatbubble"
               title="Messages"
-              subtitle="Chat with helpers"
+              description="Chat with applicants"
+              color="#FF9500"
               onPress={() => router.push('/(parent)/messages')}
             />
           </View>
-        </View>
+        </ScrollView>
+      </View>
+    );
+  }
 
-        {/* 4. HELPER CATEGORIES */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Browse by Category</Text>
-            <TouchableOpacity onPress={() => router.push('/(parent)/categories')}>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
+  // MOBILE LAYOUT
+  return (
+    <View style={styles.container}>
+      <MobileHeader
+        onMenuPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+      />
+      <ScrollView
+        contentContainerStyle={styles.mobileScrollContent}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
+      >
+        <View style={[styles.greetingCard, styles.blueGradient]}>
+          <View style={styles.greetingContent}>
+            <Text style={styles.greeting}>
+              {new Date().getHours() < 12 ? 'Good Morning' : 
+               new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'}
+            </Text>
+            <Text style={styles.userName}>{getFullName()}</Text>
+            <Text style={styles.subtext}>Find the perfect helper for your family</Text>
           </View>
-
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesScroll}
-          >
-            {categories.map((category) => (
-              <CategoryCard
-                key={category.id}
-                category={category}
-                onPress={() => router.push({
-                  pathname: '/(parent)/search',
-                  params: { category: category.name }
-                })}
-              />
-            ))}
-          </ScrollView>
         </View>
 
-        {/* 5. FEATURED HELPERS */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>Top Rated Helpers</Text>
-              <Text style={styles.sectionSubtitle}>Verified & highly recommended</Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push('/(parent)/top-rated')}>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.featuredScroll}
-          >
-            {featuredHelpers.map((helper) => (
-              <FeaturedHelperCard
-                key={helper.id}
-                helper={helper}
-                onPress={() => router.push({
-                  pathname: '/(parent)/helper-profile',
-                  params: { helper_id: helper.id }
-                })}
-              />
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* 6. NEARBY HELPERS */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>Helpers Near You</Text>
-              <Text style={styles.sectionSubtitle}>Available in Cebu City</Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push('/(parent)/nearby')}>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Helper List Cards */}
-          <HelperListCard
-            name="Ana Reyes"
-            role="Experienced Nanny"
-            distance="2.5 km away"
-            rating={4.7}
-            reviews={52}
-            rate="₱500/day"
-            skills={['Infant Care', 'First Aid']}
-            avatar="👶"
-            isVerified={true}
-            onPress={() => router.push('/(parent)/helper-profile')}
+        {/* Mobile Stats Row */}
+        <View style={styles.mobileStatsRow}>
+          <MobileStatCard
+            icon="briefcase"
+            color="#007AFF"
+            value={stats.posted_jobs}
+            label="Jobs"
+            onPress={() => router.push('/(parent)/jobs')}
           />
-
-          <HelperListCard
-            name="Liza Santos"
-            role="Professional Cook"
-            distance="1.8 km away"
-            rating={4.9}
-            reviews={68}
-            rate="₱600/day"
-            skills={['Filipino', 'Baking']}
-            avatar="👩‍🍳"
-            isVerified={true}
-            onPress={() => router.push('/(parent)/helper-profile')}
+          <MobileStatCard
+            icon="people"
+            color="#34C759"
+            value={stats.active_applications}
+            label="Applications"
+            onPress={() => router.push('/(parent)/applications')}
           />
-
-          <HelperListCard
-            name="Gloria Martinez"
-            role="Housekeeper"
-            distance="3.2 km away"
-            rating={4.6}
-            reviews={41}
-            rate="₱450/day"
-            skills={['Deep Clean', 'Laundry']}
-            avatar="🧹"
-            isVerified={false}
-            onPress={() => router.push('/(parent)/helper-profile')}
+          <MobileStatCard
+            icon="chatbubbles"
+            color="#FF9500"
+            value={stats.messages}
+            label="Messages"
+            onPress={() => router.push('/(parent)/messages')}
           />
         </View>
 
-        {/* 7. TIPS & GUIDES */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Hiring Tips & Guides</Text>
-          
-          <TipCard
-            icon="shield-checkmark"
-            iconColor="#4CAF50"
-            iconBg="#E8F5E9"
-            title="How to Verify Helpers"
-            subtitle="Learn about background checks and verification"
-            onPress={() => router.push('/(parent)/guides/verification')}
+        {/* Quick Actions */}
+        <SectionHeader title="Quick Actions" />
+        <View style={styles.quickActionsGrid}>
+          <QuickAction
+            icon="add-circle"
+            label="Post Job"
+            color="#007AFF"
+            onPress={() => router.push('/(parent)/post_job')}
           />
-
-          <TipCard
-            icon="document-text"
-            iconColor="#2196F3"
-            iconBg="#E3F2FD"
-            title="Creating Effective Job Posts"
-            subtitle="Tips for attracting quality applicants"
-            onPress={() => router.push('/(parent)/guides/job-posts')}
+          <QuickAction
+            icon="search"
+            label="Find Helpers"
+            color="#34C759"
+            onPress={() => router.push('/(parent)/helpers')}
+          />
+          <QuickAction
+            icon="chatbubbles"
+            label="Messages"
+            color="#FF9500"
+            onPress={() => router.push('/(parent)/messages')}
+          />
+          <QuickAction
+            icon="person"
+            label="My Profile"
+            color="#9C27B0"
+            onPress={() => router.push('/(parent)/profile')}
           />
         </View>
-
-        {/* Bottom Spacing */}
-        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
 
-// ============================================================================
-// HELPER COMPONENTS
-// ============================================================================
-
-function StatCard({ icon, value, label, color, onPress }: any) {
+// Desktop Quick Action (larger card)
+function QuickActionDesktop({ icon, title, description, color, onPress }: any) {
   return (
-    <TouchableOpacity style={styles.statCard} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.statIconContainer, { backgroundColor: color + '15' }]}>
-        <Ionicons name={icon} size={22} color={color} />
+    <TouchableOpacity style={styles.quickActionDesktopCard} onPress={onPress}>
+      <View style={[styles.quickActionDesktopIcon, { backgroundColor: color + '20' }]}>
+        <Ionicons name={icon} size={32} color={color} />
       </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.quickActionDesktopTitle}>{title}</Text>
+      <Text style={styles.quickActionDesktopDesc}>{description}</Text>
     </TouchableOpacity>
   );
 }
-
-function QuickActionCard({ icon, iconColor, iconBg, title, subtitle, onPress }: any) {
-  return (
-    <TouchableOpacity style={styles.quickActionCard} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.quickActionIcon, { backgroundColor: iconBg }]}>
-        <Ionicons name={icon} size={24} color={iconColor} />
-      </View>
-      <Text style={styles.quickActionTitle}>{title}</Text>
-      <Text style={styles.quickActionSubtitle}>{subtitle}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function CategoryCard({ category, onPress }: { category: HelperCategory, onPress: () => void }) {
-  return (
-    <TouchableOpacity style={styles.categoryCard} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.categoryIcon, { backgroundColor: category.bgColor }]}>
-        <Ionicons name={category.icon as any} size={28} color={category.color} />
-      </View>
-      <Text style={styles.categoryName}>{category.name}</Text>
-      <Text style={styles.categoryCount}>{category.count} available</Text>
-    </TouchableOpacity>
-  );
-}
-
-function FeaturedHelperCard({ helper, onPress }: { helper: FeaturedHelper, onPress: () => void }) {
-  return (
-    <TouchableOpacity style={styles.featuredCard} onPress={onPress} activeOpacity={0.8}>
-      {/* Verified Badge */}
-      {helper.isVerified && (
-        <View style={styles.verifiedBadge}>
-          <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-        </View>
-      )}
-
-      {/* Avatar */}
-      <View style={styles.helperAvatar}>
-        <Text style={styles.helperAvatarEmoji}>{helper.avatar}</Text>
-      </View>
-
-      {/* Info */}
-      <Text style={styles.helperName} numberOfLines={1}>{helper.name}</Text>
-      <Text style={styles.helperRole} numberOfLines={1}>{helper.role}</Text>
-
-      {/* Rating */}
-      <View style={styles.helperRating}>
-        <Ionicons name="star" size={14} color="#FFD700" />
-        <Text style={styles.helperRatingText}>{helper.rating}</Text>
-        <Text style={styles.helperReviews}>({helper.reviews})</Text>
-      </View>
-
-      {/* Skills */}
-      <View style={styles.helperSkills}>
-        {helper.skills.slice(0, 2).map((skill, index) => (
-          <View key={index} style={styles.skillBadge}>
-            <Text style={styles.skillBadgeText}>{skill}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Rate */}
-      <View style={styles.helperRate}>
-        <Text style={styles.helperRateText}>₱{helper.hourlyRate}/hr</Text>
-      </View>
-
-      {/* Availability */}
-      <View style={[
-        styles.availabilityDot, 
-        { backgroundColor: helper.availability === 'available' ? '#4CAF50' : '#FF9800' }
-      ]} />
-    </TouchableOpacity>
-  );
-}
-
-function HelperListCard({ name, role, distance, rating, reviews, rate, skills, avatar, isVerified, onPress }: any) {
-  return (
-    <TouchableOpacity style={styles.listCard} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.listCardLeft}>
-        <View style={styles.listAvatar}>
-          <Text style={styles.listAvatarEmoji}>{avatar}</Text>
-          {isVerified && (
-            <View style={styles.listVerifiedBadge}>
-              <Ionicons name="checkmark-circle" size={12} color="#fff" />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.listInfo}>
-          <Text style={styles.listName}>{name}</Text>
-          <Text style={styles.listRole}>{role}</Text>
-          
-          <View style={styles.listMeta}>
-            <Ionicons name="location" size={12} color="#999" />
-            <Text style={styles.listDistance}>{distance}</Text>
-            
-            <Ionicons name="star" size={12} color="#FFD700" style={{ marginLeft: 12 }} />
-            <Text style={styles.listRating}>{rating} ({reviews})</Text>
-          </View>
-
-          <View style={styles.listSkills}>
-            {skills.map((skill: string, index: number) => (
-              <View key={index} style={styles.listSkillTag}>
-                <Text style={styles.listSkillText}>{skill}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.listCardRight}>
-        <Text style={styles.listRate}>{rate}</Text>
-        <Ionicons name="chevron-forward" size={20} color="#CCC" />
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function TipCard({ icon, iconColor, iconBg, title, subtitle, onPress }: any) {
-  return (
-    <TouchableOpacity style={styles.tipCard} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.tipIcon, { backgroundColor: iconBg }]}>
-        <Ionicons name={icon} size={24} color={iconColor} />
-      </View>
-      <View style={styles.tipInfo}>
-        <Text style={styles.tipTitle}>{title}</Text>
-        <Text style={styles.tipSubtitle}>{subtitle}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color="#CCC" />
-    </TouchableOpacity>
-  );
-}
-
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-
-function getTimeOfDay(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Morning';
-  if (hour < 18) return 'Afternoon';
-  return 'Evening';
-}
-
-// ============================================================================
-// STYLES
-// ============================================================================
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+    flexDirection: 'row',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+  },
+  mainContent: {
+    flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    padding: 32,
+    paddingBottom: 60,
   },
-
-  // Welcome Section
-  welcomeSection: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  greetingTime: {
-    fontSize: 14,
-    color: '#999',
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  greetingName: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  greetingSubtext: {
-    fontSize: 14,
-    color: '#666',
-  },
-
-  // Stats Container
-  statsContainer: {
+  statsGrid: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 20,
-    gap: 12,
+    gap: 20,
+    marginBottom: 40,
   },
-  statCard: {
+  quickActionsDesktop: {
+    flexDirection: 'row',
+    gap: 20,
+    marginBottom: 40,
+  },
+  quickActionDesktopCard: {
     flex: 1,
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 16,
+    padding: 24,
     alignItems: 'center',
-    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  quickActionDesktopIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-  },
-
-  // Search Section
-  searchSection: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 25,
-    gap: 12,
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    gap: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#333',
-  },
-  filterButton: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#007AFF',
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-
-  // Section
-  section: {
-    marginBottom: 30,
-    paddingHorizontal: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
+  quickActionDesktopTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A1C1E',
     marginBottom: 4,
   },
-  sectionSubtitle: {
+  quickActionDesktopDesc: {
     fontSize: 13,
     color: '#666',
+    textAlign: 'center',
   },
-  seeAllText: {
+  mobileScrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  greetingCard: {
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
+  },
+  blueGradient: {
+    backgroundColor: '#007AFF',
+  },
+  greetingContent: {
+    flex: 1,
+  },
+  greeting: {
     fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 4,
   },
-
-  // Quick Actions Grid
+  userName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  subtext: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
+  },
+  mobileStatsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-  },
-  quickActionCard: {
-    width: (width - 52) / 2,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'flex-start',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  quickActionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  quickActionSubtitle: {
-    fontSize: 12,
-    color: '#666',
-  },
-
-  // Categories
-  categoriesScroll: {
-    paddingRight: 20,
-    gap: 12,
-  },
-  categoryCard: {
-    width: 110,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  categoryIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  categoryName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  categoryCount: {
-    fontSize: 11,
-    color: '#666',
-  },
-
-  // Featured Helpers
-  featuredScroll: {
-    paddingRight: 20,
-    gap: 16,
-  },
-  featuredCard: {
-    width: 180,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    position: 'relative',
-  },
-  verifiedBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 4,
-    elevation: 2,
-  },
-  helperAvatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    alignSelf: 'center',
-  },
-  helperAvatarEmoji: {
-    fontSize: 36,
-  },
-  helperName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  helperRole: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 8,
-  },
-  helperRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF9E6',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginBottom: 10,
-    gap: 4,
-  },
-  helperRatingText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#FFC107',
-  },
-  helperReviews: {
-    fontSize: 11,
-    color: '#999',
-  },
-  helperSkills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 12,
-  },
-  skillBadge: {
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  skillBadgeText: {
-    fontSize: 10,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  helperRate: {
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    paddingTop: 12,
-  },
-  helperRateText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  availabilityDot: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-
-  // List Cards
-  listCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  listCardLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  listAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  listAvatarEmoji: {
-    fontSize: 28,
-  },
-  listVerifiedBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: '#4CAF50',
-    borderRadius: 8,
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  listInfo: {
-    flex: 1,
-  },
-  listName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 2,
-  },
-  listRole: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 6,
-  },
-  listMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  listDistance: {
-    fontSize: 12,
-    color: '#999',
-    marginLeft: 4,
-  },
-  listRating: {
-    fontSize: 12,
-    color: '#999',
-    marginLeft: 4,
-  },
-  listSkills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  listSkillTag: {
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  listSkillText: {
-    fontSize: 10,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  listCardRight: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-  listRate: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-
-  // Tip Cards
-  tipCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    gap: 14,
-  },
-  tipIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tipInfo: {
-    flex: 1,
-  },
-  tipTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  tipSubtitle: {
-    fontSize: 12,
-    color: '#666',
+    marginBottom: 32,
   },
 });
+
+export default ParentHome;

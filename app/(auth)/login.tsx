@@ -1,3 +1,7 @@
+// app/(auth)/login.tsx
+// FIXED: Blocks admin and peso users from logging in here
+// They must use /admin/login instead
+
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -30,7 +34,7 @@ export default function LoginScreen() {
   const [modalMessage, setModalMessage] = useState("");
   const [modalTitle, setModalTitle] = useState("");
 
-  // Logic Fix: Start with 5 attempts and count DOWN
+  // Login attempts tracking
   const [attemptsLeft, setAttemptsLeft] = useState(5);
   const [isLocked, setIsLocked] = useState(false);
 
@@ -39,35 +43,31 @@ export default function LoginScreen() {
     default: require("../../assets/images/CareLink.BackGround.Mobile.png"),
   });
 
-  // Helper to handle locking
   const handleLockout = () => {
     setIsLocked(true);
     setModalTitle("Too Many Attempts");
     setModalMessage("Account locked for 1 minute.");
     setModalVisible(true);
     
-    // Unlock after 60 seconds
     setTimeout(() => {
       setIsLocked(false);
-      setAttemptsLeft(5); // Reset attempts
+      setAttemptsLeft(5);
     }, 60000);
   };
 
   const handleLogin = async () => {
-    // 1. Check Lock Status First
+    // Check if locked
     if (isLocked) {
       setModalTitle("Login Locked");
-      setModalMessage("Too many attempts. Please wait a while before trying again.");
+      setModalMessage("Too many attempts. Please wait before trying again.");
       setModalVisible(true);
       return;
     }
 
-    // 2. Check Empty Fields
+    // Check empty fields
     if (!email || !password) {
       const newAttempts = attemptsLeft - 1;
       setAttemptsLeft(newAttempts);
-
-      // Clear inputs
       setEmail("");
       setPassword("");
 
@@ -75,7 +75,7 @@ export default function LoginScreen() {
         handleLockout();
       } else {
         setModalTitle("Login Failed");
-        setModalMessage(`Please enter correct email and/or password.\n You only have ${newAttempts} attempts left`);
+        setModalMessage(`Please enter email and password.\nYou have ${newAttempts} attempts left.`);
         setModalVisible(true);
       }
       return;
@@ -93,11 +93,31 @@ export default function LoginScreen() {
       const data = await response.json();
 
       if (data.success) {
-        // ✅ SUCCESS LOGIC
+        // ================================================================
+        // SECURITY CHECK: Block admin and peso users
+        // ================================================================
+        if (data.user_type === 'admin' || data.user_type === 'peso') {
+          setEmail("");
+          setPassword("");
+          setModalTitle("Access Denied");
+          setModalMessage("Admin and PESO users must use the Admin Portal.\n\nRedirect to Admin Login?");
+          setModalVisible(true);
+          
+          // Auto-redirect after 2 seconds
+          setTimeout(() => {
+            setModalVisible(false);
+            router.push("/admin/adminlogin");
+          }, 2000);
+          
+          return; // Stop here
+        }
+
+        // ================================================================
+        // SUCCESS: Regular users (helper/parent)
+        // ================================================================
         await AsyncStorage.setItem("user_token", data.user.user_id.toString());
         await AsyncStorage.setItem("user_data", JSON.stringify(data.user));
 
-        // Reset counters on success
         setAttemptsLeft(5);
         
         setModalTitle("Welcome Back!");
@@ -107,12 +127,7 @@ export default function LoginScreen() {
         setTimeout(() => {
           setModalVisible(false);
           
-          // Redirect based on role
-          if (data.user_type === "admin") {
-            router.replace("/admin/dashboard"); 
-          } else if (data.user_type === "peso") {
-            router.replace("/(PESO)/home");
-          } else if (data.user_type === "helper"){
+          if (data.user_type === "helper"){
             router.replace("/(helper)/home"); 
           } else {
             router.replace("/(parent)/home");
@@ -120,9 +135,9 @@ export default function LoginScreen() {
         }, 1500);
 
       } else {
-        // ❌ FAILURE LOGIC
-        
-        // Clear inputs as requested
+        // ================================================================
+        // FAILURE HANDLING
+        // ================================================================
         setEmail("");
         setPassword("");
 
@@ -138,33 +153,29 @@ export default function LoginScreen() {
             setModalVisible(true);
           }
         } else if(data.reason === "Account Pending") {
-          // Can enter but has limited acces
-          // Reset counters on success
+          // ================================================================
+          // PENDING USER: Can login but limited access
+          // ================================================================
           await AsyncStorage.setItem("user_token", data.user.user_id.toString());
           await AsyncStorage.setItem("user_data", JSON.stringify(data.user));
           
           setAttemptsLeft(5);
 
-          setModalTitle("Welcome Back!");
-          setModalMessage(data.message);
+          setModalTitle("Account Pending");
+          setModalMessage("You can setup your profile and upload documents. Full access after PESO approval.");
           setModalVisible(true);
 
           setTimeout(() => {
             setModalVisible(false);
             
-            // Redirect based on role
-            if (data.user_type === "admin") {
-              router.replace("/admin/dashboard"); 
-            } else if (data.user_type === "peso") {
-              router.replace("/(PESO)/home");
-            } else if (data.user_type === "helper"){
+            if (data.user_type === "helper"){
               router.replace("/(helper)/home"); 
             } else if (data.user_type === "parent"){
               router.replace("/(parent)/home");
             }
-          }, 1500);
+          }, 2000);
         } else {
-          // Other errors (like "User not found")
+          // Other errors
           const newAttempts = attemptsLeft - 1;
           setAttemptsLeft(newAttempts);
 
@@ -279,124 +290,23 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    width: '100%',
-    maxWidth: 450, 
-    alignSelf: 'center', 
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    textAlign: "center",
-    color: "#000",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: "center",
-    color: "#000",
-    marginBottom: 30,
-  },
-  form: {
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 12,
-    padding: 25,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  input: {
-    height: 50,
-    borderColor: "#ccc",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-    backgroundColor: "#fff",
-    color: "#000",
-  },
-  passwordContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: 50,
-    borderColor: "#ccc",
-    borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 15,
-    backgroundColor: "#fff",
-    paddingHorizontal: 15,
-  },
-  inputPassword: {
-    flex: 1,
-    height: "100%",
-    color: "#000",
-  },
-  eyeIcon: {
-    paddingLeft: 10,
-  },
-  link: {
-    color: "#007AFF",
-    fontSize: 14,
-    textAlign: "right",
-    marginBottom: 20,
-  },
-  button: {
-    backgroundColor: "#000",
-    paddingVertical: 15,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  back: {
-    textAlign: "center",
-    marginTop: 20,
-    color: "#000",
-    fontSize: 14,
-    textDecorationLine: "underline",
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.4)",
-  },
-  modalContainer: {
-    backgroundColor: "#fff",
-    padding: 25,
-    borderRadius: 10,
-    width: "80%",
-    maxWidth: 350,
-    alignItems: "center",
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  modalMessage: {
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  closeButton: {
-    backgroundColor: "#007BFF",
-    paddingHorizontal: 30,
-    paddingVertical: 10,
-    borderRadius: 5,
-  },
-  closeButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
+  background: { flex: 1 },
+  container: { flex: 1, justifyContent: "center", paddingHorizontal: 20, width: '100%', maxWidth: 450, alignSelf: 'center' },
+  title: { fontSize: 24, fontWeight: "700", textAlign: "center", color: "#000", marginBottom: 10 },
+  subtitle: { fontSize: 16, textAlign: "center", color: "#000", marginBottom: 30 },
+  form: { backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 12, padding: 25, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 5, elevation: 5 },
+  input: { height: 50, borderColor: "#ccc", borderWidth: 1, borderRadius: 8, paddingHorizontal: 15, marginBottom: 15, backgroundColor: "#fff", color: "#000" },
+  passwordContainer: { flexDirection: "row", alignItems: "center", height: 50, borderColor: "#ccc", borderWidth: 1, borderRadius: 8, marginBottom: 15, backgroundColor: "#fff", paddingHorizontal: 15 },
+  inputPassword: { flex: 1, height: "100%", color: "#000" },
+  eyeIcon: { paddingLeft: 10 },
+  link: { color: "#007AFF", fontSize: 14, textAlign: "right", marginBottom: 20 },
+  button: { backgroundColor: "#000", paddingVertical: 15, borderRadius: 8, alignItems: "center" },
+  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  back: { textAlign: "center", marginTop: 20, color: "#000", fontSize: 14, textDecorationLine: "underline" },
+  modalOverlay: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.4)" },
+  modalContainer: { backgroundColor: "#fff", padding: 25, borderRadius: 10, width: "80%", maxWidth: 350, alignItems: "center" },
+  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 10 },
+  modalMessage: { fontSize: 16, textAlign: "center", marginBottom: 20 },
+  closeButton: { backgroundColor: "#007BFF", paddingHorizontal: 30, paddingVertical: 10, borderRadius: 5 },
+  closeButtonText: { color: "#fff", fontWeight: "bold" },
 });

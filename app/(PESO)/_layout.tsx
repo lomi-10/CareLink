@@ -121,9 +121,9 @@ export default function PESOLayout() {
               path="/(PESO)/user_verification" 
             />
             <SidebarItem 
-              icon="document-text" 
-              label="Document Review" 
-              path="/(PESO)/document_review" 
+              icon="analytics" 
+              label="Analytics & Insights" 
+              path="/(PESO)/analytics" 
             />
             <SidebarItem 
               icon="person-add" 

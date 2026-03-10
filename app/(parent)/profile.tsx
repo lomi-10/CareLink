@@ -1,198 +1,72 @@
 // app/(parent)/profile.tsx
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+// Parent Profile Screen - Modularized & Clean
+
+import React, { useState } from 'react';
 import {
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    Platform,
-    Modal,
+  View,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  Text,
 } from 'react-native';
-import API_URL from '../../constants/api';
+import { useRouter } from 'expo-router';
+import { DrawerActions } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
-// Custom Components
+// Custom Hooks
+import { useParentProfile } from '@/hooks/useParentProfile';
+import { useAuth } from '@/hooks/useAuth';
+import { useResponsive } from '@/hooks/useResponsive';
+
+// Components
+import { Sidebar } from '@/components/parent/home/Sidebar';
+import {
+  ProfileHeader,
+  MobileProfileHeader,
+  InfoCard,
+  DocumentsCard,
+  DocumentViewer,
+} from '@/components/helper/profile'; // Reusing helper components!
+import { ChildrenList } from '@/components/parent/profile';
+
+// Common Components
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 import NotificationModal from '@/components/common/NotificationModal';
-import AppHeader from '../../components/common/AppHeader';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
-import RightDrawer from '../../components/common/RightDrawer';
-import EditParentProfileModal from '../../components/profile/EditParentProfileModal';
-import ParentDocumentModal from '../../components/profile/ParentDocumentModal';
+import EditParentProfileModal from '@/components/profile/EditParentProfileModal';
+import ParentDocumentModal from '@/components/profile/ParentDocumentModal';
 
-export default function ParentProfileScreen() {
+export default function ParentProfile() {
   const router = useRouter();
-  
-  // --- STATE MANAGEMENT ---
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigation = useNavigation();
+
+  const { handleLogout } = useAuth();
+  const {
+    profileData,
+    loading,
+    error,
+    refresh,
+    getFullName,
+    getVerificationBadge,
+    getDocument,
+  } = useParentProfile();
+  const { isDesktop } = useResponsive();
+
+  // Modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [logoutSuccessVisible, setLogoutSuccessVisible] = useState(false);
-
-  // File Viewer State
-  const [viewingFile, setViewingFile] = useState<{url: string, type: string} | null>(null);
-
-  // Error notification state
+  const [viewingFile, setViewingFile] = useState<{
+    url: string;
+    type: 'image' | 'pdf';
+  } | null>(null);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  
-  // Profile Data State
-  const [userId, setUserId] = useState<string | null>(null);
-  const [profileData, setProfileData] = useState<any>(null);
 
-  // --- LIFECYCLE ---
-  useEffect(() => {
-    loadUserProfile();
-  }, []);
-
-  //Load parent profile data from backend
-  const loadUserProfile = async () => {
-    try {
-      setLoading(true);
-      const userData = await AsyncStorage.getItem('user_data');
-      if (!userData) {
-        setErrorMessage("Error: You are not logged in. Please log in again.");
-        setErrorModalVisible(true);
-        setLoading(false);
-
-        setTimeout(()=> {
-          setErrorModalVisible(false);
-          router.replace("/(auth)/login");
-        }, 1500);
-        return;
-      }
-
-      const parsed = JSON.parse(userData);
-      setUserId(parsed.user_id);
-
-      // Fetch profile from backend
-      const url = `${API_URL}/parent/get_profile.php?user_id=${parsed.user_id}`;
-      const response = await fetch(url);
-
-      if(!response.ok) throw new Error(`Server Error! Status: ${response.status}`);
-      const responseText = await response.text();
-
-      try{
-        const data = JSON.parse(responseText);
-        if(data.success){
-          setProfileData(data);
-        }
-        else{
-          setErrorMessage(data.message || 'Failed to load profile data.');
-          setErrorModalVisible(true);
-        }
-      }catch(parseError){
-        console.error("Raw response was: ", responseText);
-        throw new Error("Server sent an invalid data format");
-      }
-    } catch (error: any) {
-      setErrorMessage(`Network error: ${error.message || 'Unable to connect to the server'}`);
+  React.useEffect(() => {
+    if (error) {
       setErrorModalVisible(true);
-    } finally {
-      setLoading(false);
     }
-  };
-
-  /**
-   * Refresh profile data
-   */
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadUserProfile();
-    setRefreshing(false);
-  };
-
-  /**
-   * Handle successful profile update
-   */
-  const handleProfileSaved = () => {
-    loadUserProfile();
-  };
-
-  /**
-   * Handle successful document upload
-   */
-  const handleDocumentsSaved = () => {
-    loadUserProfile();
-  };
-
-  const handleLogout = async () => {
-    setIsMenuOpen(false);
-    await AsyncStorage.clear();
-    setLogoutSuccessVisible(true);
-    setTimeout(() => {
-      setLogoutSuccessVisible(false);
-      router.replace('/(auth)/login')
-    }, 1500);
-  }
-
-  /**
-   * Get verification status badge
-   */
-  const getVerificationBadge = () => {
-    const status = profileData?.profile?.verification_status || 'Unverified';
-    switch (status) {
-      case 'Verified': return {icon: 'checkmark-circle', text: 'Verified Parent', style: styles.bgGreen };
-      case 'Pending': return {icon: 'time', text: 'Pending Verification', style: styles.bgOrange };
-      case 'Rejected': return {icon: 'close-circle', text: 'Verification Failed', style: styles.bgRed };
-      default: return {icon: 'alert-circle', text: 'Not yet Verified', style: styles.bgGray };
-      
-    } 
-  };
-
-  // --- LOADING STATE ---
-  if (loading) {
-    return <LoadingSpinner visible={true} message="Loading profile..." />;
-  }
-
-  // --- NO PROFILE DATA ---
-  if (!profileData) {
-    return (
-      <View style={styles.screenContainer}>
-        <AppHeader 
-          title="My Profile" 
-          menu={true} 
-          onMenuPress={() => setIsMenuOpen(true)} 
-        />
-        <View style={styles.emptyState}>
-          <Ionicons name="person-circle-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>No profile data found</Text>
-          <TouchableOpacity 
-            style={styles.createProfileBtn} 
-            onPress={() => setIsEditModalOpen(true)}
-          >
-            <Text style={styles.createProfileText}>Retry Loading</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  const badge = getVerificationBadge();
-  const user = profileData.user;
-  const profile = profileData.profile;
-  const household = profileData.household;
-  const children = profileData.children || [];
-  const children_count = profileData.children_count || 0;
-
-  // Format full name
-  const fullName = user ? `${user.first_name || ''} ${user.middle_name ? user.middle_name + ' ' : ''}${user.last_name || ''}`.trim() : 'No Name';
-
-  // Helper to find document status/URL
-  const getDoc = (type: string) => {
-    const doc = (profileData.documents || []).find((d: any) => d.document_type === type);
-    return {
-      status: doc ? 'uploaded' : 'pending',
-      url: doc?.file_url || null,
-      file_path: doc?.file_path || ''
-    };
-  };
+  }, [error]);
 
   const handleViewFile = (doc: any) => {
     if (!doc.url) return;
@@ -200,360 +74,251 @@ export default function ParentProfileScreen() {
     setViewingFile({ url: doc.url, type: isPdf ? 'pdf' : 'image' });
   };
 
-  return (
-    <View style={styles.screenContainer}>
-      <NotificationModal visible={errorModalVisible} message={errorMessage} type="error" onClose={() => setErrorModalVisible(false)}/>
-      <NotificationModal 
-        visible={logoutSuccessVisible}
-        message="Logged out successfully."
-        type="success"
-        onClose={() => {}}
-      />
+  if (loading) {
+    return <LoadingSpinner visible={true} message="Loading profile..." />;
+  }
 
-      <AppHeader title="My Profile" menu={true} onMenuPress={() => setIsMenuOpen(true)} />
-
-      <RightDrawer 
-        visible={isMenuOpen} 
-        onClose={() => setIsMenuOpen(false)} 
-        onLogout={handleLogout} 
-        userType='parent'
-      />
-
-      <EditParentProfileModal 
-        visible={isEditModalOpen} 
-        onClose={() => setIsEditModalOpen(false)}
-        onSaveSuccess={handleProfileSaved}
-      />
-
-      <ParentDocumentModal 
-        visible={isDocumentModalOpen} 
-        onClose={() => setIsDocumentModalOpen(false)}
-        onSaveSuccess={handleDocumentsSaved}
-      />
-
-      {/* --- FILE VIEWER MODAL --- */}
-      <Modal 
-        visible={!!viewingFile} 
-        transparent={true} 
-        animationType="fade"
-        onRequestClose={() => setViewingFile(null)}
-      >
-        <View style={styles.viewerOverlay}>
-          <View style={styles.viewerContainer}>
-            <View style={styles.viewerHeader}>
-              <Text style={styles.viewerTitle}>Document Preview</Text>
-              <TouchableOpacity onPress={() => setViewingFile(null)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.viewerContent}>
-              {viewingFile?.type === 'pdf' ? (
-                <View style={styles.pdfPlaceholder}>
-                  <Ionicons name="document-text" size={80} color="#007AFF" />
-                  <Text style={styles.pdfText}>PDF Document</Text>
-                  <Text style={styles.pdfSubText}>Viewing PDFs is best on a full browser.</Text>
-                  <TouchableOpacity 
-                    style={styles.openBtn}
-                    onPress={() => {
-                      if (Platform.OS === 'web') {
-                        window.open(viewingFile.url, '_blank');
-                      }
-                    }}
-                  >
-                    <Text style={styles.openBtnText}>Open in New Tab</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <Image 
-                  source={{ uri: viewingFile?.url }} 
-                  style={styles.fullImage} 
-                  resizeMode="contain"
-                />
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <View style={styles.webCenterContainer}>
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
+  if (!profileData) {
+    return (
+      <View style={styles.emptyState}>
+        <Ionicons name="person-circle-outline" size={80} color="#ccc" />
+        <Text style={styles.emptyText}>No profile data found</Text>
+        <TouchableOpacity
+          style={styles.createProfileBtn}
+          onPress={() => setIsEditModalOpen(true)}
         >
+          <Text style={styles.createProfileText}>Setup Profile</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
-          {/* 1. PROFILE HEADER CARD */}
-          <View style={styles.profileHeaderCard}>
-            <View style={styles.headerCover} />
-            <View style={styles.avatarWrapper}>
-              <View style={styles.avatarContainer}>
-                {profile?.profile_image ? (
-                  <Image source={{ uri: profile.profile_image }} style={styles.avatar} />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Ionicons name="person" size={60} color="#ccc" />
-                  </View>
-                )}
-              </View>
-              <View style={[styles.miniStatusBadge, badge.style]}>
-                <Ionicons name={badge.icon as any} size={12} color="#fff" />
-              </View>
-            </View>
+  const { user, profile, household, children } = profileData;
+  const badge = getVerificationBadge();
 
-            <View style={styles.headerInfo}>
-              <Text style={styles.nameText}>{fullName}</Text>
-              {user.username && <Text style={styles.usernameText}>@{user.username}</Text>}
-              
-              <View style={[styles.verificationBadge, badge.style]}>
-                <Text style={styles.verificationText}>{badge.text.toUpperCase()}</Text>
-              </View>
+  // Get documents
+  const barangayClearance = getDocument('Barangay Clearance');
+  const validId = getDocument('Valid ID');
 
-              {/* Location Summary */}
-              {profile?.municipality && (
-                <View style={styles.locationSummary}>
-                  <Ionicons name="location-sharp" size={14} color="#666" />
-                  <Text style={styles.locationSummaryText}>
-                    {profile.barangay}, {profile.municipality}
-                  </Text>
-                </View>
-              )}
-            </View>
+  // Prepare personal info items
+  const personalInfoItems = [
+    { label: 'Email', value: user?.email || 'Not specified' },
+    { label: 'Contact Number', value: profile?.contact_number || 'Not specified' },
+  ];
 
-            <View style={styles.quickStatsRow}>
-              <View style={styles.quickStatItem}>
-                <Text style={styles.quickStatValue}>{profileData.job_stats?.active || 0}</Text>
-                <Text style={styles.quickStatLabel}>Active Jobs</Text>
-              </View>
-              <View style={[styles.quickStatItem, styles.quickStatBorder]}>
-                <Text style={styles.quickStatValue}>{profileData.job_stats?.total || 0}</Text>
-                <Text style={styles.quickStatLabel}>Total Posts</Text>
-              </View>
-              <View style={styles.quickStatItem}>
-                <Text style={styles.quickStatValue}>{household?.household_size || '---'}</Text>
-                <Text style={styles.quickStatLabel}>Household</Text>
-              </View>
-            </View>
-          </View>
+  // Prepare household info items
+  const householdInfoItems = [
+    {
+      label: 'Household Size',
+      value: household?.household_size?.toString() || 'Not specified',
+    },
+    {
+      label: 'Number of Children',
+      value: profileData.children_count?.toString() || '0',
+    },
+    { label: 'Pets', value: household?.has_pets ? 'Yes' : 'No' },
+    { label: 'Special Needs', value: household?.special_needs_care ? 'Yes' : 'No' },
+  ];
 
-          {/* 2. ACTION BUTTONS */}
-          <View style={styles.actionButtonsRow}>
-            <TouchableOpacity style={styles.actionButton} onPress={() => setIsEditModalOpen(true)}>
-              <Ionicons name="create" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>Edit Profile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, styles.actionButtonSecondary]} onPress={() => setIsDocumentModalOpen(true)}>
-              <Ionicons name="shield-checkmark" size={20} color="#007AFF" />
-              <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>Verification</Text>
-            </TouchableOpacity>
-          </View>
+  // DESKTOP LAYOUT
+  if (isDesktop) {
+    return (
+      <View style={styles.container}>
+        <NotificationModal
+          visible={errorModalVisible}
+          message={error || ''}
+          type="error"
+          onClose={() => setErrorModalVisible(false)}
+        />
 
-          {/* 3. ABOUT OUR HOUSEHOLD */}
-          {profile?.bio && (
-            <View style={styles.infoCard}>
-              <View style={styles.cardHeader}>
-                <Ionicons name="information-circle" size={22} color="#007AFF" />
-                <Text style={styles.cardTitle}>About Our Household</Text>
-              </View>
-              <Text style={styles.bioText}>{profile.bio}</Text>
-            </View>
-          )}
+        <EditParentProfileModal
+          visible={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSaveSuccess={refresh}
+        />
 
-          {/* 4. HOUSEHOLD DETAILS */}
-          <View style={styles.infoCard}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="home" size={22} color="#007AFF" />
-              <Text style={styles.cardTitle}>Household Details</Text>
-            </View>
-            
-            <View style={styles.preferenceGrid}>
-              <View style={styles.preferenceItem}>
-                <Text style={styles.prefLabel}>Family Size</Text>
-                <Text style={styles.prefValue}>{household?.household_size ? `${household.household_size} Members` : '---'}</Text>
-              </View>
-              <View style={styles.preferenceItem}>
-                <Text style={styles.prefLabel}>Children</Text>
-                <Text style={styles.prefValue}>{children_count > 0 ? `${children_count} Children` : 'None'}</Text>
-              </View>
-              <View style={styles.preferenceItem}>
-                <Text style={styles.prefLabel}>Elderly Care</Text>
-                <Text style={styles.prefValue}>{household?.has_elderly ? 'Yes' : 'No'}</Text>
-              </View>
-              <View style={styles.preferenceItem}>
-                <Text style={styles.prefLabel}>Pets</Text>
-                <Text style={styles.prefValue}>{household?.has_pets ? (household.pet_details || 'Yes') : 'No'}</Text>
-              </View>
-            </View>
+        <ParentDocumentModal
+          visible={isDocumentModalOpen}
+          onClose={() => setIsDocumentModalOpen(false)}
+          onSaveSuccess={refresh}
+        />
 
-            {/* Children List if any */}
-            {children.length > 0 && (
-              <View style={styles.subSection}>
-                <Text style={styles.subSectionTitle}>Children Details</Text>
-                {children.map((child: any, index: number) => (
-                  <View key={`child-${index}`} style={styles.childItem}>
-                    <Ionicons name="person" size={14} color="#007AFF" />
-                    <Text style={styles.childText}>
-                      {child.age} yrs old • {child.gender}
-                      {child.special_needs ? ` • ${child.special_needs}` : ''}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
+        <DocumentViewer
+          visible={!!viewingFile}
+          fileUrl={viewingFile?.url || null}
+          fileType={viewingFile?.type || 'image'}
+          onClose={() => setViewingFile(null)}
+        />
 
-          {/* 5. CONTACT & LOCATION */}
-          <View style={styles.infoCard}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="location" size={22} color="#007AFF" />
-              <Text style={styles.cardTitle}>Contact & Location</Text>
-            </View>
-            
-            <View style={styles.contactSection}>
-              <View style={styles.contactRow}>
-                <Ionicons name="mail" size={18} color="#666" />
-                <Text style={styles.contactValueText}>{user.email}</Text>
-              </View>
-              {profile?.contact_number && (
-                <View style={styles.contactRow}>
-                  <Ionicons name="call" size={18} color="#666" />
-                  <Text style={styles.contactValueText}>{profile.contact_number}</Text>
-                </View>
-              )}
-            </View>
+        <Sidebar onLogout={handleLogout} />
 
-            <View style={styles.addressContainer}>
-              <Text style={styles.fullAddress}>{profile?.address || 'No address set'}</Text>
-              {profile?.landmark && (
-                <View style={styles.landmarkRow}>
-                  <Ionicons name="flag" size={14} color="#666" />
-                  <Text style={styles.landmarkText}>Landmark: {profile.landmark}</Text>
-                </View>
-              )}
-              <View style={styles.locationMeta}>
-                <Text style={styles.locationMetaText}>
-                  {profile?.barangay}, {profile?.municipality}, {profile?.province}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* 6. VERIFICATION STATUS */}
-          <View style={styles.infoCard}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="shield-checkmark" size={22} color="#007AFF" />
-              <Text style={styles.cardTitle}>Identity Verification</Text>
-            </View>
-            <DocumentStatusRow 
-              icon="card-outline" 
-              title="Valid ID" 
-              status={getDoc('Valid ID').status as any} 
-              onPress={() => handleViewFile(getDoc('Valid ID'))}
-            />
-            <TouchableOpacity style={styles.manageDocsBtn} onPress={() => setIsDocumentModalOpen(true)}>
-              <Text style={styles.manageDocsBtnText}>Update Verification Documents</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* 7. JOB POSTINGS SUMMARY */}
-          <View style={styles.infoCard}>
-            <View style={styles.cardHeaderRow}>
-              <View style={styles.cardHeader}>
-                <Ionicons name="list" size={22} color="#007AFF" />
-                <Text style={styles.cardTitle}>My Job Postings</Text>
-              </View>
-              <TouchableOpacity onPress={() => router.push('/(parent)/jobs')}>
-                <Text style={styles.viewAllText}>View All</Text>
+        <View style={styles.mainContent}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
+          >
+            <View style={styles.pageHeader}>
+              <Text style={styles.pageTitle}>My Profile</Text>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => setIsEditModalOpen(true)}
+              >
+                <Ionicons name="pencil" size={18} color="#fff" />
+                <Text style={styles.editButtonText}>Edit Profile</Text>
               </TouchableOpacity>
             </View>
-            
-            <View style={styles.statsGrid}>
-              <View style={styles.statBox}>
-                <Text style={styles.statNumber}>{profileData.job_stats?.active || 0}</Text>
-                <Text style={styles.statLabel}>Active</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statNumber}>{profileData.job_stats?.filled || 0}</Text>
-                <Text style={styles.statLabel}>Filled</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statNumber}>{profileData.job_stats?.total || 0}</Text>
-                <Text style={styles.statLabel}>Total Posts</Text>
-              </View>
-            </View>
-          </View>
 
-          <View style={{ height: 100 }} />
-        </ScrollView>
+            <ProfileHeader
+              profileImage={profile?.profile_image}
+              fullName={getFullName()}
+              bio={profile?.bio}
+              badge={badge}
+              onEditProfile={() => setIsEditModalOpen(true)}
+              onManageDocuments={() => setIsDocumentModalOpen(true)}
+            />
+
+            <InfoCard
+              icon="person-outline"
+              iconColor="#007AFF"
+              title="Personal Information"
+              items={personalInfoItems}
+            />
+
+            <InfoCard
+              icon="home-outline"
+              iconColor="#34C759"
+              title="Household Information"
+              items={householdInfoItems}
+            >
+              <ChildrenList children={children} />
+            </InfoCard>
+
+            <InfoCard
+              icon="location-outline"
+              iconColor="#FF9500"
+              title="Address"
+              items={[
+                {
+                  label: 'Full Address',
+                  value: `${profile?.street || ''} ${profile?.barangay || ''}, ${
+                    profile?.city || ''
+                  }, ${profile?.province || ''}`,
+                },
+              ]}
+            />
+
+            <DocumentsCard
+              barangayClearance={barangayClearance}
+              validId={validId}
+              policeClearance={{ status: 'pending', url: null, file_path: '' }}
+              tesdaNc2={{ status: 'pending', url: null, file_path: '' }}
+              onViewFile={handleViewFile}
+              onManageDocuments={() => setIsDocumentModalOpen(true)}
+            />
+          </ScrollView>
+        </View>
       </View>
+    );
+  }
+
+  // MOBILE LAYOUT
+  return (
+    <View style={styles.container}>
+      <NotificationModal
+        visible={errorModalVisible}
+        message={error || ''}
+        type="error"
+        onClose={() => setErrorModalVisible(false)}
+      />
+
+      <EditParentProfileModal
+        visible={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSaveSuccess={refresh}
+      />
+
+      <ParentDocumentModal
+        visible={isDocumentModalOpen}
+        onClose={() => setIsDocumentModalOpen(false)}
+        onSaveSuccess={refresh}
+      />
+
+      <DocumentViewer
+        visible={!!viewingFile}
+        fileUrl={viewingFile?.url || null}
+        fileType={viewingFile?.type || 'image'}
+        onClose={() => setViewingFile(null)}
+      />
+
+      <View style={styles.mobileHeader}>
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+        >
+          <Ionicons name="menu" size={28} color="#1A1C1E" />
+        </TouchableOpacity>
+        <Text style={styles.mobileTitle}>My Profile</Text>
+        <TouchableOpacity
+          style={styles.editIconButton}
+          onPress={() => setIsEditModalOpen(true)}
+        >
+          <Ionicons name="pencil" size={24} color="#007AFF" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.mobileScrollContent}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
+      >
+        <MobileProfileHeader
+          profileImage={profile?.profile_image}
+          fullName={getFullName()}
+          badge={badge}
+          onEditProfile={() => setIsEditModalOpen(true)}
+          onManageDocuments={() => setIsDocumentModalOpen(true)}
+        />
+
+        <InfoCard
+          icon="person-outline"
+          iconColor="#007AFF"
+          title="Personal Information"
+          items={personalInfoItems}
+        />
+
+        <InfoCard
+          icon="home-outline"
+          iconColor="#34C759"
+          title="Household Information"
+          items={householdInfoItems}
+        >
+          <ChildrenList children={children} />
+        </InfoCard>
+
+        <DocumentsCard
+          barangayClearance={barangayClearance}
+          validId={validId}
+          policeClearance={{ status: 'pending', url: null, file_path: '' }}
+          tesdaNc2={{ status: 'pending', url: null, file_path: '' }}
+          onViewFile={handleViewFile}
+          onManageDocuments={() => setIsDocumentModalOpen(true)}
+        />
+      </ScrollView>
     </View>
   );
 }
 
-/**
- * HELPER COMPONENT: Document Status Row
- */
-interface DocumentStatusRowProps {
-  icon: string;
-  title: string;
-  status: 'uploaded' | 'pending';
-  onPress?: () => void;
-}
-
-function DocumentStatusRow({ icon, title, status, onPress }: DocumentStatusRowProps) {
-  const statusConfig = status === 'uploaded' 
-    ? { icon: 'checkmark-circle', color: '#2ECC71', text: 'Verified' }
-    : { icon: 'alert-circle', color: '#FF9500', text: 'Pending' };
-
-  return (
-    <TouchableOpacity 
-      style={styles.docRow} 
-      onPress={onPress}
-      disabled={!onPress || status !== 'uploaded'}
-    >
-      <View style={styles.docIcon}>
-        <Ionicons name={icon as any} size={20} color="#007AFF" />
-      </View>
-      <View style={styles.docInfo}>
-        <Text style={styles.docTitle}>{title}</Text>
-        {status === 'uploaded' && (
-          <Text style={{fontSize: 10, color: '#007AFF', marginTop: 2}}>Click to view</Text>
-        )}
-      </View>
-      <View style={styles.docStatus}>
-        <Ionicons name={statusConfig.icon as any} size={16} color={statusConfig.color} />
-        <Text style={[styles.docStatusText, { color: statusConfig.color }]}>
-          {statusConfig.text}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-// --- STYLES ---
 const styles = StyleSheet.create({
-  screenContainer: {
+  container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+    flexDirection: 'row',
   },
-  webCenterContainer: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 700,
-    alignSelf: 'center',
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  
-  // EMPTY STATE
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: 24,
+    backgroundColor: '#F8F9FA',
   },
   emptyText: {
     fontSize: 16,
@@ -563,463 +328,70 @@ const styles = StyleSheet.create({
   },
   createProfileBtn: {
     backgroundColor: '#007AFF',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 32,
-    borderRadius: 25,
+    borderRadius: 12,
   },
   createProfileText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '700',
   },
-  
-  // PROFILE HEADER CARD (MODERN STYLE)
-  profileHeaderCard: {
-    backgroundColor: '#fff',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    paddingBottom: 24,
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 5,
-    overflow: 'hidden',
-  },
-  headerCover: {
-    height: 100,
-    width: '100%',
-    backgroundColor: '#007AFF',
-    opacity: 0.1,
-    position: 'absolute',
-    top: 0,
-  },
-  avatarWrapper: {
-    marginTop: 40,
-    position: 'relative',
-  },
-  avatarContainer: {
-    padding: 4,
-    borderRadius: 60,
-    backgroundColor: '#fff',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-  },
-  avatarPlaceholder: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: '#F0F2F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  miniStatusBadge: {
-    position: 'absolute',
-    bottom: 5,
-    right: 5,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  headerInfo: {
-    alignItems: 'center',
-    marginTop: 12,
-    paddingHorizontal: 20,
-  },
-  nameText: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1A1C1E',
-    marginBottom: 4,
-  },
-  usernameText: {
-    fontSize: 14,
-    color: '#6C757D',
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  verificationBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    marginBottom: 10,
-  },
-  verificationText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  locationSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  locationSummaryText: {
-    fontSize: 13,
-    color: '#666',
-  },
-  quickStatsRow: {
-    flexDirection: 'row',
-    marginTop: 24,
-    paddingHorizontal: 20,
-    width: '100%',
-  },
-  quickStatItem: {
+  mainContent: {
     flex: 1,
+  },
+  scrollContent: {
+    padding: 32,
+    paddingBottom: 60,
+  },
+  pageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 24,
   },
-  quickStatBorder: {
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: '#F1F3F5',
+  pageTitle: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#1A1C1E',
   },
-  quickStatValue: {
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  mobileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  menuButton: {
+    padding: 8,
+  },
+  mobileTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1A1C1E',
   },
-  quickStatLabel: {
-    fontSize: 11,
-    color: '#6C757D',
-    marginTop: 2,
-    fontWeight: '500',
+  editIconButton: {
+    padding: 8,
   },
-  bgGreen: { backgroundColor: '#2ECC71' },
-  bgOrange: { backgroundColor: '#FF9500' },
-  bgRed: { backgroundColor: '#FF3B30' },
-  bgGray: { backgroundColor: '#ADB5BD' },
-
-  // ACTION BUTTONS
-  actionButtonsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 12,
-    marginBottom: 20,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-    shadowColor: "#007AFF",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  actionButtonSecondary: {
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#007AFF',
-    shadowOpacity: 0.05,
-    elevation: 2,
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  actionButtonTextSecondary: {
-    color: '#007AFF',
-  },
-
-  // INFO CARDS
-  infoCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-  bioText: {
-    fontSize: 14,
-    color: '#495057',
-    lineHeight: 22,
-  },
-  viewAllText: {
-    fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-
-  // PREFERENCE GRID
-  preferenceGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -8,
-  },
-  preferenceItem: {
-    width: '50%',
-    paddingHorizontal: 8,
-    marginBottom: 16,
-  },
-  prefLabel: {
-    fontSize: 11,
-    color: '#6C757D',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  prefValue: {
-    fontSize: 14,
-    color: '#1A1C1E',
-    fontWeight: '700',
-  },
-
-  // SUBSECTIONS
-  subSection: {
-    marginTop: 8,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F3F5',
-  },
-  subSectionTitle: {
-    fontSize: 12,
-    color: '#6C757D',
-    fontWeight: '700',
-    marginBottom: 10,
-  },
-  childItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#F8F9FA',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 6,
-  },
-  childText: {
-    fontSize: 13,
-    color: '#495057',
-    fontWeight: '500',
-  },
-
-  // CONTACT & ADDRESS
-  contactSection: {
-    marginBottom: 16,
-    gap: 10,
-  },
-  contactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  contactValueText: {
-    fontSize: 14,
-    color: '#495057',
-    fontWeight: '500',
-  },
-  addressContainer: {
-    backgroundColor: '#F8F9FA',
+  mobileScrollContent: {
     padding: 16,
-    borderRadius: 12,
-  },
-  fullAddress: {
-    fontSize: 14,
-    color: '#1A1C1E',
-    fontWeight: '700',
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  landmarkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  landmarkText: {
-    fontSize: 12,
-    color: '#6C757D',
-    fontStyle: 'italic',
-  },
-  locationMeta: {
-    borderTopWidth: 1,
-    borderTopColor: '#E9ECEF',
-    paddingTop: 8,
-  },
-  locationMetaText: {
-    fontSize: 12,
-    color: '#6C757D',
-  },
-
-  // DOCUMENTS
-  docRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-    gap: 12,
-  },
-  docIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#EBF5FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  docInfo: {
-    flex: 1,
-  },
-  docTitle: { 
-    fontSize: 14, 
-    color: '#1A1C1E',
-    fontWeight: '600',
-  },
-  docStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  docStatusText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  manageDocsBtn: {
-    marginTop: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    backgroundColor: '#F1F3F5',
-    borderRadius: 12,
-  },
-  manageDocsBtnText: {
-    color: '#495057',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-
-  // STATS GRID
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#007AFF',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#6C757D',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-
-  // Viewer Styles
-  viewerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  viewerContainer: {
-    width: Platform.OS === 'web' ? 800 : '95%',
-    height: '80%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  viewerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  viewerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-  },
-  viewerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f9f9f9',
-  },
-  fullImage: {
-    width: '100%',
-    height: '100%',
-  },
-  pdfPlaceholder: {
-    alignItems: 'center',
-    padding: 20,
-  },
-  pdfText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333',
-    marginTop: 16,
-  },
-  pdfSubText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  openBtn: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  openBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
+    paddingBottom: 40,
   },
 });

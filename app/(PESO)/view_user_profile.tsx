@@ -1,11 +1,10 @@
 // app/(PESO)/view_user_profile.tsx
-// View User Profile - Full details, documents, approve/reject
+// View User Profile - UPDATED with NotificationModal (better for web)
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router"; 
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Modal,
   ScrollView,
@@ -16,6 +15,7 @@ import {
   View,
 } from "react-native";
 import API_URL from "../../constants/api";
+import NotificationModal from "../../components/peso/NotificationModal";
 
 export default function ViewUserProfile() {
   const router = useRouter();
@@ -29,6 +29,16 @@ export default function ViewUserProfile() {
   const [rejectReason, setRejectReason] = useState("");
   const [rejectingDocument, setRejectingDocument] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
+
+  // Notification states
+  const [notification, setNotification] = useState({
+    visible: false,
+    type: "success" as "success" | "error" | "warning" | "info",
+    title: "",
+    message: "",
+    onAction: undefined as (() => void) | undefined,
+    actionLabel: undefined as string | undefined,
+  });
 
   useEffect(() => {
     fetchUserDetails();
@@ -46,56 +56,80 @@ export default function ViewUserProfile() {
 
       if (data.success) {
         setUserData(data.data);
+      } else {
+        showNotification("error", "Error", data.message || "Failed to load user details");
       }
     } catch (error) {
       console.error("Error fetching user details:", error);
-      Alert.alert("Error", "Failed to load user details");
+      showNotification("error", "Error", "Failed to load user details");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApproveUser = async () => {
-    Alert.alert(
-      "Verify User",
-      "Are you sure you want to approve this user?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Approve",
-          onPress: async () => {
-            try {
-              setProcessing(true);
-              const response = await fetch(`${API_URL}/peso/verify_user.php`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  user_id,
-                  action: "approve",
-                }),
-              });
-              const data = await response.json();
+  const showNotification = (
+    type: "success" | "error" | "warning" | "info",
+    title: string,
+    message: string,
+    actionLabel?: string,
+    onAction?: () => void
+  ) => {
+    setNotification({
+      visible: true,
+      type,
+      title,
+      message,
+      actionLabel,
+      onAction,
+    });
+  };
 
-              if (data.success) {
-                Alert.alert("Success", "User verified successfully");
-                router.back();
-              } else {
-                Alert.alert("Error", data.message || "Failed to verify user");
-              }
-            } catch (error) {
-              Alert.alert("Error", "Network error occurred");
-            } finally {
-              setProcessing(false);
-            }
-          },
-        },
-      ]
+  const closeNotification = () => {
+    setNotification((prev) => ({ ...prev, visible: false }));
+  };
+
+  const handleApproveUser = () => {
+    showNotification(
+      "warning",
+      "Verify User",
+      "Are you sure you want to approve this user? This action will mark them as verified.",
+      "Approve",
+      async () => {
+        try {
+          setProcessing(true);
+          const response = await fetch(`${API_URL}/peso/verify_user.php`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id,
+              action: "approve",
+            }),
+          });
+          const data = await response.json();
+
+          if (data.success) {
+            showNotification(
+              "success",
+              "Success!",
+              "User verified successfully",
+              "Back to List",
+              () => router.back()
+            );
+          } else {
+            showNotification("error", "Error", data.message || "Failed to verify user");
+          }
+        } catch (error) {
+          showNotification("error", "Error", "Network error occurred");
+        } finally {
+          setProcessing(false);
+        }
+      }
     );
   };
 
   const handleRejectUser = async () => {
     if (!rejectReason.trim()) {
-      Alert.alert("Error", "Please provide a reason for rejection");
+      showNotification("warning", "Missing Information", "Please provide a reason for rejection");
       return;
     }
 
@@ -113,58 +147,59 @@ export default function ViewUserProfile() {
       const data = await response.json();
 
       if (data.success) {
-        Alert.alert("Success", "User rejected");
         setRejectModalVisible(false);
         setRejectReason("");
-        router.back();
+        showNotification(
+          "success",
+          "User Rejected",
+          "User has been rejected successfully",
+          "Back to List",
+          () => router.back()
+        );
       } else {
-        Alert.alert("Error", data.message || "Failed to reject user");
+        showNotification("error", "Error", data.message || "Failed to reject user");
       }
     } catch (error) {
-      Alert.alert("Error", "Network error occurred");
+      showNotification("error", "Error", "Network error occurred");
     } finally {
       setProcessing(false);
     }
   };
 
-  const handleApproveDocument = async (doc: any) => {
-    Alert.alert(
+  const handleApproveDocument = (doc: any) => {
+    showNotification(
+      "info",
       "Verify Document",
       `Approve ${doc.document_type}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Approve",
-          onPress: async () => {
-            try {
-              const response = await fetch(`${API_URL}/peso/verify_document.php`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  document_id: doc.document_id,
-                  action: "approve",
-                }),
-              });
-              const data = await response.json();
+      "Approve",
+      async () => {
+        try {
+          const response = await fetch(`${API_URL}/peso/verify_document.php`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              document_id: doc.document_id,
+              action: "approve",
+            }),
+          });
+          const data = await response.json();
 
-              if (data.success) {
-                Alert.alert("Success", "Document verified");
-                fetchUserDetails();
-              } else {
-                Alert.alert("Error", data.message || "Failed to verify document");
-              }
-            } catch (error) {
-              Alert.alert("Error", "Network error occurred");
-            }
-          },
-        },
-      ]
+          if (data.success) {
+            showNotification("success", "Document Verified", "Document has been approved");
+            fetchUserDetails();
+          } else {
+            showNotification("error", "Error", data.message || "Failed to verify document");
+          }
+        } catch (error) {
+          showNotification("error", "Error", "Network error occurred");
+        }
+      }
     );
   };
 
   const handleRejectDocument = async () => {
     if (!rejectReason.trim()) {
-      Alert.alert("Error", "Please provide a reason for rejection");
+      showNotification("warning", "Missing Information", "Please provide a reason for rejection");
       return;
     }
 
@@ -181,15 +216,15 @@ export default function ViewUserProfile() {
       const data = await response.json();
 
       if (data.success) {
-        Alert.alert("Success", "Document rejected");
         setRejectingDocument(null);
         setRejectReason("");
+        showNotification("success", "Document Rejected", "Document has been rejected");
         fetchUserDetails();
       } else {
-        Alert.alert("Error", data.message || "Failed to reject document");
+        showNotification("error", "Error", data.message || "Failed to reject document");
       }
     } catch (error) {
-      Alert.alert("Error", "Network error occurred");
+      showNotification("error", "Error", "Network error occurred");
     }
   };
 
@@ -215,6 +250,17 @@ export default function ViewUserProfile() {
 
   return (
     <View style={styles.container}>
+      {/* Notification Modal */}
+      <NotificationModal
+        visible={notification.visible}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+        actionLabel={notification.actionLabel}
+        onAction={notification.onAction}
+        onClose={closeNotification}
+      />
+
       {/* Header with Back Button */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -441,6 +487,7 @@ export default function ViewUserProfile() {
       <Modal visible={rejectModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.rejectModalContainer}>
+            <Ionicons name="warning" size={56} color="#FF9500" />
             <Text style={styles.modalTitle}>Reject User</Text>
             <Text style={styles.modalSubtitle}>Please provide a reason for rejection</Text>
             <TextInput
@@ -451,6 +498,7 @@ export default function ViewUserProfile() {
               multiline
               numberOfLines={4}
               textAlignVertical="top"
+              placeholderTextColor="#999"
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -480,6 +528,7 @@ export default function ViewUserProfile() {
       <Modal visible={!!rejectingDocument} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.rejectModalContainer}>
+            <Ionicons name="warning" size={56} color="#FF9500" />
             <Text style={styles.modalTitle}>Reject Document</Text>
             <Text style={styles.modalSubtitle}>
               Rejecting: {rejectingDocument?.document_type}
@@ -492,6 +541,7 @@ export default function ViewUserProfile() {
               multiline
               numberOfLines={4}
               textAlignVertical="top"
+              placeholderTextColor="#999"
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -526,397 +576,74 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+// Styles remain the same as before - just copied from previous version
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8F9FA" },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 20,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    flex: 1,
-    alignItems: "center",
-  },
-  pageTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1C1E",
-  },
-  pageSubtitle: {
-    fontSize: 13,
-    color: "#666",
-  },
-
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-
-  profileCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  profileHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: 16,
-  },
-  profileImagePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#F0F0F0",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1A1C1E",
-    marginBottom: 4,
-  },
-  profileEmail: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 4,
-  },
-  profileType: {
-    fontSize: 13,
-    color: "#FF9500",
-    fontWeight: "600",
-  },
-  statusBadgeLarge: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  statusTextLarge: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#fff",
-  },
-  statusPending: {
-    backgroundColor: "#FF9500",
-  },
-  statusVerified: {
-    backgroundColor: "#34C759",
-  },
-  statusRejected: {
-    backgroundColor: "#FF3B30",
-  },
-
-  section: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1A1C1E",
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F8F9FA",
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-  },
-  infoValue: {
-    fontSize: 14,
-    color: "#1A1C1E",
-    fontWeight: "600",
-    textAlign: "right",
-    flex: 1,
-    marginLeft: 16,
-  },
-
-  documentCard: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  documentHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  documentInfo: {
-    flexDirection: "row",
-    flex: 1,
-  },
-  documentTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1A1C1E",
-  },
-  documentSubtitle: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
-  },
-  documentDate: {
-    fontSize: 11,
-    color: "#999",
-    marginTop: 4,
-  },
-  documentStatus: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-  documentStatusText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#fff",
-  },
-  documentActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  viewDocButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: "#E3F2FD",
-    gap: 6,
-  },
-  viewDocText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#007AFF",
-  },
-  approveButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: "#34C759",
-    gap: 6,
-  },
-  approveButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#fff",
-  },
-  rejectButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: "#FF3B30",
-    gap: 6,
-  },
-  rejectButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#fff",
-  },
-  noDocumentsText: {
-    textAlign: "center",
-    color: "#999",
-    fontSize: 14,
-    paddingVertical: 20,
-  },
-
-  actionButtons: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  approveButtonLarge: {
-    backgroundColor: "#34C759",
-  },
-  rejectButtonLarge: {
-    backgroundColor: "#FF3B30",
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#fff",
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 12,
-    color: "#666",
-    fontSize: 14,
-  },
-
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#666",
-    marginTop: 16,
-  },
-
-  // Modals
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  documentViewerContainer: {
-    width: "90%",
-    height: "80%",
-    backgroundColor: "#1A1C1E",
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  documentViewerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "#2A2C2E",
-  },
-  documentViewerTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  documentImage: {
-    flex: 1,
-    width: "100%",
-  },
-  pdfPlaceholder: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  pdfText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-    marginTop: 16,
-  },
-  pdfHint: {
-    color: "#999",
-    fontSize: 14,
-    marginTop: 8,
-  },
-
-  rejectModalContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 24,
-    width: "85%",
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1A1C1E",
-    marginBottom: 8,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 16,
-  },
-  rejectInput: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-    color: "#1A1C1E",
-    height: 120,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  modalButtons: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  cancelButton: {
-    backgroundColor: "#F0F0F0",
-  },
-  submitButton: {
-    backgroundColor: "#FF3B30",
-  },
-  cancelButtonText: {
-    color: "#666",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  submitButtonText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "700",
-  },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 20, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
+  backButton: { padding: 8 },
+  headerTitle: { flex: 1, alignItems: "center" },
+  pageTitle: { fontSize: 18, fontWeight: "700", color: "#1A1C1E" },
+  pageSubtitle: { fontSize: 13, color: "#666" },
+  scrollContent: { padding: 20, paddingBottom: 40 },
+  profileCard: { backgroundColor: "#fff", borderRadius: 16, padding: 20, marginBottom: 20, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
+  profileHeader: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
+  profileImage: { width: 80, height: 80, borderRadius: 40, marginRight: 16 },
+  profileImagePlaceholder: { width: 80, height: 80, borderRadius: 40, backgroundColor: "#F0F0F0", alignItems: "center", justifyContent: "center", marginRight: 16 },
+  profileInfo: { flex: 1 },
+  profileName: { fontSize: 20, fontWeight: "700", color: "#1A1C1E", marginBottom: 4 },
+  profileEmail: { fontSize: 14, color: "#666", marginBottom: 4 },
+  profileType: { fontSize: 13, color: "#FF9500", fontWeight: "600" },
+  statusBadgeLarge: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, gap: 8 },
+  statusTextLarge: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  statusPending: { backgroundColor: "#FF9500" },
+  statusVerified: { backgroundColor: "#34C759" },
+  statusRejected: { backgroundColor: "#FF3B30" },
+  section: { backgroundColor: "#fff", borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1A1C1E", marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
+  infoRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F8F9FA" },
+  infoLabel: { fontSize: 14, color: "#666", fontWeight: "500" },
+  infoValue: { fontSize: 14, color: "#1A1C1E", fontWeight: "600", textAlign: "right", flex: 1, marginLeft: 16 },
+  documentCard: { backgroundColor: "#F8F9FA", borderRadius: 12, padding: 16, marginBottom: 12 },
+  documentHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
+  documentInfo: { flexDirection: "row", flex: 1 },
+  documentTitle: { fontSize: 15, fontWeight: "700", color: "#1A1C1E" },
+  documentSubtitle: { fontSize: 12, color: "#666", marginTop: 2 },
+  documentDate: { fontSize: 11, color: "#999", marginTop: 4 },
+  documentStatus: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8 },
+  documentStatusText: { fontSize: 12, fontWeight: "700", color: "#fff" },
+  documentActions: { flexDirection: "row", gap: 8 },
+  viewDocButton: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 10, borderRadius: 8, backgroundColor: "#E3F2FD", gap: 6 },
+  viewDocText: { fontSize: 14, fontWeight: "600", color: "#007AFF" },
+  approveButton: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: "#34C759", gap: 6 },
+  approveButtonText: { fontSize: 14, fontWeight: "600", color: "#fff" },
+  rejectButton: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: "#FF3B30", gap: 6 },
+  rejectButtonText: { fontSize: 14, fontWeight: "600", color: "#fff" },
+  noDocumentsText: { textAlign: "center", color: "#999", fontSize: 14, paddingVertical: 20 },
+  actionButtons: { flexDirection: "row", gap: 12, marginTop: 8 },
+  actionButton: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 16, borderRadius: 12, gap: 8 },
+  approveButtonLarge: { backgroundColor: "#34C759" },
+  rejectButtonLarge: { backgroundColor: "#FF3B30" },
+  actionButtonText: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 12, color: "#666", fontSize: 14 },
+  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyText: { fontSize: 18, fontWeight: "600", color: "#666", marginTop: 16 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "center", alignItems: "center" },
+  documentViewerContainer: { width: "90%", height: "80%", backgroundColor: "#1A1C1E", borderRadius: 16, overflow: "hidden" },
+  documentViewerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, backgroundColor: "#2A2C2E" },
+  documentViewerTitle: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  documentImage: { flex: 1, width: "100%" },
+  pdfPlaceholder: { flex: 1, justifyContent: "center", alignItems: "center" },
+  pdfText: { color: "#fff", fontSize: 18, fontWeight: "600", marginTop: 16 },
+  pdfHint: { color: "#999", fontSize: 14, marginTop: 8 },
+  rejectModalContainer: { backgroundColor: "#fff", borderRadius: 16, padding: 24, width: "85%", maxWidth: 400, alignItems: "center" },
+  modalTitle: { fontSize: 20, fontWeight: "700", color: "#1A1C1E", marginTop: 16, marginBottom: 8 },
+  modalSubtitle: { fontSize: 14, color: "#666", marginBottom: 16, textAlign: "center" },
+  rejectInput: { backgroundColor: "#F8F9FA", borderRadius: 12, padding: 16, fontSize: 15, color: "#1A1C1E", height: 120, marginBottom: 20, borderWidth: 1, borderColor: "#E0E0E0", width: "100%" },
+  modalButtons: { flexDirection: "row", gap: 12, width: "100%" },
+  modalButton: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: "center" },
+  cancelButton: { backgroundColor: "#F0F0F0" },
+  submitButton: { backgroundColor: "#FF3B30" },
+  cancelButtonText: { color: "#666", fontSize: 15, fontWeight: "600" },
+  submitButtonText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 });

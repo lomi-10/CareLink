@@ -1,4 +1,7 @@
-import React, { useState } from "react";
+// app/admin/login.tsx
+// WEB-ONLY Admin Login - Shows warning on mobile devices
+
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,7 +12,8 @@ import {
   Modal,
   Platform,
   ActivityIndicator,
-  SafeAreaView
+  SafeAreaView,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +22,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function AdminLoginScreen() {
   const router = useRouter();
+  const [isMobile, setIsMobile] = useState(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,21 +34,28 @@ export default function AdminLoginScreen() {
   const [modalMessage, setModalMessage] = useState("");
   const [modalTitle, setModalTitle] = useState("");
 
-  // Logic Fix: Start with 5 attempts and count DOWN
-    const [attemptsLeft, setAttemptsLeft] = useState(5);
-    const [isLocked, setIsLocked] = useState(false);
+  const [attemptsLeft, setAttemptsLeft] = useState(5);
+  const [isLocked, setIsLocked] = useState(false);
 
-  // Helper to handle locking
+  useEffect(() => {
+    checkIfMobile();
+  }, []);
+
+  const checkIfMobile = () => {
+    const { width } = Dimensions.get('window');
+    const isMobileDevice = Platform.OS !== 'web' || width < 768;
+    setIsMobile(isMobileDevice);
+  };
+
   const handleLockout = () => {
     setIsLocked(true);
     setModalTitle("Too Many Attempts");
     setModalMessage("Account locked for 1 minute.");
     setModalVisible(true);
     
-    // Unlock after 60 seconds
     setTimeout(() => {
       setIsLocked(false);
-      setAttemptsLeft(5); // Reset attempts
+      setAttemptsLeft(5);
     }, 60000);
   };
 
@@ -51,8 +63,6 @@ export default function AdminLoginScreen() {
     if (!email || !password) {
       const newAttempts = attemptsLeft - 1;
       setAttemptsLeft(newAttempts);
-
-      // Clear inputs as requested
       setEmail("");
       setPassword("");
 
@@ -60,10 +70,9 @@ export default function AdminLoginScreen() {
         handleLockout();
       } else {
         setModalTitle("Login Failed");
-        setModalMessage(`Please enter correct PESO/Admin credentials.\nYou have ${newAttempts} attempts left.`);
+        setModalMessage(`Please enter correct credentials.\nYou have ${newAttempts} attempts left.`);
         setModalVisible(true);
       }
-
       return;
     }
 
@@ -79,10 +88,12 @@ export default function AdminLoginScreen() {
       const data = await response.json();
 
       if (data.success) {
+        // ================================================================
+        // SECURITY CHECK: Only admin and peso allowed
+        // ================================================================
         if (data.user_type === 'admin' || data.user_type === 'peso') {
-
           setAttemptsLeft(5);
-          // ✅ Login Success
+          
           await AsyncStorage.setItem("user_token", data.user.user_id.toString());
           await AsyncStorage.setItem("user_data", JSON.stringify(data.user));
           
@@ -99,23 +110,21 @@ export default function AdminLoginScreen() {
             }
           }, 1500);
         } else {
-          // ❌ Correct password, but NOT an admin
+          // Regular users trying to login here
           const newAttempts = attemptsLeft - 1;
           setAttemptsLeft(newAttempts);
 
           if (newAttempts <= 0) {
             handleLockout();
           } else {
-            setModalTitle("Login Failed");
-            setModalMessage(`${data.message}\nYou have ${newAttempts} attempts left.`);
+            setModalTitle("Access Denied");
+            setModalMessage("This portal is for administrators only.\n\nUse the regular login for user access.");
             setModalVisible(true);
           }
         }
       } else {
         const newAttempts = attemptsLeft - 1;
         setAttemptsLeft(newAttempts);
-
-        // Clear inputs as requested
         setEmail("");
         setPassword("");
 
@@ -123,7 +132,7 @@ export default function AdminLoginScreen() {
           handleLockout();
         } else {
           setModalTitle("Login Failed");
-          setModalMessage(`Please enter correct admin email and/or password.\nYou have ${newAttempts} attempts left.`);
+          setModalMessage(`Please enter correct credentials.\nYou have ${newAttempts} attempts left.`);
           setModalVisible(true);
         }
       }
@@ -136,6 +145,43 @@ export default function AdminLoginScreen() {
     }
   };
 
+  // Mobile Warning Screen
+  if (isMobile) {
+    return (
+      <SafeAreaView style={styles.mobileWarningContainer}>
+        <View style={styles.mobileWarningCard}>
+          <Ionicons name="desktop" size={80} color="#004080" />
+          <Text style={styles.mobileWarningTitle}>Desktop Only</Text>
+          <Text style={styles.mobileWarningMessage}>
+            The Admin Portal is only accessible from desktop or tablet devices.
+          </Text>
+          <View style={styles.mobileInstructions}>
+            <Text style={styles.instructionText}>
+              Please access this portal from:
+            </Text>
+            <View style={styles.deviceList}>
+              <View style={styles.deviceItem}>
+                <Ionicons name="desktop" size={24} color="#004080" />
+                <Text style={styles.deviceText}>Desktop Computer</Text>
+              </View>
+              <View style={styles.deviceItem}>
+                <Ionicons name="tablet-landscape" size={24} color="#004080" />
+                <Text style={styles.deviceText}>Tablet (Landscape)</Text>
+              </View>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.mobileBackButton}
+            onPress={() => router.push("/welcome")}
+          >
+            <Text style={styles.mobileBackText}>← Back to Welcome</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Desktop/Web Login Screen
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -224,9 +270,78 @@ export default function AdminLoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Mobile Warning Styles
+  mobileWarningContainer: {
+    flex: 1,
+    backgroundColor: "#E6E9F0",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  mobileWarningCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 40,
+    maxWidth: 400,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  mobileWarningTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#004080",
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  mobileWarningMessage: {
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  mobileInstructions: {
+    width: "100%",
+    backgroundColor: "#F5F7FA",
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 24,
+  },
+  instructionText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 16,
+  },
+  deviceList: {
+    gap: 12,
+  },
+  deviceItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  deviceText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  mobileBackButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  mobileBackText: {
+    color: "#004080",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
+  // Desktop Login Styles
   container: {
     flex: 1,
-    backgroundColor: "#E6E9F0", // Light gray professional background
+    backgroundColor: "#E6E9F0",
     justifyContent: "center",
     padding: 20,
   },
@@ -304,7 +419,7 @@ const styles = StyleSheet.create({
   },
   button: {
     height: 50,
-    backgroundColor: "#004080", // Corporate Blue
+    backgroundColor: "#004080",
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
@@ -320,7 +435,6 @@ const styles = StyleSheet.create({
     color: "#666",
     fontSize: 14,
   },
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
