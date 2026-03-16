@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import API_URL from '../../constants/api';
 
-import NotificationModal from '../common/NotificationModal';
+import { NotificationModal } from '../common';
 
 interface DocumentManagementModalProps {
   visible: boolean;

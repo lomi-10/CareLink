@@ -1,11 +1,12 @@
 // hooks/useHelperProfile.ts
-// Custom hook for fetching and managing helper profile data
+// Custom hook for fetching, managing, and mapping helper profile data
 
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import API_URL from '../constants/api';
 
+// 1. FIXED INTERFACE: Added all missing DB columns and mapped arrays
 export interface HelperProfileData {
   user: {
     user_id: string;
@@ -13,24 +14,36 @@ export interface HelperProfileData {
     first_name: string;
     middle_name?: string;
     last_name: string;
+    username?: string;
   };
   profile: {
     profile_id: string;
     profile_image?: string;
     gender?: string;
-    date_of_birth?: string;
-    age?: number;
+    birth_date?: string; 
+    date_of_birth?: string; // Mapped for UI
+    age?: number;           // Calculated for UI
+    civil_status?: string;
+    religion?: string;
+    education_level?: string;
     contact_number?: string;
     bio?: string;
     employment_type?: string;
     work_schedule?: string;
     years_experience?: number;
     expected_salary?: number;
+    salary_period?: string;
     street?: string;
     barangay?: string;
-    city?: string;
+    city?: string; // Note: Your PHP uses 'municipality', we map it below
     province?: string;
     verification_status: string;
+  };
+  // Translated arrays for the UI
+  mappedSpecialties: {
+    jobs: string[];
+    skills: string[];
+    languages: string[];
   };
   documents: Array<{
     document_id: string;
@@ -48,7 +61,6 @@ export function useHelperProfile() {
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Load profile from backend
   const loadProfile = async () => {
     try {
       setLoading(true);
@@ -66,7 +78,6 @@ export function useHelperProfile() {
       const parsed = JSON.parse(userData);
       setUserId(parsed.user_id);
 
-      // Fetch profile from backend
       const url = `${API_URL}/helper/get_profile.php?user_id=${parsed.user_id}`;
       const response = await fetch(url);
 
@@ -78,8 +89,56 @@ export function useHelperProfile() {
 
       try {
         const data = JSON.parse(responseText);
+        
         if (data.success) {
-          setProfileData(data);
+          // 2. DATA TRANSFORMATION PIPELINE
+          
+          // Calculate Age from birth_date
+          let calculatedAge = 0;
+          if (data.profile?.birth_date) {
+            const birthDate = new Date(data.profile.birth_date);
+            const today = new Date();
+            calculatedAge = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+              calculatedAge--;
+            }
+          }
+
+          // Map IDs to Names for UI Display
+          const mappedJobs = data.selected_jobs?.map((id: number) => {
+            const match = data.available_jobs?.find((j: any) => j.job_id === id);
+            return match ? match.job_title : '';
+          }).filter(Boolean) || [];
+
+          const mappedSkills = data.selected_skills?.map((id: number) => {
+            const match = data.available_skills?.find((s: any) => s.skill_id === id);
+            return match ? match.skill_name : '';
+          }).filter(Boolean) || [];
+
+          const mappedLanguages = data.selected_languages?.map((id: number) => {
+            const match = data.available_languages?.find((l: any) => l.language_id === id);
+            return match ? match.language_name : '';
+          }).filter(Boolean) || [];
+
+          // Format the final object to match exactly what the UI expects
+          const formattedData: HelperProfileData = {
+            user: data.user,
+            profile: {
+              ...data.profile,
+              date_of_birth: data.profile?.birth_date,
+              age: calculatedAge,
+              city: data.profile?.municipality, // Map PHP municipality to UI city
+            },
+            mappedSpecialties: {
+              jobs: mappedJobs,
+              skills: mappedSkills,
+              languages: mappedLanguages
+            },
+            documents: data.documents || []
+          };
+
+          setProfileData(formattedData);
         } else {
           throw new Error(data.message || 'Failed to load profile data.');
         }
@@ -95,50 +154,26 @@ export function useHelperProfile() {
     }
   };
 
-  // Refresh profile data
   const refresh = async () => {
     await loadProfile();
   };
 
-  // Get full name
   const getFullName = () => {
     if (!profileData?.user) return '';
     const { first_name, middle_name, last_name } = profileData.user;
     return `${first_name} ${middle_name ? middle_name + ' ' : ''}${last_name}`.trim();
   };
 
-  // Get verification badge info
   const getVerificationBadge = () => {
     const status = profileData?.profile?.verification_status || 'Unverified';
     switch (status) {
-      case 'Verified':
-        return {
-          icon: 'checkmark-circle',
-          text: 'Verified Helper',
-          color: '#34C759',
-        };
-      case 'Pending':
-        return {
-          icon: 'time',
-          text: 'Pending Verification',
-          color: '#FF9500',
-        };
-      case 'Rejected':
-        return {
-          icon: 'close-circle',
-          text: 'Verification Failed',
-          color: '#FF3B30',
-        };
-      default:
-        return {
-          icon: 'alert-circle',
-          text: 'Not yet Verified',
-          color: '#999',
-        };
+      case 'Verified': return { icon: 'checkmark-circle', text: 'Verified Helper', color: '#34C759' };
+      case 'Pending': return { icon: 'time', text: 'Pending Verification', color: '#FF9500' };
+      case 'Rejected': return { icon: 'close-circle', text: 'Verification Failed', color: '#FF3B30' };
+      default: return { icon: 'alert-circle', text: 'Not yet Verified', color: '#999' };
     }
   };
 
-  // Get document by type
   const getDocument = (type: string) => {
     const doc = profileData?.documents?.find((d) => d.document_type === type);
     return {

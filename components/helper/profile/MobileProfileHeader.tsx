@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 interface MobileProfileHeaderProps {
   profileImage?: string;
   fullName: string;
+  bio?: string;
   badge: {
     icon: string;
     text: string;
@@ -20,6 +21,7 @@ interface MobileProfileHeaderProps {
 export function MobileProfileHeader({
   profileImage,
   fullName,
+  bio,
   badge,
   onEditProfile,
   onManageDocuments,
@@ -41,6 +43,9 @@ export function MobileProfileHeader({
         <Ionicons name={badge.icon as any} size={14} color="#fff" />
         <Text style={styles.badgeText}>{badge.text}</Text>
       </View>
+      {bio && (
+        <Text style={styles.bio}>{bio}</Text>
+      )}
 
       {/* Mobile Action Buttons */}
       <View style={styles.actions}>
@@ -57,7 +62,7 @@ export function MobileProfileHeader({
           onPress={onManageDocuments}
           activeOpacity={0.7}
         >
-          <Ionicons name="cloud-upload-outline" size={18} color="#FF9500" />
+          <Ionicons name="cloud-upload-outline" size={18} color="#007AFF" />
           <Text style={[styles.actionText, styles.actionTextSecondary]}>
             Documents
           </Text>
@@ -85,7 +90,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 80,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#007AFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -130,6 +135,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  bio: {
+    fontSize: 14,
+    color: '#5d390aff',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    lineHeight: 20,
+  },
   actions: {
     flexDirection: 'row',
     gap: 12,
@@ -140,7 +154,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FF9500',
+    backgroundColor: '#007AFF',
     paddingVertical: 12,
     borderRadius: 12,
     gap: 6,
@@ -148,7 +162,7 @@ const styles = StyleSheet.create({
   actionSecondary: {
     backgroundColor: '#fff',
     borderWidth: 1.5,
-    borderColor: '#FF9500',
+    borderColor: '#007AFF',
   },
   actionText: {
     color: '#fff',
@@ -156,6 +170,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   actionTextSecondary: {
-    color: '#FF9500',
+    color: '#007AFF',
   },
 });

@@ -15,7 +15,7 @@ interface NotificationModalProps {
   duration?: number;
 }
 
-export default function NotificationModal({ 
+export function NotificationModal({ 
   visible, 
   message, 
   type = 'info',

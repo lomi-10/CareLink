@@ -1,10 +1,10 @@
-// components/profile/EditParentProfileModal.tsx 
+// components/profile/EditParentProfileModal.tsx
+
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, 
   Image, Platform, ActivityIndicator, KeyboardAvoidingView, Switch,
-  TextInput
-  // Alert removed
+  Dimensions
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,8 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import API_URL from "../../constants/api";
 
 import LabeledInput from '../common/LabeledInput';
-import NotificationModal from '../common/NotificationModal';
-import LoadingSpinner from '../common/LoadingSpinner';
+import { NotificationModal } from '../common';
 
 interface EditProfileModalProps {
   visible: boolean;
@@ -28,12 +27,22 @@ type Child = {
   special_needs: string;
 };
 
+// NEW: Added Elderly type to match your database schema
+type Elderly = {
+  elderly_id?: number;
+  age: string;
+  gender: string;
+  condition: string;
+  care_level: string;
+};
+
+const isWeb = Platform.OS === 'web';
+
 export default function EditProfileModal({ visible, onClose, onSaveSuccess }: EditProfileModalProps) {
   
-  // STATE 
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Profile fields
+  // 1. Profile fields
   const [contactNumber, setContactNumber] = useState('');
   const [province, setProvince] = useState('');
   const [municipality, setMunicipality] = useState('');
@@ -43,14 +52,19 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [imageChanged, setImageChanged] = useState(false);
   
-  // Household fields
+  // 2. Household fields
   const [householdSize, setHouseholdSize] = useState('');
-  const [hasElderly, setHasElderly] = useState(false);
   const [hasPets, setHasPets] = useState(false); 
   const [petDetails, setPetDetails] = useState('');
   
-  // Children Fields
+  // 3. Family Members Fields
+  const [hasChildren, setHasChildren] = useState(false);
   const [children, setChildren] = useState<Child[]>([]);
+  
+  const [hasElderly, setHasElderly] = useState(false);
+  const [elderly, setElderly] = useState<Elderly[]>([]);
+
+  // State flags
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -59,9 +73,10 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
   const [notifMessage, setNotifMessage] = useState('');
   const [notifType, setNotifType] = useState<'success' | 'error'>('success');
 
-  // State for the custom Delete Confirmation Modal
-  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [childToDeleteIndex, setChildToDeleteIndex] = useState<number | null>(null);
+  // Modals for deletion
+  const [deleteModal, setDeleteModal] = useState<{visible: boolean, type: 'child' | 'elderly' | null, index: number | null}>({
+    visible: false, type: null, index: null
+  });
 
   useEffect(() => {
     if (visible) {
@@ -86,14 +101,13 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
       setUserId(parsed.user_id);
       
       const response = await fetch(`${API_URL}/parent/get_profile.php?user_id=${parsed.user_id}`);
-      const text = await response.text();
-      let data = JSON.parse(text);
+      const data = await response.json();
       
       if (data.success) {
         if (data.profile) {
           const p = data.profile;
           setContactNumber(p.contact_number || '');
-          setProvince(p.province || 'Cebu');
+          setProvince(p.province || 'Leyte');
           setMunicipality(p.municipality || '');
           setBarangay(p.barangay || '');
           setBio(p.bio || '');
@@ -104,19 +118,30 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
         if (data.household) {
           const h = data.household;
           setHouseholdSize(h.household_size ? String(h.household_size) : '');
+          setHasChildren(h.has_children === true || h.has_children === 1);
           setHasElderly(h.has_elderly === true || h.has_elderly === 1);
           setHasPets(h.has_pets === true || h.has_pets === 1);
           setPetDetails(h.pet_details || '');
         }
         
         if (data.children && Array.isArray(data.children)) {
-          const loadedChildren: Child[] = data.children.map((c: any) => ({
+          setChildren(data.children.map((c: any) => ({
             child_id: c.child_id,
             age: String(c.age),
             gender: c.gender || 'Prefer not to say',
             special_needs: c.special_needs || ''
-          }));
-          setChildren(loadedChildren);
+          })));
+        }
+
+        // NEW: Load Elderly data if your backend returns it
+        if (data.elderly && Array.isArray(data.elderly)) {
+          setElderly(data.elderly.map((e: any) => ({
+            elderly_id: e.elderly_id,
+            age: String(e.age),
+            gender: e.gender || 'Prefer not to say',
+            condition: e.condition || '',
+            care_level: e.care_level || 'Independent'
+          })));
         }
       }
     } catch (error: any) {
@@ -126,36 +151,44 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
     }
   };
 
-  const addChild = () => {
-    setChildren([...children, { age: '', gender: 'Prefer not to say', special_needs: '' }]);
+  const generatedAddress = (() => {
+    const parts = [];
+    if (barangay.trim()) parts.push(barangay.trim());
+    if (municipality.trim()) parts.push(municipality.trim());
+    if (province.trim()) parts.push(province.trim());
+    return parts.length > 0 ? parts.join(', ') : '';
+  })();
+
+  // Handlers for dynamic lists
+  const addChild = () => setChildren([...children, { age: '', gender: 'Prefer not to say', special_needs: '' }]);
+  const addElderly = () => setElderly([...elderly, { age: '', gender: 'Prefer not to say', condition: '', care_level: 'Independent' }]);
+  
+  const updateChild = (idx: number, field: keyof Child, val: string) => {
+    const newArr = [...children];
+    newArr[idx] = { ...newArr[idx], [field]: val };
+    setChildren(newArr);
   };
 
-  // REPLACED Alert.alert with Modal-based logic
-  const requestRemoveChild = (index: number) => {
-    setChildToDeleteIndex(index);
-    setDeleteModalOpen(true);
+  const updateElderly = (idx: number, field: keyof Elderly, val: string) => {
+    const newArr = [...elderly];
+    newArr[idx] = { ...newArr[idx], [field]: val };
+    setElderly(newArr);
   };
 
   const confirmDelete = () => {
-    if (childToDeleteIndex !== null) {
-      const newChildren = children.filter((_, i) => i !== childToDeleteIndex);
-      setChildren(newChildren);
-      setDeleteModalOpen(false);
-      setChildToDeleteIndex(null);
+    if (deleteModal.index !== null) {
+      if (deleteModal.type === 'child') {
+        setChildren(children.filter((_, i) => i !== deleteModal.index));
+      } else if (deleteModal.type === 'elderly') {
+        setElderly(elderly.filter((_, i) => i !== deleteModal.index));
+      }
     }
-  };
-
-  const updateChild = (index: number, field: keyof Child, value: string) => {
-    const newChildren = [...children];
-    newChildren[index] = { ...newChildren[index], [field]: value };
-    setChildren(newChildren);
+    setDeleteModal({ visible: false, type: null, index: null });
   };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      return showNotification('Camera permission needed', 'error');
-    }
+    if (status !== 'granted') return showNotification('Camera permission needed', 'error');
     
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -171,15 +204,12 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
   };
 
   const handleSave = async () => {
-    if (!contactNumber.trim()) return showNotification('Contact number is required', 'error');
-    if (!province.trim() || !municipality.trim() || !barangay.trim()) {
-      return showNotification('Address fields are required', 'error');
+    if (!contactNumber.trim() || !province.trim() || !municipality.trim() || !barangay.trim()) {
+      return showNotification('Please fill in all required contact and address fields.', 'error');
     }
     
     setSaving(true);
     try {
-      console.log('💾 Saving parent profile...');
-
       const formData = new FormData();
       formData.append('user_id', userId || '');
       formData.append('contact_number', contactNumber.trim());
@@ -189,76 +219,49 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
       formData.append('bio', bio.trim());
       formData.append('landmark', landmark.trim());
       formData.append('household_size', householdSize || '0');
+      
+      formData.append('has_children', hasChildren ? '1' : '0');
       formData.append('has_elderly', hasElderly ? '1' : '0');
       formData.append('has_pets', hasPets ? '1' : '0');
-      formData.append('pet_details', petDetails.trim());
+      formData.append('pet_details', hasPets ? petDetails.trim() : '');
       
-      const childrenData = children.map(c => ({
-        age: parseInt(c.age) || 0,
-        gender: c.gender,
-        special_needs: c.special_needs.trim() || null
+      const safeChildren = children.map(c => ({
+        age: parseInt(c.age) || 0, gender: c.gender, special_needs: c.special_needs.trim() || null
       }));
-      formData.append('children', JSON.stringify(childrenData));
+      formData.append('children', JSON.stringify(safeChildren));
 
-      // ============================================================
-      // 2. FIXED IMAGE UPLOAD LOGIC (WEB COMPATIBLE)
-      // ============================================================
+      const safeElderly = elderly.map(e => ({
+        age: parseInt(e.age) || 0, gender: e.gender, condition: e.condition.trim() || null, care_level: e.care_level
+      }));
+      formData.append('elderly', JSON.stringify(safeElderly));
+
       if (profileImage && imageChanged && !profileImage.startsWith('http')) {
-        
         if (Platform.OS === 'web') {
-          // --- WEB LOGIC ---
-          // On web, the URI is a blob URL. We must fetch it to get the raw Blob data.
           const res = await fetch(profileImage);
           const blob = await res.blob();
-          
-          // Append the actual binary file
           formData.append('profile_image', blob, 'profile.jpg');
-          
         } else {
-          // --- MOBILE LOGIC (Android/iOS) ---
           const uriParts = profileImage.split('.');
           const fileType = uriParts[uriParts.length - 1];
-          const fileName = profileImage.split('/').pop() || `profile.${fileType}`;
-
-          // Mobile accepts this object format
           // @ts-ignore
           formData.append('profile_image', {
             uri: Platform.OS === 'android' ? profileImage : profileImage.replace('file://', ''),
-            name: fileName,
+            name: `profile.${fileType}`,
             type: `image/${fileType === 'png' ? 'png' : 'jpeg'}`,
           });
         }
       }
-      // ============================================================
 
-      console.log('🌐 Sending request...');
-      
-      // Important: Do not set Content-Type header manually
       const response = await fetch(`${API_URL}/parent/update_profile.php`, {
-        method: 'POST',
-        body: formData,
+        method: 'POST', body: formData,
       });
 
       const responseText = await response.text();
-      console.log('📄 Response:', responseText.substring(0, 200));
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error('❌ JSON parse error:', e);
-        console.error("Response was: ", responseText);
-        throw new Error(`Server error: ${responseText.substring(0, 100)}`);
-      }
+      const data = JSON.parse(responseText);
 
       if (data.success) {
         showNotification(data.message || 'Profile saved!', 'success');
-        
-        // Update the local image state if the server returned the new URL
-        if (data.data && data.data.profile_image) {
-           setProfileImage(data.data.profile_image);
-        }
-        
+        if (data.data?.profile_image) setProfileImage(data.data.profile_image);
         setTimeout(() => {
           onClose();
           if (onSaveSuccess) onSaveSuccess();
@@ -268,318 +271,297 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
       }
 
     } catch (error: any) {
-      console.error('❌ Save error:', error);
       showNotification(`Error: ${error.message}`, 'error');
     } finally {
       setSaving(false);
     }
   };
 
+  // Helper render components for cleaner code
+  const renderGenderChips = (currentValue: string, onChange: (val: string) => void) => (
+    <View style={styles.chipRow}>
+      {['Male', 'Female', 'Prefer not to say'].map((g) => (
+        <TouchableOpacity key={g} onPress={() => onChange(g)}
+          style={[styles.chip, currentValue === g && styles.chipActive]}
+        >
+          <Text style={[styles.chipText, currentValue === g && styles.chipTextActive]}>{g}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
   return (
     <>
-      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-          style={styles.container}
-        >
-          <View style={styles.header}>
-            <Text style={styles.title}>Edit Profile</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#333" />
-            </TouchableOpacity>
-          </View>
-
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#007AFF" />
-            </View>
-          ) : (
-            <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-              
-              <TouchableOpacity onPress={pickImage} style={styles.imageBtn}>
-                {profileImage ? (
-                  <Image source={{ uri: profileImage }} style={styles.avatar} />
-                ) : (
-                  <View style={styles.placeholderAvatar}><Ionicons name="camera" size={40} color="#999" /></View>
-                )}
-                <Text style={styles.changePhotoText}>{profileImage ? 'Change Photo' : 'Add Photo'}</Text>
+      <Modal visible={visible} animationType="slide" transparent={isWeb} presentationStyle={isWeb ? "overFullScreen" : "pageSheet"}>
+        <View style={isWeb ? styles.webOverlay : { flex: 1 }}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={[styles.container, isWeb && styles.webContainer]}
+          >
+          
+            <View style={[styles.header, isWeb && styles.headerWeb]}>
+              <Text style={styles.headerTitle}>Edit Profile</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color="#666" />
               </TouchableOpacity>
+            </View>
 
-              <Text style={styles.sectionTitle}>Bio</Text>
-              <LabeledInput
-                label="About Your Household *"
-                value={bio}
-                onChangeText={setBio}
-                multiline
-                numberOfLines={4}
-                placeholder='Tell service-helpers about your household...'
-              />
-
-              <Text style={styles.sectionTitle}>Contact Information</Text>
-              <LabeledInput 
-                label="Contact Number *" 
-                value={contactNumber} 
-                onChangeText={setContactNumber} 
-                keyboardType="phone-pad" 
-              />
-
-              <Text style={styles.sectionTitle}>Address</Text>
-              <LabeledInput label="Province *" value={province} onChangeText={setProvince} />
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}><LabeledInput label="Municipality *" value={municipality} onChangeText={setMunicipality} /></View>
-                <View style={{ width: 10 }} />
-                <View style={{ flex: 1 }}><LabeledInput label="Barangay *" value={barangay} onChangeText={setBarangay} /></View>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={styles.loadingText}>Loading profile...</Text>
               </View>
-
-              <Text style={styles.sectionTitle}>Household Information</Text>
-              <LabeledInput label="Household Size" value={householdSize} onChangeText={setHouseholdSize} keyboardType="numeric" />
-
-              <View style={styles.switchRow}>
-                <View style={styles.switchInfo}><Text style={styles.switchLabel}>Elderly members?</Text></View>
-                <Switch value={hasElderly} onValueChange={setHasElderly} />
-              </View>
-
-              <View style={styles.switchRow}>
-                <View style={styles.switchInfo}><Text style={styles.switchLabel}>Do you have pets?</Text></View>
-                <Switch value={hasPets} onValueChange={setHasPets} />
-              </View>
-
-              <View style={styles.childrenSection}>
-                <View style={styles.childrenHeader}>
-                  <Text style={styles.sectionTitle}>Children ({children.length})</Text>
-                  <TouchableOpacity onPress={addChild} style={styles.addChildBtn}>
-                    <Ionicons name="add-circle" size={24} color="#007AFF" /><Text style={styles.addChildText}>Add Child</Text>
+            ) : (
+              <ScrollView contentContainerStyle={[styles.content, isWeb && styles.contentWeb]} keyboardShouldPersistTaps="handled">
+                
+                {/* SECTION 1: Basic Info */}
+                <View style={styles.card}>
+                  <TouchableOpacity onPress={pickImage} style={styles.imageContainer}>
+                    {profileImage ? (
+                      <Image source={{ uri: profileImage }} style={styles.avatar} />
+                    ) : (
+                      <View style={styles.placeholderAvatar}><Ionicons name="camera" size={40} color="#999" /></View>
+                    )}
+                    <Text style={styles.changePhotoText}>{profileImage ? 'Change Photo' : 'Upload Photo'}</Text>
                   </TouchableOpacity>
+
+                  <LabeledInput label="About Your Household (Bio)" value={bio} onChangeText={setBio} multiline numberOfLines={3} placeholder='Short intro about your family...' />
+                  <LabeledInput label="Contact Number *" value={contactNumber} onChangeText={setContactNumber} keyboardType="phone-pad" />
                 </View>
 
-                {children.map((child, index) => (
-                  <View key={index} style={styles.childCard}>
-                    <View style={styles.childCardHeader}>
-                      <Text style={styles.childCardTitle}>Child {index + 1}</Text>
-                      {/* Changed from removeChild to requestRemoveChild */}
-                      <TouchableOpacity onPress={() => requestRemoveChild(index)}>
-                        <Ionicons name="trash-outline" size={20} color="#dc3545" />
+                {/* SECTION 2: Location */}
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Location & Address</Text>
+                  <View style={isWeb ? styles.webRow : undefined}>
+                    <View style={isWeb ? { flex: 1, paddingRight: 12 } : undefined}>
+                      <LabeledInput label="Province *" value={province} onChangeText={setProvince} />
+                    </View>
+                    <View style={isWeb ? { flex: 1, paddingRight: 12 } : styles.row}>
+                      <View style={{ flex: 1 }}><LabeledInput label="Municipality *" value={municipality} onChangeText={setMunicipality} /></View>
+                      {!isWeb && <View style={{ width: 12 }} />}
+                      <View style={{ flex: 1, marginLeft: isWeb ? 12 : 0 }}><LabeledInput label="Barangay *" value={barangay} onChangeText={setBarangay} /></View>
+                    </View>
+                  </View>
+
+                  {generatedAddress && (
+                    <View style={styles.addressPreview}>
+                      <Ionicons name="location" size={16} color="#1976D2" />
+                      <Text style={styles.previewText}>{generatedAddress}</Text>
+                    </View>
+                  )}
+                  <LabeledInput label="Landmark (Optional)" value={landmark} onChangeText={setLandmark} placeholder="e.g., Near SM City" />
+                </View>
+
+                {/* SECTION 3: Household Composition */}
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Household Details</Text>
+                  <LabeledInput label="Total Household Size" value={householdSize} onChangeText={setHouseholdSize} keyboardType="numeric" placeholder="e.g., 4" />
+
+                  {/* Pets Toggle */}
+                  <View style={styles.toggleRow}>
+                    <View style={styles.toggleInfo}>
+                      <Text style={styles.toggleTitle}>Do you have pets?</Text>
+                      <Text style={styles.toggleDesc}>Dogs, cats, or others</Text>
+                    </View>
+                    <Switch value={hasPets} onValueChange={setHasPets} />
+                  </View>
+                  {hasPets && (
+                    <View style={styles.subForm}>
+                      <LabeledInput label="Pet Details" value={petDetails} onChangeText={setPetDetails} placeholder="e.g., 1 Friendly Golden Retriever" />
+                    </View>
+                  )}
+
+                  {/* Children Toggle */}
+                  <View style={styles.toggleRow}>
+                    <View style={styles.toggleInfo}>
+                      <Text style={styles.toggleTitle}>Do you have children?</Text>
+                      <Text style={styles.toggleDesc}>Ages 0-18</Text>
+                    </View>
+                    <Switch value={hasChildren} onValueChange={(val) => { setHasChildren(val); if(val && children.length===0) addChild(); }} />
+                  </View>
+                  {hasChildren && (
+                    <View style={styles.subForm}>
+                      {children.map((child, index) => (
+                        <View key={index} style={styles.memberCard}>
+                          <View style={styles.memberHeader}>
+                            <Text style={styles.memberTitle}>Child {index + 1}</Text>
+                            <TouchableOpacity onPress={() => setDeleteModal({visible: true, type: 'child', index})}><Ionicons name="trash-outline" size={20} color="#dc3545" /></TouchableOpacity>
+                          </View>
+                          <LabeledInput label="Age *" value={child.age} onChangeText={(val) => updateChild(index, 'age', val)} keyboardType="numeric" />
+                          <Text style={styles.inputLabel}>Gender *</Text>
+                          {renderGenderChips(child.gender, (val) => updateChild(index, 'gender', val))}
+                          <LabeledInput label="Special Needs (Optional)" value={child.special_needs} onChangeText={(val) => updateChild(index, 'special_needs', val)} placeholder="e.g., Autism, Allergies" />
+                        </View>
+                      ))}
+                      <TouchableOpacity onPress={addChild} style={styles.addMemberBtn}>
+                        <Ionicons name="add" size={20} color="#007AFF" />
+                        <Text style={styles.addMemberText}>Add Another Child</Text>
                       </TouchableOpacity>
                     </View>
-                    <LabeledInput label="Age *" value={child.age} onChangeText={(val) => updateChild(index, 'age', val)} keyboardType="numeric" />
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          )}
+                  )}
 
-          <View style={styles.footer}>
-            <TouchableOpacity 
-              style={[styles.saveBtn, (saving || loading) && styles.saveBtnDisabled]} 
-              onPress={handleSave} 
-              disabled={saving || loading}
-            >
-              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Changes</Text>}
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
+                  {/* Elderly Toggle */}
+                  <View style={styles.toggleRow}>
+                    <View style={styles.toggleInfo}>
+                      <Text style={styles.toggleTitle}>Elderly Members?</Text>
+                      <Text style={styles.toggleDesc}>Seniors requiring care/attention</Text>
+                    </View>
+                    <Switch value={hasElderly} onValueChange={(val) => { setHasElderly(val); if(val && elderly.length===0) addElderly(); }} />
+                  </View>
+                  {hasElderly && (
+                    <View style={styles.subForm}>
+                      {elderly.map((senior, index) => (
+                        <View key={index} style={styles.memberCard}>
+                          <View style={styles.memberHeader}>
+                            <Text style={styles.memberTitle}>Elderly Member {index + 1}</Text>
+                            <TouchableOpacity onPress={() => setDeleteModal({visible: true, type: 'elderly', index})}><Ionicons name="trash-outline" size={20} color="#dc3545" /></TouchableOpacity>
+                          </View>
+                          <LabeledInput label="Age *" value={senior.age} onChangeText={(val) => updateElderly(index, 'age', val)} keyboardType="numeric" />
+                          <Text style={styles.inputLabel}>Gender *</Text>
+                          {renderGenderChips(senior.gender, (val) => updateElderly(index, 'gender', val))}
+                          
+                          <Text style={styles.inputLabel}>Care Level *</Text>
+                          <View style={styles.chipRow}>
+                            {['Independent', 'Needs Assistance', 'Fully Dependent'].map((level) => (
+                              <TouchableOpacity key={level} onPress={() => updateElderly(index, 'care_level', level)}
+                                style={[styles.chip, senior.care_level === level && styles.chipActive]}
+                              >
+                                <Text style={[styles.chipText, senior.care_level === level && styles.chipTextActive]}>{level}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+
+                          <LabeledInput label="Medical Conditions (Optional)" value={senior.condition} onChangeText={(val) => updateElderly(index, 'condition', val)} placeholder="e.g., Diabetic, Bedridden" />
+                        </View>
+                      ))}
+                      <TouchableOpacity onPress={addElderly} style={styles.addMemberBtn}>
+                        <Ionicons name="add" size={20} color="#007AFF" />
+                        <Text style={styles.addMemberText}>Add Another Senior</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                </View>
+              </ScrollView>
+            )}
+
+            <View style={[styles.footer, isWeb && styles.footerWeb]}>
+              <TouchableOpacity style={[styles.saveBtn, (saving || loading) && styles.saveBtnDisabled]} onPress={handleSave} disabled={saving || loading}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Profile</Text>}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
-      {/* --- CUSTOM DELETE CONFIRMATION MODAL --- */}
-      <Modal
-        visible={isDeleteModalOpen}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setDeleteModalOpen(false)}
-      >
+      {/* Delete Confirmation Modal */}
+      <Modal visible={deleteModal.visible} transparent animationType="fade" onRequestClose={() => setDeleteModal({visible: false, type: null, index: null})}>
         <View style={styles.modalOverlay}>
           <View style={styles.confirmModalContainer}>
-            <View style={styles.confirmIconContainer}>
-              <Ionicons name="alert-circle" size={40} color="#dc3545" />
-            </View>
-            
-            <Text style={styles.confirmTitle}>Remove Child?</Text>
-            <Text style={styles.confirmMessage}>
-              Are you sure you want to remove this child from your profile? This cannot be undone.
-            </Text>
-
+            <Ionicons name="warning" size={48} color="#dc3545" style={{ marginBottom: 16 }} />
+            <Text style={styles.confirmTitle}>Remove Member?</Text>
+            <Text style={styles.confirmMessage}>Are you sure you want to remove this family member? This cannot be undone.</Text>
             <View style={styles.confirmBtnRow}>
-              <TouchableOpacity 
-                style={styles.cancelBtn} 
-                onPress={() => setDeleteModalOpen(false)}
-              >
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setDeleteModal({visible: false, type: null, index: null})}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.deleteBtn} 
-                onPress={confirmDelete}
-              >
-                <Text style={styles.deleteBtnText}>Yes, Remove</Text>
+              <TouchableOpacity style={styles.deleteBtn} onPress={confirmDelete}>
+                <Text style={styles.deleteBtnText}>Remove</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      <NotificationModal 
-        visible={notifVisible} 
-        message={notifMessage} 
-        type={notifType} 
-        onClose={() => setNotifVisible(false)}
-      />
+      <NotificationModal visible={notifVisible} message={notifMessage} type={notifType} onClose={() => setNotifVisible(false)} />
     </>
   );
 }
 
-// STYLES
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', marginTop: Platform.OS === 'ios' ? 0 : 40 },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center',
-    padding: 20, 
-    borderBottomWidth: 1, 
-    borderColor: '#eee',
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
-  },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#333' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 12, color: '#666', fontSize: 14 },
-  content: { padding: 20, paddingBottom: 40 },
-  
-  // Image
-  imageBtn: { alignSelf: 'center', alignItems: 'center', marginBottom: 24 },
-  avatar: { width: 110, height: 110, borderRadius: 55, borderWidth: 3, borderColor: '#007AFF' },
-  placeholderAvatar: { 
-    width: 110, height: 110, borderRadius: 55, backgroundColor: '#f0f0f0', 
-    justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#ddd' 
-  },
-  changePhotoText: { color: '#007AFF', marginTop: 8, fontWeight: '600', fontSize: 14 },
-  
-  // Sections
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginTop: 20, marginBottom: 12, color: '#333' },
-  row: { flexDirection: 'row', alignItems: 'flex-start' },
-
-  // Address Preview
-  addressPreview: { backgroundColor: '#E3F2FD', padding: 14, borderRadius: 10, marginTop: 10, marginBottom: 10 },
-  previewLabel: { fontSize: 12, fontWeight: '600', color: '#1976D2', marginBottom: 4 },
-  previewText: { fontSize: 14, color: '#1976D2', fontWeight: '500' },
-
-  // Switch Rows
-  switchRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#F8F9FA', padding: 16, borderRadius: 12, marginBottom: 12
-  },
-  switchInfo: { flex: 1, marginRight: 12 },
-  switchLabel: { fontSize: 15, fontWeight: '600', color: '#333', marginBottom: 4 },
-  switchSubtext: { fontSize: 12, color: '#666' },
-
-  // Children Section
-  childrenSection: { marginTop: 10 },
-  childrenHeader: { 
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 
-  },
-  addChildBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  addChildText: { color: '#007AFF', fontWeight: '600', fontSize: 14 },
-  
-  noChildrenBox: {
-    backgroundColor: '#F8F9FA', padding: 40, borderRadius: 12, alignItems: 'center'
-  },
-  noChildrenText: { fontSize: 16, color: '#666', fontWeight: '600', marginTop: 12 },
-  noChildrenSubtext: { fontSize: 13, color: '#999', marginTop: 4 },
-
-  // Child Card
-  childCard: {
-    backgroundColor: '#F8F9FA', padding: 16, borderRadius: 12, marginBottom: 12,
-    borderWidth: 1, borderColor: '#E0E0E0'
-  },
-  childCardHeader: { 
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 
-  },
-  childCardTitle: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-
-  // Gender Selection
-  inputLabel: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 8 },
-  genderRow: { flexDirection: 'row', gap: 6 },
-  genderChip: {
-    flex: 1, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 8,
-    backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', alignItems: 'center'
-  },
-  genderChipActive: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
-  genderChipText: { fontSize: 12, color: '#666', fontWeight: '500' },
-  genderChipTextActive: { color: '#fff', fontWeight: '600' },
-
-  // Footer
-  footer: { padding: 20, borderTopWidth: 1, borderColor: '#eee', backgroundColor: '#fff' },
-  saveBtn: { backgroundColor: '#007AFF', padding: 16, borderRadius: 12, alignItems: 'center' },
-  saveBtnDisabled: { backgroundColor: '#ccc' },
-  saveText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-
-  // MODAL STYLES
-  modalOverlay: {
+  // --- RESPONSIVE WEB WRAPPERS ---
+  webOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)', // Dark transparent background
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 40,
   },
-  confirmModalContainer: {
-    width: '85%',
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  confirmIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#ffebee', // light red
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  confirmTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  confirmMessage: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 20,
-  },
-  confirmBtnRow: {
-    flexDirection: 'row',
+  webContainer: {
     width: '100%',
-    gap: 12,
+    maxWidth: 900, // Wide, beautiful desktop layout
+    maxHeight: '95%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginTop: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
+  webRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
   },
-  deleteBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#dc3545', // red
-    alignItems: 'center',
-  },
-  cancelBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-  },
-  deleteBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
+
+  // --- Standard Styles ---
+  container: { flex: 1, backgroundColor: '#F2F2F7', marginTop: Platform.OS === 'ios' ? 0 : 40 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#E5E5EA', paddingTop: Platform.OS === 'ios' ? 50 : 20 },
+  headerWeb: { paddingTop: 20 },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1C1C1E' },
+  closeBtn: { padding: 4 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 12, color: '#666' },
+  content: { padding: 16, paddingBottom: 40 },
+  contentWeb: { maxWidth: 600, alignSelf: 'center', width: '100%' },
+  
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: '#1C1C1E', marginBottom: 16 },
+  row: { flexDirection: 'row' },
+  
+  imageContainer: { alignItems: 'center', marginBottom: 24 },
+  avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#007AFF' },
+  placeholderAvatar: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#F2F2F7', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#D1D1D6', borderStyle: 'dashed' },
+  changePhotoText: { color: '#007AFF', marginTop: 12, fontWeight: '600', fontSize: 15 },
+
+  addressPreview: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E3F2FD', padding: 12, borderRadius: 8, marginTop: -4, marginBottom: 16, gap: 8 },
+  previewText: { fontSize: 14, color: '#1976D2', fontWeight: '500', flex: 1 },
+
+  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderColor: '#E5E5EA' },
+  toggleInfo: { flex: 1, paddingRight: 16 },
+  toggleTitle: { fontSize: 16, fontWeight: '600', color: '#1C1C1E', marginBottom: 2 },
+  toggleDesc: { fontSize: 13, color: '#8E8E93' },
+
+  subForm: { backgroundColor: '#F8F9FA', padding: 16, borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: '#E5E5EA' },
+  memberCard: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#D1D1D6' },
+  memberHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottomWidth: 1, borderColor: '#E5E5EA', paddingBottom: 8 },
+  memberTitle: { fontSize: 16, fontWeight: '700', color: '#1C1C1E' },
+  
+  addMemberBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, gap: 6, backgroundColor: '#E3F2FD', borderRadius: 8 },
+  addMemberText: { color: '#007AFF', fontWeight: '600', fontSize: 15 },
+
+  inputLabel: { fontSize: 13, fontWeight: '600', color: '#666', marginBottom: 8, marginTop: 4 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  chip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#F2F2F7', borderWidth: 1, borderColor: '#E5E5EA' },
+  chipActive: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
+  chipText: { fontSize: 13, color: '#3A3A3C', fontWeight: '500' },
+  chipTextActive: { color: '#fff', fontWeight: '600' },
+
+  footer: { padding: 20, backgroundColor: '#fff', borderTopWidth: 1, borderColor: '#E5E5EA' },
+  footerWeb: { maxWidth: 600, alignSelf: 'center', width: '100%' },
+  saveBtn: { backgroundColor: '#007AFF', padding: 16, borderRadius: 12, alignItems: 'center' },
+  saveBtnDisabled: { backgroundColor: '#A1C6EA' },
+  saveText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  confirmModalContainer: { width: '100%', maxWidth: 400, backgroundColor: '#fff', borderRadius: 20, padding: 24, alignItems: 'center' },
+  confirmTitle: { fontSize: 20, fontWeight: '700', color: '#1C1C1E', marginBottom: 8 },
+  confirmMessage: { fontSize: 15, color: '#666', textAlign: 'center', marginBottom: 24, lineHeight: 22 },
+  confirmBtnRow: { flexDirection: 'row', width: '100%', gap: 12 },
+  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: '#F2F2F7', alignItems: 'center' },
+  deleteBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: '#dc3545', alignItems: 'center' },
+  cancelBtnText: { fontSize: 16, fontWeight: '600', color: '#3A3A3C' },
+  deleteBtnText: { fontSize: 16, fontWeight: '600', color: '#fff' },
 });

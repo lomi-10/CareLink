@@ -36,21 +36,13 @@ export function useParentStats() {
       const userId = user.user_id;
 
       // TODO: Replace with actual API endpoint
-      // const response = await fetch(`${API_URL}/parent/get_stats.php?user_id=${userId}`);
-      // const data = await response.json();
-      
-      // Mock data for now
-      setStats({
-        posted_jobs: 2,
-        active_applications: 8,
-        messages: 3,
-        hired_helpers: 1,
-      });
+      const response = await fetch(`${API_URL}/parent/get_stats.php?user_id=${userId}`);
+      const data = await response.json();
 
       // Uncomment when API is ready:
-      // if (data.success) {
-      //   setStats(data.stats);
-      // }
+      if (data.success) {
+        setStats(data.stats);
+      }
     } catch (err: any) {
       console.error('Error fetching stats:', err);
       setError(err.message || 'Failed to load statistics');

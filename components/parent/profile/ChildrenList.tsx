@@ -1,42 +1,64 @@
 // components/parent/profile/ChildrenList.tsx
-// Component for displaying children list in parent profile
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-interface Child {
-  child_id: string;
-  name: string;
+// Matched exactly to your database 'parent_children' table
+export interface Child {
+  child_id: number;
   age: number;
-  gender: string;
+  gender?: string;
   special_needs?: string;
 }
 
 interface ChildrenListProps {
-  children: Child[];
+  children?: Child[];
 }
 
 export function ChildrenList({ children }: ChildrenListProps) {
   if (!children || children.length === 0) {
-    return null;
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No children added to this profile yet.</Text>
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Children</Text>
+      <Text style={styles.headerTitle}>Children Details</Text>
+      
       {children.map((child, index) => (
-        <View key={child.child_id || index} style={styles.childItem}>
-          <Ionicons name="person" size={16} color="#666" />
-          <View style={styles.childInfo}>
-            <Text style={styles.childText}>
-              {child.name}, Age {child.age} ({child.gender})
+        <View key={child.child_id.toString()} style={styles.childCard}>
+          <View style={styles.iconContainer}>
+            <Ionicons 
+              name={child.gender === 'Female' ? 'woman' : child.gender === 'Male' ? 'man' : 'person'} 
+              size={24} 
+              color="#007AFF" 
+            />
+          </View>
+          
+          <View style={styles.infoContainer}>
+            {/* Since there's no name in the DB, we generate a title based on index/age */}
+            <Text style={styles.childTitle}>
+              Child {index + 1} ({child.age} yrs old)
             </Text>
-            {child.special_needs && (
-              <Text style={styles.specialNeeds}>
-                Special needs: {child.special_needs}
-              </Text>
-            )}
+            
+            <View style={styles.tagRow}>
+              {child.gender && child.gender !== 'Prefer not to say' && (
+                <View style={[styles.tag, { backgroundColor: '#E1F5FE' }]}>
+                  <Text style={[styles.tagText, { color: '#0288D1' }]}>{child.gender}</Text>
+                </View>
+              )}
+            </View>
+
+            {child.special_needs ? (
+              <View style={styles.specialNeedsContainer}>
+                <Ionicons name="medical" size={14} color="#FF3B30" />
+                <Text style={styles.specialNeedsText}>Needs: {child.special_needs}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
       ))}
@@ -46,38 +68,82 @@ export function ChildrenList({ children }: ChildrenListProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 8,
-    paddingTop: 16,
+    marginTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F1F3F5',
+    borderTopColor: '#F0F0F0',
+    paddingTop: 16,
   },
-  title: {
-    fontSize: 12,
-    color: '#6C757D',
+  headerTitle: {
+    fontSize: 15,
     fontWeight: '700',
-    marginBottom: 10,
+    color: '#1A1C1E',
+    marginBottom: 12,
   },
-  childItem: {
+  emptyContainer: {
+    paddingVertical: 12,
+  },
+  emptyText: {
+    color: '#8E8E93',
+    fontStyle: 'italic',
+    fontSize: 14,
+  },
+  childCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
     backgroundColor: '#F8F9FA',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 6,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
   },
-  childInfo: {
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E5F1FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  infoContainer: {
     flex: 1,
   },
-  childText: {
-    fontSize: 13,
-    color: '#495057',
-    fontWeight: '500',
+  childTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1A1C1E',
+    marginBottom: 4,
   },
-  specialNeeds: {
-    fontSize: 11,
-    color: '#FF9500',
-    marginTop: 2,
-    fontStyle: 'italic',
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 4,
+  },
+  tag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  tagText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  specialNeedsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    backgroundColor: '#FFEBEB',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  specialNeedsText: {
+    fontSize: 12,
+    color: '#D32F2F',
+    fontWeight: '500',
+    marginLeft: 4,
   },
 });

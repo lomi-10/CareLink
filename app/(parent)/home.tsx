@@ -1,17 +1,21 @@
 // app/(parent)/home.tsx
 // Parent Home Screen - Modularized & Clean
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  Text,
+  TouchableOpacity,
+  SafeAreaView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 // Custom Hooks
 import { useAuth } from '@/hooks/useAuth';
@@ -19,7 +23,8 @@ import { useParentStats } from '@/hooks/useParentStats';
 import { useResponsive } from '@/hooks/useResponsive';
 
 // Components
-import { Sidebar } from '@/components/parent/home/Sidebar';
+import { NotificationModal } from '@/components/common';
+import { Sidebar, MobileMenu } from '@/components/parent/home';
 import {
   MobileHeader,
   GreetingCard,
@@ -37,6 +42,14 @@ export function ParentHome() {
   const { stats, loading: statsLoading, refresh } = useParentStats();
   const { isDesktop } = useResponsive();
 
+  //Custom Menu with logout notif
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const initiateLogout = () => {
+    setIsMobileMenuOpen(false);
+    setLogoutModalVisible(true);
+  }
+
   if (statsLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -48,8 +61,8 @@ export function ParentHome() {
   // DESKTOP LAYOUT
   if (isDesktop) {
     return (
-      <View style={styles.container}>
-        <Sidebar onLogout={handleLogout} />
+      <View style={[styles.container, { flexDirection: 'row' }]}>
+        <Sidebar onLogout={initiateLogout} />
         <ScrollView
           style={styles.mainContent}
           contentContainerStyle={styles.scrollContent}
@@ -105,7 +118,7 @@ export function ParentHome() {
               title="Browse Helpers"
               description="View verified helpers"
               color="#34C759"
-              onPress={() => router.push('/(parent)/helpers')}
+              onPress={() => router.push('/(parent)/browse_helpers')}
             />
             <QuickActionDesktop
               icon="chatbubble"
@@ -116,15 +129,28 @@ export function ParentHome() {
             />
           </View>
         </ScrollView>
+
+        {/* LOGOUT NOTIFICATION MODAL */}
+        <NotificationModal
+          visible={logoutModalVisible}
+          message="Logged Out Successfully!"
+          type="success"
+          autoClose={true}
+          duration={1500} // It will show for 1.5 seconds, then auto-close
+          onClose={() => {
+            setLogoutModalVisible(false);
+            handleLogout(); // ⬅️ The actual logout happens HERE, after the modal closes!
+          }}
+        />
       </View>
     );
   }
 
   // MOBILE LAYOUT
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <MobileHeader
-        onMenuPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+        onMenuPress={() => setIsMobileMenuOpen(true)}
       />
       <ScrollView
         contentContainerStyle={styles.mobileScrollContent}
@@ -179,7 +205,7 @@ export function ParentHome() {
             icon="search"
             label="Find Helpers"
             color="#34C759"
-            onPress={() => router.push('/(parent)/helpers')}
+            onPress={() => router.push('/(parent)/browse_helpers')}
           />
           <QuickAction
             icon="chatbubbles"
@@ -195,7 +221,27 @@ export function ParentHome() {
           />
         </View>
       </ScrollView>
-    </View>
+
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        stats={stats}
+        handleLogout={initiateLogout}
+      />
+
+      {/* LOGOUT NOTIFICATION MODAL */}
+      <NotificationModal
+        visible={logoutModalVisible}
+        message="Logged Out Successfully!"
+        type="success"
+        autoClose={true}
+        duration={1500} // It will show for 1.5 seconds, then auto-close
+        onClose={() => {
+          setLogoutModalVisible(false);
+          handleLogout(); // ⬅️ The actual logout happens HERE, after the modal closes!
+        }}
+      />
+    </SafeAreaView>
   );
 }
 
@@ -216,7 +262,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-    flexDirection: 'row',
   },
   loadingContainer: {
     flex: 1,

@@ -1,16 +1,17 @@
 // components/profile/ParentDocumentModal.tsx
+// FIXED - Added Barangay Clearance, correct endpoint, responsive styles
+
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, 
-  Image, Platform, ActivityIndicator 
+  Image, Platform, ActivityIndicator, Dimensions
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import API_URL from '../../constants/api';
 
-import NotificationModal from '../common/NotificationModal';
+import { NotificationModal } from '../common';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 interface ParentDocumentModalProps {
@@ -26,38 +27,38 @@ interface DocumentState {
   base64?: string | null;
 }
 
+const isWeb = Platform.OS === 'web';
+const { width } = Dimensions.get('window');
+
 export default function ParentDocumentModal({ 
   visible, 
   onClose, 
   onSaveSuccess 
 }: ParentDocumentModalProps) {
   
-  // --- STATE ---
+  // STATE
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Document State
+  // Document States
   const [validIdDoc, setValidIdDoc] = useState<DocumentState>({ uri: null, name: null, type: null });
+  const [brgyClearanceDoc, setBrgyClearanceDoc] = useState<DocumentState>({ uri: null, name: null, type: null });
 
-  // Existing document
-  const [existingDoc, setExistingDoc] = useState<any>(null);
+  // Existing documents
+  const [existingDocs, setExistingDocs] = useState<any[]>([]);
 
   // Notification
   const [notifVisible, setNotifVisible] = useState(false);
   const [notifMessage, setNotifMessage] = useState('');
   const [notifType, setNotifType] = useState<'success' | 'error'>('success');
 
-  // --- LIFECYCLE ---
   useEffect(() => {
     if (visible) {
       loadUserData();
     }
   }, [visible]);
 
-  /**
-   * Load user ID and fetch existing documents
-   */
   const loadUserData = async () => {
     try {
       const userData = await AsyncStorage.getItem('user_data');
@@ -74,9 +75,6 @@ export default function ParentDocumentModal({
     }
   };
 
-  /**
-   * Fetch existing documents from server
-   */
   const fetchExistingDocuments = async (uid: string) => {
     try {
       setLoading(true);
@@ -89,26 +87,23 @@ export default function ParentDocumentModal({
       const data = await response.json();
       
       if (data.success) {
-        setExistingDoc(data.document);
-      } else {
-        setNotifMessage(data.message || "Failed to fetch documents");
-        setNotifType('error');
-        setNotifVisible(true);
+        // Handle both single object or array returns safely
+        setExistingDocs(Array.isArray(data.documents) ? data.documents : (data.document ? [data.document] : []));
       }
     } catch (error) {
       console.error("Failed to fetch documents", error);
-      setNotifMessage("Network error while fetching documents. Please check your connection.");
-      setNotifType('error');
-      setNotifVisible(true);
+      // Don't show error if it's just "no documents" - that's expected for new users
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * PICK DOCUMENT/FILE (Supports Images and PDFs)
-   */
-  const pickDocument = async () => {
+  const getDocStatus = (docType: string) => {
+    const doc = existingDocs.find(d => d.document_type === docType);
+    return doc ? doc.status : undefined;
+  };
+
+  const pickDocument = async (type: 'validId' | 'brgyClearance') => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/*', 'application/pdf'],
@@ -118,7 +113,6 @@ export default function ParentDocumentModal({
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         
-        // Ensure name has an extension, especially for web/blob URIs
         let fileName = asset.name;
         const mimeType = asset.mimeType || '';
         
@@ -128,11 +122,14 @@ export default function ParentDocumentModal({
           else fileName += '.jpg';
         }
 
-        setValidIdDoc({
+        const docData = {
           uri: asset.uri,
           name: fileName,
           type: mimeType || (fileName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
-        });
+        };
+
+        if (type === 'validId') setValidIdDoc(docData);
+        else setBrgyClearanceDoc(docData);
       }
     } catch (error) {
       console.error('Error picking document:', error);
@@ -142,34 +139,14 @@ export default function ParentDocumentModal({
     }
   };
 
-  /**
-   * PICK IMAGE FROM GALLERY
-   */
-  const pickImage = async () => {
-    try {
-      // Use pickDocument which is more flexible and consistent
-      await pickDocument();
-    } catch (error) {
-      console.error('Error picking image:', error);
-      setNotifMessage("Failed to pick image. Please try again.");
-      setNotifType('error');
-      setNotifVisible(true);
-    }
+  const removeDocument = (type: 'validId' | 'brgyClearance') => {
+    if (type === 'validId') setValidIdDoc({ uri: null, name: null, type: null });
+    else setBrgyClearanceDoc({ uri: null, name: null, type: null });
   };
 
-  /**
-   * REMOVE SELECTED DOCUMENT
-   */
-  const removeDocument = () => {
-    setValidIdDoc({ uri: null, name: null, type: null });
-  };
-
-  /**
-   * VALIDATE DOCUMENT
-   */
   const validateDocument = (): boolean => {
-    if (!validIdDoc.uri) {
-      setNotifMessage("Please select a document to upload.");
+    if (!validIdDoc.uri && !brgyClearanceDoc.uri) {
+      setNotifMessage("Please select at least one document to upload.");
       setNotifType('error');
       setNotifVisible(true);
       return false;
@@ -177,17 +154,12 @@ export default function ParentDocumentModal({
     return true;
   };
 
-  /**
-   * UPLOAD DOCUMENT TO SERVER
-   */
   const handleUpload = async () => {
-    // Validate
     if (!validateDocument()) return;
 
     setUploading(true);
 
     try {
-      // Prepare FormData
       const formData = new FormData();
       formData.append('user_id', userId || '');
 
@@ -200,7 +172,6 @@ export default function ParentDocumentModal({
             formData.append('valid_id', blob, validIdDoc.name || 'valid_id.jpg');
           } catch (err) {
             console.error('Error fetching document blob on web:', err);
-            // Fallback
             // @ts-ignore
             formData.append('valid_id', {
               uri: validIdDoc.uri,
@@ -219,8 +190,34 @@ export default function ParentDocumentModal({
         }
       }
 
-      // Upload to server
-      const response = await fetch(`${API_URL}/parent/upload_document.php`, {
+      // Add Barangay Clearance
+      if (brgyClearanceDoc.uri) {
+        if (Platform.OS === 'web') {
+          try {
+            const response = await fetch(brgyClearanceDoc.uri);
+            const blob = await response.blob();
+            formData.append('barangay_clearance', blob, brgyClearanceDoc.name || 'brgy_clearance.jpg');
+          } catch (err) {
+            console.error('Error fetching document blob on web:', err);
+            // @ts-ignore
+            formData.append('barangay_clearance', {
+              uri: brgyClearanceDoc.uri,
+              name: brgyClearanceDoc.name || 'brgy_clearance.jpg',
+              type: brgyClearanceDoc.type || 'application/octet-stream',
+            });
+          }
+        } else {
+          // MOBILE
+          // @ts-ignore
+          formData.append('barangay_clearance', {
+            uri: brgyClearanceDoc.uri,
+            name: brgyClearanceDoc.name || 'brgy_clearance.jpg',
+            type: brgyClearanceDoc.type || 'application/octet-stream',
+          });
+        }
+      }
+
+      const response = await fetch(`${API_URL}/parent/upload_documents.php`, {
         method: 'POST',
         body: formData,
       });
@@ -235,12 +232,13 @@ export default function ParentDocumentModal({
       }
 
       if (data.success) {
-        setNotifMessage(data.message || "Document uploaded successfully!");
+        setNotifMessage(data.message || "Documents uploaded successfully!");
         setNotifType('success');
         setNotifVisible(true);
 
-        // Reset selection
+        // Reset selections
         setValidIdDoc({ uri: null, name: null, type: null });
+        setBrgyClearanceDoc({ uri: null, name: null, type: null });
 
         // Call success callback
         if (onSaveSuccess) {
@@ -261,9 +259,6 @@ export default function ParentDocumentModal({
     }
   };
 
-  /**
-   * CLOSE NOTIFICATION
-   */
   const handleCloseNotification = () => {
     setNotifVisible(false);
     if (notifType === 'success') {
@@ -275,11 +270,11 @@ export default function ParentDocumentModal({
     <>
       <Modal visible={visible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, isWeb && styles.modalContainerWeb]}>
             
             {/* HEADER */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Manage Document</Text>
+              <Text style={styles.modalTitle}>Manage Documents</Text>
               <TouchableOpacity onPress={onClose} disabled={uploading}>
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
@@ -291,59 +286,76 @@ export default function ParentDocumentModal({
               <View style={styles.instructionCard}>
                 <Ionicons name="information-circle" size={24} color="#007AFF" />
                 <View style={styles.instructionText}>
-                  <Text style={styles.instructionTitle}>Document Requirement</Text>
+                  <Text style={styles.instructionTitle}>Required Documents</Text>
                   <Text style={styles.instructionBody}>
-                    Please upload a clear photo or scan of your valid government-issued ID. Accepted formats: JPG, PNG, PDF.
+                    Please upload a valid government-issued ID and your Barangay Clearance. 
+                    These help us verify your account and ensure a safe community.
                   </Text>
                 </View>
               </View>
 
-              {/* EXISTING DOCUMENT SUMMARY */}
-              {existingDoc && (
+              {/* EXISTING DOCUMENT STATUS */}
+              {existingDocs.length > 0 && (
                 <View style={styles.existingDocsCard}>
-                  <Text style={styles.sectionLabel}>Current Document Status</Text>
+                  <Text style={styles.instructionTitle}>Current Document Status</Text>
                   <DocumentStatusSummary 
                     title="Valid ID"
-                    hasDocument={existingDoc.has_document}
-                    status={existingDoc.status}
+                    hasDocument={!!getDocStatus('Valid ID')}
+                    status={getDocStatus('Valid ID')}
+                  />
+                  <DocumentStatusSummary 
+                    title="Barangay Clearance"
+                    hasDocument={!!getDocStatus('Barangay Clearance')}
+                    status={getDocStatus('Barangay Clearance')}
                   />
                 </View>
               )}
 
-              {/* VALID ID UPLOAD */}
+              {/* UPLOAD SECTION 1: VALID ID */}
               <View style={styles.documentSection}>
                 <Text style={styles.sectionLabel}>
                   Valid Government ID <Text style={styles.required}>*</Text>
                 </Text>
                 <Text style={styles.sectionHelper}>
-                  PhilSys ID, Driver's License, Passport, or any government-issued ID
+                  Upload a clear photo or PDF of your government-issued ID
                 </Text>
 
-                {validIdDoc.uri ? (
-                  <DocumentPreview 
-                    doc={validIdDoc}
-                    onRemove={removeDocument}
-                  />
-                ) : (
+                {!validIdDoc.uri ? (
                   <View style={styles.uploadButtons}>
                     <TouchableOpacity 
                       style={styles.uploadBtn}
-                      onPress={pickImage}
-                      disabled={uploading}
+                      onPress={() => pickDocument('validId')}
                     >
-                      <Ionicons name="camera-outline" size={24} color="#007AFF" />
-                      <Text style={styles.uploadBtnText}>Take Photo</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity 
-                      style={styles.uploadBtn}
-                      onPress={pickDocument}
-                      disabled={uploading}
-                    >
-                      <Ionicons name="folder-open-outline" size={24} color="#007AFF" />
+                      <Ionicons name="camera-outline" size={20} color="#007AFF" />
                       <Text style={styles.uploadBtnText}>Choose File</Text>
                     </TouchableOpacity>
                   </View>
+                ) : (
+                  <DocumentPreview doc={validIdDoc} onRemove={() => removeDocument('validId')} />
+                )}
+              </View>
+
+              {/* UPLOAD SECTION 2: BARANGAY CLEARANCE */}
+              <View style={styles.documentSection}>
+                <Text style={styles.sectionLabel}>
+                  Barangay Clearance <Text style={styles.required}>*</Text>
+                </Text>
+                <Text style={styles.sectionHelper}>
+                  Upload a clear photo or PDF of your recent Barangay Clearance
+                </Text>
+
+                {!brgyClearanceDoc.uri ? (
+                  <View style={styles.uploadButtons}>
+                    <TouchableOpacity 
+                      style={styles.uploadBtn}
+                      onPress={() => pickDocument('brgyClearance')}
+                    >
+                      <Ionicons name="document-outline" size={20} color="#007AFF" />
+                      <Text style={styles.uploadBtnText}>Choose File</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <DocumentPreview doc={brgyClearanceDoc} onRemove={() => removeDocument('brgyClearance')} />
                 )}
               </View>
 
@@ -351,7 +363,7 @@ export default function ParentDocumentModal({
               <View style={styles.noteCard}>
                 <Ionicons name="shield-checkmark" size={20} color="#28a745" />
                 <Text style={styles.noteText}>
-                  Your document will be securely reviewed for verification purposes only.
+                  Your documents are encrypted and securely stored. They will only be used for verification purposes.
                 </Text>
               </View>
 
@@ -361,7 +373,11 @@ export default function ParentDocumentModal({
             {/* FOOTER */}
             <View style={styles.modalFooter}>
               <TouchableOpacity 
-                style={[styles.uploadButton, uploading && styles.uploadButtonDisabled]}
+                style={[
+                  styles.uploadButton, 
+                  uploading && styles.uploadButtonDisabled,
+                  isWeb && styles.uploadButtonWeb
+                ]}
                 onPress={handleUpload}
                 disabled={uploading}
               >
@@ -370,7 +386,7 @@ export default function ParentDocumentModal({
                 ) : (
                   <>
                     <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
-                    <Text style={styles.uploadButtonText}>Upload Document</Text>
+                    <Text style={styles.uploadButtonText}>Upload Documents</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -380,7 +396,7 @@ export default function ParentDocumentModal({
         </View>
       </Modal>
 
-      <LoadingSpinner visible={uploading} message="Uploading your document..." />
+      <LoadingSpinner visible={uploading} message="Uploading your documents..." />
 
       <NotificationModal 
         visible={notifVisible}
@@ -392,9 +408,7 @@ export default function ParentDocumentModal({
   );
 }
 
-/**
- * HELPER COMPONENT: Document Preview
- */
+// HELPER COMPONENTS
 interface DocumentPreviewProps {
   doc: DocumentState;
   onRemove: () => void;
@@ -421,9 +435,6 @@ function DocumentPreview({ doc, onRemove }: DocumentPreviewProps) {
   );
 }
 
-/**
- * HELPER COMPONENT: Document Status Summary
- */
 interface DocumentStatusSummaryProps {
   title: string;
   hasDocument: boolean;
@@ -433,8 +444,8 @@ interface DocumentStatusSummaryProps {
 function DocumentStatusSummary({ title, hasDocument, status }: DocumentStatusSummaryProps) {
   const getStatusIcon = () => {
     if (!hasDocument) return { name: 'close-circle', color: '#dc3545' };
-    if (status === 'verified') return { name: 'checkmark-circle', color: '#28a745' };
-    if (status === 'pending') return { name: 'time', color: '#ffc107' };
+    if (status === 'Verified') return { name: 'checkmark-circle', color: '#28a745' };
+    if (status === 'Pending' || status === 'Pending Review') return { name: 'time', color: '#ffc107' };
     return { name: 'alert-circle', color: '#6c757d' };
   };
 
@@ -451,7 +462,7 @@ function DocumentStatusSummary({ title, hasDocument, status }: DocumentStatusSum
   );
 }
 
-// --- STYLES (Same as DocumentManagementModal) ---
+// STYLES
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
@@ -461,12 +472,17 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     backgroundColor: '#fff',
-    width: Platform.OS === 'web' ? 600 : '100%',
-    height: Platform.OS === 'web' ? '90%' : '95%',
+    width: '100%',
+    height: '95%',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    ...(Platform.OS === 'web' && { borderRadius: 16, marginBottom: '2%' }),
     overflow: 'hidden',
+  },
+  modalContainerWeb: {
+    width: 600,
+    height: '90%',
+    borderRadius: 16,
+    marginBottom: '2%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -634,6 +650,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+  },
+  uploadButtonWeb: {
+    maxWidth: 400,
+    alignSelf: 'center',
+    width: '100%',
   },
   uploadButtonDisabled: {
     backgroundColor: '#ccc',

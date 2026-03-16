@@ -2,13 +2,14 @@
 // Helper Home Screen - Modularized & Clean
 // Main orchestration file - delegates to components and hooks
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  SafeAreaView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
@@ -20,6 +21,7 @@ import { useHelperStats } from '@/hooks/useHelperStats';
 import { useResponsive } from '@/hooks/useResponsive';
 
 // Components
+import { NotificationModal } from '@/components/common';
 import { 
   Sidebar, 
   MobileHeader, 
@@ -27,7 +29,8 @@ import {
   StatCard, 
   MobileStatCard, 
   QuickAction, 
-  SectionHeader 
+  SectionHeader,
+  MobileMenu
 } from '@/components/helper/home';
 
 export default function HelperHome() {
@@ -38,6 +41,15 @@ export default function HelperHome() {
   const { userData, loading: authLoading, handleLogout, getFullName } = useAuth();
   const { stats, loading: statsLoading, refresh } = useHelperStats();
   const { isDesktop, isMobile } = useResponsive();
+
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
+  const initiateLogout = () => {
+    setIsMobileMenuOpen(false); // Close the side menu if it's open
+    setLogoutModalVisible(true); // Pop up your nice notification!
+  };
 
   // Combined loading state
   const loading = authLoading || statsLoading;
@@ -54,8 +66,8 @@ export default function HelperHome() {
   // Render desktop layout
   if (isDesktop) {
     return (
-      <View style={styles.container}>
-        <Sidebar onLogout={handleLogout} />
+      <View style={[styles.container, {flexDirection: 'row'}]}>
+        <Sidebar onLogout={initiateLogout} />
         <ScrollView
           style={styles.mainContent}
           contentContainerStyle={styles.scrollContent}
@@ -92,22 +104,35 @@ export default function HelperHome() {
           <SectionHeader title="Quick Actions" />
           {/* Add more desktop content here */}
         </ScrollView>
+
+        {/* LOGOUT NOTIFICATION MODAL */}
+        <NotificationModal
+          visible={logoutModalVisible}
+          message="Logged Out Successfully!"
+          type="success"
+          autoClose={true}
+          duration={1500} // It will show for 1.5 seconds, then auto-close
+          onClose={() => {
+            setLogoutModalVisible(false);
+            handleLogout(); // ⬅️ The actual logout happens HERE, after the modal closes!
+          }}
+        />
       </View>
     );
   }
 
   // Render mobile layout
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <MobileHeader
-        onMenuPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+        onMenuPress={() => setIsMobileMenuOpen(true)}
       />
       <ScrollView
         contentContainerStyle={styles.mobileScrollContent}
         refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
       >
         <GreetingCard userName={getFullName()} />
-
+ 
         {/* Mobile Stats Row */}
         <View style={styles.mobileStatsRow}>
           <MobileStatCard
@@ -161,7 +186,25 @@ export default function HelperHome() {
           />
         </View>
       </ScrollView>
-    </View>
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        stats={stats}
+        handleLogout={initiateLogout}
+      />
+      {/* LOGOUT NOTIFICATION MODAL */}
+      <NotificationModal
+        visible={logoutModalVisible}
+        message="Logged Out Successfully!"
+        type="success"
+        autoClose={true}
+        duration={1500} // It will show for 1.5 seconds, then auto-close
+        onClose={() => {
+          setLogoutModalVisible(false);
+          handleLogout(); // ⬅️ The actual logout happens HERE, after the modal closes!
+        }}
+      />
+    </SafeAreaView>
   );
 }
 
@@ -169,7 +212,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-    flexDirection: 'row',
   },
   loadingContainer: {
     flex: 1,

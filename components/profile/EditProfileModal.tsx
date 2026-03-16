@@ -1,5 +1,4 @@
 // components/profile/EditHelperProfileModal.tsx
-// IMPROVED VERSION - Category-first selection (matches PESO workflow)
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,13 +19,15 @@ import {
 import API_URL from "../../constants/api";
 
 import LabeledInput from '../common/LabeledInput';
-import NotificationModal from '../common/NotificationModal';
+import {NotificationModal} from '../common';
 
 interface EditProfileModalProps {
   visible: boolean;
   onClose: () => void;
   onSaveSuccess?: () => void;
 }
+
+const isWeb = Platform.OS === 'web';
 
 export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess }: EditProfileModalProps) {
   
@@ -501,98 +502,75 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   // ============================================================================
 
   const renderSelectionModal = (
-    visible: boolean,
-    onClose: () => void,
-    title: string,
-    data: any[],
-    selectedIds: number[],
-    onToggle: (id: number) => void,
-    searchValue: string,
-    onSearchChange: (text: string) => void,
-    idKey: string,
-    nameKey: string,
-    showSearch: boolean = true,
-    customData: string[] = [],
-    onAddCustom?: (text: string) => void,
-    onRemoveCustom?: (text: string) => void
+    visible: boolean, onClose: () => void, title: string, data: any[],
+    selectedIds: number[], onToggle: (id: number) => void,
+    searchValue: string, onSearchChange: (text: string) => void,
+    idKey: string, nameKey: string, showSearch: boolean = true,
+    customData: string[] = [], onAddCustom?: (text: string) => void, onRemoveCustom?: (text: string) => void
   ) => (
-    <Modal visible={visible} animationType="slide">
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>{title}</Text>
-          <TouchableOpacity onPress={onClose}>
-            <Ionicons name="close" size={24} color="#333" />
-          </TouchableOpacity>
-        </View>
-
-        {showSearch && (
-          <View style={styles.searchBox}>
-            <Ionicons name="search" size={18} color="#666" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search..."
-              value={searchValue}
-              onChangeText={onSearchChange}
-            />
-            {onAddCustom && searchValue.trim() !== '' && !data.some(d => d[nameKey].toLowerCase() === searchValue.toLowerCase()) && (
-              <TouchableOpacity 
-                style={styles.addCustomBtn}
-                onPress={() => {
-                  onAddCustom(searchValue);
-                  onSearchChange('');
-                }}
-              >
-                <Ionicons name="add-circle" size={24} color="#007AFF" />
-              </TouchableOpacity>
-            )}
+    <Modal visible={visible} animationType="slide" transparent={isWeb} presentationStyle={isWeb ? "overFullScreen" : "pageSheet"}>
+      <View style={isWeb ? styles.webOverlay : { flex: 1 }}>
+        <View style={[styles.modalContainer, isWeb && styles.webSmallContainer]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
           </View>
-        )}
 
-        <ScrollView style={{ flex: 1 }}>
-          {/* Custom Items First */}
-          {customData.length > 0 && (
-            <View style={styles.customSection}>
-              <Text style={styles.customSectionTitle}>Your custom specifications:</Text>
-              {customData.map((item, index) => (
-                <View key={`custom-${index}`} style={styles.listItem}>
-                  <Text style={[styles.listItemText, { color: '#007AFF', fontWeight: '500' }]}>{item}</Text>
-                  <TouchableOpacity onPress={() => onRemoveCustom && onRemoveCustom(item)}>
-                    <Ionicons name="close-circle" size={20} color="#FF3B30" />
-                  </TouchableOpacity>
-                </View>
-              ))}
+          {showSearch && (
+            <View style={styles.searchBox}>
+              <Ionicons name="search" size={18} color="#666" />
+              <TextInput style={styles.searchInput} placeholder="Search..." value={searchValue} onChangeText={onSearchChange} />
+              {onAddCustom && searchValue.trim() !== '' && !data.some(d => d[nameKey].toLowerCase() === searchValue.toLowerCase()) && (
+                <TouchableOpacity 
+                  style={styles.addCustomBtn}
+                  onPress={() => { onAddCustom(searchValue); onSearchChange(''); }}
+                >
+                  <Ionicons name="add-circle" size={24} color="#007AFF" />
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
-          {/* Regular Items */}
-          {data.map((item) => {
-            const isSelected = selectedIds.includes(item[idKey]);
-            return (
-              <TouchableOpacity
-                key={String(item[idKey])}
-                style={styles.listItem}
-                onPress={() => onToggle(item[idKey])}
-              >
-                <Text style={styles.listItemText}>{item[nameKey]}</Text>
-                {isSelected && <Ionicons name="checkmark" size={20} color="#007AFF" />}
-              </TouchableOpacity>
-            );
-          })}
-          
-          {data.length === 0 && searchValue.trim() === '' && (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No items found.</Text>
-            </View>
-          )}
-        </ScrollView>
+          <ScrollView style={{ flex: 1 }}>
+            {customData.length > 0 && (
+              <View style={styles.customSection}>
+                <Text style={styles.customSectionTitle}>Your custom specifications:</Text>
+                {customData.map((item, index) => (
+                  <View key={`custom-${index}`} style={styles.listItem}>
+                    <Text style={[styles.listItemText, { color: '#007AFF', fontWeight: '500' }]}>{item}</Text>
+                    <TouchableOpacity onPress={() => onRemoveCustom && onRemoveCustom(item)}>
+                      <Ionicons name="close-circle" size={20} color="#FF3B30" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
 
-        <View style={styles.modalFooter}>
-          <Text style={styles.selectedCount}>
-            {selectedIds.length + customData.length} selected
-          </Text>
-          <TouchableOpacity onPress={onClose} style={styles.doneBtn}>
-            <Text style={styles.doneText}>Done</Text>
-          </TouchableOpacity>
+            {data.map((item) => {
+              const isSelected = selectedIds.includes(item[idKey]);
+              return (
+                <TouchableOpacity key={String(item[idKey])} style={styles.listItem} onPress={() => onToggle(item[idKey])}>
+                  <Text style={styles.listItemText}>{item[nameKey]}</Text>
+                  {isSelected && <Ionicons name="checkmark" size={20} color="#007AFF" />}
+                </TouchableOpacity>
+              );
+            })}
+            
+            {data.length === 0 && searchValue.trim() === '' && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No items found.</Text>
+              </View>
+            )}
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <Text style={styles.selectedCount}>{selectedIds.length + customData.length} selected</Text>
+            <TouchableOpacity onPress={onClose} style={styles.doneBtn}>
+              <Text style={styles.doneText}>Done</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -602,510 +580,447 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   // MAIN RENDER
   // ============================================================================
 
+  // ============================================================================
+  // MAIN RENDER
+  // ============================================================================
+
   return (
     <>
-      <Modal visible={visible} animationType="slide">
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-          style={styles.container}
-        >
-          
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>Edit Profile</Text>
-              <Text style={styles.subtitle}>Keep your information up to date</Text>
+      <Modal visible={visible} animationType="slide" transparent={isWeb} presentationStyle={isWeb ? "overFullScreen" : "pageSheet"}>
+        <View style={isWeb ? styles.webOverlay : { flex: 1 }}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={[styles.container, isWeb && styles.webContainer]}
+          >
+            
+            <View style={[styles.header, isWeb && styles.headerWeb]}>
+              <View>
+                <Text style={styles.title}>Edit Profile</Text>
+                <Text style={styles.subtitle}>Keep your information up to date</Text>
+              </View>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color="#333" />
-            </TouchableOpacity>
-          </View>
 
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#007AFF" />
-              <Text style={styles.loadingText}>Preparing your profile...</Text>
-            </View>
-          ) : (
-            <>
-              <ScrollView 
-                style={styles.content}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 40 }}
-              >
-                
-                {/* Photo Section - Enhanced Design */}
-                <View style={styles.photoSection}>
-                  <TouchableOpacity onPress={pickImage} style={styles.photoWrapper}>
-                    <View style={styles.photoBorder}>
-                      {profileImage ? (
-                        <Image source={{ uri: profileImage }} style={styles.photo} />
-                      ) : (
-                        <View style={styles.photoPlaceholder}>
-                          <Ionicons name="person" size={50} color="#ADB5BD" />
-                        </View>
-                      )}
-                    </View>
-                    <View style={styles.cameraIconContainer}>
-                      <Ionicons name="camera" size={18} color="#fff" />
-                    </View>
-                  </TouchableOpacity>
-                  <Text style={styles.photoText}>Change Profile Photo</Text>
-                </View>
-
-                {/* Basic Info */}
-                <View style={styles.section}>
-                  <View style={styles.sectionHeaderRow}>
-                    <View style={styles.sectionIconBg}>
-                      <Ionicons name="person" size={20} color="#007AFF" />
-                    </View>
-                    <Text style={styles.sectionTitleText}>Basic Information</Text>
-                  </View>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={styles.loadingText}>Preparing your profile...</Text>
+              </View>
+            ) : (
+              <>
+                <ScrollView 
+                  style={[styles.content, isWeb && styles.contentWeb]}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 40 }}
+                >
                   
-                  <View style={styles.inputGrid}>
-                    <View style={styles.inputHalf}>
-                      <LabeledInput 
-                        label="First Name *" 
-                        value={firstName} 
-                        onChangeText={setFirstName} 
-                        placeholder="Juan"
-                      />
-                    </View>
-                    <View style={styles.inputHalf}>
-                      <LabeledInput 
-                        label="Last Name *" 
-                        value={lastName} 
-                        onChangeText={setLastName} 
-                        placeholder="Cruz"
-                      />
-                    </View>
-                  </View>
-                  
-                  <LabeledInput 
-                    label="Middle Name" 
-                    value={middleName} 
-                    onChangeText={setMiddleName} 
-                    placeholder="Dela"
-                  />
-                  
-                  <View style={styles.inputGrid}>
-                    <View style={styles.inputHalf}>
-                      <LabeledInput 
-                        label="Username" 
-                        value={username} 
-                        onChangeText={setUsername} 
-                        placeholder="juandelacruz"
-                      />
-                    </View>
-                    <View style={styles.inputHalf}>
-                      <LabeledInput 
-                        label="Contact Number *" 
-                        value={contactNumber} 
-                        onChangeText={setContactNumber} 
-                        keyboardType="phone-pad"
-                        placeholder="09XX XXX XXXX"
-                      />
-                    </View>
-                  </View>
-                  
-                  <LabeledInput 
-                    label="Email Address" 
-                    value={email} 
-                    onChangeText={setEmail} 
-                    keyboardType="email-address"
-                    editable={false}
-                    placeholder="email@example.com"
-                  />
-                  
-                  <LabeledInput 
-                    label="Birth Date (YYYY-MM-DD) *" 
-                    value={birthDate} 
-                    onChangeText={setBirthDate} 
-                    placeholder="2000-01-15"
-                  />
-                  
-                  <Text style={styles.label}>Gender *</Text>
-                  <View style={styles.row}>
-                    {['Male', 'Female'].map(opt => (
-                      <TouchableOpacity 
-                        key={opt} 
-                        onPress={() => setGender(opt as any)} 
-                        style={[styles.option, gender === opt && styles.optionActive]}
-                      >
-                        <Text style={[styles.optionText, gender === opt && styles.optionTextActive]}>
-                          {opt}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  <Text style={styles.label}>Civil Status</Text>
-                  <View style={styles.row}>
-                    {['Single', 'Married', 'Widowed', 'Separated'].map(opt => (
-                      <TouchableOpacity 
-                        key={opt} 
-                        onPress={() => setCivilStatus(opt)} 
-                        style={[styles.option, civilStatus === opt && styles.optionActive]}
-                      >
-                        <Text style={[styles.optionText, civilStatus === opt && styles.optionTextActive]}>
-                          {opt}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  <LabeledInput 
-                    label="Religion" 
-                    value={religion} 
-                    onChangeText={setReligion} 
-                    placeholder="Catholic, etc."
-                  />
-                </View>
-
-                {/* Address */}
-                <View style={styles.section}>
-                  <View style={styles.sectionHeaderRow}>
-                    <View style={[styles.sectionIconBg, { backgroundColor: '#FFF4E5' }]}>
-                      <Ionicons name="location" size={20} color="#FF9500" />
-                    </View>
-                    <Text style={styles.sectionTitleText}>Current Address</Text>
-                  </View>
-                  
-                  <LabeledInput 
-                    label="Province *" 
-                    value={province} 
-                    onChangeText={setProvince}
-                    placeholder="Leyte"
-                  />
-                  
-                  <View style={styles.inputGrid}>
-                    <View style={styles.inputHalf}>
-                      <LabeledInput 
-                        label="Municipality *" 
-                        value={municipality} 
-                        onChangeText={setMunicipality}
-                        placeholder="Isabel"
-                      />
-                    </View>
-                    <View style={styles.inputHalf}>
-                      <LabeledInput 
-                        label="Barangay *" 
-                        value={barangay} 
-                        onChangeText={setBarangay}
-                        placeholder="San Jose"
-                      />
-                    </View>
-                  </View>
-
-                  <LabeledInput 
-                    label="Landmark / Street" 
-                    value={landmark} 
-                    onChangeText={setLandmark}
-                    placeholder="Near church / Street name"
-                  />
-                </View>
-
-                {/* Specialties - The 3-Step Flow */}
-                <View style={styles.section}>
-                  <View style={styles.sectionHeaderRow}>
-                    <View style={[styles.sectionIconBg, { backgroundColor: '#EBFBEE' }]}>
-                      <Ionicons name="ribbon" size={20} color="#2ECC71" />
-                    </View>
-                    <Text style={styles.sectionTitleText}>Skills & Specialties</Text>
-                  </View>
-                  
-                  <View style={styles.infoAlert}>
-                    <Ionicons name="information-circle" size={20} color="#007AFF" />
-                    <Text style={styles.infoAlertText}>
-                      Complete all 3 steps for better job matching
-                    </Text>
-                  </View>
-
-                  {/* STEP 1 */}
-                  <View style={styles.stepContainer}>
-                    <View style={styles.stepHeader}>
-                      <View style={styles.stepNumberContainer}>
-                        <Text style={styles.stepNumber}>1</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.stepTitle}>Nature of Work</Text>
-                        <Text style={styles.stepSubtitle}>
-                          {isGeneralHousehelpSelected 
-                            ? 'General Househelp selected (All areas included)' 
-                            : 'Select your primary work categories'}
-                        </Text>
-                      </View>
-                      <TouchableOpacity 
-                        style={styles.stepActionBtn}
-                        onPress={() => setCategoryModalVisible(true)}
-                      >
-                        <Ionicons name="chevron-forward" size={20} color="#007AFF" />
-                      </TouchableOpacity>
-                    </View>
-                    <View style={styles.tagList}>
-                      {selectedCategories.length > 0 ? (
-                        selectedCategories.map(c => (
-                          <View key={c.category_id} style={styles.tagBadge}>
-                            <Text style={styles.tagBadgeText}>{c.category_name}</Text>
+                  {/* Photo Section */}
+                  <View style={styles.photoSection}>
+                    <TouchableOpacity onPress={pickImage} style={styles.photoWrapper}>
+                      <View style={styles.photoBorder}>
+                        {profileImage ? (
+                          <Image source={{ uri: profileImage }} style={styles.photo} />
+                        ) : (
+                          <View style={styles.photoPlaceholder}>
+                            <Ionicons name="person" size={50} color="#ADB5BD" />
                           </View>
-                        ))
-                      ) : (
-                        <Text style={styles.emptyTagText}>No categories selected</Text>
-                      )}
-                    </View>
+                        )}
+                      </View>
+                      <View style={styles.cameraIconContainer}>
+                        <Ionicons name="camera" size={18} color="#fff" />
+                      </View>
+                    </TouchableOpacity>
+                    <Text style={styles.photoText}>Change Profile Photo</Text>
                   </View>
 
-                  {/* STEP 2 */}
-                  <View style={[styles.stepContainer, selectedCategoryIds.length === 0 && styles.stepDisabled]}>
-                    <View style={styles.stepHeader}>
-                      <View style={[styles.stepNumberContainer, selectedCategoryIds.length === 0 && styles.stepNumberDisabled]}>
-                        <Text style={styles.stepNumber}>2</Text>
+                  {/* Basic Info */}
+                  <View style={styles.section}>
+                    <View style={styles.sectionHeaderRow}>
+                      <View style={styles.sectionIconBg}>
+                        <Ionicons name="person" size={20} color="#007AFF" />
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.stepTitle}>Specific Jobs</Text>
-                        <Text style={styles.stepSubtitle}>What specific roles can you perform?</Text>
+                      <Text style={styles.sectionTitleText}>Basic Information</Text>
+                    </View>
+                    
+                    <View style={styles.inputGrid}>
+                      <View style={styles.inputHalf}>
+                        <LabeledInput label="First Name *" value={firstName} onChangeText={setFirstName} placeholder="Juan" />
                       </View>
-                      <TouchableOpacity 
-                        style={styles.stepActionBtn}
-                        onPress={() => selectedCategoryIds.length > 0 && setJobModalVisible(true)}
-                        disabled={selectedCategoryIds.length === 0}
-                      >
-                        <Ionicons name="chevron-forward" size={20} color={selectedCategoryIds.length > 0 ? "#007AFF" : "#ADB5BD"} />
-                      </TouchableOpacity>
-                    </View>
-                    <View style={styles.tagList}>
-                      {selectedJobs.length > 0 || customJobs.length > 0 ? (
-                        <>
-                          {selectedJobs.map(j => (
-                            <View key={j.job_id} style={styles.tagBadge}>
-                              <Text style={styles.tagBadgeText}>{j.job_title}</Text>
-                            </View>
-                          ))}
-                          {customJobs.map((job, idx) => (
-                            <View key={`custom-job-${idx}`} style={[styles.tagBadge, styles.tagCustom]}>
-                              <Ionicons name="star" size={12} color="#2E7D32" style={{ marginRight: 4 }} />
-                              <Text style={[styles.tagBadgeText, styles.tagCustomText]}>{job}</Text>
-                            </View>
-                          ))}
-                        </>
-                      ) : (
-                        <Text style={styles.emptyTagText}>
-                          {selectedCategoryIds.length === 0 ? 'Select a category first' : 'No jobs selected'}
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-
-                  {/* STEP 3 */}
-                  <View style={[styles.stepContainer, selectedJobIds.length === 0 && customJobs.length === 0 && styles.stepDisabled]}>
-                    <View style={styles.stepHeader}>
-                      <View style={[styles.stepNumberContainer, (selectedJobIds.length === 0 && customJobs.length === 0) && styles.stepNumberDisabled]}>
-                        <Text style={styles.stepNumber}>3</Text>
+                      <View style={styles.inputHalf}>
+                        <LabeledInput label="Last Name *" value={lastName} onChangeText={setLastName} placeholder="Cruz" />
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.stepTitle}>Individual Skills</Text>
-                        <Text style={styles.stepSubtitle}>Specific skills for your selected jobs</Text>
+                    </View>
+                    
+                    <LabeledInput label="Middle Name" value={middleName} onChangeText={setMiddleName} placeholder="Dela" />
+                    
+                    <View style={styles.inputGrid}>
+                      <View style={styles.inputHalf}>
+                        <LabeledInput label="Username" value={username} onChangeText={setUsername} placeholder="juandelacruz" />
                       </View>
-                      <TouchableOpacity 
-                        style={styles.stepActionBtn}
-                        onPress={() => (selectedJobIds.length > 0 || customJobs.length > 0) && setSkillModalVisible(true)}
-                        disabled={selectedJobIds.length === 0 && customJobs.length === 0}
-                      >
-                        <Ionicons name="chevron-forward" size={20} color={(selectedJobIds.length > 0 || customJobs.length > 0) ? "#007AFF" : "#ADB5BD"} />
-                      </TouchableOpacity>
-                    </View>
-                    <View style={styles.tagList}>
-                      {selectedSkills.length > 0 || customSkills.length > 0 ? (
-                        <>
-                          {selectedSkills.map(s => (
-                            <View key={s.skill_id} style={styles.tagBadge}>
-                              <Text style={styles.tagBadgeText}>{s.skill_name}</Text>
-                            </View>
-                          ))}
-                          {customSkills.map((skill, idx) => (
-                            <View key={`custom-skill-${idx}`} style={[styles.tagBadge, styles.tagCustom]}>
-                              <Ionicons name="star" size={12} color="#2E7D32" style={{ marginRight: 4 }} />
-                              <Text style={[styles.tagBadgeText, styles.tagCustomText]}>{skill}</Text>
-                            </View>
-                          ))}
-                        </>
-                      ) : (
-                        <Text style={styles.emptyTagText}>
-                          {selectedJobIds.length === 0 && customJobs.length === 0 ? 'Select jobs first' : 'No skills selected'}
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-
-                  {/* Languages */}
-                  <View style={[styles.stepContainer, { borderBottomWidth: 0, marginBottom: 0 }]}>
-                    <View style={styles.stepHeader}>
-                      <View style={[styles.stepIconContainer]}>
-                        <Ionicons name="language" size={18} color="#6C757D" />
+                      <View style={styles.inputHalf}>
+                        <LabeledInput label="Contact Number *" value={contactNumber} onChangeText={setContactNumber} keyboardType="phone-pad" placeholder="09XX XXX XXXX" />
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.stepTitle}>Languages Spoken</Text>
-                      </View>
-                      <TouchableOpacity 
-                        style={styles.stepActionBtn}
-                        onPress={() => setLanguageModalVisible(true)}
-                      >
-                        <Ionicons name="chevron-forward" size={20} color="#007AFF" />
-                      </TouchableOpacity>
                     </View>
-                    <View style={styles.tagList}>
-                      {selectedLanguages.length > 0 ? (
-                        selectedLanguages.map(l => (
-                          <View key={l.language_id} style={[styles.tagBadge, { backgroundColor: '#F0F2F5', borderColor: '#D1D5DB' }]}>
-                            <Text style={[styles.tagBadgeText, { color: '#4B5563' }]}>{l.language_name}</Text>
-                          </View>
-                        ))
-                      ) : (
-                        <Text style={styles.emptyTagText}>No languages selected</Text>
-                      )}
-                    </View>
-                  </View>
-                </View>
-
-                {/* About & Education */}
-                <View style={styles.section}>
-                  <View style={styles.sectionHeaderRow}>
-                    <View style={[styles.sectionIconBg, { backgroundColor: '#F3E8FF' }]}>
-                      <Ionicons name="book" size={20} color="#9333EA" />
-                    </View>
-                    <Text style={styles.sectionTitleText}>Professional Bio</Text>
-                  </View>
-                  
-                  <LabeledInput 
-                    label="Tell employers about yourself" 
-                    value={bio} 
-                    onChangeText={setBio} 
-                    multiline 
-                    numberOfLines={4} 
-                    placeholder="Briefly describe your work history and strengths..."
-                  />
-
-                  <Text style={styles.label}>Educational Attainment</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+                    
+                    <LabeledInput label="Email Address" value={email} onChangeText={setEmail} keyboardType="email-address" editable={false} placeholder="email@example.com" />
+                    <LabeledInput label="Birth Date (YYYY-MM-DD) *" value={birthDate} onChangeText={setBirthDate} placeholder="2000-01-15" />
+                    
+                    <Text style={styles.label}>Gender *</Text>
                     <View style={styles.row}>
-                      {['Elementary', 'High School Grad', 'College Grad', 'Vocational'].map(opt => (
+                      {['Male', 'Female'].map(opt => (
+                        <TouchableOpacity key={opt} onPress={() => setGender(opt as any)} style={[styles.option, gender === opt && styles.optionActive]}>
+                          <Text style={[styles.optionText, gender === opt && styles.optionTextActive]}>{opt}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    <Text style={styles.label}>Civil Status</Text>
+                    <View style={styles.row}>
+                      {['Single', 'Married', 'Widowed', 'Separated'].map(opt => (
+                        <TouchableOpacity key={opt} onPress={() => setCivilStatus(opt)} style={[styles.option, civilStatus === opt && styles.optionActive]}>
+                          <Text style={[styles.optionText, civilStatus === opt && styles.optionTextActive]}>{opt}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    <LabeledInput label="Religion" value={religion} onChangeText={setReligion} placeholder="Catholic, etc." />
+                  </View>
+
+                  {/* Address */}
+                  <View style={styles.section}>
+                    <View style={styles.sectionHeaderRow}>
+                      <View style={[styles.sectionIconBg, { backgroundColor: '#FFF4E5' }]}>
+                        <Ionicons name="location" size={20} color="#FF9500" />
+                      </View>
+                      <Text style={styles.sectionTitleText}>Current Address</Text>
+                    </View>
+                    
+                    {/* RESPONSIVE ROW FOR WEB */}
+                    <View style={isWeb ? styles.webRow : undefined}>
+                      <View style={isWeb ? { flex: 1, paddingRight: 12 } : undefined}>
+                        <LabeledInput label="Province *" value={province} onChangeText={setProvince} placeholder="Leyte" />
+                      </View>
+                      
+                      <View style={isWeb ? { flex: 2 } : undefined}>
+                        <View style={styles.inputGrid}>
+                          <View style={styles.inputHalf}>
+                            <LabeledInput label="Municipality *" value={municipality} onChangeText={setMunicipality} placeholder="Isabel" />
+                          </View>
+                          <View style={styles.inputHalf}>
+                            <LabeledInput label="Barangay *" value={barangay} onChangeText={setBarangay} placeholder="San Jose" />
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+
+                    <LabeledInput label="Landmark / Street" value={landmark} onChangeText={setLandmark} placeholder="Near church / Street name" />
+                  </View>
+
+                  {/* Specialties - The 3-Step Flow */}
+                  <View style={styles.section}>
+                    <View style={styles.sectionHeaderRow}>
+                      <View style={[styles.sectionIconBg, { backgroundColor: '#EBFBEE' }]}>
+                        <Ionicons name="ribbon" size={20} color="#2ECC71" />
+                      </View>
+                      <Text style={styles.sectionTitleText}>Skills & Specialties</Text>
+                    </View>
+                    
+                    <View style={styles.infoAlert}>
+                      <Ionicons name="information-circle" size={20} color="#007AFF" />
+                      <Text style={styles.infoAlertText}>
+                        Complete all 3 steps for better job matching
+                      </Text>
+                    </View>
+
+                    {/* STEP 1 */}
+                    <View style={styles.stepContainer}>
+                      <View style={styles.stepHeader}>
+                        <View style={styles.stepNumberContainer}>
+                          <Text style={styles.stepNumber}>1</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.stepTitle}>Nature of Work</Text>
+                          <Text style={styles.stepSubtitle}>
+                            {isGeneralHousehelpSelected 
+                              ? 'General Househelp selected (All areas included)' 
+                              : 'Select your primary work categories'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity 
+                          style={styles.stepActionBtn}
+                          onPress={() => setCategoryModalVisible(true)}
+                        >
+                          <Ionicons name="chevron-forward" size={20} color="#007AFF" />
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.tagList}>
+                        {selectedCategories.length > 0 ? (
+                          selectedCategories.map(c => (
+                            <View key={c.category_id} style={styles.tagBadge}>
+                              <Text style={styles.tagBadgeText}>{c.category_name}</Text>
+                            </View>
+                          ))
+                        ) : (
+                          <Text style={styles.emptyTagText}>No categories selected</Text>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* STEP 2 */}
+                    <View style={[styles.stepContainer, selectedCategoryIds.length === 0 && styles.stepDisabled]}>
+                      <View style={styles.stepHeader}>
+                        <View style={[styles.stepNumberContainer, selectedCategoryIds.length === 0 && styles.stepNumberDisabled]}>
+                          <Text style={styles.stepNumber}>2</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.stepTitle}>Specific Jobs</Text>
+                          <Text style={styles.stepSubtitle}>What specific roles can you perform?</Text>
+                        </View>
+                        <TouchableOpacity 
+                          style={styles.stepActionBtn}
+                          onPress={() => selectedCategoryIds.length > 0 && setJobModalVisible(true)}
+                          disabled={selectedCategoryIds.length === 0}
+                        >
+                          <Ionicons name="chevron-forward" size={20} color={selectedCategoryIds.length > 0 ? "#007AFF" : "#ADB5BD"} />
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.tagList}>
+                        {selectedJobs.length > 0 || customJobs.length > 0 ? (
+                          <>
+                            {selectedJobs.map(j => (
+                              <View key={j.job_id} style={styles.tagBadge}>
+                                <Text style={styles.tagBadgeText}>{j.job_title}</Text>
+                              </View>
+                            ))}
+                            {customJobs.map((job, idx) => (
+                              <View key={`custom-job-${idx}`} style={[styles.tagBadge, styles.tagCustom]}>
+                                <Ionicons name="star" size={12} color="#2E7D32" style={{ marginRight: 4 }} />
+                                <Text style={[styles.tagBadgeText, styles.tagCustomText]}>{job}</Text>
+                              </View>
+                            ))}
+                          </>
+                        ) : (
+                          <Text style={styles.emptyTagText}>
+                            {selectedCategoryIds.length === 0 ? 'Select a category first' : 'No jobs selected'}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* STEP 3 */}
+                    <View style={[styles.stepContainer, selectedJobIds.length === 0 && customJobs.length === 0 && styles.stepDisabled]}>
+                      <View style={styles.stepHeader}>
+                        <View style={[styles.stepNumberContainer, (selectedJobIds.length === 0 && customJobs.length === 0) && styles.stepNumberDisabled]}>
+                          <Text style={styles.stepNumber}>3</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.stepTitle}>Individual Skills</Text>
+                          <Text style={styles.stepSubtitle}>Specific skills for your selected jobs</Text>
+                        </View>
+                        <TouchableOpacity 
+                          style={styles.stepActionBtn}
+                          onPress={() => (selectedJobIds.length > 0 || customJobs.length > 0) && setSkillModalVisible(true)}
+                          disabled={selectedJobIds.length === 0 && customJobs.length === 0}
+                        >
+                          <Ionicons name="chevron-forward" size={20} color={(selectedJobIds.length > 0 || customJobs.length > 0) ? "#007AFF" : "#ADB5BD"} />
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.tagList}>
+                        {selectedSkills.length > 0 || customSkills.length > 0 ? (
+                          <>
+                            {selectedSkills.map(s => (
+                              <View key={s.skill_id} style={styles.tagBadge}>
+                                <Text style={styles.tagBadgeText}>{s.skill_name}</Text>
+                              </View>
+                            ))}
+                            {customSkills.map((skill, idx) => (
+                              <View key={`custom-skill-${idx}`} style={[styles.tagBadge, styles.tagCustom]}>
+                                <Ionicons name="star" size={12} color="#2E7D32" style={{ marginRight: 4 }} />
+                                <Text style={[styles.tagBadgeText, styles.tagCustomText]}>{skill}</Text>
+                              </View>
+                            ))}
+                          </>
+                        ) : (
+                          <Text style={styles.emptyTagText}>
+                            {selectedJobIds.length === 0 && customJobs.length === 0 ? 'Select jobs first' : 'No skills selected'}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* Languages */}
+                    <View style={[styles.stepContainer, { borderBottomWidth: 0, marginBottom: 0 }]}>
+                      <View style={styles.stepHeader}>
+                        <View style={[styles.stepIconContainer]}>
+                          <Ionicons name="language" size={18} color="#6C757D" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.stepTitle}>Languages Spoken</Text>
+                        </View>
+                        <TouchableOpacity 
+                          style={styles.stepActionBtn}
+                          onPress={() => setLanguageModalVisible(true)}
+                        >
+                          <Ionicons name="chevron-forward" size={20} color="#007AFF" />
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.tagList}>
+                        {selectedLanguages.length > 0 ? (
+                          selectedLanguages.map(l => (
+                            <View key={l.language_id} style={[styles.tagBadge, { backgroundColor: '#F0F2F5', borderColor: '#D1D5DB' }]}>
+                              <Text style={[styles.tagBadgeText, { color: '#4B5563' }]}>{l.language_name}</Text>
+                            </View>
+                          ))
+                        ) : (
+                          <Text style={styles.emptyTagText}>No languages selected</Text>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* About & Education */}
+                  <View style={styles.section}>
+                    <View style={styles.sectionHeaderRow}>
+                      <View style={[styles.sectionIconBg, { backgroundColor: '#F3E8FF' }]}>
+                        <Ionicons name="book" size={20} color="#9333EA" />
+                      </View>
+                      <Text style={styles.sectionTitleText}>Professional Bio</Text>
+                    </View>
+                    
+                    <LabeledInput 
+                      label="Tell employers about yourself" 
+                      value={bio} 
+                      onChangeText={setBio} 
+                      multiline 
+                      numberOfLines={4} 
+                      placeholder="Briefly describe your work history and strengths..."
+                    />
+
+                    <Text style={styles.label}>Educational Attainment</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+                      <View style={styles.row}>
+                        {['Elementary', 'High School Grad', 'College Grad', 'Vocational'].map(opt => (
+                          <TouchableOpacity 
+                            key={opt} 
+                            onPress={() => setEducationLevel(opt)} 
+                            style={[styles.option, educationLevel === opt && styles.optionActive]}
+                          >
+                            <Text style={[styles.optionText, educationLevel === opt && styles.optionTextActive]}>
+                              {opt}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
+
+                    <LabeledInput 
+                      label="Years of Experience" 
+                      value={experienceYears} 
+                      onChangeText={setExperienceYears} 
+                      keyboardType="numeric"
+                      placeholder="0"
+                    />
+                  </View>
+
+                  {/* Work Preferences */}
+                  <View style={styles.section}>
+                    <View style={styles.sectionHeaderRow}>
+                      <View style={[styles.sectionIconBg, { backgroundColor: '#E1F5FE' }]}>
+                        <Ionicons name="briefcase" size={20} color="#0288D1" />
+                      </View>
+                      <Text style={styles.sectionTitleText}>Work Preferences</Text>
+                    </View>
+                    
+                    <Text style={styles.label}>Stay Arrangement</Text>
+                    <View style={styles.row}>
+                      {['Live-in', 'Live-out', 'Any'].map(opt => (
                         <TouchableOpacity 
                           key={opt} 
-                          onPress={() => setEducationLevel(opt)} 
-                          style={[styles.option, educationLevel === opt && styles.optionActive]}
+                          onPress={() => setEmploymentType(opt)} 
+                          style={[styles.option, employmentType === opt && styles.optionActive]}
                         >
-                          <Text style={[styles.optionText, educationLevel === opt && styles.optionTextActive]}>
+                          <Text style={[styles.optionText, employmentType === opt && styles.optionTextActive]}>
                             {opt}
                           </Text>
                         </TouchableOpacity>
                       ))}
                     </View>
-                  </ScrollView>
 
-                  <LabeledInput 
-                    label="Years of Experience" 
-                    value={experienceYears} 
-                    onChangeText={setExperienceYears} 
-                    keyboardType="numeric"
-                    placeholder="0"
-                  />
-                </View>
-
-                {/* Work Preferences */}
-                <View style={styles.section}>
-                  <View style={styles.sectionHeaderRow}>
-                    <View style={[styles.sectionIconBg, { backgroundColor: '#E1F5FE' }]}>
-                      <Ionicons name="briefcase" size={20} color="#0288D1" />
-                    </View>
-                    <Text style={styles.sectionTitleText}>Work Preferences</Text>
-                  </View>
-                  
-                  <Text style={styles.label}>Stay Arrangement</Text>
-                  <View style={styles.row}>
-                    {['Live-in', 'Live-out', 'Any'].map(opt => (
-                      <TouchableOpacity 
-                        key={opt} 
-                        onPress={() => setEmploymentType(opt)} 
-                        style={[styles.option, employmentType === opt && styles.optionActive]}
-                      >
-                        <Text style={[styles.optionText, employmentType === opt && styles.optionTextActive]}>
-                          {opt}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  <Text style={styles.label}>Work Hours</Text>
-                  <View style={styles.row}>
-                    {['Full-time', 'Part-time', 'Any'].map(opt => (
-                      <TouchableOpacity 
-                        key={opt} 
-                        onPress={() => setWorkSchedule(opt)} 
-                        style={[styles.option, workSchedule === opt && styles.optionActive]}
-                      >
-                        <Text style={[styles.optionText, workSchedule === opt && styles.optionTextActive]}>
-                          {opt}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  <View style={styles.salaryContainer}>
-                    <LabeledInput 
-                      label="Expected Salary (₱) *" 
-                      value={expectedSalary} 
-                      onChangeText={setExpectedSalary} 
-                      keyboardType="numeric"
-                      placeholder="6000"
-                    />
-                    <Text style={styles.salaryHint}>Recommended minimum: ₱6,000/month</Text>
-                  </View>
-
-                  <Text style={styles.label}>Current Availability</Text>
-                  <View style={styles.row}>
-                    {['Available', 'Employed', 'Not Available'].map(opt => (
-                      <TouchableOpacity 
-                        key={opt} 
-                        onPress={() => setAvailabilityStatus(opt)} 
-                        style={[styles.option, availabilityStatus === opt && styles.optionActive]}
-                      >
-                        <View style={styles.statusRow}>
-                          <View style={[
-                            styles.statusDot, 
-                            opt === 'Available' ? styles.dotGreen : 
-                            opt === 'Employed' ? styles.dotOrange : styles.dotRed
-                          ]} />
-                          <Text style={[styles.optionText, availabilityStatus === opt && styles.optionTextActive]}>
+                    <Text style={styles.label}>Work Hours</Text>
+                    <View style={styles.row}>
+                      {['Full-time', 'Part-time', 'Any'].map(opt => (
+                        <TouchableOpacity 
+                          key={opt} 
+                          onPress={() => setWorkSchedule(opt)} 
+                          style={[styles.option, workSchedule === opt && styles.optionActive]}
+                        >
+                          <Text style={[styles.optionText, workSchedule === opt && styles.optionTextActive]}>
                             {opt}
                           </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                <View style={{ height: 100 }} />
-              </ScrollView>
-
-              <View style={styles.footer}>
-                <TouchableOpacity 
-                  style={[styles.saveBtn, saving && styles.saveBtnDisabled]} 
-                  onPress={handleSave} 
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <View style={styles.savingRow}>
-                      <ActivityIndicator color="#fff" style={{ marginRight: 10 }} />
-                      <Text style={styles.saveText}>Saving Changes...</Text>
+                        </TouchableOpacity>
+                      ))}
                     </View>
-                  ) : (
-                    <Text style={styles.saveText}>Save Profile</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
 
-        </KeyboardAvoidingView>
+                    <View style={styles.salaryContainer}>
+                      <LabeledInput 
+                        label="Expected Salary (₱) *" 
+                        value={expectedSalary} 
+                        onChangeText={setExpectedSalary} 
+                        keyboardType="numeric"
+                        placeholder="6000"
+                      />
+                      <Text style={styles.salaryHint}>Recommended minimum: ₱6,000/month</Text>
+                    </View>
+
+                    <Text style={styles.label}>Current Availability</Text>
+                    <View style={styles.row}>
+                      {['Available', 'Employed', 'Not Available'].map(opt => (
+                        <TouchableOpacity 
+                          key={opt} 
+                          onPress={() => setAvailabilityStatus(opt)} 
+                          style={[styles.option, availabilityStatus === opt && styles.optionActive]}
+                        >
+                          <View style={styles.statusRow}>
+                            <View style={[
+                              styles.statusDot, 
+                              opt === 'Available' ? styles.dotGreen : 
+                              opt === 'Employed' ? styles.dotOrange : styles.dotRed
+                            ]} />
+                            <Text style={[styles.optionText, availabilityStatus === opt && styles.optionTextActive]}>
+                              {opt}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  <View style={{ height: 100 }} />
+                </ScrollView>
+
+                <View style={styles.footer}>
+                  <TouchableOpacity 
+                    style={[styles.saveBtn, saving && styles.saveBtnDisabled]} 
+                    onPress={handleSave} 
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <View style={styles.savingRow}>
+                        <ActivityIndicator color="#fff" style={{ marginRight: 10 }} />
+                        <Text style={styles.saveText}>Saving Changes...</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.saveText}>Save Profile</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Category Selection Modal */}
@@ -1193,6 +1108,46 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
 // ============================================================================
 
 const styles = StyleSheet.create({
+  // Responsive Web
+  // --- RESPONSIVE WEB WRAPPERS ---
+  webOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  webContainer: {
+    width: '100%',
+    maxWidth: 900,
+    maxHeight: '95%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#F8F9FA', // Assuming this is your background color
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  webSmallContainer: {
+    width: '100%',
+    maxWidth: 500, // Thinner for the pop-up selection modals
+    maxHeight: '80%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+  },
+  webRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  headerWeb: { paddingTop: 20 },
+  contentWeb: { width: '100%' },
+  footerWeb: { width: '100%' },
+
+  // Standard Styles
   container: { 
     flex: 1, 
     backgroundColor: '#F8F9FA',

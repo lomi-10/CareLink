@@ -79,7 +79,7 @@ export default function AdminLoginScreen() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/login.php`, {
+      const response = await fetch(`${API_URL}/auth/login.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons"; // Import Ionicons for the eye icon
+import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -150,7 +150,7 @@ export default function SignUpScreen() {
     }
 
     try {
-      const response = await fetch(`${API_URL}/signup.php`, {
+      const response = await fetch(`${API_URL}/auth/signup.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ first_name, middle_name, last_name, email, user_type, password }),

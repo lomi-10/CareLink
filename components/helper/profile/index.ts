@@ -6,3 +6,4 @@ export { MobileProfileHeader } from './MobileProfileHeader';
 export { InfoCard } from './InfoCard';
 export { DocumentsCard } from './DocumentsCard';
 export { DocumentViewer } from './DocumentViewer';
+export { MobileMenu } from './MobileMenu';

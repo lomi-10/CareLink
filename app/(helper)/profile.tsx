@@ -10,6 +10,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   Text,
+  SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
@@ -29,17 +30,27 @@ import {
   InfoCard,
   DocumentsCard,
   DocumentViewer,
+  MobileMenu,
 } from '@/components/helper/profile';
 
 // Common Components
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import NotificationModal from '@/components/common/NotificationModal';
+import {NotificationModal} from '@/components/common/NotificationModal';
 import EditHelperProfileModal from '@/components/profile/EditProfileModal';
 import HelperDocumentModal from '@/components/profile/DocumentManagementModal';
 
 export default function HelperProfile() {
   const router = useRouter();
   const navigation = useNavigation();
+
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Logout state
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const initiateLogout = () => {
+    setIsMobileMenuOpen(false); // Close the side menu if it's open
+    setLogoutModalVisible(true); // Pop up your nice notification!
+  };
 
   // Custom hooks
   const { handleLogout } = useAuth();
@@ -112,37 +123,31 @@ export default function HelperProfile() {
     { label: 'Gender', value: profile?.gender || 'Not specified' },
     { label: 'Date of Birth', value: profile?.date_of_birth || 'Not specified' },
     { label: 'Age', value: profile?.age ? `${profile.age} years old` : 'Not specified' },
-    {
-      label: 'Contact Number',
-      value: profile?.contact_number || 'Not specified',
-    },
+    { label: 'Civil Status', value: profile?.civil_status || 'Not specified' },
+    { label: 'Religion', value: profile?.religion || 'Not specified' },
+    { label: 'Education Level', value: profile?.education_level || 'Not specified' },
+    { label: 'Contact Number', value: profile?.contact_number || 'Not specified' },
   ];
 
   // Prepare work info items
   const workInfoItems = [
-    {
-      label: 'Employment Type',
-      value: profile?.employment_type || 'Not specified',
-    },
+    { label: 'Employment Type', value: profile?.employment_type || 'Not specified' },
     { label: 'Work Schedule', value: profile?.work_schedule || 'Not specified' },
-    {
-      label: 'Years of Experience',
-      value: profile?.years_experience
-        ? `${profile.years_experience} years`
-        : 'Entry Level',
-    },
-    {
-      label: 'Expected Salary',
-      value: profile?.expected_salary
-        ? `₱${profile.expected_salary}`
-        : 'Negotiable',
-    },
+    { label: 'Years of Experience', value: profile?.years_experience ? `${profile.years_experience} years` : 'Entry Level' },
+    { label: 'Expected Salary', value: profile?.expected_salary ? `₱${profile.expected_salary} / ${profile?.salary_period || 'month'}` : 'Negotiable' },
+  ];
+
+  // Prepare specialties items (Using the new mapped data from the hook!)
+  const specialtiesItems = [
+    { label: 'Job Categories', value: profileData?.mappedSpecialties?.jobs?.join(', ') || 'None selected' },
+    { label: 'Skills', value: profileData?.mappedSpecialties?.skills?.join(', ') || 'None selected' },
+    { label: 'Languages', value: profileData?.mappedSpecialties?.languages?.join(', ') || 'None selected' },
   ];
 
   // DESKTOP LAYOUT
   if (isDesktop) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, {flexDirection: 'row'}]}>
         {/* Modals */}
         <NotificationModal
           visible={errorModalVisible}
@@ -170,7 +175,7 @@ export default function HelperProfile() {
           onClose={() => setViewingFile(null)}
         />
 
-        <Sidebar onLogout={handleLogout} />
+        <Sidebar onLogout={initiateLogout} />
 
         <View style={styles.mainContent}>
           <ScrollView
@@ -213,6 +218,13 @@ export default function HelperProfile() {
             />
 
             <InfoCard
+              icon="star-outline"
+              iconColor="#FF2D55"
+              title="Specialties & Skills"
+              items={specialtiesItems}
+            />
+
+            <InfoCard
               icon="location-outline"
               iconColor="#34C759"
               title="Address"
@@ -236,13 +248,24 @@ export default function HelperProfile() {
             />
           </ScrollView>
         </View>
+        <NotificationModal
+          visible={logoutModalVisible}
+          message="Logged Out Successfully!"
+          type="success"
+          autoClose={true}
+          duration={1500} // It will show for 1.5 seconds, then auto-close
+          onClose={() => {
+            setLogoutModalVisible(false);
+            handleLogout(); // ⬅️ The actual logout happens HERE, after the modal closes!
+          }}
+        />
       </View>
     );
   }
 
   // MOBILE LAYOUT
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Modals */}
       <NotificationModal
         visible={errorModalVisible}
@@ -274,7 +297,7 @@ export default function HelperProfile() {
       <View style={styles.mobileHeader}>
         <TouchableOpacity
           style={styles.menuButton}
-          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+          onPress={() => setIsMobileMenuOpen(true)}
         >
           <Ionicons name="menu" size={28} color="#1A1C1E" />
         </TouchableOpacity>
@@ -294,6 +317,7 @@ export default function HelperProfile() {
         <MobileProfileHeader
           profileImage={profile?.profile_image}
           fullName={getFullName()}
+          bio={profile?.bio} // <-- DON'T FORGET THIS FIX!
           badge={badge}
           onEditProfile={() => setIsEditModalOpen(true)}
           onManageDocuments={() => setIsDocumentModalOpen(true)}
@@ -313,6 +337,14 @@ export default function HelperProfile() {
           items={workInfoItems}
         />
 
+        {/* ADD THIS RIGHT HERE FOR MOBILE */}
+        <InfoCard
+          icon="star-outline"
+          iconColor="#FF2D55"
+          title="Specialties & Skills"
+          items={specialtiesItems}
+        />
+
         <DocumentsCard
           barangayClearance={barangayClearance}
           validId={validId}
@@ -322,7 +354,23 @@ export default function HelperProfile() {
           onManageDocuments={() => setIsDocumentModalOpen(true)}
         />
       </ScrollView>
-    </View>
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        handleLogout={initiateLogout}
+      />
+      <NotificationModal
+        visible={logoutModalVisible}
+        message="Logged Out Successfully!"
+        type="success"
+        autoClose={true}
+        duration={1500} // It will show for 1.5 seconds, then auto-close
+        onClose={() => {
+          setLogoutModalVisible(false);
+          handleLogout(); // ⬅️ The actual logout happens HERE, after the modal closes!
+        }}
+      />
+    </SafeAreaView>
   );
 }
 
@@ -330,7 +378,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-    flexDirection: 'row',
   },
   emptyState: {
     flex: 1,

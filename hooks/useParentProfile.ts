@@ -8,41 +8,49 @@ import API_URL from '../constants/api';
 
 export interface ParentProfileData {
   user: {
-    user_id: string;
+    user_id: number;
     email: string;
+    username: string;
     first_name: string;
     middle_name?: string;
     last_name: string;
   };
   profile: {
-    profile_id: string;
+    profile_id: number;
     profile_image?: string;
     contact_number?: string;
     bio?: string;
-    street?: string;
-    barangay?: string;
-    city?: string;
     province?: string;
+    municipality?: string;
+    barangay?: string;
+    address?: string;
     landmark?: string;
     verification_status: string;
   };
   household: {
     household_size?: number;
+    has_children?: boolean;
+    has_elderly?: boolean;
     has_pets?: boolean;
-    pets_description?: string;
-    special_needs_care?: boolean;
-    special_needs_details?: string;
+    pet_details?: string;
   };
   children: Array<{
-    child_id: string;
-    name: string;
+    child_id: number;
     age: number;
-    gender: string;
+    gender?: string;
     special_needs?: string;
   }>;
   children_count: number;
+  elderly: Array<{
+    elderly_id: number;
+    age: number;
+    gender?: string;
+    condition?: string;
+    care_level: string;
+  }>;
+  elderly_count: number;
   documents: Array<{
-    document_id: string;
+    document_id: number;
     document_type: string;
     file_url: string;
     file_path: string;

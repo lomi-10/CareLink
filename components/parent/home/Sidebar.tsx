@@ -12,7 +12,7 @@ interface SidebarProps {
 
 const navigationItems = [
   { icon: 'home', label: 'Home', path: '/(parent)/home' },
-  { icon: 'search', label: 'Find Helpers', path: '/(parent)/helpers' },
+  { icon: 'search', label: 'Find Helpers', path: '/(parent)/browse_helpers' },
   { icon: 'briefcase', label: 'My Job Posts', path: '/(parent)/jobs' },
   { icon: 'people', label: 'Applications', path: '/(parent)/applications' },
   { icon: 'chatbubbles', label: 'Messages', path: '/(parent)/messages' },

@@ -3,6 +3,9 @@
 // Most components reused from helper/profile
 
 export { ChildrenList } from './ChildrenList';
+export { DocumentsCard } from './DocumentsCard';
+export { DocumentViewer } from './DocumentViewer';
+export { ElderlyList } from './ElderlyList';
 
 // These components are imported from helper/profile:
 // - ProfileHeader (same, just different color)

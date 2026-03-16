@@ -17,11 +17,23 @@ import {
 } from "react-native";
 import API_URL from "../../constants/api";
 
+// 1. ADD THIS INTERFACE to tell TypeScript what a user object looks like
+export interface VerificationUser {
+  user_id: number;
+  name: string;
+  email: string;
+  user_type: string;
+  contact_number?: string;
+  profile_image?: string;
+  verification_status: string;
+}
+
 export default function UserVerification() {
   const router = useRouter();
 
-  const [users, setUsers] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]);
+  // 2. ADD <VerificationUser[]> to your state
+  const [users, setUsers] = useState<VerificationUser[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<VerificationUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,7 +93,8 @@ export default function UserVerification() {
     setRefreshing(false);
   };
 
-  const renderUserCard = ({ item }: any) => (
+  // 3. Optional but good practice: Add type to item
+  const renderUserCard = ({ item }: { item: VerificationUser }) => (
     <TouchableOpacity
       style={styles.userCard}
       onPress={() =>

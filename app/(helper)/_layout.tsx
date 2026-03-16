@@ -38,7 +38,7 @@ export default function HelperLayout() {
       // ================================================================
       // IMPORTANT: Fetch fresh status from API (not from AsyncStorage)
       // ================================================================
-      const response = await fetch(`${API_URL}/get_user_status.php?user_id=${userId}`);
+      const response = await fetch(`${API_URL}/shared/get_user_status.php?user_id=${userId}`);
       const data = await response.json();
 
       if (data.success) {

@@ -8,3 +8,4 @@ export { StatCard } from './StatCard';
 export { MobileStatCard } from './MobileStatCard';
 export { QuickAction } from './QuickAction';
 export { SectionHeader } from './SectionHeader';
+export { MobileMenu } from './MobileMenu';
