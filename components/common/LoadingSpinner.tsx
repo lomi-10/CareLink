@@ -7,7 +7,7 @@ interface LoadingSpinnerProps {
   message?: string;
 }
 
-export default function LoadingSpinner({ visible, message = 'Loading...' }: LoadingSpinnerProps) {
+export function LoadingSpinner({ visible, message = 'Loading...' }: LoadingSpinnerProps) {
   return (
     <Modal
       transparent={true}

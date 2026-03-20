@@ -102,6 +102,7 @@ export default function HelperHome() {
 
           {/* Quick Actions */}
           <SectionHeader title="Quick Actions" />
+          
           {/* Add more desktop content here */}
         </ScrollView>
 

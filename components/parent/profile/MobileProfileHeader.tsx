@@ -62,7 +62,7 @@ export function MobileProfileHeader({
           onPress={onManageDocuments}
           activeOpacity={0.7}
         >
-          <Ionicons name="cloud-upload-outline" size={18} color="#FF9500" />
+          <Ionicons name="cloud-upload-outline" size={18} color="#007AFF" />
           <Text style={[styles.actionText, styles.actionTextSecondary]}>
             Documents
           </Text>
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 80,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#007AFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FF9500',
+    backgroundColor: '#007AFF',
     paddingVertical: 12,
     borderRadius: 12,
     gap: 6,
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   actionSecondary: {
     backgroundColor: '#fff',
     borderWidth: 1.5,
-    borderColor: '#FF9500',
+    borderColor: '#007AFF',
   },
   actionText: {
     color: '#fff',
@@ -170,6 +170,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   actionTextSecondary: {
-    color: '#FF9500',
+    color: '#007AFF',
   },
 });

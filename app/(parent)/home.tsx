@@ -111,7 +111,7 @@ export function ParentHome() {
               title="Post a Job"
               description="Find the perfect helper"
               color="#007AFF"
-              onPress={() => router.push('/(parent)/post_job')}
+              onPress={() => router.push('/(parent)/jobs')}
             />
             <QuickActionDesktop
               icon="search"
@@ -199,7 +199,7 @@ export function ParentHome() {
             icon="add-circle"
             label="Post Job"
             color="#007AFF"
-            onPress={() => router.push('/(parent)/post_job')}
+            onPress={() => router.push('/(parent)/jobs')}
           />
           <QuickAction
             icon="search"

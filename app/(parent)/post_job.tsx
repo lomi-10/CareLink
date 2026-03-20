@@ -40,8 +40,7 @@ import {
 } from '@/components/parent/jobs';
 
 // Common Components
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { NotificationModal } from '@/components/common';
+import { NotificationModal, LoadingSpinner } from '@/components/common';
 import { PendingBanner } from '@/components/parent/verification/PendingBanner';
 
 export default function PostJob() {
@@ -339,7 +338,7 @@ export default function PostJob() {
             error={errors.description}
             disabled={isDisabled}
           />
-
+ 
           {/* Location Selector - NEW */}
           <LocationSelector
             province={formData.province}

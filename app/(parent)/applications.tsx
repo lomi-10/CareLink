@@ -19,8 +19,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 
 // Components
 import { ApplicationCard } from '@/components/parent/jobs/ApplicationCard';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import NotificationModal from '@/components/common/NotificationModal';
+import {LoadingSpinner, NotificationModal} from '@/components/common/';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import API_URL from '@/constants/api';
 

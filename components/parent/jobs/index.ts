@@ -7,6 +7,7 @@ export { DescriptionInput } from './DescriptionInput';
 export { JobCard } from './JobCard';
 export { JobStatusBadge } from './JobStatusBadge';
 export { JobTitleInput } from './JobTitleInput';
+export { JobPostModal } from './JobPostModal';
 export { PreferencesCard } from './PreferencesCard';
 export { SalaryInputCard } from './SalaryInputCard'; 
 export { SkillsSelector } from './SkillsSelector';

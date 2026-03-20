@@ -34,8 +34,7 @@ import {
 } from '@/components/helper/profile';
 
 // Common Components
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import {NotificationModal} from '@/components/common/NotificationModal';
+import {NotificationModal, LoadingSpinner} from '@/components/common/';
 import EditHelperProfileModal from '@/components/profile/EditProfileModal';
 import HelperDocumentModal from '@/components/profile/DocumentManagementModal';
 

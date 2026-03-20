@@ -72,6 +72,7 @@ export function useBrowseHelpers() {
   } | null>(null);
 
   // Fetch helpers from API
+  // Fetch helpers from API
   const fetchHelpers = async () => {
     try {
       setLoading(true);
@@ -84,20 +85,8 @@ export function useBrowseHelpers() {
 
       const user = JSON.parse(userData);
 
-      // Get parent's location for distance calculation
-      const profileResponse = await fetch(
-        `${API_URL}/parent/get_profile.php?user_id=${user.user_id}`
-      );
-      const profileData = await profileResponse.json();
-
-      if (profileData.success && profileData.profile) {
-        // TODO: Get actual coordinates from municipality
-        // For now, mock coordinates
-        setParentLocation({ lat: 11.0064, lng: 124.6058 }); // Ormoc City
-      }
-
       // Fetch all helpers
-      const response = await fetch(`${API_URL}/helpers/browse.php`);
+      const response = await fetch(`${API_URL}/parent/browse.php`);
       const data = await response.json();
 
       if (data.success) {
@@ -107,12 +96,87 @@ export function useBrowseHelpers() {
         throw new Error(data.message || 'Failed to load helpers');
       }
     } catch (err: any) {
-      console.error('Error fetching helpers:', err);
-      setError(err.message || 'Failed to load helpers');
+      console.log('Backend not ready, using mock data...');
       
-      // Mock data for development
-      setHelpers([]);
-      setFilteredHelpers([]);
+      // 🚀 MOCK DATA FOR UI DEVELOPMENT
+      const mockHelpers: HelperProfile[] = [
+        {
+          user_id: "101",
+          profile_id: "201",
+          full_name: "Maria Santos",
+          first_name: "Maria",
+          last_name: "Santos",
+          profile_image: "https://i.pravatar.cc/150?img=5",
+          age: 28,
+          gender: "Female",
+          category_ids: ["1", "2"], // Assuming 1=Yaya, 2=Cook
+          categories: ["Yaya", "Cook"],
+          experience_years: 4,
+          distance: 1.2,
+          verification_status: "Verified",
+          availability_status: "Available",
+          rating_average: 4.8,
+          rating_count: 12,
+        },
+        {
+          user_id: "102",
+          profile_id: "202",
+          full_name: "Juan Dela Cruz",
+          first_name: "Juan",
+          last_name: "Dela Cruz",
+          profile_image: "https://i.pravatar.cc/150?img=11",
+          age: 35,
+          gender: "Male",
+          category_ids: ["4"], // Assuming 4=Gardener
+          categories: ["Gardener", "Driver"],
+          experience_years: 8,
+          distance: 5.5,
+          verification_status: "Verified",
+          availability_status: "Available",
+          rating_average: 4.9,
+          rating_count: 34,
+        },
+        {
+          user_id: "103",
+          profile_id: "203",
+          full_name: "Elena Reyes",
+          first_name: "Elena",
+          last_name: "Reyes",
+          profile_image: "https://i.pravatar.cc/150?img=9",
+          age: 22,
+          gender: "Female",
+          category_ids: ["1"], 
+          categories: ["Yaya"],
+          experience_years: 1,
+          distance: 15.0,
+          verification_status: "Pending",
+          availability_status: "Not Available",
+          rating_average: 3.5,
+          rating_count: 2,
+        },
+        {
+          user_id: "104",
+          profile_id: "204",
+          full_name: "Rosa Dimaculangan",
+          first_name: "Rosa",
+          last_name: "Dimaculangan",
+          profile_image: "https://i.pravatar.cc/150?img=16",
+          age: 42,
+          gender: "Female",
+          category_ids: ["3"], 
+          categories: ["Househelp"],
+          experience_years: 12,
+          distance: 2.1,
+          verification_status: "Verified",
+          availability_status: "Available",
+          rating_average: 5.0,
+          rating_count: 89,
+        }
+      ];
+
+      // Feed the mock data into your state
+      setHelpers(mockHelpers);
+      setFilteredHelpers(mockHelpers);
     } finally {
       setLoading(false);
     }

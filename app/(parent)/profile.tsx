@@ -23,8 +23,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 // Components
 import { Sidebar, MobileMenu } from '@/components/parent/home';
 import {
-  ProfileHeader,
-  MobileProfileHeader,
+  
   InfoCard,
 } from '@/components/helper/profile'; 
 import { 
@@ -32,11 +31,12 @@ import {
   DocumentsCard, 
   DocumentViewer,
   ElderlyList,
+  ProfileHeader,
+  MobileProfileHeader,
 } from '@/components/parent/profile';
 
 // Common Components
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { NotificationModal } from '@/components/common';
+import { NotificationModal, LoadingSpinner } from '@/components/common';
 import EditParentProfileModal from '@/components/profile/EditParentProfileModal';
 import ParentDocumentModal from '@/components/profile/ParentDocumentModal';
 
@@ -170,7 +170,12 @@ export default function ParentProfile() {
               onManageDocuments={() => setIsDocumentModalOpen(true)}
             />
 
-            <InfoCard icon="person-outline" iconColor="#007AFF" title="Personal Information" items={personalInfoItems} />
+            <InfoCard 
+              icon="person-outline" 
+              iconColor="#007AFF" 
+              title="Personal Information" 
+              items={personalInfoItems} 
+            />
             
             <InfoCard 
               icon="home-outline" 
@@ -198,7 +203,14 @@ export default function ParentProfile() {
           </ScrollView>
         </View>
 
-        <NotificationModal visible={logoutModalVisible} message="Logged Out Successfully!" type="success" autoClose={true} duration={1500} onClose={() => { setLogoutModalVisible(false); handleLogout(); }} />
+        <NotificationModal 
+          visible={logoutModalVisible} 
+          message="Logged Out Successfully!" 
+          type="success" 
+          autoClose={true} 
+          duration={1500} 
+          onClose={() => { setLogoutModalVisible(false); handleLogout(); }} 
+        />
       </View>
     );
   }
@@ -282,7 +294,14 @@ export default function ParentProfile() {
       </ScrollView>
 
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
-      <NotificationModal visible={logoutModalVisible} message="Logged Out Successfully!" type="success" autoClose={true} duration={1500} onClose={() => { setLogoutModalVisible(false); handleLogout(); }} />
+      <NotificationModal 
+        visible={logoutModalVisible} 
+        message="Logged Out Successfully!" 
+        type="success" 
+        autoClose={true} 
+        duration={1500} 
+        onClose={() => { setLogoutModalVisible(false); handleLogout(); }} 
+      />
     </SafeAreaView>
   );
 }

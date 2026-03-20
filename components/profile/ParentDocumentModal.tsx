@@ -11,8 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import API_URL from '../../constants/api';
 
-import { NotificationModal } from '../common';
-import LoadingSpinner from '../common/LoadingSpinner';
+import { NotificationModal, LoadingSpinner } from '../common';
 
 interface ParentDocumentModalProps {
   visible: boolean;

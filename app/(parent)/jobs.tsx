@@ -16,10 +16,9 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth } from '@/hooks/useAuth';
 
 import { Sidebar, MobileMenu } from '@/components/parent/home';
-import { JobCard } from '@/components/parent/jobs/JobCard';
+import { JobCard, JobPostModal } from '@/components/parent/jobs';
 import { PendingBanner } from '@/components/parent/verification/PendingBanner';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { NotificationModal } from '@/components/common';
+import { NotificationModal, LoadingSpinner } from '@/components/common';
 import ConfirmationModal from '@/components/common/ConfirmationModal'; // <-- IMPORTED YOUR MODAL
 import API_URL from '@/constants/api';
 
@@ -30,11 +29,13 @@ export default function MyJobs() {
   const { jobs, loading, refresh, stats } = useParentJobs();
   const { verification, isPending } = useVerificationStatus();
 
+  const [editingJob, setEditingJob] = useState<any>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('all');
   
   // Modals State
+  const [isPostModalVisible, setIsPostModalVisible] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
   const [notification, setNotification] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
   const [deleteModal, setDeleteModal] = useState({ visible: false, jobId: '', jobTitle: '' });
 
@@ -42,7 +43,14 @@ export default function MyJobs() {
     ? jobs 
     : jobs.filter(job => job.status.toLowerCase() === activeFilter.toLowerCase());
 
-  const initiateLogout = () => { setIsMobileMenuOpen(false); setLogoutModalVisible(true); };
+  const initiateLogout = () => { 
+    setIsMobileMenuOpen(false); 
+    setLogoutModalVisible({ 
+      visible: true, 
+      message: 'Logged Out Successfully!', 
+      type: 'success' 
+    }); 
+  };
 
   const handlePostJob = () => {
     if (!verification.canPostJobs) {
@@ -53,11 +61,13 @@ export default function MyJobs() {
       });
       return;
     }
-    router.push('/(parent)/post_job');
+    setEditingJob(null);
+    setIsPostModalVisible(true);
   };
 
-  const handleEditJob = (jobId: string) => {
-    router.push({ pathname: '/(parent)/post_job', params: { edit_id: jobId } });
+  const handleEditJob = (job: any) => {
+    setEditingJob(job);
+    setIsPostModalVisible(true);
   };
 
   const promptDeleteJob = (jobId: string, jobTitle: string) => {
@@ -142,8 +152,23 @@ export default function MyJobs() {
 
       <View style={[styles.filterContainer, isDesktop && styles.filterContainerDesktop]}>
         {['all', 'open', 'filled', 'closed', 'expired'].map((filter) => (
-          <TouchableOpacity key={filter} style={[styles.filterTab, activeFilter === filter && styles.filterTabActive]} onPress={() => setActiveFilter(filter)} activeOpacity={0.7}>
-            <Text style={[styles.filterTabText, activeFilter === filter && styles.filterTabTextActive]}>{filter.charAt(0).toUpperCase() + filter.slice(1)}</Text>
+          <TouchableOpacity 
+            key={filter} 
+            style={[
+              styles.filterTab, 
+              activeFilter === filter && styles.filterTabActive
+            ]} 
+            onPress={() => setActiveFilter(filter)} 
+            activeOpacity={0.7}
+          >
+            <Text 
+              style={[
+                styles.filterTabText, 
+                activeFilter === filter && styles.filterTabTextActive
+              ]}
+            >
+              {filter.charAt(0).toUpperCase() + filter.slice(1)}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -166,7 +191,7 @@ export default function MyJobs() {
             <JobCard
               job={item}
               onViewApplications={() => router.push({ pathname: '/(parent)/applications', params: { job_id: item.job_post_id } })}
-              onEdit={() => handleEditJob(item.job_post_id)}
+              onEdit={() => handleEditJob(item)}
               onDelete={() => promptDeleteJob(item.job_post_id, item.title)}
               onUpdateStatus={(status) => handleUpdateStatus(item.job_post_id, status)}
             />
@@ -178,9 +203,79 @@ export default function MyJobs() {
     </View>
   );
 
+  if (isDesktop){
+    return(
+      <View style={[styles.container, { flexDirection: 'row' }]}>
+        <NotificationModal 
+          visible={notification.visible} 
+          message={notification.message} 
+          type={notification.type} 
+          onClose={() => setNotification({ ...notification, visible: false })} 
+          autoClose={true} 
+          duration={1500} 
+        />
+
+        <NotificationModal 
+          visible={logoutModalVisible.visible} 
+          message={logoutModalVisible.message} 
+          type={logoutModalVisible.type} 
+          onClose={() => {setLogoutModalVisible({ ...logoutModalVisible, visible: false }); handleLogout();}} 
+          autoClose={true} 
+          duration={1500} 
+        />
+
+        <ConfirmationModal
+          visible={deleteModal.visible}
+          title="Delete Job?"
+          message={`Are you sure you want to delete "${deleteModal.jobTitle}"? This cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          type="danger"
+          onConfirm={confirmDeleteJob}
+          onCancel={() => setDeleteModal({ ...deleteModal, visible: false })}
+        />
+
+        <JobPostModal 
+         visible={isPostModalVisible}
+         onClose={() => setIsPostModalVisible(false)}
+         existingJobData={editingJob}
+         onSaveSuccess={refresh}
+        />
+
+        <Sidebar onLogout={initiateLogout} />
+
+        <View style={styles.desktopContentWrapper}>
+          <View style={styles.desktopHeader}>
+            <Text style={styles.desktopPageTitle}>My Posted Jobs</Text>
+            <TouchableOpacity style={[styles.desktopPostButton, !verification.canPostJobs && styles.postButtonDisabled]} onPress={handlePostJob}>
+              <Ionicons name="add" size={20} color="#fff" /><Text style={styles.desktopPostButtonText}>Post New Job</Text>
+            </TouchableOpacity>
+          </View>
+          <MainContent />
+        </View>
+      </View>
+    )
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <NotificationModal visible={notification.visible} message={notification.message} type={notification.type} onClose={() => setNotification({ ...notification, visible: false })} />
+      <NotificationModal 
+        visible={notification.visible} 
+        message={notification.message} 
+        type={notification.type} 
+        onClose={() => setNotification({ ...notification, visible: false })} 
+        autoClose={true} 
+        duration={1500} 
+      />
+
+      <NotificationModal 
+        visible={logoutModalVisible.visible} 
+        message={logoutModalVisible.message} 
+        type={logoutModalVisible.type} 
+        onClose={() => {setLogoutModalVisible({ ...logoutModalVisible, visible: false }); handleLogout();}} 
+        autoClose={true} 
+        duration={1500} 
+      />
       
       {/* REPLACED WITH YOUR REUSABLE COMPONENT */}
       <ConfirmationModal
@@ -194,35 +289,29 @@ export default function MyJobs() {
         onCancel={() => setDeleteModal({ ...deleteModal, visible: false })}
       />
 
-      {isDesktop ? (
-        <View style={[styles.container, { flexDirection: 'row' }]}>
-          <Sidebar onLogout={initiateLogout} />
-          <View style={styles.desktopContentWrapper}>
-            <View style={styles.desktopHeader}>
-              <Text style={styles.desktopPageTitle}>My Posted Jobs</Text>
-              <TouchableOpacity style={[styles.desktopPostButton, !verification.canPostJobs && styles.postButtonDisabled]} onPress={handlePostJob}>
-                <Ionicons name="add" size={20} color="#fff" /><Text style={styles.desktopPostButtonText}>Post New Job</Text>
-              </TouchableOpacity>
-            </View>
-            <MainContent />
-          </View>
-        </View>
-      ) : (
-        <>
-          <View style={styles.mobileHeader}>
-            <TouchableOpacity style={styles.menuButton} onPress={() => setIsMobileMenuOpen(true)}>
-              <Ionicons name="menu" size={28} color="#1A1C1E" />
-            </TouchableOpacity>
-            <Text style={styles.mobileTitle}>My Posted Jobs</Text>
-            <TouchableOpacity style={[styles.postButton, !verification.canPostJobs && styles.postButtonDisabled]} onPress={handlePostJob}>
-              <Ionicons name="add" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          <MainContent />
-        </>
-      )}
+      <JobPostModal
+        visible={isPostModalVisible}
+        onClose={() => setIsPostModalVisible(false)}
+        existingJobData={editingJob}
+        onSaveSuccess={refresh}
+      />
+
+      <View style={styles.mobileHeader}>
+        <TouchableOpacity style={styles.menuButton} onPress={() => setIsMobileMenuOpen(true)}>
+          <Ionicons name="menu" size={28} color="#1A1C1E" />
+        </TouchableOpacity>
+        <Text style={styles.mobileTitle}>My Posted Jobs</Text>
+        <TouchableOpacity style={[styles.postButton, !verification.canPostJobs && styles.postButtonDisabled]} onPress={handlePostJob}>
+          <Ionicons name="add" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+      <MainContent />
       
-      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
+      <MobileMenu 
+        isOpen={isMobileMenuOpen} 
+        onClose={() => setIsMobileMenuOpen(false)} 
+        handleLogout={initiateLogout} 
+      />
     </SafeAreaView>
   );
 }
