@@ -17,8 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Components
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import NotificationModal from '@/components/common/NotificationModal';
+import {NotificationModal, LoadingSpinner} from '@/components/common';
 import API_URL from '@/constants/api';
 
 interface ApplicantDetails {

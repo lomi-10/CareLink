@@ -68,6 +68,17 @@ export function ParentHome() {
           contentContainerStyle={styles.scrollContent}
           refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
         >
+
+          <View style={[styles.greetingCard, styles.blueGradient]}>
+          <View style={styles.greetingContent}>
+            <Text style={styles.greeting}>
+              {new Date().getHours() < 12 ? 'Good Morning' : 
+               new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'}
+            </Text>
+            <Text style={styles.userName}>{getFullName()}</Text>
+            <Text style={styles.subtext}>Find the perfect helper for your family</Text>
+          </View>
+        </View>
           {/* Stats Grid */}
           <View style={styles.statsGrid}>
             <StatCard

@@ -73,6 +73,7 @@ export default function HelperHome() {
           contentContainerStyle={styles.scrollContent}
           refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
         >
+          <GreetingCard userName={getFullName()} />
           {/* Stats Grid */}
           <View style={styles.statsGrid}>
             <StatCard
@@ -81,7 +82,7 @@ export default function HelperHome() {
               iconBg="#FFF4E5"
               title="Applications"
               value={stats.applications}
-              onPress={() => router.push('/(helper)/applications')}
+              onPress={() => router.push('/(helper)/my_applications')}
             />
             <StatCard
               icon="bookmark"
@@ -89,7 +90,7 @@ export default function HelperHome() {
               iconBg="#E3F2FD"
               title="Saved Jobs"
               value={stats.saved_jobs}
-              onPress={() => router.push('/(helper)/jobs')}
+              onPress={() => router.push('/(helper)/browse_jobs')}
             />
             <StatCard
               icon="eye"
@@ -102,6 +103,32 @@ export default function HelperHome() {
 
           {/* Quick Actions */}
           <SectionHeader title="Quick Actions" />
+          <View style={styles.quickActionsGrid}>
+          <QuickAction
+            icon="search"
+            label="Find Jobs"
+            color="#007AFF"
+            onPress={() => router.push('/(helper)/browse_jobs')}
+          />
+          <QuickAction
+            icon="person"
+            label="My Profile"
+            color="#FF9500"
+            onPress={() => router.push('/(helper)/profile')}
+          />
+          <QuickAction
+            icon="chatbubbles"
+            label="Messages"
+            color="#34C759"
+            onPress={() => router.push('/(helper)/messages')}
+          />
+          <QuickAction
+            icon="document"
+            label="Documents"
+            color="#9C27B0"
+            onPress={() => router.push('/(helper)/profile')}
+          />
+        </View>
           
           {/* Add more desktop content here */}
         </ScrollView>
@@ -141,14 +168,14 @@ export default function HelperHome() {
             color="#FF9500"
             value={stats.applications}
             label="Applications"
-            onPress={() => router.push('/(helper)/applications')}
+            onPress={() => router.push('/(helper)/my_applications')}
           />
           <MobileStatCard
             icon="bookmark"
             color="#007AFF"
             value={stats.saved_jobs}
             label="Saved"
-            onPress={() => router.push('/(helper)/jobs')}
+            onPress={() => router.push('/(helper)/browse_jobs')}
           />
           <MobileStatCard
             icon="eye"
@@ -165,7 +192,7 @@ export default function HelperHome() {
             icon="search"
             label="Find Jobs"
             color="#007AFF"
-            onPress={() => router.push('/(helper)/jobs')}
+            onPress={() => router.push('/(helper)/browse_jobs')}
           />
           <QuickAction
             icon="person"
@@ -183,7 +210,7 @@ export default function HelperHome() {
             icon="document"
             label="Documents"
             color="#9C27B0"
-            onPress={() => router.push('/(helper)/profile')}
+            onPress={() => router.push('/(helper)/documents')}
           />
         </View>
       </ScrollView>

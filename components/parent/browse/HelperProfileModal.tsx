@@ -12,7 +12,7 @@ import {
   Image,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import { HelperProfile } from '@/hooks/useBrowseHelpers';
 
 interface HelperProfileModalProps {
@@ -32,11 +32,7 @@ export function HelperProfileModal({
 }: HelperProfileModalProps) {
   if (!helper) return null;
 
-  const InfoSection = ({ 
-    icon, 
-    label, 
-    value 
-  }: { 
+  const InfoSection = ({ icon, label, value }: { 
     icon: string; 
     label: string; 
     value: string | number | undefined;
@@ -171,7 +167,7 @@ export function HelperProfileModal({
               )}
               
               <InfoSection
-                icon="person-outline"
+                icon="male-female-outline"
                 label="Gender"
                 value={helper.gender}
               />

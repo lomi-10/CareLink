@@ -23,7 +23,7 @@ interface ConfirmationModalProps {
   onCancel: () => void;
 }
 
-export default function ConfirmationModal({
+export function ConfirmationModal({
   visible,
   title,
   message,

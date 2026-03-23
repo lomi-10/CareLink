@@ -19,8 +19,8 @@ interface NavItem {
 
 const navigationItems: NavItem[] = [
   { icon: 'home', label: 'Home', path: '/(helper)/home' },
-  { icon: 'search', label: 'Find Jobs', path: '/(helper)/jobs' },
-  { icon: 'briefcase', label: 'My Applications', path: '/(helper)/applications' },
+  { icon: 'search', label: 'Find Jobs', path: '/(helper)/browse_jobs' },
+  { icon: 'briefcase', label: 'My Applications', path: '/(helper)/my_applications' },
   { icon: 'chatbubbles', label: 'Messages', path: '/(helper)/messages' },
   { icon: 'person', label: 'Profile', path: '/(helper)/profile' },
   { icon: 'settings', label: 'Settings', path: '/(helper)/settings' },

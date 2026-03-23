@@ -58,8 +58,8 @@ export function MobileMenu({ isOpen, onClose, stats, handleLogout }: any) {
 
           <ScrollView>
             <DrawerItem icon="home" label="Home" path="/(helper)/home" />
-            <DrawerItem icon="search" label="Find Jobs" path="/(helper)/jobs" />
-            <DrawerItem icon="people" label="Applications" path="/(helper)/applications" badge={stats?.applications} />
+            <DrawerItem icon="search" label="Find Jobs" path="/(helper)/browse_jobs" />
+            <DrawerItem icon="people" label="My Applications" path="/(helper)/my_applications" badge={stats?.applications} />
             <DrawerItem icon="chatbubbles" label="Messages" path="/(helper)/messages" />
             <DrawerItem icon="person" label="Profile" path="/(helper)/profile" />
             

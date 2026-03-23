@@ -242,7 +242,7 @@ export default function BrowseHelpers() {
             setInviteModalVisible(false);
             setNotification({
               visible: true,
-              message: `Invitation sent to ${selectedHelper.full_name}`,
+              message: `Invitation sent to ${selectedHelper?.full_name}`,
               type: 'success',
             });
           }}
@@ -322,7 +322,7 @@ export default function BrowseHelpers() {
           setInviteModalVisible(false);
           setNotification({
             visible: true,
-            message: `Invitation sent to ${selectedHelper.full_name}`,
+            message: `Invitation sent to ${selectedHelper?.full_name}`,
             type: 'success',
           });
         }}
