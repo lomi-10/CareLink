@@ -4,7 +4,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  StyleSheet,
   FlatList,
   Text,
   TouchableOpacity,
@@ -15,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 // Custom Hooks
-import { useBrowseJobs } from '@/hooks/useBrowseJobs';
+import { useBrowseJobs, JobFilters } from '@/hooks/useBrowseJobs';
 import { useJobReferences } from '@/hooks/useJobReferences';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,9 +27,13 @@ import {
   CompactJobCard,
   JobDetailsModal,
   ApplicationModal,
+  SearchBar,
+  AdvancedSearchModal
 } from '@/components/helper/jobs/';
 
-import { NotificationModal, LoadingSpinner } from '@/components/common/';
+// Styles & Common Components
+import { styles } from './browse_jobs.styles';
+import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/common/';
 
 export default function BrowseJobs() {
   const router = useRouter();
@@ -38,58 +41,46 @@ export default function BrowseJobs() {
   const { handleLogout } = useAuth();
   
   const {
-    jobs,
-    filters,
-    loading,
-    updateFilter,
-    resetFilters,
-    refresh,
-    totalCount,
-    filteredCount,
+    jobs, filters, loading, updateFilter, resetFilters, refresh,
+    totalCount, filteredCount, searchSuggestions, recentSearches,
+    saveRecentSearch, clearRecentSearches, toggleSaveJob, savedCount,
   } = useBrowseJobs();
 
   const { categories } = useJobReferences();
 
   // State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [logoutModalVisible, setLogoutModalVisible] = useState({ 
-    visible: false, 
-    message: '', 
-    type: 'success' as 'success' | 'error' 
-  });
+  const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
+  const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
+
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [jobDetailsModalVisible, setJobDetailsModalVisible] = useState(false);
   const [applicationModalVisible, setApplicationModalVisible] = useState(false);
-  const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [notification, setNotification] = useState({ 
-    visible: false, 
-    message: '', 
-    type: 'success' as 'success' | 'error' 
-  });
+  const [advancedSearchVisible, setAdvancedSearchVisible] = useState(false);
+  const [notification, setNotification] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+
+  // Logout Handlers
+  const initiateLogout = () => {
+    setIsMobileMenuOpen(false); 
+    setConfirmLogoutVisible(true); 
+  };
+
+  const executeLogout = () => {
+    setConfirmLogoutVisible(false);
+    setSuccessLogoutVisible(true);
+  };
 
   // Calculate active filter count
-  const activeFilterCount = Object.entries(filters).filter(
-    ([key, value]) => {
-      if (key === 'category') return value !== 'all';
-      if (key === 'distance') return value !== 20; // default
-      if (key === 'employment_type') return value !== 'all';
-      if (key === 'work_schedule') return value !== 'all';
-      if (key === 'salary_min') return value !== 0;
-      if (key === 'salary_max') return value !== 50000;
-      if (key === 'sort') return false; // don't count sort
-      return false;
-    }
-  ).length;
-
-  // Handlers
-  const initiateLogout = () => {
-    setIsMobileMenuOpen(false);
-    setLogoutModalVisible({ 
-      visible: true, 
-      message: 'Logged Out Successfully!', 
-      type: 'success' 
-    });
-  };
+  const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
+    if (key === 'category') return value !== 'all';
+    if (key === 'distance') return value !== 9999;
+    if (key === 'employment_type') return value !== 'all';
+    if (key === 'work_schedule') return value !== 'all';
+    if (key === 'salary_min') return value !== 0;
+    if (key === 'salary_max') return value !== 999999;
+    if (key === 'sort') return false;
+    return false;
+  }).length;
 
   const handleViewJobDetails = (job: any) => {
     setSelectedJob(job);
@@ -102,25 +93,38 @@ export default function BrowseJobs() {
   };
 
   const handleApplicationSubmit = async () => {
-    setNotification({
-      visible: true,
-      message: 'Application submitted successfully!',
-      type: 'success',
-    });
-    refresh(); // Refresh jobs list
-  };
-
-  const handleOpenFilters = () => {
-    setFilterModalVisible(true);
+    setNotification({ visible: true, message: 'Application submitted successfully!', type: 'success' });
+    refresh();
   };
 
   if (loading) {
     return <LoadingSpinner visible={true} message="Loading jobs..." />;
   }
 
-  // Main Content Component (shared between mobile/desktop)
-  const MainContent = () => (
+  // ==========================================
+  // FIXED: Changed to a standard variable instead of an inner function component
+  // This prevents React from unmounting and remounting the entire list on every keystroke!
+  // ==========================================
+  const browseContent = (
     <View style={styles.mainContent}>
+      {/* Search Bar */}
+      <View style={[styles.searchContainer, isDesktop && styles.searchContainerDesktop]}>
+        <SearchBar
+          value={filters.search_query}
+          onChangeText={(text) => updateFilter('search_query', text)}
+          onSubmit={() => {
+            if (filters.search_query.trim()) saveRecentSearch(filters.search_query);
+          }}
+          suggestions={searchSuggestions}
+          recentSearches={recentSearches}
+          onSelectSuggestion={(text) => {
+            updateFilter('search_query', text);
+            saveRecentSearch(text);
+          }}
+          onClearRecent={clearRecentSearches}
+        />
+      </View>
+
       {/* Filter Bar */}
       <FilterBar
         filters={filters}
@@ -128,7 +132,7 @@ export default function BrowseJobs() {
         onReset={resetFilters}
         categories={categories}
         activeFilterCount={activeFilterCount}
-        onOpenAdvanced={handleOpenFilters}
+        onOpenAdvanced={() => setAdvancedSearchVisible(true)}
       />
 
       {/* Results Count */}
@@ -144,9 +148,7 @@ export default function BrowseJobs() {
         <View style={styles.emptyState}>
           <Ionicons name="briefcase-outline" size={80} color="#ccc" />
           <Text style={styles.emptyText}>No jobs found</Text>
-          <Text style={styles.emptySubtext}>
-            Try adjusting your filters or check back later
-          </Text>
+          <Text style={styles.emptySubtext}>Try adjusting your filters or check back later</Text>
           {activeFilterCount > 0 && (
             <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
               <Text style={styles.resetButtonText}>Reset Filters</Text>
@@ -160,99 +162,51 @@ export default function BrowseJobs() {
           renderItem={({ item }) =>
             isDesktop ? (
               <View style={styles.desktopCardWrapper}>
-                <JobCard
-                  job={item}
-                  onPress={() => handleViewJobDetails(item)}
-                  onApply={() => handleApplyToJob(item)}
-                />
+                <JobCard job={item} onPress={() => handleViewJobDetails(item)} onApply={() => handleApplyToJob(item)} onToggleSave={(jobId) => toggleSaveJob(jobId)} />
               </View>
             ) : (
               <View style={styles.mobileCardWrapper}>
-                <CompactJobCard
-                  job={item}
-                  onPress={() => handleViewJobDetails(item)}
-                />
+                <CompactJobCard job={item} onPress={() => handleViewJobDetails(item)} onToggleSave={(jobId) => toggleSaveJob(jobId)} />
               </View>
             )
           }
-          contentContainerStyle={[
-            styles.listContainer,
-            isDesktop && styles.listContainerDesktop
-          ]}
+          contentContainerStyle={[styles.listContainer, isDesktop && styles.listContainerDesktop]}
           numColumns={isDesktop ? 3 : 2}
           key={isDesktop ? 'desktop-3' : 'mobile-2'}
           columnWrapperStyle={styles.columnWrapper}
-          refreshControl={
-            <RefreshControl refreshing={false} onRefresh={refresh} />
-          }
+          refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
           showsVerticalScrollIndicator={false}
         />
       )}
     </View>
   );
 
+  const renderModals = () => (
+    <>
+      <ConfirmationModal visible={confirmLogoutVisible} title="Log Out" message="Are you sure you want to log out of your account?" confirmText="Log Out" cancelText="Cancel" type="danger" onConfirm={executeLogout} onCancel={() => setConfirmLogoutVisible(false)} />
+      <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose={true} duration={1500} onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }} />
+      <NotificationModal visible={notification.visible} message={notification.message} type={notification.type} onClose={() => setNotification({ ...notification, visible: false })} autoClose={true} duration={1500} />
+      <JobDetailsModal visible={jobDetailsModalVisible} job={selectedJob} onApply={() => { setJobDetailsModalVisible(false); setApplicationModalVisible(true); }} onClose={() => setJobDetailsModalVisible(false)} />
+      <ApplicationModal visible={applicationModalVisible} job={selectedJob} onSubmit={handleApplicationSubmit} onClose={() => setApplicationModalVisible(false)} />
+      <AdvancedSearchModal visible={advancedSearchVisible} filters={filters} onApply={(newFilters) => { Object.entries(newFilters).forEach(([key, value]) => { updateFilter(key as keyof JobFilters, value); }); }} onClose={() => setAdvancedSearchVisible(false)} categories={categories} />
+    </>
+  );
+
   // DESKTOP LAYOUT
   if (isDesktop) {
     return (
       <View style={[styles.container, { flexDirection: 'row' }]}>
-        {/* Modals */}
-        <NotificationModal 
-          visible={logoutModalVisible.visible} 
-          message={logoutModalVisible.message} 
-          type={logoutModalVisible.type} 
-          onClose={() => {
-            setLogoutModalVisible({ ...logoutModalVisible, visible: false });
-            handleLogout();
-          }} 
-          autoClose={true} 
-          duration={1500} 
-        />
-
-        <NotificationModal 
-          visible={notification.visible} 
-          message={notification.message} 
-          type={notification.type} 
-          onClose={() => setNotification({ ...notification, visible: false })} 
-          autoClose={true} 
-          duration={1500} 
-        />
-
-        <JobDetailsModal
-          visible={jobDetailsModalVisible}
-          job={selectedJob}
-          onApply={() => {
-            setJobDetailsModalVisible(false);
-            setApplicationModalVisible(true);
-          }}
-          onClose={() => setJobDetailsModalVisible(false)}
-        />
-
-        <ApplicationModal
-          visible={applicationModalVisible}
-          job={selectedJob}
-          onSubmit={handleApplicationSubmit}
-          onClose={() => setApplicationModalVisible(false)}
-        />
-
-        {/* TODO: Add FilterModal component */}
-
+        {renderModals()}
         <Sidebar onLogout={initiateLogout} />
-
         <View style={styles.desktopContentWrapper}>
-          {/* Desktop Header */}
           <View style={styles.desktopHeader}>
             <Text style={styles.desktopPageTitle}>Browse Job Opportunities</Text>
-            <TouchableOpacity 
-              style={styles.myApplicationsButton}
-              onPress={() => router.push('/(helper)/applications')}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity style={styles.myApplicationsButton} onPress={() => router.push('/(helper)/my_applications')} activeOpacity={0.7}>
               <Ionicons name="list" size={20} color="#007AFF" />
               <Text style={styles.myApplicationsButtonText}>My Applications</Text>
             </TouchableOpacity>
           </View>
-
-          <MainContent />
+          {browseContent}
         </View>
       </View>
     );
@@ -261,220 +215,26 @@ export default function BrowseJobs() {
   // MOBILE LAYOUT
   return (
     <SafeAreaView style={styles.container}>
-      {/* Modals */}
-      <NotificationModal 
-        visible={logoutModalVisible.visible} 
-        message={logoutModalVisible.message} 
-        type={logoutModalVisible.type} 
-        onClose={() => {
-          setLogoutModalVisible({ ...logoutModalVisible, visible: false });
-          handleLogout();
-        }} 
-        autoClose={true} 
-        duration={1500} 
-      />
+      {renderModals()}
 
-      <NotificationModal 
-        visible={notification.visible} 
-        message={notification.message} 
-        type={notification.type} 
-        onClose={() => setNotification({ ...notification, visible: false })} 
-        autoClose={true} 
-        duration={1500} 
-      />
-
-      <JobDetailsModal
-        visible={jobDetailsModalVisible}
-        job={selectedJob}
-        onApply={() => {
-          setJobDetailsModalVisible(false);
-          setApplicationModalVisible(true);
-        }}
-        onClose={() => setJobDetailsModalVisible(false)}
-      />
-
-      <ApplicationModal
-        visible={applicationModalVisible}
-        job={selectedJob}
-        onSubmit={handleApplicationSubmit}
-        onClose={() => setApplicationModalVisible(false)}
-      />
-
-      {/* TODO: Add FilterModal component */}
-
-      {/* Mobile Header */}
+      {/* FIXED: Mobile Header - Hamburger on the Left, Actions on the Right */}
       <View style={styles.mobileHeader}>
+        <TouchableOpacity style={styles.menuButton} onPress={() => setIsMobileMenuOpen(true)} activeOpacity={0.7}>
+          <Ionicons name="menu" size={28} color="#1A1C1E" />
+        </TouchableOpacity>
+
         <Text style={styles.mobileTitle}>Browse Jobs</Text>
+        
         <View style={styles.mobileHeaderActions}>
-          <TouchableOpacity
-            style={styles.myApplicationsIconButton}
-            onPress={() => router.push('/(helper)/applications')}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={styles.myApplicationsIconButton} onPress={() => router.push('/(helper)/my_applications')} activeOpacity={0.7}>
             <Ionicons name="list" size={24} color="#007AFF" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => setIsMobileMenuOpen(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="menu" size={28} color="#1A1C1E" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <MainContent />
+      {browseContent}
 
-      {/* Mobile Menu */}
-      <MobileMenu 
-        isOpen={isMobileMenuOpen} 
-        onClose={() => setIsMobileMenuOpen(false)} 
-        handleLogout={initiateLogout} 
-      />
+      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  mainContent: {
-    flex: 1,
-  },
-  
-  // Desktop Styles
-  desktopContentWrapper: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  desktopHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 32,
-    paddingVertical: 24,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  desktopPageTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-  myApplicationsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    backgroundColor: '#fff',
-  },
-  myApplicationsButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  
-  // Mobile Styles
-  mobileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  mobileTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-  mobileHeaderActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  myApplicationsIconButton: {
-    padding: 8,
-  },
-  menuButton: {
-    padding: 8,
-  },
-  
-  // Shared Styles
-  resultsBar: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  resultsText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '600',
-  },
-  listContainer: {
-    padding: 12,
-    paddingBottom: 40,
-  },
-  listContainerDesktop: {
-    paddingHorizontal: 32,
-    paddingTop: 16,
-    paddingBottom: 60,
-  },
-  columnWrapper: {
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-  },
-  mobileCardWrapper: {
-    flex: 1,
-    maxWidth: '50%',
-    paddingHorizontal: 4,
-    marginBottom: 8,
-  },
-  desktopCardWrapper: {
-    flex: 1,
-    maxWidth: '33.333%',
-    paddingHorizontal: 8,
-    marginBottom: 16,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1C1E',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  resetButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  resetButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-});

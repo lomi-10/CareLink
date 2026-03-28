@@ -22,7 +22,7 @@ interface FilterBarProps {
   onOpenAdvanced?: () => void;
 }
 
-export default function FilterBar({
+export function FilterBar({
   filters,
   onFilterChange,
   onReset,

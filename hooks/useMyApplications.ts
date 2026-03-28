@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../constants/api';
 
+const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK_DATA === 'true';
+
 export interface Application {
   application_id: string;
   job_post_id: string;
@@ -64,6 +66,17 @@ export function useMyApplications() {
       setLoading(true);
       setError(null);
 
+      if(USE_MOCK){
+        console.log(" DEMO MODE ON: LOADING UI MOCK DATA...");
+
+        const { MOCK_APPLICATIONS } = require('../constants/mockData');
+        
+        setApplications(MOCK_APPLICATIONS);
+        setFilteredApplications(MOCK_APPLICATIONS);
+        setLoading(false);
+        return;
+      }
+
       const userData = await AsyncStorage.getItem('user_data');
       if (!userData) {
         throw new Error('Not logged in');
@@ -81,78 +94,11 @@ export function useMyApplications() {
         throw new Error(data.message || 'Failed to load applications');
       }
     } catch (err: any) {
-      console.log('Backend not ready, using mock data...');
-      
-      // 🚀 MOCK DATA FOR UI DEVELOPMENT
-      const mockApplications: Application[] = [
-        {
-          application_id: "1",
-          job_post_id: "1",
-          helper_id: "1",
-          cover_letter: "Dear Hiring Manager,\n\nI am writing to express my strong interest in the Live-in Yaya position. With over 3 years of experience in childcare, I am confident in my ability to provide excellent care for your 2-year-old child.\n\nBest regards,\nMaria Santos",
-          status: "Shortlisted",
-          applied_at: "2 days ago",
-          reviewed_at: "1 day ago",
-          job_title: "Live-in Yaya Needed",
-          job_description: "We are a young family looking for a caring yaya...",
-          employment_type: "Live-in",
-          work_schedule: "Full-time",
-          salary_offered: 8000,
-          salary_period: "Monthly",
-          municipality: "Ormoc City",
-          province: "Leyte",
-          parent_id: "2",
-          parent_name: "Cruz Family",
-          parent_verified: true,
-          parent_rating: 4.8,
-          job_status: "Open",
-        },
-        {
-          application_id: "2",
-          job_post_id: "2",
-          helper_id: "1",
-          cover_letter: "Hello,\n\nI am interested in the part-time cook position. I have experience cooking Filipino and Western dishes and am available Monday, Wednesday, and Friday as requested.",
-          status: "Pending",
-          applied_at: "5 hours ago",
-          job_title: "Part-time Cook Needed",
-          job_description: "Looking for a skilled cook...",
-          employment_type: "Live-out",
-          work_schedule: "Part-time",
-          salary_offered: 400,
-          salary_period: "Daily",
-          municipality: "Ormoc City",
-          province: "Leyte",
-          parent_id: "3",
-          parent_name: "Santos Family",
-          parent_verified: true,
-          job_status: "Open",
-        },
-        {
-          application_id: "3",
-          job_post_id: "5",
-          helper_id: "1",
-          cover_letter: "Good day!\n\nI am applying for the general househelp position. I have experience with cleaning, laundry, and light cooking.",
-          status: "Rejected",
-          parent_notes: "Thank you for applying. We've decided to move forward with another candidate whose experience better matches our needs.",
-          applied_at: "1 week ago",
-          reviewed_at: "5 days ago",
-          job_title: "General Househelp",
-          job_description: "Seeking reliable househelp...",
-          employment_type: "Live-in",
-          work_schedule: "Full-time",
-          salary_offered: 7000,
-          salary_period: "Monthly",
-          municipality: "Tacloban City",
-          province: "Leyte",
-          parent_id: "4",
-          parent_name: "Garcia Family",
-          parent_verified: false,
-          job_status: "Filled",
-        },
-      ];
+      console.log('Error Fetching Applications:', err);
+      setError(err.message)
 
-      setApplications(mockApplications);
-      setFilteredApplications(mockApplications);
+      setApplications([]);
+      setFilteredApplications([]);
     } finally {
       setLoading(false);
     }

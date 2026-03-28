@@ -1,8 +1,10 @@
 // components/helper/jobs/index.ts
 // Barrel exports for job components
 
-export { default as JobCard } from './JobCard';
-export { default as CompactJobCard} from './CompactJobCard';
-export { default as JobDetailsModal } from './JobDetailsModal';
-export { default as ApplicationModal } from './ApplicationModal';
-export { default as FilterBar } from './FilterBar';
+export {  JobCard } from './JobCard';
+export {  CompactJobCard} from './CompactJobCard';
+export {  JobDetailsModal } from './JobDetailsModal';
+export {  ApplicationModal } from './ApplicationModal';
+export {  FilterBar } from './FilterBar';
+export {  AdvancedSearchModal } from './AdvancedSearchModal';
+export {  SearchBar } from './SearchBar';

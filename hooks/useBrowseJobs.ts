@@ -1,9 +1,12 @@
 // hooks/useBrowseJobs.ts
-// Custom hook for browsing and filtering job postings
+// Enhanced with search and save functionality - NO MOCK DATA
+// All data comes from API - shows empty state if no data
 
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../constants/api';
+
+const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK_DATA === 'true';
 
 export interface JobPost {
   job_post_id: string;
@@ -12,26 +15,26 @@ export interface JobPost {
   // Basic Info
   title: string;
   description: string;
-  employment_type: string; // 'Live-in', 'Live-out', 'Any'
-  work_schedule: string; // 'Full-time', 'Part-time', 'Any'
+  employment_type: string;
+  work_schedule: string;
   
   // Salary
   salary_offered: number;
-  salary_period: string; // 'Daily', 'Monthly'
+  salary_period: string;
   
   // Location
   province: string;
   municipality: string;
   barangay?: string;
-  distance?: number; // Distance from helper in km
+  distance?: number;
   
-  // Categories & Skills (multi-select)
+  // Categories & Skills
   category_ids: string[];
-  categories: string[]; // Category names
+  categories: string[];
   job_ids: string[];
-  jobs: string[]; // Job titles
+  jobs: string[];
   skill_ids: string[];
-  skills: string[]; // Skill names
+  skills: string[];
   
   // Requirements
   min_age?: number;
@@ -59,7 +62,7 @@ export interface JobPost {
   sick_days?: number;
   
   // Status
-  status: string; // 'Open', 'Filled', 'Closed', 'Expired'
+  status: string;
   posted_at: string;
   expires_at?: string;
   
@@ -68,29 +71,50 @@ export interface JobPost {
   parent_rating?: number;
   parent_verified?: boolean;
   
-  // Match Score (calculated)
+  // Match Score
   match_score?: number;
   match_reasons?: string[];
+  
+  // Save status
+  is_saved?: boolean;
+  saved_at?: string;
 }
 
 export interface JobFilters {
-  category: string; // 'all' or category_id
-  distance: number; // in km (5, 10, 20, 50, 9999 for 'all')
-  employment_type: string; // 'all', 'Live-in', 'Live-out'
-  work_schedule: string; // 'all', 'Full-time', 'Part-time'
+  // Existing filters
+  category: string;
+  distance: number;
+  employment_type: string;
+  work_schedule: string;
   salary_min: number;
   salary_max: number;
-  sort: string; // 'recommended', 'nearest', 'highest_salary', 'newest'
+  sort: string;
+  
+  // NEW: Search & advanced filters
+  search_query: string;
+  location_province?: string;
+  location_municipality?: string;
+  requires_sss?: boolean;
+  requires_philhealth?: boolean;
+  requires_pagibig?: boolean;
+  requires_meals?: boolean;
+  requires_accommodation?: boolean;
+  verified_only?: boolean;
+  min_experience?: number;
+  posted_within?: string;
 }
 
 const defaultFilters: JobFilters = {
   category: 'all',
-  distance: 20,
+  distance: 9999,
   employment_type: 'all',
   work_schedule: 'all',
   salary_min: 0,
-  salary_max: 50000,
+  salary_max: 999999,
   sort: 'recommended',
+  search_query: '',
+  verified_only: false,
+  posted_within: 'all',
 };
 
 export function useBrowseJobs() {
@@ -99,10 +123,8 @@ export function useBrowseJobs() {
   const [filters, setFilters] = useState<JobFilters>(defaultFilters);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [helperLocation, setHelperLocation] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
+  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   // Fetch jobs from API
   const fetchJobs = async () => {
@@ -110,6 +132,16 @@ export function useBrowseJobs() {
       setLoading(true);
       setError(null);
 
+      if(USE_MOCK){
+        console.log(" DEMO MODE ON: LOADING UI MOCK DATA...");
+
+        const { MOCK_JOBS } = require('../constants/mockData');
+        
+        setJobs(MOCK_JOBS);
+        setFilteredJobs(MOCK_JOBS);
+        setLoading(false);
+        return;
+      }
       const userData = await AsyncStorage.getItem('user_data');
       if (!userData) {
         throw new Error('Not logged in');
@@ -117,161 +149,136 @@ export function useBrowseJobs() {
 
       const user = JSON.parse(userData);
 
-      // Fetch all open jobs
+      // Call API
       const response = await fetch(`${API_URL}/helper/browse_jobs.php?helper_id=${user.user_id}`);
       const data = await response.json();
 
       if (data.success) {
-        setJobs(data.jobs);
-        setFilteredJobs(data.jobs);
+        setJobs(data.jobs || []);
+        setFilteredJobs(data.jobs || []);
       } else {
-        throw new Error(data.message || 'Failed to load jobs');
+        // No jobs found - show empty state
+        setJobs([]);
+        setFilteredJobs([]);
       }
     } catch (err: any) {
-      console.log('Backend not ready, using mock data...');
-      
-      // 🚀 MOCK DATA FOR UI DEVELOPMENT
-      const mockJobs: JobPost[] = [
-        {
-          job_post_id: "1",
-          parent_id: "2",
-          title: "Live-in Yaya Needed",
-          description: "We are a young family looking for a caring and experienced yaya to help care for our 2-year-old child. Must be patient, trustworthy, and good with children.",
-          employment_type: "Live-in",
-          work_schedule: "Full-time",
-          salary_offered: 8000,
-          salary_period: "Monthly",
-          province: "Leyte",
-          municipality: "Ormoc City",
-          barangay: "District 12",
-          distance: 1.2,
-          category_ids: ["2"],
-          categories: ["Yaya"],
-          job_ids: ["5"],
-          jobs: ["Yaya"],
-          skill_ids: ["9", "11"],
-          skills: ["Infant Care", "Child Development"],
-          min_age: 25,
-          max_age: 45,
-          min_experience_years: 2,
-          require_police_clearance: true,
-          prefer_tesda_nc2: true,
-          start_date: "April 1, 2026",
-          work_hours: "24/7 with breaks",
-          days_off: ["Sunday"],
-          contract_duration: "1 year",
-          probation_period: "3 months",
-          provides_meals: true,
-          provides_accommodation: true,
-          provides_sss: true,
-          provides_philhealth: true,
-          provides_pagibig: true,
-          vacation_days: 15,
-          sick_days: 10,
-          status: "Open",
-          posted_at: "2 hours ago",
-          parent_name: "Cruz Family",
-          parent_verified: true,
-          parent_rating: 4.8,
-          match_score: 92,
-          match_reasons: ["Category matches", "Location nearby", "Salary in range"],
-        },
-        {
-          job_post_id: "2",
-          parent_id: "3",
-          title: "Part-time Cook Needed",
-          description: "Looking for a skilled cook to prepare meals 3 days a week (Mon, Wed, Fri). Must know Filipino and some Western dishes.",
-          employment_type: "Live-out",
-          work_schedule: "Part-time",
-          salary_offered: 400,
-          salary_period: "Daily",
-          province: "Leyte",
-          municipality: "Ormoc City",
-          distance: 4.5,
-          category_ids: ["3"],
-          categories: ["Cook"],
-          job_ids: ["7"],
-          jobs: ["Cook"],
-          skill_ids: ["15", "16"],
-          skills: ["Filipino Cuisine", "Meal Planning"],
-          min_experience_years: 1,
-          work_hours: "10am-6pm",
-          days_off: ["Tuesday", "Thursday", "Saturday", "Sunday"],
-          provides_meals: true,
-          provides_sss: false,
-          provides_philhealth: false,
-          provides_pagibig: false,
-          status: "Open",
-          posted_at: "1 day ago",
-          parent_name: "Santos Family",
-          parent_verified: true,
-          match_score: 78,
-          match_reasons: ["Location nearby", "Part-time matches preference"],
-        },
-        {
-          job_post_id: "3",
-          parent_id: "4",
-          title: "General Househelp",
-          description: "Seeking reliable househelp for general cleaning, laundry, and light cooking. No childcare needed.",
-          employment_type: "Live-in",
-          work_schedule: "Full-time",
-          salary_offered: 7500,
-          salary_period: "Monthly",
-          province: "Leyte",
-          municipality: "Ormoc City",
-          distance: 2.3,
-          category_ids: ["1"],
-          categories: ["General Househelp"],
-          job_ids: ["1", "2"],
-          jobs: ["Househelp", "Laundry"],
-          skill_ids: [],
-          skills: [],
-          min_experience_years: 1,
-          work_hours: "10am-6pm",
-          days_off: ["Tuesday", "Thursday", "Saturday", "Sunday"],
-          provides_meals: true,
-          provides_accommodation: true,
-          provides_sss: true,
-          provides_philhealth: true,
-          provides_pagibig: false,
-          vacation_days: 10,
-          sick_days: 5,
-          status: "Open",
-          posted_at: "3 days ago",
-          parent_name: "Garcia Family",
-          parent_verified: false,
-          match_score: 65,
-          match_reasons: ["Location nearby"],
-        },
-      ];
-
-      setJobs(mockJobs);
-      setFilteredJobs(mockJobs);
+      console.error('Error fetching jobs:', err.message);
+      setError(err.message);
+      // On error, show empty state
+      setJobs([]);
+      setFilteredJobs([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Apply filters
+  // Load recent searches from storage
+  const loadRecentSearches = async () => {
+    try {
+      const searches = await AsyncStorage.getItem('recent_searches');
+      if (searches) {
+        setRecentSearches(JSON.parse(searches));
+      }
+    } catch (err) {
+      console.error('Error loading recent searches:', err);
+    }
+  };
+
+  // Save search to recent searches
+  const saveRecentSearch = async (query: string) => {
+    if (!query.trim()) return;
+    
+    try {
+      const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 5);
+      setRecentSearches(updated);
+      await AsyncStorage.setItem('recent_searches', JSON.stringify(updated));
+    } catch (err) {
+      console.error('Error saving recent search:', err);
+    }
+  };
+
+  // Clear recent searches
+  const clearRecentSearches = async () => {
+    try {
+      setRecentSearches([]);
+      await AsyncStorage.removeItem('recent_searches');
+    } catch (err) {
+      console.error('Error clearing recent searches:', err);
+    }
+  };
+
+  // Generate search suggestions
+  const generateSearchSuggestions = (query: string) => {
+    if (!query.trim()) {
+      setSearchSuggestions([]);
+      return;
+    }
+
+    const suggestions: string[] = [];
+    const lowerQuery = query.toLowerCase();
+
+    // Add category suggestions
+    const categories = ["yaya", "cook", "driver", "general househelp", "laundry", "gardener"];
+    categories.forEach(cat => {
+      if (cat.includes(lowerQuery)) {
+        suggestions.push(cat);
+      }
+    });
+
+    // Add location suggestions
+    const locations = ["Ormoc City", "Tacloban", "Leyte", "Cebu"];
+    locations.forEach(loc => {
+      if (loc.toLowerCase().includes(lowerQuery)) {
+        suggestions.push(loc);
+      }
+    });
+
+    // Add skill suggestions
+    const skills = ["childcare", "cooking", "cleaning", "driving"];
+    skills.forEach(skill => {
+      if (skill.includes(lowerQuery)) {
+        suggestions.push(skill);
+      }
+    });
+
+    setSearchSuggestions(suggestions.slice(0, 5));
+  };
+
+  // Apply all filters
   const applyFilters = () => {
     let filtered = [...jobs];
 
-    // Filter by category
+    // Search query filter
+    if (filters.search_query.trim()) {
+      const query = filters.search_query.toLowerCase();
+      filtered = filtered.filter((job) => {
+        return (
+          job.title.toLowerCase().includes(query) ||
+          job.description.toLowerCase().includes(query) ||
+          job.categories.some(cat => cat.toLowerCase().includes(query)) ||
+          job.skills.some(skill => skill.toLowerCase().includes(query)) ||
+          job.municipality.toLowerCase().includes(query) ||
+          job.province.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    // Category filter
     if (filters.category !== 'all') {
       filtered = filtered.filter((job) =>
         job.category_ids.includes(filters.category)
       );
     }
 
-    // Filter by distance
-    if (filters.distance !== 9999 && helperLocation) {
+    // Distance filter
+    if (filters.distance !== 9999) {
       filtered = filtered.filter((job) => {
-        if (!job.distance) return true; // Include if no distance data
+        if (!job.distance) return true;
         return job.distance <= filters.distance;
       });
     }
 
-    // Filter by employment type
+    // Employment type filter
     if (filters.employment_type !== 'all') {
       filtered = filtered.filter(
         (job) => 
@@ -280,7 +287,7 @@ export function useBrowseJobs() {
       );
     }
 
-    // Filter by work schedule
+    // Work schedule filter
     if (filters.work_schedule !== 'all') {
       filtered = filtered.filter(
         (job) => 
@@ -289,14 +296,44 @@ export function useBrowseJobs() {
       );
     }
 
-    // Filter by salary range
+    // Salary range filter
     filtered = filtered.filter((job) => {
       const monthlySalary = job.salary_period === 'Daily' 
-        ? job.salary_offered * 26 // Estimate monthly from daily
+        ? job.salary_offered * 26 
         : job.salary_offered;
       
       return monthlySalary >= filters.salary_min && monthlySalary <= filters.salary_max;
     });
+
+    // Benefits filters
+    if (filters.requires_sss) {
+      filtered = filtered.filter(job => job.provides_sss);
+    }
+    if (filters.requires_philhealth) {
+      filtered = filtered.filter(job => job.provides_philhealth);
+    }
+    if (filters.requires_pagibig) {
+      filtered = filtered.filter(job => job.provides_pagibig);
+    }
+    if (filters.requires_meals) {
+      filtered = filtered.filter(job => job.provides_meals);
+    }
+    if (filters.requires_accommodation) {
+      filtered = filtered.filter(job => job.provides_accommodation);
+    }
+
+    // Verified only filter
+    if (filters.verified_only) {
+      filtered = filtered.filter(job => job.parent_verified);
+    }
+
+    // Experience filter
+    if (filters.min_experience) {
+      filtered = filtered.filter(job => {
+        if (!job.min_experience_years) return true;
+        return filters.min_experience ? filters.min_experience >= job.min_experience_years : true;
+      });
+    }
 
     // Sort
     filtered.sort((a, b) => {
@@ -310,7 +347,6 @@ export function useBrowseJobs() {
           const salaryB = b.salary_period === 'Daily' ? b.salary_offered * 26 : b.salary_offered;
           return salaryB - salaryA;
         case 'newest':
-          // Assume newer jobs have higher job_post_id
           return parseInt(b.job_post_id) - parseInt(a.job_post_id);
         default:
           return 0;
@@ -323,16 +359,72 @@ export function useBrowseJobs() {
   // Update filter
   const updateFilter = (key: keyof JobFilters, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+    
+    // If updating search query, generate suggestions
+    if (key === 'search_query') {
+      generateSearchSuggestions(value);
+    }
   };
 
   // Reset filters
   const resetFilters = () => {
     setFilters(defaultFilters);
+    setSearchSuggestions([]);
+  };
+
+  // Toggle save job
+  const toggleSaveJob = async (jobId: string) => {
+    try {
+      const userData = await AsyncStorage.getItem('user_data');
+      if (!userData) return;
+
+      const user = JSON.parse(userData);
+
+      // Find the job
+      const job = jobs.find(j => j.job_post_id === jobId);
+      if (!job) return;
+
+      // Optimistically update UI
+      const newSavedStatus = !job.is_saved;
+      
+      setJobs(prevJobs => 
+        prevJobs.map(j => 
+          j.job_post_id === jobId 
+            ? { ...j, is_saved: newSavedStatus, saved_at: newSavedStatus ? new Date().toISOString() : undefined }
+            : j
+        )
+      );
+
+      setFilteredJobs(prevJobs => 
+        prevJobs.map(j => 
+          j.job_post_id === jobId 
+            ? { ...j, is_saved: newSavedStatus, saved_at: newSavedStatus ? new Date().toISOString() : undefined }
+            : j
+        )
+      );
+
+      // Call API
+      const endpoint = newSavedStatus ? '/helper/save_job.php' : '/helper/unsave_job.php';
+      await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          job_post_id: jobId, 
+          helper_id: user.user_id 
+        })
+      });
+
+    } catch (err) {
+      console.error('Error toggling save job:', err);
+      // Revert on error
+      fetchJobs();
+    }
   };
 
   // Initial fetch
   useEffect(() => {
     fetchJobs();
+    loadRecentSearches();
   }, []);
 
   // Apply filters when filters change
@@ -351,5 +443,15 @@ export function useBrowseJobs() {
     refresh: fetchJobs,
     totalCount: jobs.length,
     filteredCount: filteredJobs.length,
+    
+    // Search features
+    searchSuggestions,
+    recentSearches,
+    saveRecentSearch,
+    clearRecentSearches,
+    
+    // Save feature
+    toggleSaveJob,
+    savedCount: jobs.filter(j => j.is_saved).length,
   };
 }

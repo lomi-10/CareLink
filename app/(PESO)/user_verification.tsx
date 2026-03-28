@@ -1,5 +1,5 @@
 // app/(PESO)/user_verification.tsx
-// User Verification Screen - Shows list of helpers pending verification
+// User Verification Screen - Separated Helpers and Parents
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -17,7 +17,6 @@ import {
 } from "react-native";
 import API_URL from "../../constants/api";
 
-// 1. ADD THIS INTERFACE to tell TypeScript what a user object looks like
 export interface VerificationUser {
   user_id: number;
   name: string;
@@ -31,28 +30,30 @@ export interface VerificationUser {
 export default function UserVerification() {
   const router = useRouter();
 
-  // 2. ADD <VerificationUser[]> to your state
   const [users, setUsers] = useState<VerificationUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<VerificationUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("Pending"); // Pending, Verified, Rejected, All
+  
+  // NEW: State for Role Tabs
+  const [activeRoleTab, setActiveRoleTab] = useState<"helper" | "parent">("helper");
 
   useEffect(() => {
     fetchPendingUsers();
   }, []);
 
+  // Update filter whenever ANY of these states change
   useEffect(() => {
     filterUsers();
-  }, [searchQuery, filterStatus, users]);
+  }, [searchQuery, filterStatus, users, activeRoleTab]);
 
   const fetchPendingUsers = async () => {
     try {
       setLoading(true);
       const response = await fetch(`${API_URL}/peso/get_pending_users.php`);
       const text = await response.text();
-      console.log("Response:", text);
       const data = JSON.parse(text);
 
       if (data.success) {
@@ -66,16 +67,17 @@ export default function UserVerification() {
   };
 
   const filterUsers = () => {
-    let filtered = users;
+    // 1. FIRST filter by the selected role tab (helper or parent)
+    let filtered = users.filter((user) => user.user_type === activeRoleTab);
 
-    // Filter by status
+    // 2. THEN filter by verification status
     if (filterStatus !== "All") {
       filtered = filtered.filter(
         (user) => user.verification_status === filterStatus
       );
     }
 
-    // Filter by search query
+    // 3. FINALLY filter by search query
     if (searchQuery) {
       filtered = filtered.filter(
         (user) =>
@@ -93,7 +95,6 @@ export default function UserVerification() {
     setRefreshing(false);
   };
 
-  // 3. Optional but good practice: Add type to item
   const renderUserCard = ({ item }: { item: VerificationUser }) => (
     <TouchableOpacity
       style={styles.userCard}
@@ -125,7 +126,7 @@ export default function UserVerification() {
         <View style={styles.userMeta}>
           <Ionicons name="briefcase" size={14} color="#666" />
           <Text style={styles.userType}>
-            {item.user_type === "helper" ? "Domestic Helper" : "Parent/Service Seeker"}
+            {item.user_type === "helper" ? "Domestic Helper" : "Parent / Employer"}
           </Text>
         </View>
         {item.contact_number && (
@@ -171,9 +172,28 @@ export default function UserVerification() {
         <View>
           <Text style={styles.pageTitle}>User Verification</Text>
           <Text style={styles.pageSubtitle}>
-            {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""} found
+            {filteredUsers.length} {activeRoleTab}{filteredUsers.length !== 1 ? "s" : ""} found
           </Text>
         </View>
+      </View>
+
+      {/* NEW: Main Role Tabs */}
+      <View style={styles.roleTabsContainer}>
+        <TouchableOpacity 
+          style={[styles.roleTab, activeRoleTab === 'helper' && styles.roleTabActive]}
+          onPress={() => setActiveRoleTab('helper')}
+        >
+          <Ionicons name="briefcase-outline" size={20} color={activeRoleTab === 'helper' ? '#fff' : '#666'} />
+          <Text style={[styles.roleTabText, activeRoleTab === 'helper' && styles.roleTabTextActive]}>Helpers</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.roleTab, activeRoleTab === 'parent' && styles.roleTabActive]}
+          onPress={() => setActiveRoleTab('parent')}
+        >
+          <Ionicons name="people-outline" size={20} color={activeRoleTab === 'parent' ? '#fff' : '#666'} />
+          <Text style={[styles.roleTabText, activeRoleTab === 'parent' && styles.roleTabTextActive]}>Parents</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Search and Filters */}
@@ -182,7 +202,7 @@ export default function UserVerification() {
           <Ionicons name="search" size={20} color="#999" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by name or email..."
+            placeholder={`Search ${activeRoleTab}s by name or email...`}
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="#999"
@@ -223,7 +243,8 @@ export default function UserVerification() {
                       filterStatus === status && styles.filterCountTextActive,
                     ]}
                   >
-                    {users.filter((u) => u.verification_status === status).length}
+                    {/* Calculate count based on BOTH status AND current role tab */}
+                    {users.filter((u) => u.verification_status === status && u.user_type === activeRoleTab).length}
                   </Text>
                 </View>
               )}
@@ -236,16 +257,16 @@ export default function UserVerification() {
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#FF9500" />
-          <Text style={styles.loadingText}>Loading users...</Text>
+          <Text style={styles.loadingText}>Loading {activeRoleTab}s...</Text>
         </View>
       ) : filteredUsers.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="people-outline" size={64} color="#ccc" />
-          <Text style={styles.emptyText}>No users found</Text>
+          <Ionicons name={activeRoleTab === 'helper' ? "briefcase-outline" : "people-outline"} size={64} color="#ccc" />
+          <Text style={styles.emptyText}>No {activeRoleTab}s found</Text>
           <Text style={styles.emptySubtext}>
             {searchQuery
               ? "Try a different search term"
-              : "No users waiting for verification"}
+              : `No ${activeRoleTab}s waiting for verification`}
           </Text>
         </View>
       ) : (
@@ -263,17 +284,12 @@ export default function UserVerification() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8F9FA",
-  },
+  container: { flex: 1, backgroundColor: "#F8F9FA" },
 
   header: {
     padding: 24,
     paddingBottom: 16,
     backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
   },
   pageTitle: {
     fontSize: 28,
@@ -284,6 +300,39 @@ const styles = StyleSheet.create({
   pageSubtitle: {
     fontSize: 14,
     color: "#666",
+    textTransform: 'capitalize',
+  },
+
+  // NEW: Role Tabs Styles
+  roleTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+    gap: 12,
+  },
+  roleTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    gap: 8,
+  },
+  roleTabActive: {
+    backgroundColor: '#007AFF', // Using standard blue to indicate selection
+  },
+  roleTabText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#666',
+  },
+  roleTabTextActive: {
+    color: '#fff',
   },
 
   searchSection: {
@@ -308,9 +357,7 @@ const styles = StyleSheet.create({
     color: "#1A1C1E",
   },
 
-  filterChips: {
-    flexDirection: "row",
-  },
+  filterChips: { flexDirection: "row" },
   filterChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -321,17 +368,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
     gap: 6,
   },
-  filterChipActive: {
-    backgroundColor: "#FF9500",
-  },
-  filterChipText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-  },
-  filterChipTextActive: {
-    color: "#fff",
-  },
+  filterChipActive: { backgroundColor: "#FF9500" },
+  filterChipText: { fontSize: 14, fontWeight: "600", color: "#666" },
+  filterChipTextActive: { color: "#fff" },
   filterCount: {
     backgroundColor: "#fff",
     paddingHorizontal: 6,
@@ -340,22 +379,11 @@ const styles = StyleSheet.create({
     minWidth: 20,
     alignItems: "center",
   },
-  filterCountActive: {
-    backgroundColor: "rgba(255,255,255,0.3)",
-  },
-  filterCountText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#666",
-  },
-  filterCountTextActive: {
-    color: "#fff",
-  },
+  filterCountActive: { backgroundColor: "rgba(255,255,255,0.3)" },
+  filterCountText: { fontSize: 12, fontWeight: "700", color: "#666" },
+  filterCountTextActive: { color: "#fff" },
 
-  listContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
+  listContent: { padding: 16, paddingBottom: 40 },
 
   userCard: {
     flexDirection: "row",
@@ -369,14 +397,8 @@ const styles = StyleSheet.create({
     elevation: 3,
     alignItems: "center",
   },
-  cardLeft: {
-    marginRight: 16,
-  },
-  profileImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-  },
+  cardLeft: { marginRight: 16 },
+  profileImage: { width: 64, height: 64, borderRadius: 32 },
   profileImagePlaceholder: {
     width: 64,
     height: 64,
@@ -385,36 +407,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  cardCenter: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1A1C1E",
-    marginBottom: 6,
-  },
-  userMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-    gap: 6,
-  },
-  userEmail: {
-    fontSize: 13,
-    color: "#666",
-  },
-  userType: {
-    fontSize: 13,
-    color: "#666",
-  },
-  userContact: {
-    fontSize: 13,
-    color: "#666",
-  },
-  cardRight: {
-    alignItems: "flex-end",
-  },
+  cardCenter: { flex: 1 },
+  userName: { fontSize: 16, fontWeight: "700", color: "#1A1C1E", marginBottom: 6 },
+  userMeta: { flexDirection: "row", alignItems: "center", marginBottom: 4, gap: 6 },
+  userEmail: { fontSize: 13, color: "#666" },
+  userType: { fontSize: 13, color: "#666" },
+  userContact: { fontSize: 13, color: "#666" },
+  
+  cardRight: { alignItems: "flex-end" },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -423,48 +423,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 4,
   },
-  statusPending: {
-    backgroundColor: "#FF9500",
-  },
-  statusVerified: {
-    backgroundColor: "#34C759",
-  },
-  statusRejected: {
-    backgroundColor: "#FF3B30",
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#fff",
-  },
+  statusPending: { backgroundColor: "#FF9500" },
+  statusVerified: { backgroundColor: "#34C759" },
+  statusRejected: { backgroundColor: "#FF3B30" },
+  statusText: { fontSize: 12, fontWeight: "700", color: "#fff" },
 
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 80,
-  },
-  loadingText: {
-    marginTop: 12,
-    color: "#666",
-    fontSize: 14,
-  },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80 },
+  loadingText: { marginTop: 12, color: "#666", fontSize: 14 },
 
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 80,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#666",
-    marginTop: 16,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: "#999",
-    marginTop: 8,
-  },
+  emptyState: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80 },
+  emptyText: { fontSize: 18, fontWeight: "600", color: "#666", marginTop: 16 },
+  emptySubtext: { fontSize: 14, color: "#999", marginTop: 8 },
 });

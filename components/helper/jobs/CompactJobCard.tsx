@@ -15,9 +15,10 @@ import { JobPost } from '@/hooks/useBrowseJobs';
 interface CompactJobCardProps {
   job: JobPost;
   onPress: () => void;
+  onToggleSave?: (jobId: string) => void;
 }
 
-export default function CompactJobCard({ job, onPress }: CompactJobCardProps) {
+export function CompactJobCard({ job, onPress, onToggleSave }: CompactJobCardProps) {
   const getSalaryDisplay = () => {
     if (job.salary_period === 'Daily') {
       return `₱${job.salary_offered.toLocaleString()}/day`;
@@ -31,6 +32,23 @@ export default function CompactJobCard({ job, onPress }: CompactJobCardProps) {
       onPress={onPress}
       activeOpacity={0.7}
     >
+      
+      {/* Save Button */}
+      <TouchableOpacity
+        style={styles.saveButton}
+        onPress={(e) => {
+          e.stopPropagation();
+          onToggleSave?.(job.job_post_id);
+        }}
+        activeOpacity={0.7}
+      >
+        <Ionicons 
+          name={job.is_saved ? "bookmark" : "bookmark-outline"} 
+          size={20} 
+          color={job.is_saved ? "#007AFF" : "#666"} 
+        />
+      </TouchableOpacity>
+
       {/* Match Score Badge */}
       {job.match_score && job.match_score >= 70 && (
         <View style={styles.matchBadge}>
@@ -106,6 +124,26 @@ const styles = StyleSheet.create({
         elevation: 3,
       },
     }),
+  },
+  saveButton: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: '#fff',
+    padding: 6,
+    borderRadius: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+    zIndex: 2,
   },
   matchBadge: {
     position: 'absolute',

@@ -1,5 +1,5 @@
 // app/(parent)/applications.tsx
-// UPDATED - Uses ConfirmationModal and smart empty states
+// Parent Applications Screen - Modularized & Clean
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -9,6 +9,7 @@ import {
   Text,
   TouchableOpacity,
   RefreshControl,
+  SafeAreaView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,17 +17,19 @@ import { Ionicons } from '@expo/vector-icons';
 // Hooks
 import { useJobApplications } from '@/hooks/useJobApplications';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useAuth } from '@/hooks/useAuth';
 
 // Components
 import { ApplicationCard } from '@/components/parent/jobs/ApplicationCard';
-import {LoadingSpinner, NotificationModal} from '@/components/common/';
-import ConfirmationModal from '@/components/common/ConfirmationModal';
-import API_URL from '@/constants/api';
+import { LoadingSpinner, NotificationModal, ConfirmationModal } from '@/components/common/';
+import { Sidebar, MobileMenu } from '@/components/parent/home';
+import {styles} from './applications.styles';
 
 export default function JobApplications() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { isDesktop } = useResponsive();
+  const { handleLogout } = useAuth();
 
   const jobId = (params.job_id as string) || '';
 
@@ -37,500 +40,164 @@ export default function JobApplications() {
     hasPostedJobs, 
     checkingJobs, 
     refresh, 
-    stats 
+    getApplicationsByStatus
   } = useJobApplications(jobId);
 
+  // States EXACTLY matching profile.tsx
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [notification, setNotification] = useState({
-    visible: false,
-    message: '',
-    type: 'success' as 'success' | 'error',
-  });
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  
+  // Logout Modals State
+  const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
+  const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
 
-  // Confirmation modal states
-  const [rejectModal, setRejectModal] = useState({
-    visible: false,
-    applicationId: '',
-  });
+  useEffect(() => {
+    if (error) setErrorModalVisible(true);
+  }, [error]);
 
-  const [shortlistModal, setShortlistModal] = useState({
-    visible: false,
-    applicationId: '',
-  });
-
-  const filteredApplications =
-    activeFilter === 'all'
-      ? applications
-      : applications.filter(
-          (app) => app.status.toLowerCase() === activeFilter.toLowerCase()
-        );
-
-  const handleViewProfile = (applicationId: string, helperId: string) => {
-    router.push({
-      pathname: '/(parent)/applicant_profile',
-      params: {
-        application_id: applicationId,
-        helper_id: helperId,
-        job_id: jobId,
-      },
-    });
+  const initiateLogout = () => {
+    setIsMobileMenuOpen(false);
+    setConfirmLogoutVisible(true);
   };
 
-  const handleShortlistConfirm = async () => {
-    const applicationId = shortlistModal.applicationId;
-    setShortlistModal({ visible: false, applicationId: '' });
-
-    try {
-      const response = await fetch(
-        `${API_URL}/parent/update_application_status.php`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            application_id: applicationId,
-            status: 'Shortlisted',
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.success) {
-        setNotification({
-          visible: true,
-          message: 'Applicant shortlisted successfully',
-          type: 'success',
-        });
-        refresh();
-      } else {
-        throw new Error(data.message);
-      }
-    } catch (error: any) {
-      setNotification({
-        visible: true,
-        message: error.message || 'Failed to shortlist applicant',
-        type: 'error',
-      });
-    }
+  const executeLogout = () => {
+    setConfirmLogoutVisible(false);
+    setSuccessLogoutVisible(true);
   };
 
-  const handleShortlist = (applicationId: string) => {
-    setShortlistModal({ visible: true, applicationId });
-  };
+  // ==========================================
+  // MODALS GROUPING
+  // ==========================================
+  const renderModals = () => (
+    <>
+      <NotificationModal visible={errorModalVisible} message={error || ''} type="error" onClose={() => setErrorModalVisible(false)} />
+      
+      <ConfirmationModal visible={confirmLogoutVisible} title="Log Out" message="Are you sure you want to log out of your account?" confirmText="Log Out" cancelText="Cancel" type="danger" onConfirm={executeLogout} onCancel={() => setConfirmLogoutVisible(false)} />
+      <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose={true} duration={1500} onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }} />
+    </>
+  );
 
-  const handleRejectConfirm = async () => {
-    const applicationId = rejectModal.applicationId;
-    setRejectModal({ visible: false, applicationId: '' });
-
-    try {
-      const response = await fetch(
-        `${API_URL}/parent/update_application_status.php`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            application_id: applicationId,
-            status: 'Rejected',
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.success) {
-        setNotification({
-          visible: true,
-          message: 'Applicant rejected',
-          type: 'success',
-        });
-        refresh();
-      } else {
-        throw new Error(data.message);
-      }
-    } catch (error: any) {
-      setNotification({
-        visible: true,
-        message: error.message || 'Failed to reject applicant',
-        type: 'error',
-      });
-    }
-  };
-
-  const handleReject = (applicationId: string) => {
-    setRejectModal({ visible: true, applicationId });
-  };
-
-  // Show error ONLY if there's an actual API error (not missing job_id)
-  if (error && !loading && error !== 'No job ID provided') {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={24} color="#1A1C1E" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Applications</Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        <View style={styles.errorState}>
-          <Ionicons name="alert-circle-outline" size={80} color="#FF3B30" />
-          <Text style={styles.errorText}>Failed to Load</Text>
-          <Text style={styles.errorSubtext}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={refresh}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  // Show loading spinner
+  // 1. Loading State
   if (loading || checkingJobs) {
     return <LoadingSpinner visible={true} message="Loading applications..." />;
   }
 
-  // SMART EMPTY STATE: Check if parent has posted jobs
-  if (!loading && applications.length === 0) {
+  // 2. Empty State (No jobs posted at all)
+  if (!hasPostedJobs && !jobId) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={24} color="#1A1C1E" />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Applications</Text>
-            <Text style={styles.headerSubtitle}>0 applicants</Text>
-          </View>
-          <View style={{ width: 40 }} />
-        </View>
-
+      <SafeAreaView style={[styles.container, isDesktop && { flexDirection: 'row' }]}>
+        {renderModals()}
+        {isDesktop && <Sidebar onLogout={initiateLogout} />}
+        
         <View style={styles.emptyState}>
-          {!hasPostedJobs ? (
-            // NO JOBS POSTED YET
-            <>
-              <Ionicons name="briefcase-outline" size={80} color="#ccc" />
-              <Text style={styles.emptyText}>No applications yet</Text>
-              <Text style={styles.emptySubtext}>
-                Post a job first to start receiving applications from helpers
-              </Text>
-              <TouchableOpacity
-                style={styles.postJobButton}
-                onPress={() => router.push('/(parent)/post_job')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="add" size={20} color="#fff" />
-                <Text style={styles.postJobButtonText}>Post a Job</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            // HAS JOBS BUT NO APPLICATIONS
-            <>
-              <Ionicons name="people-outline" size={80} color="#ccc" />
-              <Text style={styles.emptyText}>No applications yet</Text>
-              <Text style={styles.emptySubtext}>
-                Applications will appear here when helpers apply to your job
-              </Text>
-            </>
+          <Ionicons name="document-text-outline" size={80} color="#ccc" />
+          <Text style={styles.emptyText}>No Jobs Posted Yet</Text>
+          <TouchableOpacity style={styles.createProfileBtn} onPress={() => router.push('/(parent)/jobs')}>
+            <Text style={styles.createProfileText}>Post a Job</Text>
+          </TouchableOpacity>
+          
+          {/* Ensure mobile users can still leave this screen! */}
+          {!isDesktop && (
+            <TouchableOpacity style={[styles.menuButton, { position: 'absolute', top: 10, left: 16 }]} onPress={() => setIsMobileMenuOpen(true)}>
+              <Ionicons name="menu" size={32} color="#1A1C1E" />
+            </TouchableOpacity>
           )}
+          <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // 3. Main Content Setup
+  const filteredApps = getApplicationsByStatus(activeFilter);
+
+  const FilterTabs = () => (
+    <View style={styles.filterContainer}>
+      {['all', 'Pending', 'Reviewed', 'Shortlisted', 'Accepted'].map((filter) => (
+        <TouchableOpacity
+          key={filter}
+          style={[styles.filterTab, activeFilter === filter && styles.filterTabActive]}
+          onPress={() => setActiveFilter(filter)}
+        >
+          <Text style={[styles.filterTabText, activeFilter === filter && styles.filterTabTextActive]}>
+            {filter.charAt(0).toUpperCase() + filter.slice(1)}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  // ==========================================
+  // UI VARIABLE (Shared Applications List)
+  // ==========================================
+  const applicationsContent = (
+    <View style={isDesktop ? styles.scrollContent : styles.mobileScrollContent}>
+      {/* Desktop Only Header */}
+      {isDesktop && (
+        <View style={styles.pageHeader}>
+          <Text style={styles.pageTitle}>All Applications</Text>
+          <TouchableOpacity style={styles.editButton} onPress={() => router.push('/(parent)/jobs')}>
+            <Ionicons name="add" size={18} color="#fff" />
+            <Text style={styles.editButtonText}>Post Job</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <FilterTabs />
+
+      <FlatList
+        data={filteredApps}
+        keyExtractor={(item) => item.application_id}
+        renderItem={({ item }) => (
+          <ApplicationCard application={item} onPress={() => {}} />
+        )}
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
+        ListEmptyComponent={
+          <View style={[styles.emptyState, { marginTop: 40, backgroundColor: 'transparent' }]}>
+            <Ionicons name="folder-open-outline" size={64} color="#CBD5E1" />
+            <Text style={styles.emptyText}>No applications found</Text>
+          </View>
+        }
+      />
+    </View>
+  );
+
+  // ==========================================
+  // DESKTOP LAYOUT
+  // ==========================================
+  if (isDesktop) {
+    return (
+      <View style={[styles.container, { flexDirection: 'row' }]}>
+        {renderModals()}
+        <Sidebar onLogout={initiateLogout} />
+        <View style={styles.mainContent}>
+          {applicationsContent}
         </View>
       </View>
     );
   }
 
-  // Main content with applications
+  // ==========================================
+  // MOBILE LAYOUT
+  // ==========================================
   return (
-    <View style={styles.container}>
-      <NotificationModal
-        visible={notification.visible}
-        message={notification.message}
-        type={notification.type}
-        onClose={() => setNotification({ ...notification, visible: false })}
-      />
+    <SafeAreaView style={styles.container}>
+      {renderModals()}
 
-      {/* Shortlist Confirmation Modal */}
-      <ConfirmationModal
-        visible={shortlistModal.visible}
-        title="Shortlist Applicant"
-        message="Add this applicant to your shortlist?"
-        confirmText="Shortlist"
-        type="success"
-        onConfirm={handleShortlistConfirm}
-        onCancel={() => setShortlistModal({ visible: false, applicationId: '' })}
-      />
-
-      {/* Reject Confirmation Modal */}
-      <ConfirmationModal
-        visible={rejectModal.visible}
-        title="Reject Applicant"
-        message="Are you sure you want to reject this applicant? This action cannot be undone."
-        confirmText="Reject"
-        type="danger"
-        onConfirm={handleRejectConfirm}
-        onCancel={() => setRejectModal({ visible: false, applicationId: '' })}
-      />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color="#1A1C1E" />
+      <View style={styles.mobileHeader}>
+        <TouchableOpacity style={styles.menuButton} onPress={() => setIsMobileMenuOpen(true)}>
+          <Ionicons name="menu" size={28} color="#1A1C1E" />
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Applications</Text>
-          <Text style={styles.headerSubtitle}>
-            {stats.total} {stats.total === 1 ? 'applicant' : 'applicants'}
-          </Text>
-        </View>
-        <View style={{ width: 40 }} />
+        <Text style={styles.mobileTitle}>Applications</Text>
+        {/* Placeholder view to balance the header layout */}
+        <View style={{ width: 44 }} />
       </View>
 
-      {/* Stats Summary */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statBox}>
-          <Text style={[styles.statValue, { color: '#FF9500' }]}>
-            {stats.pending}
-          </Text>
-          <Text style={styles.statLabel}>Pending</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={[styles.statValue, { color: '#007AFF' }]}>
-            {stats.shortlisted}
-          </Text>
-          <Text style={styles.statLabel}>Shortlisted</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={[styles.statValue, { color: '#34C759' }]}>
-            {stats.accepted}
-          </Text>
-          <Text style={styles.statLabel}>Accepted</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={[styles.statValue, { color: '#FF3B30' }]}>
-            {stats.rejected}
-          </Text>
-          <Text style={styles.statLabel}>Rejected</Text>
-        </View>
-      </View>
+      {applicationsContent}
 
-      {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
-        {['all', 'pending', 'shortlisted', 'rejected'].map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            style={[
-              styles.filterTab,
-              activeFilter === filter && styles.filterTabActive,
-            ]}
-            onPress={() => setActiveFilter(filter)}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[
-                styles.filterTabText,
-                activeFilter === filter && styles.filterTabTextActive,
-              ]}
-            >
-              {filter.charAt(0).toUpperCase() + filter.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Applications List */}
-      {filteredApplications.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="people-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>
-            No {activeFilter !== 'all' ? activeFilter : ''} applications
-          </Text>
-          <Text style={styles.emptySubtext}>
-            Try changing the filter
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredApplications}
-          keyExtractor={(item) => item.application_id}
-          renderItem={({ item }) => (
-            <ApplicationCard
-              application={item}
-              onViewProfile={() =>
-                handleViewProfile(item.application_id, item.helper_id)
-              }
-              onShortlist={() => handleShortlist(item.application_id)}
-              onReject={() => handleReject(item.application_id)}
-            />
-          )}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={false} onRefresh={refresh} />
-          }
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-    </View>
+      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 2,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  statBox: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1A1C1E',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#666',
-    fontWeight: '600',
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    gap: 8,
-  },
-  filterTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
-  filterTabActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  filterTabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-  },
-  filterTabTextActive: {
-    color: '#fff',
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1C1E',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  postJobButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#007AFF',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  postJobButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  errorState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  errorText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FF3B30',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  errorSubtext: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-});

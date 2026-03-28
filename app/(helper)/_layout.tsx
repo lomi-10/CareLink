@@ -49,7 +49,7 @@ export default function HelperLayout() {
         const updatedUser = { ...user, status: currentStatus };
         await AsyncStorage.setItem("user_data", JSON.stringify(updatedUser));
 
-        console.log("Current user status:", currentStatus);
+        console.log("Current helper status:", currentStatus);
       } else {
         // Fallback to AsyncStorage if API fails
         setUserStatus(user.status || "pending");

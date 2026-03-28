@@ -25,7 +25,7 @@ interface ApplicationModalProps {
   onClose: () => void;
 }
 
-export default function ApplicationModal({
+export function ApplicationModal({
   visible,
   job,
   onSubmit,
@@ -82,12 +82,7 @@ export default function ApplicationModal({
       }
     } catch (err: any) {
       console.log('Backend error:', err.message);
-      // For development: simulate success
-      setTimeout(() => {
-        setCoverLetter('');
-        onSubmit();
-        onClose();
-      }, 500);
+      setError(err.message || 'Failed to submit application');
     } finally {
       setSubmitting(false);
     }

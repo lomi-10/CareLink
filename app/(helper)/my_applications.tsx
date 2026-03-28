@@ -4,7 +4,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  StyleSheet,
   FlatList,
   Text,
   TouchableOpacity,
@@ -25,8 +24,10 @@ import {
   ApplicationCard,
   ApplicationDetailsModal,
 } from '@/components/helper/applications/';
-
 import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/common/';
+
+// Styles
+import { styles } from './my_applications.styles';
 
 export default function MyApplications() {
   const router = useRouter();
@@ -45,28 +46,24 @@ export default function MyApplications() {
 
   // State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [logoutModalVisible, setLogoutModalVisible] = useState({ 
-    visible: false, 
-    message: '', 
-    type: 'success' as 'success' | 'error' 
-  });
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
   const [withdrawModal, setWithdrawModal] = useState({ visible: false, applicationId: '' });
-  const [notification, setNotification] = useState({ 
-    visible: false, 
-    message: '', 
-    type: 'success' as 'success' | 'error' 
-  });
+  const [notification, setNotification] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
-  // Handlers
+  // Logout States
+  const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
+  const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
+
+  // Logout Handlers
   const initiateLogout = () => {
-    setIsMobileMenuOpen(false);
-    setLogoutModalVisible({ 
-      visible: true, 
-      message: 'Logged Out Successfully!', 
-      type: 'success' 
-    });
+    setIsMobileMenuOpen(false); 
+    setConfirmLogoutVisible(true); 
+  };
+
+  const executeLogout = () => {
+    setConfirmLogoutVisible(false);
+    setSuccessLogoutVisible(true);
   };
 
   const handleViewDetails = (application: any) => {
@@ -82,19 +79,11 @@ export default function MyApplications() {
     try {
       const result = await withdrawApplication(withdrawModal.applicationId);
       if (result.success) {
-        setNotification({
-          visible: true,
-          message: 'Application withdrawn successfully',
-          type: 'success',
-        });
+        setNotification({ visible: true, message: 'Application withdrawn successfully', type: 'success' });
         setWithdrawModal({ visible: false, applicationId: '' });
       }
     } catch (error: any) {
-      setNotification({
-        visible: true,
-        message: error.message || 'Failed to withdraw application',
-        type: 'error',
-      });
+      setNotification({ visible: true, message: error.message || 'Failed to withdraw application', type: 'error' });
     }
   };
 
@@ -102,8 +91,20 @@ export default function MyApplications() {
     return <LoadingSpinner visible={true} message="Loading applications..." />;
   }
 
-  // Main Content Component
-  const MainContent = () => (
+  const renderModals = () => (
+    <>
+      <ConfirmationModal visible={confirmLogoutVisible} title="Log Out" message="Are you sure you want to log out of your account?" confirmText="Log Out" cancelText="Cancel" type="danger" onConfirm={executeLogout} onCancel={() => setConfirmLogoutVisible(false)} />
+      <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose={true} duration={1500} onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }} />
+      <NotificationModal visible={notification.visible} message={notification.message} type={notification.type} onClose={() => setNotification({ ...notification, visible: false })} autoClose={true} duration={1500} />
+      <ConfirmationModal visible={withdrawModal.visible} title="Withdraw Application?" message="Are you sure you want to withdraw this application? This action cannot be undone." confirmText="Withdraw" cancelText="Cancel" type="danger" onConfirm={confirmWithdraw} onCancel={() => setWithdrawModal({ visible: false, applicationId: '' })} />
+      <ApplicationDetailsModal visible={detailsModalVisible} application={selectedApplication} onWithdraw={() => { setDetailsModalVisible(false); if (selectedApplication?.application_id) { handleWithdraw(selectedApplication.application_id); } }} onClose={() => setDetailsModalVisible(false)} />
+    </>
+  );
+
+  // ==========================================
+  // FIXED: Changed to a standard variable instead of an inner function component
+  // ==========================================
+  const applicationsContent = (
     <View style={styles.mainContent}>
       {/* Stats Bar */}
       <View style={[styles.statsBar, isDesktop && styles.statsBarDesktop]}>
@@ -130,19 +131,11 @@ export default function MyApplications() {
         {['all', 'active', 'Pending', 'Shortlisted', 'Accepted', 'Rejected'].map((filter) => (
           <TouchableOpacity 
             key={filter} 
-            style={[
-              styles.filterTab, 
-              statusFilter === filter && styles.filterTabActive
-            ]} 
+            style={[styles.filterTab, statusFilter === filter && styles.filterTabActive]} 
             onPress={() => setStatusFilter(filter)} 
             activeOpacity={0.7}
           >
-            <Text 
-              style={[
-                styles.filterTabText, 
-                statusFilter === filter && styles.filterTabTextActive
-              ]}
-            >
+            <Text style={[styles.filterTabText, statusFilter === filter && styles.filterTabTextActive]}>
               {filter === 'all' ? 'All' : filter === 'active' ? 'Active' : filter}
             </Text>
           </TouchableOpacity>
@@ -162,10 +155,7 @@ export default function MyApplications() {
               : 'Try selecting a different filter'}
           </Text>
           {statusFilter === 'all' && (
-            <TouchableOpacity 
-              style={styles.browseButton} 
-              onPress={() => router.push('/(helper)/browse_jobs')}
-            >
+            <TouchableOpacity style={styles.browseButton} onPress={() => router.push('/(helper)/browse_jobs')}>
               <Text style={styles.browseButtonText}>Browse Jobs</Text>
             </TouchableOpacity>
           )}
@@ -181,13 +171,8 @@ export default function MyApplications() {
               onWithdraw={() => handleWithdraw(item?.application_id)}
             />
           )}
-          contentContainerStyle={[
-            styles.listContainer,
-            isDesktop && styles.listContainerDesktop
-          ]}
-          refreshControl={
-            <RefreshControl refreshing={false} onRefresh={refresh} />
-          }
+          contentContainerStyle={[styles.listContainer, isDesktop && styles.listContainerDesktop]}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -198,68 +183,21 @@ export default function MyApplications() {
   if (isDesktop) {
     return (
       <View style={[styles.container, { flexDirection: 'row' }]}>
-        {/* Modals */}
-        <NotificationModal 
-          visible={logoutModalVisible.visible} 
-          message={logoutModalVisible.message} 
-          type={logoutModalVisible.type} 
-          onClose={() => {
-            setLogoutModalVisible({ ...logoutModalVisible, visible: false });
-            handleLogout();
-          }} 
-          autoClose={true} 
-          duration={1500} 
-        />
-
-        <NotificationModal 
-          visible={notification.visible} 
-          message={notification.message} 
-          type={notification.type} 
-          onClose={() => setNotification({ ...notification, visible: false })} 
-          autoClose={true} 
-          duration={1500} 
-        />
-
-        <ConfirmationModal
-          visible={withdrawModal.visible}
-          title="Withdraw Application?"
-          message="Are you sure you want to withdraw this application? This action cannot be undone."
-          confirmText="Withdraw"
-          cancelText="Cancel"
-          type="danger"
-          onConfirm={confirmWithdraw}
-          onCancel={() => setWithdrawModal({ visible: false, applicationId: '' })}
-        />
-
-        <ApplicationDetailsModal
-          visible={detailsModalVisible}
-          application={selectedApplication}
-          onWithdraw={() => {
-            setDetailsModalVisible(false);
-            if (selectedApplication?.application_id) {
-              handleWithdraw(selectedApplication.application_id);
-            }
-          }}
-          onClose={() => setDetailsModalVisible(false)}
-        />
+        {/* FIXED: Called renderModals as a function */}
+        {renderModals()}
 
         <Sidebar onLogout={initiateLogout} />
 
         <View style={styles.desktopContentWrapper}>
-          {/* Desktop Header */}
           <View style={styles.desktopHeader}>
             <Text style={styles.desktopPageTitle}>My Applications</Text>
-            <TouchableOpacity 
-              style={styles.browseJobsButton}
-              onPress={() => router.push('/(helper)/browse_jobs')}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity style={styles.browseJobsButton} onPress={() => router.push('/(helper)/browse_jobs')} activeOpacity={0.7}>
               <Ionicons name="search" size={20} color="#007AFF" />
               <Text style={styles.browseJobsButtonText}>Browse Jobs</Text>
             </TouchableOpacity>
           </View>
 
-          <MainContent />
+          {applicationsContent}
         </View>
       </View>
     );
@@ -268,265 +206,27 @@ export default function MyApplications() {
   // MOBILE LAYOUT
   return (
     <SafeAreaView style={styles.container}>
-      {/* Modals */}
-      <NotificationModal 
-        visible={logoutModalVisible.visible} 
-        message={logoutModalVisible.message} 
-        type={logoutModalVisible.type} 
-        onClose={() => {
-          setLogoutModalVisible({ ...logoutModalVisible, visible: false });
-          handleLogout();
-        }} 
-        autoClose={true} 
-        duration={1500} 
-      />
+      {/* FIXED: Called renderModals as a function */}
+      {renderModals()}
 
-      <NotificationModal 
-        visible={notification.visible} 
-        message={notification.message} 
-        type={notification.type} 
-        onClose={() => setNotification({ ...notification, visible: false })} 
-        autoClose={true} 
-        duration={1500} 
-      />
-
-      <ConfirmationModal
-        visible={withdrawModal.visible}
-        title="Withdraw Application?"
-        message="Are you sure you want to withdraw this application? This action cannot be undone."
-        confirmText="Withdraw"
-        cancelText="Cancel"
-        type="danger"
-        onConfirm={confirmWithdraw}
-        onCancel={() => setWithdrawModal({ visible: false, applicationId: '' })}
-      />
-
-      <ApplicationDetailsModal
-        visible={detailsModalVisible}
-        application={selectedApplication}
-        onWithdraw={() => {
-          setDetailsModalVisible(false);
-          handleWithdraw(selectedApplication?.application_id);
-        }}
-        onClose={() => setDetailsModalVisible(false)}
-      />
-
-      {/* Mobile Header */}
+      {/* FIXED: Mobile Header - Hamburger on the Left */}
       <View style={styles.mobileHeader}>
+        <TouchableOpacity style={styles.menuButton} onPress={() => setIsMobileMenuOpen(true)} activeOpacity={0.7}>
+          <Ionicons name="menu" size={28} color="#1A1C1E" />
+        </TouchableOpacity>
+
         <Text style={styles.mobileTitle}>My Applications</Text>
+        
         <View style={styles.mobileHeaderActions}>
-          <TouchableOpacity
-            style={styles.browseIconButton}
-            onPress={() => router.push('/(helper)/browse_jobs')}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={styles.browseIconButton} onPress={() => router.push('/(helper)/browse_jobs')} activeOpacity={0.7}>
             <Ionicons name="search" size={24} color="#007AFF" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => setIsMobileMenuOpen(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="menu" size={28} color="#1A1C1E" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <MainContent />
+      {applicationsContent}
 
-      {/* Mobile Menu */}
-      <MobileMenu 
-        isOpen={isMobileMenuOpen} 
-        onClose={() => setIsMobileMenuOpen(false)} 
-        handleLogout={initiateLogout} 
-      />
+      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  mainContent: {
-    flex: 1,
-  },
-  
-  // Desktop Styles
-  desktopContentWrapper: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  desktopHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 32,
-    paddingVertical: 24,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  desktopPageTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-  browseJobsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    backgroundColor: '#fff',
-  },
-  browseJobsButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  
-  // Mobile Styles
-  mobileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  mobileTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-  mobileHeaderActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  browseIconButton: {
-    padding: 8,
-  },
-  menuButton: {
-    padding: 8,
-  },
-  
-  // Stats Bar
-  statsBar: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  statsBarDesktop: {
-    marginHorizontal: 32,
-    marginTop: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
-  statBox: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1A1C1E',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#666',
-    fontWeight: '600',
-  },
-  
-  // Filter Tabs
-  filterContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    gap: 8,
-  },
-  filterContainerDesktop: {
-    backgroundColor: 'transparent',
-    borderBottomWidth: 0,
-    paddingHorizontal: 32,
-    paddingTop: 24,
-  },
-  filterTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    backgroundColor: '#fff',
-  },
-  filterTabActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  filterTabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-  },
-  filterTabTextActive: {
-    color: '#fff',
-  },
-  
-  // List
-  listContainer: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  listContainerDesktop: {
-    paddingHorizontal: 32,
-    paddingTop: 16,
-    paddingBottom: 60,
-  },
-  
-  // Empty State
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1C1E',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  browseButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  browseButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-});

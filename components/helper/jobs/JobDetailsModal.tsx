@@ -21,7 +21,7 @@ interface JobDetailsModalProps {
   onClose: () => void;
 }
 
-export default function JobDetailsModal({
+export function JobDetailsModal({
   visible,
   job,
   onApply,

@@ -4,7 +4,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  StyleSheet,
   ScrollView,
   RefreshControl,
   ActivityIndicator,
@@ -17,24 +16,26 @@ import { DrawerActions } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
+// Import your separated styles!
+import { styles } from './home.styles';
+
 // Custom Hooks
 import { useAuth } from '@/hooks/useAuth';
 import { useParentStats } from '@/hooks/useParentStats';
 import { useResponsive } from '@/hooks/useResponsive';
 
 // Components
-import { NotificationModal } from '@/components/common';
-import { Sidebar, MobileMenu } from '@/components/parent/home';
+import { NotificationModal, ConfirmationModal } from '@/components/common';
+import { Sidebar, MobileMenu, GreetingCard } from '@/components/parent/home';
 import {
   MobileHeader,
-  GreetingCard,
   StatCard,
   MobileStatCard,
   QuickAction,
   SectionHeader,
 } from '@/components/helper/home'; // Reusing helper components!
 
-export function ParentHome() {
+export default function ParentHome() {
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -44,11 +45,21 @@ export function ParentHome() {
 
   //Custom Menu with logout notif
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  // NEW: Split into two separate states
+  const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
+  const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
+
+  // STEP 1: Trigger the "Are you sure?" modal
   const initiateLogout = () => {
-    setIsMobileMenuOpen(false);
-    setLogoutModalVisible(true);
-  }
+    setIsMobileMenuOpen(false); 
+    setConfirmLogoutVisible(true); 
+  };
+
+  // STEP 2: If they click "Yes", hide confirm modal and show success modal
+  const executeLogout = () => {
+    setConfirmLogoutVisible(false);
+    setSuccessLogoutVisible(true);
+  };
 
   if (statsLoading) {
     return (
@@ -57,6 +68,33 @@ export function ParentHome() {
       </View>
     );
   }
+
+  const renderModals = () => (
+    <>
+      <ConfirmationModal
+        visible={confirmLogoutVisible}
+        title="Log Out"
+        message="Are you sure you want to log out of your account?"
+        confirmText="Log Out"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={executeLogout}
+        onCancel={() => setConfirmLogoutVisible(false)}
+      />
+
+      <NotificationModal
+        visible={successLogoutVisible}
+        message="Logged Out Successfully!"
+        type="success"
+        autoClose={true}
+        duration={1500} 
+        onClose={() => {
+          setSuccessLogoutVisible(false);
+          handleLogout(); // The actual logout happens after success modal closes!
+        }}
+      />
+    </>
+  );
 
   // DESKTOP LAYOUT
   if (isDesktop) {
@@ -69,16 +107,7 @@ export function ParentHome() {
           refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
         >
 
-          <View style={[styles.greetingCard, styles.blueGradient]}>
-          <View style={styles.greetingContent}>
-            <Text style={styles.greeting}>
-              {new Date().getHours() < 12 ? 'Good Morning' : 
-               new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'}
-            </Text>
-            <Text style={styles.userName}>{getFullName()}</Text>
-            <Text style={styles.subtext}>Find the perfect helper for your family</Text>
-          </View>
-        </View>
+          <GreetingCard userName={getFullName()} />
           {/* Stats Grid */}
           <View style={styles.statsGrid}>
             <StatCard
@@ -139,20 +168,9 @@ export function ParentHome() {
               onPress={() => router.push('/(parent)/messages')}
             />
           </View>
-        </ScrollView>
 
-        {/* LOGOUT NOTIFICATION MODAL */}
-        <NotificationModal
-          visible={logoutModalVisible}
-          message="Logged Out Successfully!"
-          type="success"
-          autoClose={true}
-          duration={1500} // It will show for 1.5 seconds, then auto-close
-          onClose={() => {
-            setLogoutModalVisible(false);
-            handleLogout(); // ⬅️ The actual logout happens HERE, after the modal closes!
-          }}
-        />
+        </ScrollView>
+        {renderModals()}
       </View>
     );
   }
@@ -167,16 +185,7 @@ export function ParentHome() {
         contentContainerStyle={styles.mobileScrollContent}
         refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
       >
-        <View style={[styles.greetingCard, styles.blueGradient]}>
-          <View style={styles.greetingContent}>
-            <Text style={styles.greeting}>
-              {new Date().getHours() < 12 ? 'Good Morning' : 
-               new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'}
-            </Text>
-            <Text style={styles.userName}>{getFullName()}</Text>
-            <Text style={styles.subtext}>Find the perfect helper for your family</Text>
-          </View>
-        </View>
+        <GreetingCard userName={getFullName()} />
 
         {/* Mobile Stats Row */}
         <View style={styles.mobileStatsRow}>
@@ -240,18 +249,7 @@ export function ParentHome() {
         handleLogout={initiateLogout}
       />
 
-      {/* LOGOUT NOTIFICATION MODAL */}
-      <NotificationModal
-        visible={logoutModalVisible}
-        message="Logged Out Successfully!"
-        type="success"
-        autoClose={true}
-        duration={1500} // It will show for 1.5 seconds, then auto-close
-        onClose={() => {
-          setLogoutModalVisible(false);
-          handleLogout(); // ⬅️ The actual logout happens HERE, after the modal closes!
-        }}
-      />
+      {renderModals()}
     </SafeAreaView>
   );
 }
@@ -268,106 +266,3 @@ function QuickActionDesktop({ icon, title, description, color, onPress }: any) {
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-  },
-  mainContent: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 32,
-    paddingBottom: 60,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 20,
-    marginBottom: 40,
-  },
-  quickActionsDesktop: {
-    flexDirection: 'row',
-    gap: 20,
-    marginBottom: 40,
-  },
-  quickActionDesktopCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  quickActionDesktopIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  quickActionDesktopTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1C1E',
-    marginBottom: 4,
-  },
-  quickActionDesktopDesc: {
-    fontSize: 13,
-    color: '#666',
-    textAlign: 'center',
-  },
-  mobileScrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  greetingCard: {
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
-  },
-  blueGradient: {
-    backgroundColor: '#007AFF',
-  },
-  greetingContent: {
-    flex: 1,
-  },
-  greeting: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 4,
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  subtext: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
-  },
-  mobileStatsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 32,
-  },
-});
-
-export default ParentHome;

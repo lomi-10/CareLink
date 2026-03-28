@@ -16,9 +16,10 @@ interface JobCardProps {
   job: JobPost;
   onPress: () => void;
   onApply: () => void;
+  onToggleSave?: (jobId: string) => void;
 }
 
-export default function JobCard({ job, onPress, onApply }: JobCardProps) {
+export function JobCard({ job, onPress, onApply, onToggleSave }: JobCardProps) {
   const getSalaryDisplay = () => {
     if (job.salary_period === 'Daily') {
       return `₱${job.salary_offered.toLocaleString()}/day`;
@@ -37,12 +38,32 @@ export default function JobCard({ job, onPress, onApply }: JobCardProps) {
         <View style={styles.iconContainer}>
           <Ionicons name="briefcase" size={40} color="#007AFF" />
         </View>
+
+
+        <View style={styles.headerRight}>
+        {/* Save Button */}
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            onToggleSave?.(job.job_post_id); // Add this prop to interface
+          }}
+          activeOpacity={0.7}
+        >
+          <Ionicons 
+            name={job.is_saved ? "bookmark" : "bookmark-outline"} 
+            size={24} 
+            color={job.is_saved ? "#007AFF" : "#666"} 
+          />
+        </TouchableOpacity>
+
         {job.match_score && job.match_score >= 70 && (
           <View style={styles.matchBadge}>
             <Ionicons name="checkmark-circle" size={16} color="#34C759" />
             <Text style={styles.matchText}>{job.match_score}% Match</Text>
           </View>
         )}
+      </View>
       </View>
 
       {/* Job Title */}
@@ -129,6 +150,7 @@ export default function JobCard({ job, onPress, onApply }: JobCardProps) {
 
 const styles = StyleSheet.create({
   card: {
+    
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
@@ -157,6 +179,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F7FF',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  saveButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
   },
   matchBadge: {
     flexDirection: 'row',

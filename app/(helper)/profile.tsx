@@ -17,6 +17,9 @@ import { DrawerActions } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
+// styles
+import { styles } from "./profile.styles"
+
 // Custom Hooks
 import { useHelperProfile } from '@/hooks/useHelperProfile';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,7 +37,7 @@ import {
 } from '@/components/helper/profile';
 
 // Common Components
-import {NotificationModal, LoadingSpinner} from '@/components/common/';
+import {NotificationModal, LoadingSpinner, ConfirmationModal} from '@/components/common/';
 import EditHelperProfileModal from '@/components/profile/EditProfileModal';
 import HelperDocumentModal from '@/components/profile/DocumentManagementModal';
 
@@ -45,11 +48,43 @@ export default function HelperProfile() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Logout state
-  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
+  const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
   const initiateLogout = () => {
     setIsMobileMenuOpen(false); // Close the side menu if it's open
-    setLogoutModalVisible(true); // Pop up your nice notification!
+    setConfirmLogoutVisible(true); // Pop up your nice notification!
   };
+
+  const executeLogout = () => {
+    setConfirmLogoutVisible(false);
+    setSuccessLogoutVisible(true);
+  }
+
+  const renderLogoutModals = () => (
+    <>
+      <ConfirmationModal
+        visible={confirmLogoutVisible}
+        title="Confirm Logout"
+        message="Are you sure you want to log out of your account?"
+        confirmText="Logout"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={executeLogout}
+        onCancel={() => setConfirmLogoutVisible(false)}
+      />
+      <NotificationModal
+        visible={successLogoutVisible}
+        message="Logged Out successfully."
+        type='success'
+        autoClose={true}
+        duration={1500}
+        onClose={() => {
+          setSuccessLogoutVisible(false);
+          handleLogout();
+        }}
+      />
+    </>
+  );
 
   // Custom hooks
   const { handleLogout } = useAuth();
@@ -246,18 +281,8 @@ export default function HelperProfile() {
               onManageDocuments={() => setIsDocumentModalOpen(true)}
             />
           </ScrollView>
+          {renderLogoutModals()}
         </View>
-        <NotificationModal
-          visible={logoutModalVisible}
-          message="Logged Out Successfully!"
-          type="success"
-          autoClose={true}
-          duration={1500} // It will show for 1.5 seconds, then auto-close
-          onClose={() => {
-            setLogoutModalVisible(false);
-            handleLogout(); // ⬅️ The actual logout happens HERE, after the modal closes!
-          }}
-        />
       </View>
     );
   }
@@ -358,105 +383,7 @@ export default function HelperProfile() {
         onClose={() => setIsMobileMenuOpen(false)}
         handleLogout={initiateLogout}
       />
-      <NotificationModal
-        visible={logoutModalVisible}
-        message="Logged Out Successfully!"
-        type="success"
-        autoClose={true}
-        duration={1500} // It will show for 1.5 seconds, then auto-close
-        onClose={() => {
-          setLogoutModalVisible(false);
-          handleLogout(); // ⬅️ The actual logout happens HERE, after the modal closes!
-        }}
-      />
+      {renderLogoutModals()}
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-    backgroundColor: '#F8F9FA',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  createProfileBtn: {
-    backgroundColor: '#FF9500',
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-  },
-  createProfileText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  mainContent: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 32,
-    paddingBottom: 60,
-  },
-  pageHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  pageTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FF9500',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    gap: 8,
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  mobileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  menuButton: {
-    padding: 8,
-  },
-  mobileTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-  editIconButton: {
-    padding: 8,
-  },
-  mobileScrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-});

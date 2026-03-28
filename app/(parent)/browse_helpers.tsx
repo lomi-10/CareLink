@@ -1,5 +1,5 @@
 // app/(parent)/browse_helpers.tsx
-// Browse Verified Helpers - Modernized with mobile/desktop separation
+// Browse Verified Helpers - Modularized & Clean
 
 import React, { useState } from 'react';
 import {
@@ -32,7 +32,8 @@ import {
   InviteHelperModal,
 } from '@/components/parent/browse/';
 
-import { NotificationModal, LoadingSpinner } from '@/components/common/';
+import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/common/';
+import {styles} from './browse_helpers.styles';
 
 export default function BrowseHelpers() {
   const router = useRouter();
@@ -52,19 +53,18 @@ export default function BrowseHelpers() {
   } = useBrowseHelpers();
 
   const { categories } = useJobReferences();
-  const { jobs } = useParentJobs(); // For invite modal
+  const { jobs } = useParentJobs();
 
-  // UI State
+  // States EXACTLY matching profile.tsx & applications.tsx
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
+  const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
+  
+  // Feature-specific states
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [selectedHelper, setSelectedHelper] = useState<any>(null);
-  const [logoutModalVisible, setLogoutModalVisible] = useState({ 
-    visible: false, 
-    message: '', 
-    type: 'success' as 'success' | 'error' 
-  });
   const [notification, setNotification] = useState({ 
     visible: false, 
     message: '', 
@@ -81,14 +81,15 @@ export default function BrowseHelpers() {
     }
   ).length;
 
-  // Handlers
+  // Logout Handlers
   const initiateLogout = () => {
     setIsMobileMenuOpen(false);
-    setLogoutModalVisible({ 
-      visible: true, 
-      message: 'Logged Out Successfully!', 
-      type: 'success' 
-    });
+    setConfirmLogoutVisible(true);
+  };
+
+  const executeLogout = () => {
+    setConfirmLogoutVisible(false);
+    setSuccessLogoutVisible(true);
   };
 
   const handleViewProfile = (helper: any) => {
@@ -118,13 +119,31 @@ export default function BrowseHelpers() {
     setFilterModalVisible(false);
   };
 
+  // ==========================================
+  // MODALS GROUPING
+  // ==========================================
+  const renderModals = () => (
+    <>
+      <NotificationModal visible={notification.visible} message={notification.message} type={notification.type} onClose={() => setNotification({ ...notification, visible: false })} autoClose={true} duration={1500} />
+      
+      <ConfirmationModal visible={confirmLogoutVisible} title="Log Out" message="Are you sure you want to log out of your account?" confirmText="Log Out" cancelText="Cancel" type="danger" onConfirm={executeLogout} onCancel={() => setConfirmLogoutVisible(false)} />
+      <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose={true} duration={1500} onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }} />
+      
+      <FilterModal visible={filterModalVisible} filters={filters} categories={categories} onApply={handleApplyFilters} onReset={handleResetFilters} onClose={() => setFilterModalVisible(false)} />
+      <HelperProfileModal visible={profileModalVisible} helper={selectedHelper} onInvite={handleInviteFromProfile} onClose={() => setProfileModalVisible(false)} />
+      <InviteHelperModal visible={inviteModalVisible} helper={selectedHelper} jobs={jobs} onSuccess={() => { setInviteModalVisible(false); setNotification({ visible: true, message: `Invitation sent to ${selectedHelper?.full_name}`, type: 'success' }); }} onClose={() => setInviteModalVisible(false)} />
+    </>
+  );
+
   if (loading) {
     return <LoadingSpinner visible={true} message="Loading helpers..." />;
   }
 
-  // ==================== MAIN CONTENT ====================
-  const MainContent = () => (
-    <View style={styles.mainContent}>
+  // ==========================================
+  // UI VARIABLE (Shared Browse List)
+  // ==========================================
+  const browseContent = (
+    <View style={styles.contentWrapper}>
       {/* Filter Bar */}
       <FilterBar
         filters={filters}
@@ -183,296 +202,59 @@ export default function BrowseHelpers() {
           numColumns={isDesktop ? 3 : 2}
           key={isDesktop ? 'desktop' : 'mobile'}
           columnWrapperStyle={styles.columnWrapper}
-          refreshControl={
-            <RefreshControl refreshing={false} onRefresh={refresh} />
-          }
+          refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
           showsVerticalScrollIndicator={false}
         />
       )}
     </View>
   );
 
-  // ==================== DESKTOP LAYOUT ====================
+  // ==========================================
+  // DESKTOP LAYOUT
+  // ==========================================
   if (isDesktop) {
     return (
       <View style={[styles.container, { flexDirection: 'row' }]}>
-        {/* Modals */}
-        <NotificationModal
-          visible={notification.visible}
-          message={notification.message}
-          type={notification.type}
-          onClose={() => setNotification({ ...notification, visible: false })}
-          autoClose={true}
-          duration={1500}
-        />
-
-        <NotificationModal
-          visible={logoutModalVisible.visible}
-          message={logoutModalVisible.message}
-          type={logoutModalVisible.type}
-          onClose={() => {
-            setLogoutModalVisible({ ...logoutModalVisible, visible: false });
-            handleLogout();
-          }}
-          autoClose={true}
-          duration={1500}
-        />
-
-        <FilterModal
-          visible={filterModalVisible}
-          filters={filters}
-          categories={categories}
-          onApply={handleApplyFilters}
-          onReset={handleResetFilters}
-          onClose={() => setFilterModalVisible(false)}
-        />
-
-        <HelperProfileModal
-          visible={profileModalVisible}
-          helper={selectedHelper}
-          onInvite={handleInviteFromProfile}
-          onClose={() => setProfileModalVisible(false)}
-        />
-
-        <InviteHelperModal
-          visible={inviteModalVisible}
-          helper={selectedHelper}
-          jobs={jobs}
-          onSuccess={() => {
-            setInviteModalVisible(false);
-            setNotification({
-              visible: true,
-              message: `Invitation sent to ${selectedHelper?.full_name}`,
-              type: 'success',
-            });
-          }}
-          onClose={() => setInviteModalVisible(false)}
-        />
-
-        {/* Sidebar */}
+        {renderModals()}
         <Sidebar onLogout={initiateLogout} />
 
-        {/* Desktop Content */}
-        <View style={styles.desktopContentWrapper}>
-          {/* Desktop Header */}
-          <View style={styles.desktopHeader}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="arrow-back" size={24} color="#1A1C1E" />
-            </TouchableOpacity>
-            <Text style={styles.desktopPageTitle}>Browse Verified Helpers</Text>
-            <View style={{ width: 40 }} />
+        <View style={styles.mainContent}>
+          <View style={styles.pageHeader}>
+            <View style={styles.headerTitleRow}>
+              <Text style={styles.pageTitle}>Browse Helpers</Text>
+            </View>
           </View>
-
-          <MainContent />
+          {browseContent}
         </View>
       </View>
     );
   }
 
-  // ==================== MOBILE LAYOUT ====================
+  // ==========================================
+  // MOBILE LAYOUT
+  // ==========================================
   return (
     <SafeAreaView style={styles.container}>
-      {/* Modals */}
-      <NotificationModal
-        visible={notification.visible}
-        message={notification.message}
-        type={notification.type}
-        onClose={() => setNotification({ ...notification, visible: false })}
-        autoClose={true}
-        duration={1500}
-      />
+      {renderModals()}
 
-      <NotificationModal
-        visible={logoutModalVisible.visible}
-        message={logoutModalVisible.message}
-        type={logoutModalVisible.type}
-        onClose={() => {
-          setLogoutModalVisible({ ...logoutModalVisible, visible: false });
-          handleLogout();
-        }}
-        autoClose={true}
-        duration={1500}
-      />
-
-      <FilterModal
-        visible={filterModalVisible}
-        filters={filters}
-        categories={categories}
-        onApply={handleApplyFilters}
-        onReset={handleResetFilters}
-        onClose={() => setFilterModalVisible(false)}
-      />
-
-      <HelperProfileModal
-        visible={profileModalVisible}
-        helper={selectedHelper}
-        onInvite={handleInviteFromProfile}
-        onClose={() => setProfileModalVisible(false)}
-      />
-
-      <InviteHelperModal
-        visible={inviteModalVisible}
-        helper={selectedHelper}
-        jobs={jobs}
-        onSuccess={() => {
-          setInviteModalVisible(false);
-          setNotification({
-            visible: true,
-            message: `Invitation sent to ${selectedHelper?.full_name}`,
-            type: 'success',
-          });
-        }}
-        onClose={() => setInviteModalVisible(false)}
-      />
-
-      {/* Mobile Header */}
       <View style={styles.mobileHeader}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color="#1A1C1E" />
-        </TouchableOpacity>
-        <Text style={styles.mobileTitle}>Browse Helpers</Text>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => setIsMobileMenuOpen(true)}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.menuButton} onPress={() => setIsMobileMenuOpen(true)} activeOpacity={0.7}>
           <Ionicons name="menu" size={28} color="#1A1C1E" />
         </TouchableOpacity>
+        
+        <Text style={styles.mobileTitle}>Browse Helpers</Text>
+        
+        {/* Invisible block to perfectly center the title against the hamburger menu */}
+        <View style={{ width: 44 }} />
       </View>
 
-      <MainContent />
+      {browseContent}
 
-      {/* Mobile Menu */}
-      <MobileMenu
-        isOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-        handleLogout={initiateLogout}
+      <MobileMenu 
+        isOpen={isMobileMenuOpen} 
+        onClose={() => setIsMobileMenuOpen(false)} 
+        handleLogout={initiateLogout} 
       />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  mainContent: {
-    flex: 1,
-  },
-
-  // Desktop Styles
-  desktopContentWrapper: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  desktopHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 32,
-    paddingVertical: 24,
-  },
-  desktopPageTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-
-  // Mobile Styles
-  mobileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  mobileTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-
-  // Shared Styles
-  backButton: {
-    padding: 8,
-  },
-  menuButton: {
-    padding: 8,
-  },
-  resultsBar: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  resultsText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '600',
-  },
-  listContainer: {
-    padding: 12,
-    paddingBottom: 40,
-  },
-  columnWrapper: {
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-  },
-  mobileCardWrapper: {
-    flex: 1,
-    maxWidth: '50%',
-    paddingHorizontal: 4,
-    marginBottom: 8,
-  },
-  desktopCardWrapper: {
-    flex: 1,
-    maxWidth: '33.333%',
-    paddingHorizontal: 8,
-    marginBottom: 16,
-  },
-
-  // Empty State
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1C1E',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  resetButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  resetButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-});

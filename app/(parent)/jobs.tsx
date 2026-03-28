@@ -1,9 +1,9 @@
 // app/(parent)/jobs.tsx
-// Refactored to use the modular ConfirmationModal
+// Refactored to use the modular ConfirmationModal & optimized for performance
 
 import React, { useState } from 'react';
 import {
-  View, StyleSheet, FlatList, Text, TouchableOpacity,
+  View, FlatList, Text, TouchableOpacity,
   RefreshControl, SafeAreaView
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -18,8 +18,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Sidebar, MobileMenu } from '@/components/parent/home';
 import { JobCard, JobPostModal } from '@/components/parent/jobs';
 import { PendingBanner } from '@/components/parent/verification/PendingBanner';
-import { NotificationModal, LoadingSpinner } from '@/components/common';
-import ConfirmationModal from '@/components/common/ConfirmationModal'; // <-- IMPORTED YOUR MODAL
+import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/common';
+import { styles } from './jobs.styles';
 import API_URL from '@/constants/api';
 
 export default function MyJobs() {
@@ -35,21 +35,26 @@ export default function MyJobs() {
   
   // Modals State
   const [isPostModalVisible, setIsPostModalVisible] = useState(false);
-  const [logoutModalVisible, setLogoutModalVisible] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
   const [notification, setNotification] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
   const [deleteModal, setDeleteModal] = useState({ visible: false, jobId: '', jobTitle: '' });
+
+  // Logout States
+  const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
+  const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
 
   const filteredJobs = activeFilter === 'all' 
     ? jobs 
     : jobs.filter(job => job.status.toLowerCase() === activeFilter.toLowerCase());
 
-  const initiateLogout = () => { 
+  // Logout Handlers
+  const initiateLogout = () => {
     setIsMobileMenuOpen(false); 
-    setLogoutModalVisible({ 
-      visible: true, 
-      message: 'Logged Out Successfully!', 
-      type: 'success' 
-    }); 
+    setConfirmLogoutVisible(true); 
+  };
+
+  const executeLogout = () => {
+    setConfirmLogoutVisible(false);
+    setSuccessLogoutVisible(true);
   };
 
   const handlePostJob = () => {
@@ -119,7 +124,23 @@ export default function MyJobs() {
 
   if (loading) return <LoadingSpinner visible={true} message="Loading jobs..." />;
 
-  const MainContent = () => (
+  // ==========================================
+  // FIXED: Consolidated ALL modals into one clean function
+  // ==========================================
+  const renderModals = () => (
+    <>
+      <ConfirmationModal visible={confirmLogoutVisible} title="Log Out" message="Are you sure you want to log out of your account?" confirmText="Log Out" cancelText="Cancel" type="danger" onConfirm={executeLogout} onCancel={() => setConfirmLogoutVisible(false)} />
+      <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose={true} duration={1500} onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }} />
+      <NotificationModal visible={notification.visible} message={notification.message} type={notification.type} onClose={() => setNotification({ ...notification, visible: false })} autoClose={true} duration={1500} />
+      <ConfirmationModal visible={deleteModal.visible} title="Delete Job?" message={`Are you sure you want to delete "${deleteModal.jobTitle}"? This cannot be undone.`} confirmText="Delete" cancelText="Cancel" type="danger" onConfirm={confirmDeleteJob} onCancel={() => setDeleteModal({ ...deleteModal, visible: false })} />
+      <JobPostModal visible={isPostModalVisible} onClose={() => setIsPostModalVisible(false)} existingJobData={editingJob} onSaveSuccess={refresh} />
+    </>
+  );
+
+  // ==========================================
+  // FIXED: Changed to a standard variable instead of an inner function component
+  // ==========================================
+  const jobsContent = (
     <View style={styles.mainContent}>
       {isPending && <PendingBanner status="Pending" message={verification.message} />}
 
@@ -154,19 +175,11 @@ export default function MyJobs() {
         {['all', 'open', 'filled', 'closed', 'expired'].map((filter) => (
           <TouchableOpacity 
             key={filter} 
-            style={[
-              styles.filterTab, 
-              activeFilter === filter && styles.filterTabActive
-            ]} 
+            style={[styles.filterTab, activeFilter === filter && styles.filterTabActive]} 
             onPress={() => setActiveFilter(filter)} 
             activeOpacity={0.7}
           >
-            <Text 
-              style={[
-                styles.filterTabText, 
-                activeFilter === filter && styles.filterTabTextActive
-              ]}
-            >
+            <Text style={[styles.filterTabText, activeFilter === filter && styles.filterTabTextActive]}>
               {filter.charAt(0).toUpperCase() + filter.slice(1)}
             </Text>
           </TouchableOpacity>
@@ -203,44 +216,12 @@ export default function MyJobs() {
     </View>
   );
 
+  // DESKTOP LAYOUT
   if (isDesktop){
     return(
       <View style={[styles.container, { flexDirection: 'row' }]}>
-        <NotificationModal 
-          visible={notification.visible} 
-          message={notification.message} 
-          type={notification.type} 
-          onClose={() => setNotification({ ...notification, visible: false })} 
-          autoClose={true} 
-          duration={1500} 
-        />
-
-        <NotificationModal 
-          visible={logoutModalVisible.visible} 
-          message={logoutModalVisible.message} 
-          type={logoutModalVisible.type} 
-          onClose={() => {setLogoutModalVisible({ ...logoutModalVisible, visible: false }); handleLogout();}} 
-          autoClose={true} 
-          duration={1500} 
-        />
-
-        <ConfirmationModal
-          visible={deleteModal.visible}
-          title="Delete Job?"
-          message={`Are you sure you want to delete "${deleteModal.jobTitle}"? This cannot be undone.`}
-          confirmText="Delete"
-          cancelText="Cancel"
-          type="danger"
-          onConfirm={confirmDeleteJob}
-          onCancel={() => setDeleteModal({ ...deleteModal, visible: false })}
-        />
-
-        <JobPostModal 
-         visible={isPostModalVisible}
-         onClose={() => setIsPostModalVisible(false)}
-         existingJobData={editingJob}
-         onSaveSuccess={refresh}
-        />
+        {/* Look how clean this is now! */}
+        {renderModals()}
 
         <Sidebar onLogout={initiateLogout} />
 
@@ -251,50 +232,19 @@ export default function MyJobs() {
               <Ionicons name="add" size={20} color="#fff" /><Text style={styles.desktopPostButtonText}>Post New Job</Text>
             </TouchableOpacity>
           </View>
-          <MainContent />
+          
+          {jobsContent}
+
         </View>
       </View>
     )
   }
 
+  // MOBILE LAYOUT
   return (
     <SafeAreaView style={styles.container}>
-      <NotificationModal 
-        visible={notification.visible} 
-        message={notification.message} 
-        type={notification.type} 
-        onClose={() => setNotification({ ...notification, visible: false })} 
-        autoClose={true} 
-        duration={1500} 
-      />
-
-      <NotificationModal 
-        visible={logoutModalVisible.visible} 
-        message={logoutModalVisible.message} 
-        type={logoutModalVisible.type} 
-        onClose={() => {setLogoutModalVisible({ ...logoutModalVisible, visible: false }); handleLogout();}} 
-        autoClose={true} 
-        duration={1500} 
-      />
-      
-      {/* REPLACED WITH YOUR REUSABLE COMPONENT */}
-      <ConfirmationModal
-        visible={deleteModal.visible}
-        title="Delete Job?"
-        message={`Are you sure you want to delete "${deleteModal.jobTitle}"? This cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
-        onConfirm={confirmDeleteJob}
-        onCancel={() => setDeleteModal({ ...deleteModal, visible: false })}
-      />
-
-      <JobPostModal
-        visible={isPostModalVisible}
-        onClose={() => setIsPostModalVisible(false)}
-        existingJobData={editingJob}
-        onSaveSuccess={refresh}
-      />
+      {/* Look how clean this is now! */}
+      {renderModals()}
 
       <View style={styles.mobileHeader}>
         <TouchableOpacity style={styles.menuButton} onPress={() => setIsMobileMenuOpen(true)}>
@@ -305,7 +255,8 @@ export default function MyJobs() {
           <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
-      <MainContent />
+
+      {jobsContent}
       
       <MobileMenu 
         isOpen={isMobileMenuOpen} 
@@ -315,36 +266,3 @@ export default function MyJobs() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
-  mainContent: { flex: 1 },
-  desktopContentWrapper: { flex: 1, backgroundColor: '#F8F9FA' },
-  desktopHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 32, paddingBottom: 0 },
-  desktopPageTitle: { fontSize: 32, fontWeight: '700', color: '#1A1C1E' },
-  desktopPostButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#007AFF', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, gap: 8 },
-  desktopPostButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  mobileHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E5EA' },
-  menuButton: { padding: 8 },
-  mobileTitle: { fontSize: 18, fontWeight: '700', color: '#1A1C1E' },
-  postButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#007AFF', alignItems: 'center', justifyContent: 'center' },
-  postButtonDisabled: { backgroundColor: '#ccc' },
-  statsContainer: { flexDirection: 'row', backgroundColor: '#fff', paddingVertical: 16, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  statsContainerDesktop: { marginHorizontal: 32, marginTop: 24, borderRadius: 12, borderWidth: 1, borderColor: '#E5E5EA' },
-  statBox: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 24, fontWeight: '700', color: '#1A1C1E', marginBottom: 4 },
-  statLabel: { fontSize: 11, color: '#666', fontWeight: '600' },
-  filterContainer: { flexDirection: 'row', backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F0F0F0', gap: 8 },
-  filterContainerDesktop: { backgroundColor: 'transparent', borderBottomWidth: 0, paddingHorizontal: 32, paddingTop: 24 },
-  filterTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#E5E5EA', backgroundColor: '#fff' },
-  filterTabActive: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
-  filterTabText: { fontSize: 13, fontWeight: '600', color: '#666' },
-  filterTabTextActive: { color: '#fff' },
-  listContent: { padding: 16, paddingBottom: 40 },
-  listContentDesktop: { paddingHorizontal: 32, paddingTop: 16, paddingBottom: 60 },
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyText: { fontSize: 18, fontWeight: '700', color: '#1A1C1E', marginTop: 16, marginBottom: 8 },
-  emptySubtext: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 24 },
-  postJobButton: { backgroundColor: '#007AFF', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 12 },
-  postJobButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-});
