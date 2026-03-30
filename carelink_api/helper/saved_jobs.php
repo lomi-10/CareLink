@@ -1,6 +1,6 @@
 <?php
-// carelink_api/helper/browse_jobs.php
-// Get job posts with smart matching and JSON array decoding
+// carelink_api/helper/saved_jobs.php
+// Get helper's saved jobs with match scoring and sorting
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -12,22 +12,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit(0);
 }
 
-// Ensure errors don't output HTML, breaking the React Native JSON parser
-ini_set('display_errors', 0);
-error_reporting(E_ALL);
-
 require_once '../dbcon.php'; 
 
 try {
     $helper_id = isset($_GET['helper_id']) ? intval($_GET['helper_id']) : 0;
+    $sort = isset($_GET['sort']) ? $_GET['sort'] : 'recent'; // recent, match, nearest, salary
 
     if ($helper_id <= 0) {
         throw new Exception('Helper ID is required');
     }
 
-    // 1. Get helper's profile using user_id
+    // 1. Get helper's profile and location
     $helperStmt = $conn->prepare("
-        SELECT * FROM helper_profiles WHERE user_id = ?
+        SELECT hp.*, u.province, u.municipality, u.latitude, u.longitude
+        FROM helper_profiles hp
+        JOIN users u ON hp.user_id = u.user_id
+        WHERE hp.user_id = ?
     ");
     $helperStmt->bind_param("i", $helper_id);
     $helperStmt->execute();
@@ -37,7 +37,7 @@ try {
         throw new Exception('Helper profile not found');
     }
 
-    // 2. Get helper's categories and skills from the actual structure
+    // 2. Get helper's categories and skills 
     $helperCats = [];
     $catStmt = $conn->prepare("
         SELECT rc.category_id 
@@ -64,76 +64,114 @@ try {
         }
     }
 
-    // 3. Main query - Get jobs and handle saved status
+    // 3. Pre-fetch Reference Data
+    $categories_ref = [];
+    $res = $conn->query("SELECT category_id, category_name as name FROM ref_categories");
+    if ($res) while ($row = $res->fetch_assoc()) $categories_ref[$row['category_id']] = $row['name'];
+
+    $jobs_ref = [];
+    $res = $conn->query("SELECT job_id, job_title as name FROM ref_jobs");
+    if ($res) while ($row = $res->fetch_assoc()) $jobs_ref[$row['job_id']] = $row['name'];
+
+    $skills_ref = [];
+    $res = $conn->query("SELECT skill_id, skill_name as name FROM ref_skills");
+    if ($res) while ($row = $res->fetch_assoc()) $skills_ref[$row['skill_id']] = $row['name'];
+
+    // 4. Main query - Get ONLY the helper's saved jobs
     $jobQuery = "
         SELECT 
             jp.*,
             u.first_name as parent_first_name,
             u.last_name as parent_last_name,
+            u.province as parent_province,
+            u.municipality as parent_municipality,
             u.status as parent_account_status,
+            u.latitude as parent_lat,
+            u.longitude as parent_lng,
             COALESCE(pr.rating, 0) as parent_rating,
-            CASE WHEN sj.saved_id IS NOT NULL THEN 1 ELSE 0 END as is_saved,
             sj.saved_at
-        FROM job_posts jp
+        FROM saved_jobs sj
+        JOIN job_posts jp ON sj.job_post_id = jp.job_post_id
         JOIN users u ON jp.parent_id = u.user_id
         LEFT JOIN (
-            SELECT reviewee_id, AVG(rating) as rating
-            FROM placement_reviews
-            GROUP BY reviewee_id
-        ) pr ON jp.parent_id = pr.reviewee_id   
-        LEFT JOIN saved_jobs sj ON jp.job_post_id = sj.job_post_id AND sj.helper_id = ?
-        LEFT JOIN job_applications ja ON jp.job_post_id = ja.job_post_id AND ja.helper_id = ? AND ja.status != 'Withdrawn'
-        WHERE jp.status = 'Open' 
-        AND ja.application_id IS NULL -- Hides jobs the helper already applied to!
-        ORDER BY jp.posted_at DESC
+            SELECT ratee_id, AVG(overall_rating) as rating
+            FROM ratings
+            GROUP BY ratee_id
+        ) pr ON jp.parent_id = pr.ratee_id
+        WHERE sj.helper_id = ?
+        ORDER BY sj.saved_at DESC
     ";
     
     $stmt = $conn->prepare($jobQuery);
-    $stmt->bind_param("ii", $helper_id, $helper_id);
+    $stmt->bind_param("i", $helper_id);
     $stmt->execute();
     $jobsResult = $stmt->get_result();
     
-    // 4. Process each job using JSON Decoding (No N+1 Queries!)
+    // 5. Process each job
     $processedJobs = [];
     while ($job = $jobsResult->fetch_assoc()) {
         
-        // Safely decode JSON Arrays from your database
+        // Decode JSON arrays safely
         $category_ids = json_decode($job['category_ids'], true) ?: [];
         $job_ids = json_decode($job['job_ids'], true) ?: [];
         $skill_ids = json_decode($job['skill_ids'], true) ?: [];
         $daysOff = json_decode($job['days_off'], true) ?: [];
 
+        // Map IDs to Names
+        $cat_names = array_values(array_filter(array_map(function($id) use ($categories_ref) { return $categories_ref[$id] ?? null; }, $category_ids)));
+        $job_names = array_values(array_filter(array_map(function($id) use ($jobs_ref) { return $jobs_ref[$id] ?? null; }, $job_ids)));
+        $skill_names = array_values(array_filter(array_map(function($id) use ($skills_ref) { return $skills_ref[$id] ?? null; }, $skill_ids)));
+
+        // Match Scoring
         $matchScore = 0;
         $matchReasons = [];
         
-        // Category match 
         $categoryMatch = count(array_intersect($category_ids, $helperCats));
         if ($categoryMatch > 0) {
             $matchScore += 30;
             $matchReasons[] = "Category matches your profile";
         }
         
-        // Skill match
         $skillMatch = count(array_intersect($skill_ids, $helperSkills));
         if ($skillMatch > 0) {
             $matchScore += 20;
             $matchReasons[] = "Required skills match yours";
         }
         
-        // Location proximity
+        // Distance calculation
         $sameProvince = ($job['parent_province'] == $helper['province']);
         $sameMunicipality = ($job['parent_municipality'] == $helper['municipality']);
         
-        $distance = rand(50, 100);
-        if ($sameMunicipality) {
-            $distance = rand(1, 5); 
-            $matchScore += 15;
-            $matchReasons[] = "Very close to your location";
-        } elseif ($sameProvince) {
-            $distance = rand(10, 30);
-            $matchScore += 10;
-            $matchReasons[] = "Location nearby";
-        } 
+        $distance = 0;
+        if (!empty($helper['latitude']) && !empty($helper['longitude']) && !empty($job['parent_lat']) && !empty($job['parent_lng'])) {
+            // Real Haversine calculation if lat/lng available
+            $earth_radius = 6371;
+            $lat1 = deg2rad($helper['latitude']);
+            $lon1 = deg2rad($helper['longitude']);
+            $lat2 = deg2rad($job['parent_lat']);
+            $lon2 = deg2rad($job['parent_lng']);
+            $dlat = $lat2 - $lat1;
+            $dlon = $lon2 - $lon1;
+            $a = sin($dlat/2) * sin($dlat/2) + cos($lat1) * cos($lat2) * sin($dlon/2) * sin($dlon/2);
+            $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+            $distance = round($earth_radius * $c, 1);
+            
+            if ($distance <= 5) { $matchScore += 15; $matchReasons[] = "Very close location"; }
+            elseif ($distance <= 20) { $matchScore += 10; $matchReasons[] = "Location nearby"; }
+        } else {
+            // Fallback
+            if ($sameMunicipality) {
+                $distance = rand(1, 5);
+                $matchScore += 15;
+                $matchReasons[] = "Very close to your location";
+            } elseif ($sameProvince) {
+                $distance = rand(10, 30);
+                $matchScore += 10;
+                $matchReasons[] = "Location nearby";
+            } else {
+                $distance = rand(50, 100); 
+            }
+        }
         
         // Salary match
         $monthlySalary = ($job['salary_period'] == 'Daily') ? $job['salary_offered'] * 26 : $job['salary_offered'];
@@ -162,61 +200,88 @@ try {
             'work_schedule' => $job['work_schedule'],
             'salary_offered' => (float)$job['salary_offered'],
             'salary_period' => $job['salary_period'],
-            'province' => $job['province'],
-            'municipality' => $job['municipality'],
+            'province' => $job['parent_province'],
+            'municipality' => $job['parent_municipality'],
             'barangay' => $job['barangay'] ?? '',
             'distance' => $distance,
             
             'category_ids' => $category_ids,
-            'categories' => [], // Add names via frontend or reference dictionary
+            'categories' => $cat_names,
             'job_ids' => $job_ids,
-            'jobs' => [],
+            'jobs' => $job_names,
             'skill_ids' => $skill_ids,
-            'skills' => [],
+            'skills' => $skill_names,
             
             'min_age' => $job['min_age'],
             'max_age' => $job['max_age'],
             'min_experience_years' => $job['min_experience_years'],
+            'preferred_religion' => $job['preferred_religion'],
+            'require_police_clearance' => (bool)$job['require_police_clearance'],
+            'prefer_tesda_nc2' => (bool)$job['prefer_tesda_nc2'],
             
             'start_date' => $job['start_date'],
             'work_hours' => $job['work_hours'],
             'days_off' => $daysOff,
+            'contract_duration' => $job['contract_duration'],
+            'probation_period' => $job['probation_period'],
             
+            'benefits' => $job['benefits'],
             'provides_meals' => (bool)$job['provides_meals'],
             'provides_accommodation' => (bool)$job['provides_accommodation'],
             'provides_sss' => (bool)$job['provides_sss'],
             'provides_philhealth' => (bool)$job['provides_philhealth'],
             'provides_pagibig' => (bool)$job['provides_pagibig'],
+            'vacation_days' => $job['vacation_days'],
+            'sick_days' => $job['sick_days'],
             
             'status' => $job['status'],
-            'posted_at' => date("Y-m-d H:i:s", strtotime($job['posted_at'])),
+            'posted_at' => date("F j, Y", strtotime($job['created_at'])),
             'expires_at' => $job['expires_at'],
             
-            'parent_name' => trim($job['parent_first_name'] . ' ' . $job['parent_last_name']),
+            'parent_name' => trim($job['parent_first_name'] . ' ' . $job['parent_last_name']) . " Family",
             'parent_verified' => ($job['parent_account_status'] === 'approved'),
             'parent_rating' => floatval($job['parent_rating']),
             
             'match_score' => min(100, $matchScore),
             'match_reasons' => $matchReasons,
             
-            'is_saved' => (bool)$job['is_saved'],
+            'is_saved' => true,
             'saved_at' => $job['saved_at']
         ];
     }
     
-    // Sort by match score
-    usort($processedJobs, function($a, $b) {
-        return $b['match_score'] - $a['match_score'];
-    });
+    // Sort array based on the `sort` parameter
+    switch ($sort) {
+        case 'match':
+            usort($processedJobs, function($a, $b) {
+                return $b['match_score'] - $a['match_score'];
+            });
+            break;
+        case 'nearest':
+            usort($processedJobs, function($a, $b) {
+                return $a['distance'] - $b['distance'];
+            });
+            break;
+        case 'salary':
+            usort($processedJobs, function($a, $b) {
+                $salaryA = $a['salary_period'] == 'Daily' ? $a['salary_offered'] * 26 : $a['salary_offered'];
+                $salaryB = $b['salary_period'] == 'Daily' ? $b['salary_offered'] * 26 : $b['salary_offered'];
+                return $salaryB - $salaryA;
+            });
+            break;
+        case 'recent':
+        default:
+            // It is already sorted by sj.saved_at DESC from the SQL query
+            break;
+    }
     
     echo json_encode([
         'success' => true,
-        'jobs' => $processedJobs,
+        'saved_jobs' => $processedJobs,
         'total_count' => count($processedJobs)
     ]);
     
 } catch (Exception $e) {
-    // Return a strict JSON error message instead of crashing with HTML!
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()

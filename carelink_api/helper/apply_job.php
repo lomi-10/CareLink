@@ -4,8 +4,8 @@
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, X-Requested-With, Authorization');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -109,16 +109,37 @@ try {
     $check_result = $check_stmt->get_result();
 
     if ($check_result->num_rows > 0) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'You have already applied to this job'
-        ]);
-        exit;
+        $existing_application = $check_result->fetch_assoc();
+
+        if($existing_application['status'] === 'Withdrawn') {
+            echo json_encode([
+                'success' => false,
+                'message' => 'You have already applied to this job'
+            ]);
+            exit;
+        }
+
+        $update_stmt = $conn->prepare("
+            UPDATE job_applications 
+            SET status = 'Pending', cover_letter = ?, applied_at = NOW()
+            WHERE application_id = ?
+        ");
+        $update_stmt->bind_param("si", $cover_letter, $existing_application['application_id']);
+        if($update_stmt->execute()) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Your previous application was withdrawn. It has now been resubmitted.',
+                'application_id' => $existing_application['application_id']
+            ]);
+            exit;
+        } else {
+            throw new Exception($conn->error);
+        }
     }
 
     // Check if helper is verified
     $helper_stmt = $conn->prepare("
-        SELECT verification_status 
+        SELECT status 
         FROM users 
         WHERE user_id = ?
     ");
@@ -137,7 +158,7 @@ try {
 
     //Note: We allow unverified helpers to apply, but parent can filter by verification
     // If you want to require verification, uncomment:
-    if ($helper['verification_status'] !== 'Verified') {
+    if ($helper['status'] !== 'approved') {
       echo json_encode([
         'success' => false,
         'message' => 'Your account must be verified before applying to jobs'

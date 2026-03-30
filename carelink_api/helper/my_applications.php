@@ -37,7 +37,7 @@ try {
             u.user_id as parent_id,
             u.first_name,
             u.last_name,
-            u.verification_status
+            u.status as verification_status
         FROM job_applications ja
         LEFT JOIN job_posts jp ON ja.job_post_id = jp.job_post_id
         LEFT JOIN users u ON jp.parent_id = u.user_id

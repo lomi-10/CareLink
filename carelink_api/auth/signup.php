@@ -18,10 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 try {
-    // 3. DB CONNECTION
-    if (!file_exists("dbcon.php")) {
-        throw new Exception("dbcon.php file not found.");
-    }
+    
     require_once "../dbcon.php"; 
 
     if (!$conn) {

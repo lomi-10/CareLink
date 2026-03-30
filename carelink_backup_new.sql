@@ -87,12 +87,13 @@ CREATE TABLE IF NOT EXISTS `helper_jobs` (
   KEY `idx_job` (`job_id`),
   CONSTRAINT `fk_hjobs_job` FOREIGN KEY (`job_id`) REFERENCES `ref_jobs` (`job_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_hjobs_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.helper_jobs: ~2 rows (approximately)
+-- Dumping data for table carelink.helper_jobs: ~3 rows (approximately)
 INSERT INTO `helper_jobs` (`hj_id`, `profile_id`, `job_id`) VALUES
-	(5, 1, 1),
-	(6, 1, 2);
+	(26, 1, 3),
+	(27, 1, 4),
+	(28, 1, 5);
 
 -- Dumping structure for table carelink.helper_languages
 CREATE TABLE IF NOT EXISTS `helper_languages` (
@@ -104,13 +105,16 @@ CREATE TABLE IF NOT EXISTS `helper_languages` (
   KEY `idx_language` (`language_id`),
   CONSTRAINT `fk_hlang_language` FOREIGN KEY (`language_id`) REFERENCES `ref_languages` (`language_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_hlang_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=63 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.helper_languages: ~3 rows (approximately)
+-- Dumping data for table carelink.helper_languages: ~6 rows (approximately)
 INSERT INTO `helper_languages` (`hl_id`, `profile_id`, `language_id`) VALUES
-	(6, 1, 1),
-	(7, 1, 2),
-	(8, 1, 3);
+	(57, 1, 1),
+	(58, 1, 2),
+	(59, 1, 3),
+	(60, 1, 4),
+	(61, 1, 5),
+	(62, 1, 6);
 
 -- Dumping structure for table carelink.helper_profiles
 CREATE TABLE IF NOT EXISTS `helper_profiles` (
@@ -151,7 +155,7 @@ CREATE TABLE IF NOT EXISTS `helper_profiles` (
 
 -- Dumping data for table carelink.helper_profiles: ~1 rows (approximately)
 INSERT INTO `helper_profiles` (`profile_id`, `user_id`, `contact_number`, `profile_image`, `birth_date`, `gender`, `civil_status`, `religion`, `province`, `municipality`, `barangay`, `address`, `landmark`, `bio`, `education_level`, `experience_years`, `employment_type`, `work_schedule`, `expected_salary`, `salary_period`, `availability_status`, `custom_jobs`, `custom_skills`, `verification_status`, `rating_average`, `rating_count`, `created_at`, `updated_at`) VALUES
-	(1, 1, '09396954318', 'http://localhost/carelink_api/uploads/profiles/helper_1_1772715121.jpg', '2002-03-10', 'Male', 'Single', 'Catholic', 'Leyte', 'Palompon', 'San Jose', 'San Jose, Palompon, Leyte', 'Near SM', 'I am good', 'High School Grad', 0, 'Any', 'Any', 6000.00, 'Monthly', 'Available', '[]', '[]', 'Verified', 0.00, 0, '2026-03-02 01:44:36', '2026-03-07 15:37:13');
+	(1, 1, '09396954318', 'http://localhost/carelink_api/uploads/profiles/helper_1_1774364835.jpg', '2002-03-10', 'Male', 'Single', 'Catholic', 'Leyte', 'Palompon', 'San Josekol', 'San Josekol, Palompon, Leyte', 'Near SM', 'I am good', 'High School Grad', 0, 'Live-out', 'Part-time', 6000.00, 'Monthly', 'Available', '[]', '[]', 'Verified', 0.00, 0, '2026-03-02 01:44:36', '2026-03-24 15:07:15');
 
 -- Dumping structure for table carelink.helper_skills
 CREATE TABLE IF NOT EXISTS `helper_skills` (
@@ -160,16 +164,18 @@ CREATE TABLE IF NOT EXISTS `helper_skills` (
   `skill_id` int NOT NULL,
   `proficiency_level` enum('Beginner','Intermediate','Advanced','Expert') COLLATE utf8mb4_general_ci DEFAULT 'Intermediate',
   `years_experience` int DEFAULT '0',
-  PRIMARY KEY (`hs_id`),  
+  PRIMARY KEY (`hs_id`),
   UNIQUE KEY `uk_profile_skill` (`profile_id`,`skill_id`),
   KEY `idx_skill` (`skill_id`),
   CONSTRAINT `fk_hskills_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_hskills_skill` FOREIGN KEY (`skill_id`) REFERENCES `ref_skills` (`skill_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.helper_skills: ~1 rows (approximately)
+-- Dumping data for table carelink.helper_skills: ~3 rows (approximately)
 INSERT INTO `helper_skills` (`hs_id`, `profile_id`, `skill_id`, `proficiency_level`, `years_experience`) VALUES
-	(4, 1, 5, 'Intermediate', 0);
+	(16, 1, 5, 'Intermediate', 0),
+	(17, 1, 6, 'Intermediate', 0),
+	(18, 1, 7, 'Intermediate', 0);
 
 -- Dumping structure for table carelink.helper_work_history
 CREATE TABLE IF NOT EXISTS `helper_work_history` (
@@ -227,11 +233,15 @@ CREATE TABLE IF NOT EXISTS `job_applications` (
   UNIQUE KEY `uk_job_helper` (`job_post_id`,`helper_id`),
   KEY `idx_helper` (`helper_id`),
   KEY `idx_status` (`status`),
+  KEY `idx_helper_job` (`helper_id`,`job_post_id`),
   CONSTRAINT `fk_japps_helper` FOREIGN KEY (`helper_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_japps_job` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.job_applications: ~0 rows (approximately)
+-- Dumping data for table carelink.job_applications: ~2 rows (approximately)
+INSERT INTO `job_applications` (`application_id`, `job_post_id`, `helper_id`, `cover_letter`, `status`, `parent_notes`, `applied_at`, `reviewed_at`, `updated_at`) VALUES
+	(1, 2, 1, '10.60.115.19710.60.115.19710.60.115.19710.60.115.19710.60.115.19710.60.115.19710.60.115.19710.60.115.197', 'Pending', NULL, '2026-03-25 04:34:56', NULL, '2026-03-25 04:34:56'),
+	(2, 5, 1, 'itufyuguiSample PostSample PostSample PostSample PostSample PostSample PostSample PostSample PostSample PostSample Post', 'Pending', NULL, '2026-03-25 06:01:42', NULL, NULL);
 
 -- Dumping structure for table carelink.job_posts
 CREATE TABLE IF NOT EXISTS `job_posts` (
@@ -281,12 +291,33 @@ CREATE TABLE IF NOT EXISTS `job_posts` (
   KEY `idx_status` (`status`),
   KEY `idx_search` (`municipality`,`status`,`employment_type`,`work_schedule`),
   KEY `fk_jposts_language` (`preferred_language_id`),
+  KEY `idx_status_expires` (`status`,`expires_at`),
   CONSTRAINT `fk_jposts_category` FOREIGN KEY (`category_id`) REFERENCES `ref_categories` (`category_id`),
   CONSTRAINT `fk_jposts_language` FOREIGN KEY (`preferred_language_id`) REFERENCES `ref_languages` (`language_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_jposts_parent` FOREIGN KEY (`parent_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.job_posts: ~0 rows (approximately)
+-- Dumping data for table carelink.job_posts: ~3 rows (approximately)
+INSERT INTO `job_posts` (`job_post_id`, `parent_id`, `category_id`, `title`, `description`, `employment_type`, `work_schedule`, `salary_offered`, `salary_period`, `benefits`, `province`, `municipality`, `barangay`, `preferred_religion`, `preferred_language_id`, `require_police_clearance`, `prefer_tesda_nc2`, `status`, `posted_at`, `expires_at`, `filled_at`, `updated_at`, `category_ids`, `job_ids`, `skill_ids`, `min_age`, `max_age`, `min_experience_years`, `start_date`, `work_hours`, `days_off`, `contract_duration`, `probation_period`, `provides_meals`, `provides_accommodation`, `provides_sss`, `provides_philhealth`, `provides_pagibig`, `vacation_days`, `sick_days`) VALUES
+	(2, 2, 3, 'Babysitter', 'We are looking for hire', 'Live-in', 'Any', 7000.00, 'Daily', 'Free Meal', 'Leyte', 'Isabela', 'San Jose', 'Roman Catholic', 8, 1, 1, 'Open', '2026-03-24 15:12:39', NULL, NULL, NULL, '["3", "4", "5", "1", "2", "6"]', '["4", "14", "6", "13", "8", "2", "1", "12"]', '["2", "4", "1", "13"]', 23, 56, 10, 'Mar 26, 2026', NULL, '["Tuesday"]', 'Indefinite', 'None', 1, 0, 0, 0, 1, 10, 10),
+	(3, 2, 3, 'Family Cook', 'Cook some Food', 'Any', 'Any', 6000.00, 'Monthly', '', 'Leyte', 'Isabela', 'San Jose', NULL, NULL, 1, 1, 'Open', '2026-03-25 04:56:24', NULL, NULL, NULL, '["3"]', '["6"]', '["11"]', 18, 65, 0, NULL, NULL, '[]', 'Indefinite', 'None', 0, 0, 0, 0, 0, 0, 0),
+	(4, 2, 4, 'Ironing Specialist', 'Looking For a gardener and tiglaba', 'Live-in', 'Full-time', 8000.00, 'Monthly', '', 'Leyte', 'Isabela', 'San Jose', NULL, NULL, 1, 1, 'Open', '2026-03-25 05:03:58', NULL, NULL, NULL, '["4", "5"]', '["11", "9"]', '[]', 24, 60, 0, 'Mar 31, 2026', NULL, '[]', 'Indefinite', 'None', 0, 0, 0, 0, 0, 0, 0),
+	(5, 9, 5, 'Laundry Person', 'Sample PostSample PostSample PostSample PostSample PostSample PostSample PostSample PostSample PostSample PostSample Post', 'Live-in', 'Any', 8000.00, 'Monthly', '', 'Leyte', 'Ormoc City', '', NULL, NULL, 1, 1, 'Open', '2026-03-25 05:58:55', NULL, NULL, NULL, '["5"]', '["10"]', '["16", "18", "17"]', 25, 65, 0, 'Apr 10, 2026', NULL, '[]', 'Indefinite', 'None', 0, 0, 0, 0, 0, 0, 0);
+
+-- Dumping structure for table carelink.job_views
+CREATE TABLE IF NOT EXISTS `job_views` (
+  `view_id` int NOT NULL AUTO_INCREMENT,
+  `helper_id` int NOT NULL,
+  `job_post_id` int NOT NULL,
+  `viewed_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`view_id`),
+  KEY `idx_helper_time` (`helper_id`,`viewed_at`),
+  KEY `idx_job` (`job_post_id`),
+  CONSTRAINT `job_views_ibfk_1` FOREIGN KEY (`helper_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  CONSTRAINT `job_views_ibfk_2` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table carelink.job_views: ~0 rows (approximately)
 
 -- Dumping structure for table carelink.log_trail
 CREATE TABLE IF NOT EXISTS `log_trail` (
@@ -303,9 +334,9 @@ CREATE TABLE IF NOT EXISTS `log_trail` (
   KEY `idx_user` (`user_id`),
   KEY `idx_action` (`action`),
   CONSTRAINT `fk_log_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=145 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.log_trail: ~40 rows (approximately)
+-- Dumping data for table carelink.log_trail: ~128 rows (approximately)
 INSERT INTO `log_trail` (`log_id`, `user_id`, `action`, `module`, `record_id`, `status`, `ip_address`, `device_info`, `created_at`) VALUES
 	(1, 1, 'LOGIN', NULL, NULL, '', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-02 01:44:42'),
 	(2, 1, 'LOGIN', NULL, NULL, '', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-02 01:44:47'),
@@ -346,7 +377,111 @@ INSERT INTO `log_trail` (`log_id`, `user_id`, `action`, `module`, `record_id`, `
 	(37, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-08 03:52:45'),
 	(38, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-08 04:56:19'),
 	(39, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-08 04:56:23'),
-	(40, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-08 04:56:34');
+	(40, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-08 04:56:34'),
+	(41, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/145.0.0.0', '2026-03-14 12:01:07'),
+	(42, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-14 12:01:31'),
+	(43, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-14 12:04:27'),
+	(44, 1, 'UPLOAD_DOCUMENTS', 'Documents', NULL, 'Success', NULL, NULL, '2026-03-14 12:06:02'),
+	(45, 1, 'UPLOAD_DOCUMENTS', 'Documents', NULL, 'Success', NULL, NULL, '2026-03-14 12:06:29'),
+	(46, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-14 12:14:05'),
+	(47, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-14 12:15:01'),
+	(48, 1, 'LOGIN', 'Auth', NULL, 'Success', '192.168.1.104', 'okhttp/4.12.0', '2026-03-14 15:06:11'),
+	(49, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-14 15:06:58'),
+	(50, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/145.0.0.0', '2026-03-14 15:24:16'),
+	(51, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-14 15:24:37'),
+	(52, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-14 15:48:31'),
+	(53, 4, 'LOGIN', 'Auth', NULL, 'Success', '192.168.1.104', 'okhttp/4.12.0', '2026-03-14 15:51:23'),
+	(54, 1, 'LOGIN', 'Auth', NULL, 'Success', '192.168.1.104', 'okhttp/4.12.0', '2026-03-14 15:51:41'),
+	(55, 1, 'LOGIN', 'Auth', NULL, 'Success', '192.168.1.104', 'okhttp/4.12.0', '2026-03-14 16:22:14'),
+	(56, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-14 16:27:55'),
+	(57, 1, 'LOGIN', 'Auth', NULL, 'Success', '192.168.1.104', 'okhttp/4.12.0', '2026-03-14 16:28:52'),
+	(58, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-14 16:29:29'),
+	(59, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 06:06:11'),
+	(60, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 06:06:46'),
+	(61, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 06:08:50'),
+	(62, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 06:09:04'),
+	(63, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 06:09:45'),
+	(64, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 06:43:09'),
+	(65, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/145.0.0.0', '2026-03-15 06:54:39'),
+	(66, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/145.0.0.0', '2026-03-15 09:44:49'),
+	(67, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/145.0.0.0', '2026-03-15 09:46:23'),
+	(68, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/145.0.0.0', '2026-03-15 09:48:52'),
+	(69, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/145.0.0.0', '2026-03-15 09:49:02'),
+	(70, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 10:50:25'),
+	(71, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 10:52:23'),
+	(72, 2, 'LOGIN', 'Auth', NULL, 'Failed', '192.168.1.104', 'okhttp/4.12.0', '2026-03-15 11:37:23'),
+	(73, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 15:12:24'),
+	(74, 1, 'LOGIN', 'Auth', NULL, 'Success', '192.168.1.104', 'okhttp/4.12.0', '2026-03-15 15:39:42'),
+	(75, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 15:57:23'),
+	(76, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 15:57:29'),
+	(77, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 16:01:36'),
+	(78, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 16:01:42'),
+	(79, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 16:05:36'),
+	(80, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/145.0.0.0', '2026-03-15 16:06:47'),
+	(81, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 16:27:02'),
+	(82, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 16:52:59'),
+	(83, 2, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 16:58:41'),
+	(84, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 17:16:51'),
+	(85, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-15 17:17:51'),
+	(86, 2, 'LOGIN', 'Auth', NULL, 'Success', '192.168.1.104', 'okhttp/4.12.0', '2026-03-16 03:32:42'),
+	(87, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-16 07:48:02'),
+	(88, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-16 07:55:08'),
+	(89, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-16 07:56:11'),
+	(90, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-16 08:16:55'),
+	(91, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-16 08:20:54'),
+	(92, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/146.0.0.0', '2026-03-16 08:30:53'),
+	(93, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-16 08:45:40'),
+	(94, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-16 09:17:17'),
+	(95, 2, 'LOGIN', 'Auth', NULL, 'Success', '10.27.81.215', 'okhttp/4.12.0', '2026-03-17 09:20:29'),
+	(96, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-17 09:23:01'),
+	(97, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-18 02:03:23'),
+	(98, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-19 00:28:03'),
+	(99, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/146.0.0.0', '2026-03-19 01:02:02'),
+	(100, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-19 01:02:43'),
+	(101, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/146.0.0.0', '2026-03-19 01:44:46'),
+	(102, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-20 10:43:04'),
+	(103, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-22 15:26:50'),
+	(104, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-24 13:26:03'),
+	(105, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-24 15:07:29'),
+	(106, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-24 15:13:01'),
+	(107, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-24 15:19:19'),
+	(108, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-24 15:20:09'),
+	(109, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/146.0.0.0', '2026-03-24 15:21:27'),
+	(110, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-24 15:38:07'),
+	(111, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/146.0.0.0', '2026-03-24 17:14:38'),
+	(112, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/146.0.0.0', '2026-03-24 17:14:58'),
+	(113, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/146.0.0.0', '2026-03-24 17:15:59'),
+	(114, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/146.0.0.0', '2026-03-24 17:17:23'),
+	(115, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 01:26:53'),
+	(116, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 01:50:17'),
+	(117, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 01:50:56'),
+	(118, 1, 'LOGIN', 'Auth', NULL, 'Success', '10.60.115.17', 'okhttp/4.12.0', '2026-03-25 02:46:12'),
+	(119, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/146.0.0.0', '2026-03-25 04:34:35'),
+	(120, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 04:35:09'),
+	(121, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 04:56:36'),
+	(122, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 05:02:53'),
+	(123, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 05:04:08'),
+	(124, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 05:36:55'),
+	(125, 9, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 05:55:21'),
+	(126, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 05:56:49'),
+	(127, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 05:57:22'),
+	(128, 9, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 05:57:43'),
+	(129, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 05:59:55'),
+	(130, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 13:34:06'),
+	(131, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 13:39:28'),
+	(132, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 13:40:16'),
+	(133, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 17:00:30'),
+	(134, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 17:00:44'),
+	(135, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-25 17:03:56'),
+	(136, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-26 08:17:14'),
+	(137, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-26 08:17:24'),
+	(138, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-26 09:36:15'),
+	(139, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-26 09:36:26'),
+	(140, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-26 09:37:03'),
+	(141, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-26 09:37:38'),
+	(142, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-26 09:37:55'),
+	(143, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-28 16:37:15'),
+	(144, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0', '2026-03-28 16:37:49');
 
 -- Dumping structure for table carelink.messages
 CREATE TABLE IF NOT EXISTS `messages` (
@@ -382,9 +517,11 @@ CREATE TABLE IF NOT EXISTS `parent_children` (
   PRIMARY KEY (`child_id`),
   KEY `idx_profile` (`profile_id`),
   CONSTRAINT `fk_pchildren_profile` FOREIGN KEY (`profile_id`) REFERENCES `parent_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.parent_children: ~0 rows (approximately)
+-- Dumping data for table carelink.parent_children: ~1 rows (approximately)
+INSERT INTO `parent_children` (`child_id`, `profile_id`, `age`, `gender`, `special_needs`, `created_at`, `updated_at`) VALUES
+	(7, 1, 18, 'Male', 'Autism', '2026-03-15 16:38:01', NULL);
 
 -- Dumping structure for table carelink.parent_elderly
 CREATE TABLE IF NOT EXISTS `parent_elderly` (
@@ -399,9 +536,11 @@ CREATE TABLE IF NOT EXISTS `parent_elderly` (
   PRIMARY KEY (`elderly_id`),
   KEY `idx_profile` (`profile_id`),
   CONSTRAINT `fk_pelderly_profile` FOREIGN KEY (`profile_id`) REFERENCES `parent_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table carelink.parent_elderly: ~0 rows (approximately)
+INSERT INTO `parent_elderly` (`elderly_id`, `profile_id`, `age`, `gender`, `condition`, `care_level`, `created_at`, `updated_at`) VALUES
+	(1, 1, 61, 'Female', 'Bedridden', 'Fully Dependent', '2026-03-15 16:38:01', NULL);
 
 -- Dumping structure for table carelink.parent_household
 CREATE TABLE IF NOT EXISTS `parent_household` (
@@ -417,20 +556,22 @@ CREATE TABLE IF NOT EXISTS `parent_household` (
   PRIMARY KEY (`household_id`),
   UNIQUE KEY `uk_profile_id` (`profile_id`),
   CONSTRAINT `fk_phousehold_profile` FOREIGN KEY (`profile_id`) REFERENCES `parent_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.parent_household: ~0 rows (approximately)
+-- Dumping data for table carelink.parent_household: ~1 rows (approximately)
+INSERT INTO `parent_household` (`household_id`, `profile_id`, `household_size`, `has_children`, `has_elderly`, `has_pets`, `pet_details`, `created_at`, `updated_at`) VALUES
+	(1, 1, 10, 1, 1, 1, '2 dogs german cut', '2026-03-15 10:54:38', '2026-03-15 16:38:01');
 
 -- Dumping structure for table carelink.parent_profiles
 CREATE TABLE IF NOT EXISTS `parent_profiles` (
   `profile_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
-  `contact_number` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `contact_number` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `profile_image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `province` varchar(100) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Leyte',
-  `municipality` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `barangay` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `address` text COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Auto-generated: barangay, municipality, province',
+  `municipality` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `barangay` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT 'Auto-generated: barangay, municipality, province',
   `landmark` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `bio` text COLLATE utf8mb4_general_ci COMMENT 'Short intro about the family',
   `verification_status` enum('Unverified','Pending','Verified','Rejected') COLLATE utf8mb4_general_ci DEFAULT 'Unverified',
@@ -439,11 +580,12 @@ CREATE TABLE IF NOT EXISTS `parent_profiles` (
   PRIMARY KEY (`profile_id`),
   UNIQUE KEY `uk_user_id` (`user_id`),
   CONSTRAINT `fk_pprofile_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.parent_profiles: ~1 rows (approximately)
+-- Dumping data for table carelink.parent_profiles: ~2 rows (approximately)
 INSERT INTO `parent_profiles` (`profile_id`, `user_id`, `contact_number`, `profile_image`, `province`, `municipality`, `barangay`, `address`, `landmark`, `bio`, `verification_status`, `created_at`, `updated_at`) VALUES
-	(1, 2, '', NULL, 'Leyte', '', '', '', NULL, NULL, 'Unverified', '2026-03-05 10:16:53', NULL);
+	(1, 2, '09396954318', 'http://localhost/carelink_api/uploads/profiles/parentProfile_2_1773577099.jpg', 'Leyte', 'Isabela', 'San Jose', 'San Jose, Isabela, Leyte', 'Near our House', 'Test Bio', 'Verified', '2026-03-05 10:16:53', '2026-03-15 17:17:09'),
+	(2, 9, NULL, NULL, 'Leyte', NULL, NULL, NULL, NULL, NULL, 'Verified', '2026-03-25 05:54:51', '2026-03-25 05:57:13');
 
 -- Dumping structure for table carelink.peso_reports
 CREATE TABLE IF NOT EXISTS `peso_reports` (
@@ -628,6 +770,25 @@ INSERT INTO `ref_skills` (`skill_id`, `job_id`, `skill_name`, `description`) VAL
 	(20, 12, 'Bedridden Patient Care', 'Turning, sponge baths, and hygiene for bed patients'),
 	(21, 12, 'Dementia / Alzheimer Care', 'Patience-based care and safety supervision');
 
+-- Dumping structure for table carelink.saved_jobs
+CREATE TABLE IF NOT EXISTS `saved_jobs` (
+  `saved_id` int NOT NULL AUTO_INCREMENT,
+  `helper_id` int NOT NULL,
+  `job_post_id` int NOT NULL,
+  `saved_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`saved_id`),
+  UNIQUE KEY `unique_save` (`helper_id`,`job_post_id`),
+  KEY `idx_helper` (`helper_id`),
+  KEY `idx_job` (`job_post_id`),
+  KEY `idx_saved_at` (`saved_at`),
+  CONSTRAINT `saved_jobs_ibfk_1` FOREIGN KEY (`helper_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  CONSTRAINT `saved_jobs_ibfk_2` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table carelink.saved_jobs: ~0 rows (approximately)
+INSERT INTO `saved_jobs` (`saved_id`, `helper_id`, `job_post_id`, `saved_at`) VALUES
+	(1, 1, 2, '2026-03-25 01:30:58');
+
 -- Dumping structure for table carelink.saved_profiles
 CREATE TABLE IF NOT EXISTS `saved_profiles` (
   `save_id` int NOT NULL AUTO_INCREMENT,
@@ -642,6 +803,22 @@ CREATE TABLE IF NOT EXISTS `saved_profiles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table carelink.saved_profiles: ~0 rows (approximately)
+
+-- Dumping structure for table carelink.saved_searches
+CREATE TABLE IF NOT EXISTS `saved_searches` (
+  `search_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `search_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `search_filters` json DEFAULT NULL,
+  `alert_enabled` tinyint(1) DEFAULT '0',
+  `alert_frequency` enum('instant','daily','weekly') COLLATE utf8mb4_unicode_ci DEFAULT 'daily',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`search_id`),
+  KEY `idx_user` (`user_id`),
+  CONSTRAINT `saved_searches_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table carelink.saved_searches: ~0 rows (approximately)
 
 -- Dumping structure for table carelink.users
 CREATE TABLE IF NOT EXISTS `users` (
@@ -662,15 +839,16 @@ CREATE TABLE IF NOT EXISTS `users` (
   UNIQUE KEY `uk_email` (`email`),
   KEY `idx_usertype` (`user_type`),
   KEY `idx_status` (`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.users: ~5 rows (approximately)
+-- Dumping data for table carelink.users: ~6 rows (approximately)
 INSERT INTO `users` (`user_id`, `email`, `username`, `password`, `first_name`, `middle_name`, `last_name`, `user_type`, `status`, `profile_completed`, `created_at`, `updated_at`, `last_login`) VALUES
-	(1, 'sean@gmail.com', 'sean3656', '$2y$10$ix2Ys48ZgJFPe5J9MiTUtO0Mq8r4LO4kZ.3KhXvL3Iqbfh1tjS6eG', 'Sean Howie', '', 'Eulogio', 'helper', 'approved', 0, '2026-03-02 01:44:36', '2026-03-07 16:09:03', NULL),
-	(2, 'kirby@gmail.com', 'kirby1942', '$2y$10$/kaQADUGo.YF61535.m3RuLiZaJGjmQidyie6IpfMVO5yDk5IR0Lm', 'Kirby', 'Baguion', 'Calderon', 'parent', 'pending', 0, '2026-03-05 10:16:53', NULL, NULL),
-	(3, 'jess@carelink.com', 'jess123', 'Jess#1234', 'Jess', 'Baguion', 'Almene', 'admin', 'approved', 1, '2026-03-05 13:09:38', NULL, NULL),
-	(4, 'gabriel@peso.com', 'gabriel1234', 'Gabriel#123', 'Gabriel', NULL, 'Suarez', 'peso', 'approved', 1, '2026-03-05 13:52:11', NULL, NULL),
-	(5, 'jarid@carelink.com', 'jarid606', '$2y$10$ZRmzSar3WfZJg0Y6TPlEPeH8JNBCjLNIM.232lCmA86qYkXZMka7W', 'Jarid', '', 'Lumangtad', 'admin', 'approved', 1, '2026-03-06 13:46:25', NULL, NULL);
+	(1, 'sean@gmail.com', 'sean3656', '$2y$10$ix2Ys48ZgJFPe5J9MiTUtO0Mq8r4LO4kZ.3KhXvL3Iqbfh1tjS6eG', 'Sean Howie', 'Genshin Impact', 'Eulogio', 'helper', 'approved', 0, '2026-03-02 01:44:36', '2026-03-24 15:07:15', NULL),
+	(2, 'kirby@gmail.com', 'kirby1942', '$2y$10$/kaQADUGo.YF61535.m3RuLiZaJGjmQidyie6IpfMVO5yDk5IR0Lm', 'Kirby', 'Baguion', 'Calderon', 'parent', 'approved', 0, '2026-03-05 10:16:53', '2026-03-15 17:17:09', NULL),
+	(3, 'jess@carelink.com', 'jess123', '$2y$10$ASsCdY8WMNQRxUK8.PU/FukYJhHabfbZgB1xLufF6TMzbsMONCywW', 'Jess', 'Baguion', 'Almene', 'admin', 'approved', 1, '2026-03-05 13:09:38', '2026-03-15 06:07:20', NULL),
+	(4, 'gabriel@peso.com', 'gabriel1234', '$2y$10$AyQ.MzYEngRYjmxhNE3kNO1qkr8ikXYMGEfI2Khvlym5ctz1AZKh2', 'Gabriel', NULL, 'Suarez', 'peso', 'approved', 1, '2026-03-05 13:52:11', '2026-03-15 06:07:20', NULL),
+	(5, 'jarid@carelink.com', 'jarid606', '$2y$10$ZRmzSar3WfZJg0Y6TPlEPeH8JNBCjLNIM.232lCmA86qYkXZMka7W', 'Jarid', '', 'Lumangtad', 'admin', 'approved', 1, '2026-03-06 13:46:25', NULL, NULL),
+	(9, 'newparent@gmail.com', 'newparent9599', '$2y$10$l0CEbqL.9JP1ynumGJC6aO65VKuA92BXq7NVxTJl/RWNgyFnRebRi', 'New', '', 'Parent', 'parent', 'approved', 0, '2026-03-25 05:54:51', '2026-03-25 05:57:13', NULL);
 
 -- Dumping structure for table carelink.user_documents
 CREATE TABLE IF NOT EXISTS `user_documents` (
@@ -694,12 +872,18 @@ CREATE TABLE IF NOT EXISTS `user_documents` (
   KEY `idx_verified_by` (`verified_by`),
   CONSTRAINT `fk_udocs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_udocs_verified_by` FOREIGN KEY (`verified_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.user_documents: ~2 rows (approximately)
+-- Dumping data for table carelink.user_documents: ~8 rows (approximately)
 INSERT INTO `user_documents` (`document_id`, `user_id`, `document_type`, `file_path`, `id_type`, `expiry_date`, `status`, `ai_verification_status`, `ai_confidence_score`, `rejection_reason`, `verified_by`, `verified_at`, `uploaded_at`, `updated_at`) VALUES
-	(1, 1, 'Barangay Clearance', 'barangay_1_1772811587.png', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, NULL, '2026-03-07 15:37:07', '2026-03-06 15:39:47', '2026-03-07 15:37:07'),
-	(2, 1, 'Valid ID', 'valid_id_1_1772811587.png', 'PhilSys', NULL, 'Verified', 'Unchecked', NULL, NULL, NULL, '2026-03-07 15:37:10', '2026-03-06 15:39:47', '2026-03-07 15:37:10');
+	(1, 1, 'Barangay Clearance', 'barangay_1_1773489962.jpg', NULL, NULL, 'Pending', 'Unchecked', NULL, NULL, NULL, '2026-03-07 15:37:07', '2026-03-14 12:06:02', '2026-03-14 12:06:02'),
+	(2, 1, 'Valid ID', 'valid_id_1_1773489962.png', 'PhilSys', NULL, 'Pending', 'Unchecked', NULL, NULL, NULL, '2026-03-07 15:37:10', '2026-03-14 12:06:02', '2026-03-14 12:06:02'),
+	(3, 1, 'Police Clearance', 'police_1_1773489989.jpg', NULL, NULL, 'Pending', 'Unchecked', NULL, NULL, NULL, NULL, '2026-03-14 12:06:29', NULL),
+	(4, 1, 'TESDA NC2', 'tesda_1_1773489989.jpg', NULL, NULL, 'Pending', 'Unchecked', NULL, NULL, NULL, NULL, '2026-03-14 12:06:29', NULL),
+	(7, 2, 'Valid ID', 'parent_validid_2_1773594913.jpg', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, NULL, '2026-03-15 17:17:06', '2026-03-15 17:15:13', '2026-03-15 17:17:06'),
+	(8, 2, 'Barangay Clearance', 'parent_brgy_2_1773594913.png', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, NULL, '2026-03-15 17:17:03', '2026-03-15 17:15:13', '2026-03-15 17:17:03'),
+	(9, 9, 'Valid ID', 'parent_validid_9_1774418179.jpg', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, NULL, '2026-03-25 05:57:07', '2026-03-25 05:56:19', '2026-03-25 05:57:07'),
+	(10, 9, 'Barangay Clearance', 'parent_brgy_9_1774418179.jpg', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, NULL, '2026-03-25 05:57:10', '2026-03-25 05:56:19', '2026-03-25 05:57:10');
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;

@@ -1,6 +1,6 @@
 <?php
 // carelink_api/parent/post_job.php
-// FIXED: Handles native JSON arrays and maps all 34 parameters perfectly
+// FIXED: Handles native JSON arrays, maps all 34 parameters perfectly, AND prevents duplicates
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -96,17 +96,36 @@ try {
         sendResponse(false, 'Your account must be verified before posting jobs');
     }
 
-    // Encode arrays into JSON strings to store them safely in the DB
-    $category_ids_json = json_encode($category_ids);
-    $job_ids_json = json_encode($job_ids);
-    $skill_ids_json = json_encode(is_array($data['skill_ids'] ?? null) ? $data['skill_ids'] : []);
-    $days_off_json = json_encode(is_array($data['days_off'] ?? null) ? $data['days_off'] : []);
-
     // Prepare job post data
     $final_title = $title;
     if ($custom_job_title) {
         $final_title = $title ? "$title ($custom_job_title)" : $custom_job_title;
     }
+
+    // ==========================================
+    // NEW: PREVENT DUPLICATE JOB POSTINGS
+    // ==========================================
+    $check_stmt = mysqli_prepare($conn, "
+        SELECT job_post_id 
+        FROM job_posts 
+        WHERE parent_id = ? AND category_id = ? AND title = ? AND status = 'Open'
+    ");
+    mysqli_stmt_bind_param($check_stmt, 'iis', $parent_id, $primary_  category_id, $final_title);
+    mysqli_stmt_execute($check_stmt);
+    $check_result = mysqli_stmt_get_result($check_stmt);
+
+    if (mysqli_fetch_assoc($check_result)) {
+        mysqli_stmt_close($check_stmt);
+        sendResponse(false, 'You already have an active job post for this exact position. Please edit your existing post or close it before creating a new one.');
+    }
+    mysqli_stmt_close($check_stmt);
+    // ==========================================
+
+    // Encode arrays into JSON strings to store them safely in the DB
+    $category_ids_json = json_encode($category_ids);
+    $job_ids_json = json_encode($job_ids);
+    $skill_ids_json = json_encode(is_array($data['skill_ids'] ?? null) ? $data['skill_ids'] : []);
+    $days_off_json = json_encode(is_array($data['days_off'] ?? null) ? $data['days_off'] : []);
 
     $description = trim($data['description']);
     $employment_type = $data['employment_type'] ?? 'Any';

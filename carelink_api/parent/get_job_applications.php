@@ -48,6 +48,7 @@ try {
         throw new Exception('Job post ID is required');
     }
    
+    // YOUR FIXED QUERY
     $sql = "
         SELECT
             ja.*,
@@ -68,7 +69,8 @@ try {
         INNER JOIN users u ON ja.helper_id = u.user_id
         INNER JOIN helper_profiles hp ON u.user_id = hp.user_id
         LEFT JOIN helper_jobs hj ON hp.profile_id = hj.profile_id
-        LEFT JOIN ref_categories rc ON hj.category_id = rc.category_id
+        LEFT JOIN ref_jobs rj ON hj.job_id = rj.job_id
+        LEFT JOIN ref_categories rc ON rj.category_id = rc.category_id
         WHERE ja.job_post_id = ?
         GROUP BY ja.application_id
         ORDER BY
@@ -122,4 +124,4 @@ try {
 if (isset($conn) && $conn) {
     $conn->close();
 }
-?>
+?> 
