@@ -96,7 +96,7 @@ export function HelperProfileModal({
 
               {/* Categories */}
               <View style={styles.categoriesContainer}>
-                {helper.categories.map((category, index) => (
+                {helper.categories?.map((category, index) => (
                   <View key={index} style={styles.categoryChip}>
                     <Text style={styles.categoryText}>{category}</Text>
                   </View>

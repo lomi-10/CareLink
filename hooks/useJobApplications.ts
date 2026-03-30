@@ -1,5 +1,5 @@
 // hooks/useJobApplications.ts
-// UPDATED - Also checks if parent has posted any jobs
+// UPDATED - Added updateApplicationStatus to handle Shortlist/Reject actions
 
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -43,8 +43,6 @@ export function useJobApplications(jobPostId: string) {
       fetchApplications();
     } else {
       console.log('[useJobApplications] No jobPostId provided - showing empty state');
-      // Don't set error, just set loading to false
-      // This allows the screen to show the "no jobs posted" message
       setLoading(false);
       setApplications([]);
     }
@@ -90,50 +88,68 @@ export function useJobApplications(jobPostId: string) {
 
       const response = await fetch(url);
       
-      console.log('[useJobApplications] Response status:', response.status);
-      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const text = await response.text();
-      console.log('[useJobApplications] Raw response:', text.substring(0, 200));
-
       let data;
       try {
         data = JSON.parse(text);
       } catch (parseError) {
-        console.error('[useJobApplications] JSON parse error:', parseError);
-        console.error('[useJobApplications] Response text:', text);
         throw new Error('Invalid JSON response from server');
       }
 
-      console.log('[useJobApplications] Parsed data:', {
-        success: data.success,
-        applicationsCount: data.applications?.length || 0,
-      });
-
       if (data.success) {
         const apps = data.applications || [];
-        console.log('[useJobApplications] Setting applications:', apps.length);
         setApplications(apps);
         setError(null);
       } else {
-        console.error('[useJobApplications] API returned success=false:', data.message);
         throw new Error(data.message || 'Failed to load applications');
       }
     } catch (err: any) {
-      console.error('[useJobApplications] Error caught:', err);
-      console.error('[useJobApplications] Error details:', {
-        message: err.message,
-        stack: err.stack,
-      });
-      
       setError(err.message || 'Failed to load applications');
       setApplications([]);
     } finally {
-      console.log('[useJobApplications] Fetch complete, setting loading=false');
       setLoading(false);
+    }
+  };
+
+  // ==========================================
+  // NEW: Update Application Status Function
+  // ==========================================
+  const updateApplicationStatus = async (
+    applicationId: string, 
+    newStatus: 'Pending' | 'Reviewed' | 'Shortlisted' | 'Interview Scheduled' | 'Accepted' | 'Rejected' | 'Withdrawn'
+  ) => {
+    try {
+      const response = await fetch(`${API_URL}/parent/update_application_status.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          application_id: applicationId,
+          status: newStatus
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // INSTANT UI UPDATE: Modify the array locally so the screen updates instantly
+        setApplications(prevApps => 
+          prevApps.map(app => 
+            app.application_id === applicationId 
+              ? { ...app, status: newStatus } 
+              : app
+          )
+        );
+        return { success: true };
+      } else {
+        throw new Error(data.message || 'Failed to update application status');
+      }
+    } catch (err: any) {
+      console.error('[useJobApplications] Error updating status:', err);
+      throw err;
     }
   };
 
@@ -162,6 +178,7 @@ export function useJobApplications(jobPostId: string) {
     checkingJobs,
     refresh: fetchApplications,
     getApplicationsByStatus,
+    updateApplicationStatus, // EXPORTED SO YOUR SCREEN CAN USE IT
     stats: getStats(),
   };
 }

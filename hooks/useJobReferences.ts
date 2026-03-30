@@ -39,6 +39,7 @@ export function useJobReferences() {
     'Iglesia ni Cristo',
     'Protestant',
     'Buddhist',
+    'Mormoons',
     'Other',
     'No Preference',
   ]);

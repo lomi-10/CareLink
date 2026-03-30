@@ -38,7 +38,8 @@ import {
 
 // Common Components
 import {NotificationModal, LoadingSpinner, ConfirmationModal} from '@/components/common/';
-import EditHelperProfileModal from '@/components/profile/EditProfileModal';
+//import EditHelperProfileModal from '@/components/profile/EditProfileModal';
+import EditHelperProfileModal from '@/components/helper/profile/profileEditModal/EditHelperProfileModal';
 import HelperDocumentModal from '@/components/profile/DocumentManagementModal';
 
 export default function HelperProfile() {
