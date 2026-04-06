@@ -29,7 +29,7 @@ export default function AdminLogsScreen() {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/admin_get_logs.php`);
+      const response = await fetch(`${API_URL}/admin/admin_get_logs.php`);
       const data = await response.json();
       setLogs(Array.isArray(data) ? data : []);
     } catch (error) {

@@ -157,7 +157,7 @@ export default function HelperHome() {
           <QuickAction icon="search" label="Find Jobs" color="#007AFF" onPress={() => router.push('/(helper)/browse_jobs')} />
           <QuickAction icon="person" label="My Profile" color="#FF9500" onPress={() => router.push('/(helper)/profile')} />
           <QuickAction icon="chatbubbles" label="Messages" color="#34C759" onPress={() => router.push('/(helper)/messages')} />
-          <QuickAction icon="document" label="Documents" color="#9C27B0" onPress={() => router.push('/(helper)/documents')} />
+          <QuickAction icon="document" label="Documents" color="#9C27B0" onPress={() => router.push('/(helper)/profile')} />
         </View>
       </ScrollView>
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} stats={stats} handleLogout={initiateLogout} />

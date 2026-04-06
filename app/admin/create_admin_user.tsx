@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
-import NotificationModal from "../../components/common/NotificationModal";
+import {NotificationModal} from "../../components/common";
 import API_URL from "../../constants/api";
 
 export default function CreateAdminUserScreen() {

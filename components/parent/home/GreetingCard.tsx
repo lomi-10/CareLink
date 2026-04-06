@@ -38,9 +38,11 @@ export function GreetingCard({ userName }: GreetingCardProps) {
 
 const styles = StyleSheet.create({
   greetingCard: {
+    flexDirection: 'row',
     borderRadius: 20,
     padding: 24,
     marginBottom: 20,
+    overflow: 'hidden',
   },
   blueGradient: {
     backgroundColor: '#007AFF',

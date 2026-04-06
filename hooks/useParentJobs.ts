@@ -8,6 +8,7 @@ import API_URL from '../constants/api';
 export interface JobPost {
   job_post_id: string;
   title: string;
+  custom_job_title?: string;
   description: string;
   category_id?: string;
   category_name?: string;
@@ -25,6 +26,20 @@ export interface JobPost {
   filled_at?: string;
   application_count: number;
   new_application_count: number;
+  
+  // --- ADDED THESE NEW FIELDS TO FIX TYPESCRIPT ERRORS ---
+  min_age?: number;
+  max_age?: number;
+  min_experience_years?: number;
+  require_police_clearance?: number | boolean;
+  prefer_tesda_nc2?: number | boolean;
+  provides_meals?: number | boolean;
+  provides_accommodation?: number | boolean;
+  provides_sss?: number | boolean;
+  provides_philhealth?: number | boolean;
+  provides_pagibig?: number | boolean;
+  vacation_days?: number;
+  sick_days?: number;
 }
 
 export function useParentJobs() {

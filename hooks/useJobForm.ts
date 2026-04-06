@@ -1,49 +1,36 @@
 // hooks/useJobForm.ts
-// FIXED - Removed double-stringification for arrays
-
 import { useState } from 'react';
+import { Category } from './useJobReferences';
 
 export interface JobFormData {
-  // MULTI-SELECT: Category & Jobs & Skills
-  category_ids: string[];
+  // STRICT 1-to-1: Category & Job
+  category_id: string;
   job_ids: string[];
+  
+  // MULTI-SELECT: Skills & Days off
   skill_ids: string[];
+  days_off: string[];
+  
   custom_category: string;
   custom_job_title: string;
   custom_skill_title: string;
   title: string;
   description: string;
 
-  // Work Arrangement
   employment_type: 'Live-in' | 'Live-out' | 'Any';
   work_schedule: 'Full-time' | 'Part-time' | 'Any';
-
-  // Salary
   salary_offered: string;
   salary_period: 'Daily' | 'Monthly';
-
-  // Location
   province: string;
   municipality: string;
   barangay: string;
-
-  // Age Range
   min_age: number;
   max_age: number;
-
-  // Experience
   min_experience_years: number;
-
-  // Work Schedule Details
   start_date: string;
   work_hours: string;
-  days_off: string[];
-
-  // Contract Details
   contract_duration: string;
   probation_period: string;
-
-  // Benefits
   benefits: string;
   provides_meals: boolean;
   provides_accommodation: boolean;
@@ -52,18 +39,14 @@ export interface JobFormData {
   provides_pagibig: boolean;
   vacation_days: number;
   sick_days: number;
-
-  // Preferences
   preferred_religion: string;
   preferred_language_id: string;
-
-  // Requirements
   require_police_clearance: boolean;
   prefer_tesda_nc2: boolean;
 }
 
 const initialFormData: JobFormData = {
-  category_ids: [],
+  category_id: '',
   job_ids: [],
   skill_ids: [],
   custom_category: '',
@@ -71,29 +54,21 @@ const initialFormData: JobFormData = {
   custom_skill_title: '',
   title: '',
   description: '',
-  
   employment_type: 'Any',
   work_schedule: 'Any',
-  
   salary_offered: '',
   salary_period: 'Monthly',
-  
   province: 'Leyte',
   municipality: 'Ormoc City',
   barangay: '',
-  
   min_age: 18,
   max_age: 65,
-  
   min_experience_years: 0,
-  
   start_date: '',
   work_hours: '',
   days_off: [],
-  
   contract_duration: 'Indefinite',
   probation_period: 'None',
-  
   benefits: '',
   provides_meals: false,
   provides_accommodation: false,
@@ -102,10 +77,8 @@ const initialFormData: JobFormData = {
   provides_pagibig: false,
   vacation_days: 0,
   sick_days: 0,
-  
   preferred_religion: '',
   preferred_language_id: '',
-  
   require_police_clearance: false,
   prefer_tesda_nc2: false,
 };
@@ -125,14 +98,21 @@ export function useJobForm() {
     setFormData((prev) => ({ ...prev, ...updates }));
   };
 
-  const validate = (): boolean => {
+  const validate = (categories: Category[]): boolean => {
     const newErrors: Record<string, string> = {};
     
-    if (formData.category_ids.length === 0 && !formData.custom_category.trim()) {
-      newErrors.category = 'Please select at least one category';
+    // 1. DYNAMICALLY find the "Others" ID from the database
+    const othersCat = categories.find(c => c.name.toLowerCase() === 'others');
+    const OTHERS_CATEGORY_ID = othersCat ? othersCat.category_id.toString() : '';
+
+    // 2. USE the dynamic ID for validation
+    if (!formData.category_id) {
+      newErrors.category = 'Please select a category';
+    } else if (formData.category_id === OTHERS_CATEGORY_ID && !formData.custom_category?.trim()) {
+      newErrors.category = 'Please enter a custom category name';
     }
     
-    if (formData.job_ids.length === 0 && !formData.title.trim()) {
+    if (formData.job_ids.length === 0 && !formData.custom_job_title.trim()) {
       newErrors.title = 'Please select at least one job or enter a custom title';
     }
     
@@ -161,7 +141,6 @@ export function useJobForm() {
   };
 
   const populateForm = (data: any) => {
-    // Safely parse JSON strings from the DB back into native arrays
     const parseArray = (val: any) => {
       if (Array.isArray(val)) return val;
       if (typeof val === 'string') {
@@ -171,37 +150,30 @@ export function useJobForm() {
     };
 
     setFormData({
-      category_ids: parseArray(data.category_ids),
+      ...initialFormData,
+      // Pass IDs as strings for the UI
+      category_id: data.category_id ? data.category_id.toString() : '',
       job_ids: parseArray(data.job_ids),
       skill_ids: parseArray(data.skill_ids),
+      custom_job_title: data.custom_job_title || '',
       days_off: parseArray(data.days_off),
       
-      custom_category: data.custom_category || '',
-      custom_job_title: data.custom_job_title || '',
-      custom_skill_title: data.custom_skill_title || '',
       title: data.title || '',
       description: data.description || '',
-      
       employment_type: data.employment_type || 'Any',
       work_schedule: data.work_schedule || 'Any',
-      
       salary_offered: data.salary_offered ? data.salary_offered.toString() : '',
       salary_period: data.salary_period || 'Monthly',
-      
       province: data.province || 'Leyte',
       municipality: data.municipality || 'Ormoc City',
       barangay: data.barangay || '',
-      
       min_age: data.min_age || 18,
       max_age: data.max_age || 65,
       min_experience_years: data.min_experience_years || 0,
-      
       start_date: data.start_date || '',
       work_hours: data.work_hours || '',
-      
       contract_duration: data.contract_duration || 'Indefinite',
       probation_period: data.probation_period || 'None',
-      
       benefits: data.benefits || '',
       provides_meals: !!data.provides_meals,
       provides_accommodation: !!data.provides_accommodation,
@@ -210,10 +182,8 @@ export function useJobForm() {
       provides_pagibig: !!data.provides_pagibig,
       vacation_days: data.vacation_days || 0,
       sick_days: data.sick_days || 0,
-      
       preferred_religion: data.preferred_religion || '',
       preferred_language_id: data.preferred_language_id || '',
-      
       require_police_clearance: !!data.require_police_clearance,
       prefer_tesda_nc2: !!data.prefer_tesda_nc2,
     });
@@ -221,10 +191,10 @@ export function useJobForm() {
 
   const getSubmissionData = () => {
     return {
-      parent_id: '', // Will be filled by the component
+      parent_id: '', 
       
-      // FIXED: Send native arrays instead of JSON strings to prevent double-encoding
-      category_ids: formData.category_ids,
+      // Send single IDs
+      category_id: formData.category_id,
       job_ids: formData.job_ids,
       skill_ids: formData.skill_ids,
       days_off: formData.days_off,
@@ -237,24 +207,18 @@ export function useJobForm() {
       
       employment_type: formData.employment_type,
       work_schedule: formData.work_schedule,
-      
       salary_offered: parseFloat(formData.salary_offered),
       salary_period: formData.salary_period,
-      
       province: formData.province,
       municipality: formData.municipality.trim(),
       barangay: formData.barangay.trim() || null,
-      
       min_age: formData.min_age,
       max_age: formData.max_age,
       min_experience_years: formData.min_experience_years,
-      
       start_date: formData.start_date || null,
       work_hours: formData.work_hours || null,
-      
       contract_duration: formData.contract_duration || null,
       probation_period: formData.probation_period || null,
-      
       benefits: formData.benefits.trim() || null,
       provides_meals: formData.provides_meals ? 1 : 0,
       provides_accommodation: formData.provides_accommodation ? 1 : 0,
@@ -263,23 +227,12 @@ export function useJobForm() {
       provides_pagibig: formData.provides_pagibig ? 1 : 0,
       vacation_days: formData.vacation_days,
       sick_days: formData.sick_days,
-      
       preferred_religion: formData.preferred_religion || null,
       preferred_language_id: formData.preferred_language_id || null,
-      
       require_police_clearance: formData.require_police_clearance ? 1 : 0,
       prefer_tesda_nc2: formData.prefer_tesda_nc2 ? 1 : 0,
     };
   };
 
-  return {
-    formData,
-    errors,
-    updateField,
-    updateFields,
-    validate,
-    reset,
-    getSubmissionData,
-    populateForm,
-  };
+  return { formData, errors, updateField, updateFields, validate, reset, getSubmissionData, populateForm };
 }

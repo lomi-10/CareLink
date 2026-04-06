@@ -116,7 +116,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const [skillSearch, setSkillSearch] = useState('');
   const [languageSearch, setLanguageSearch] = useState('');
 
-  // ============================================================================
+  // =====   =======================================================================
   // COMPUTED VALUES (The Magic of the 3-Step Process)
   // ============================================================================
   useEffect(() => {

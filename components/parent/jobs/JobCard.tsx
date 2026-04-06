@@ -1,5 +1,4 @@
 // components/parent/jobs/JobCard.tsx
-// Individual job card for My Posted Jobs screen
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
@@ -9,6 +8,7 @@ import type { JobPost } from '@/hooks/useParentJobs';
 
 interface JobCardProps {
   job: JobPost;
+  onViewDetails: () => void; // <-- NEW PROP ADDED
   onViewApplications: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -17,6 +17,7 @@ interface JobCardProps {
 
 export function JobCard({
   job,
+  onViewDetails, // <-- EXTRACTED HERE
   onViewApplications,
   onEdit,
   onDelete,
@@ -35,54 +36,57 @@ export function JobCard({
     return `${Math.floor(diffInDays / 30)} months ago`;
   };
 
+  const displayCategory = job.custom_category || job.category_name;
+
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* --- HEADER --- */}
       <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={1}>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title} numberOfLines={2}>
             {job.title}
           </Text>
+          {displayCategory && (
+            <View style={styles.categoryPill}>
+              <Text style={styles.categoryText}>{displayCategory}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.statusContainer}>
           <JobStatusBadge status={job.status} />
         </View>
-
-        {job.category_name && (
-          <View style={styles.categoryPill}>
-            <Text style={styles.categoryText}>{job.category_name}</Text>
-          </View>
-        )}
       </View>
 
-      {/* Details */}
-      <View style={styles.details}>
-        <View style={styles.detailRow}>
-          <Ionicons name="cash-outline" size={14} color="#666" />
+      {/* --- MODERN DETAIL PILLS --- */}
+      <View style={styles.detailsGrid}>
+        <View style={styles.detailBadge}>
+          <Ionicons name="cash-outline" size={14} color="#6B7280" />
           <Text style={styles.detailText}>
-            ₱{job.salary_offered.toLocaleString()}/{job.salary_period}
+            ₱{job.salary_offered.toLocaleString()} / {job.salary_period}
           </Text>
         </View>
 
-        <View style={styles.detailRow}>
-          <Ionicons name="time-outline" size={14} color="#666" />
+        <View style={styles.detailBadge}>
+          <Ionicons name="briefcase-outline" size={14} color="#6B7280" />
           <Text style={styles.detailText}>
             {job.employment_type} • {job.work_schedule}
           </Text>
         </View>
 
-        <View style={styles.detailRow}>
-          <Ionicons name="location-outline" size={14} color="#666" />
+        <View style={styles.detailBadge}>
+          <Ionicons name="location-outline" size={14} color="#6B7280" />
           <Text style={styles.detailText}>
             {job.municipality}, {job.province}
           </Text>
         </View>
 
-        <View style={styles.detailRow}>
-          <Ionicons name="calendar-outline" size={14} color="#666" />
+        <View style={styles.detailBadge}>
+          <Ionicons name="time-outline" size={14} color="#6B7280" />
           <Text style={styles.detailText}>Posted {getTimeAgo(job.posted_at)}</Text>
         </View>
       </View>
 
-      {/* Applications Count */}
+      {/* --- APPLICATIONS CTA --- */}
       {job.status === 'Open' && job.application_count > 0 && (
         <TouchableOpacity
           style={styles.applicationsBar}
@@ -90,208 +94,237 @@ export function JobCard({
           activeOpacity={0.7}
         >
           <View style={styles.applicationsLeft}>
-            <Ionicons name="people" size={18} color="#007AFF" />
+            <View style={styles.applicationsIconWrapper}>
+              <Ionicons name="people" size={18} color="#1D4ED8" />
+            </View>
             <Text style={styles.applicationsText}>
-              {job.application_count}{' '}
-              {job.application_count === 1 ? 'application' : 'applications'}
+              {job.application_count} {job.application_count === 1 ? 'Applicant' : 'Applicants'}
             </Text>
             {job.new_application_count > 0 && (
               <View style={styles.newBadge}>
                 <Text style={styles.newBadgeText}>
-                  {job.new_application_count} new
+                  {job.new_application_count} New
                 </Text>
               </View>
             )}
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#007AFF" />
+          <Ionicons name="arrow-forward" size={18} color="#1D4ED8" />
         </TouchableOpacity>
       )}
 
-      {/* Actions */}
-      <View style={styles.actions}>
-        {job.status === 'Open' && (
-          <>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={onViewApplications}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="people-outline" size={16} color="#007AFF" />
-              <Text style={styles.actionButtonText}>Applications</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={onEdit}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="create-outline" size={16} color="#007AFF" />
-              <Text style={styles.actionButtonText}>Edit</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => onUpdateStatus('Closed')}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="close-circle-outline" size={16} color="#FF9500" />
-              <Text style={[styles.actionButtonText, { color: '#FF9500' }]}>
-                Close
-              </Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        {job.status === 'Filled' && job.filled_at && (
-          <View style={styles.filledInfo}>
-            <Ionicons name="checkmark-circle" size={16} color="#34C759" />
-            <Text style={styles.filledText}>
-              Filled on {new Date(job.filled_at).toLocaleDateString()}
-            </Text>
-          </View>
-        )}
-
-        {job.status === 'Closed' && (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => onUpdateStatus('Open')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="refresh-outline" size={16} color="#007AFF" />
-            <Text style={styles.actionButtonText}>Reopen</Text>
+      {/* --- ACTIONS FOOTER --- */}
+      <View style={styles.actionsFooter}>
+        <View style={styles.leftActions}>
+          {/* ALWAYS VISIBLE VIEW BUTTON */}
+          <TouchableOpacity style={styles.actionBtn} onPress={onViewDetails} activeOpacity={0.7}>
+            <Ionicons name="eye-outline" size={16} color="#4B5563" />
+            <Text style={styles.actionBtnText}>View</Text>
           </TouchableOpacity>
-        )}
 
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
-          onPress={onDelete}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="trash-outline" size={16} color="#FF3B30" />
-          <Text style={[styles.actionButtonText, { color: '#FF3B30' }]}>
-            Delete
-          </Text>
+          {job.status === 'Open' && (
+            <>
+              <TouchableOpacity style={styles.actionBtn} onPress={onEdit} activeOpacity={0.7}>
+                <Ionicons name="create-outline" size={16} color="#4B5563" />
+                <Text style={styles.actionBtnText}>Edit</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.actionBtn} onPress={() => onUpdateStatus('Closed')} activeOpacity={0.7}>
+                <Ionicons name="close-circle-outline" size={16} color="#D97706" />
+                <Text style={[styles.actionBtnText, { color: '#D97706' }]}>Close Job</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {job.status === 'Closed' && (
+            <TouchableOpacity style={styles.actionBtn} onPress={() => onUpdateStatus('Open')} activeOpacity={0.7}>
+              <Ionicons name="refresh-outline" size={16} color="#059669" />
+              <Text style={[styles.actionBtnText, { color: '#059669' }]}>Reopen</Text>
+            </TouchableOpacity>
+          )}
+
+          {job.status === 'Filled' && job.filled_at && (
+            <View style={styles.filledBadge}>
+              <Ionicons name="checkmark-circle" size={16} color="#059669" />
+              <Text style={styles.filledText}>
+                Filled on {new Date(job.filled_at).toLocaleDateString()}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} activeOpacity={0.7}>
+          <Ionicons name="trash-outline" size={16} color="#EF4444" />
+          <Text style={styles.deleteBtnText}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
+// ... Keep all the same styles from the previous code block ...
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
   header: {
-    marginBottom: 12,
-  },
-  titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 16,
+    gap: 12,
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: 'flex-start',
     gap: 8,
+  },
+  statusContainer: {
+    paddingTop: 4,
   },
   title: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1A1C1E',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+    lineHeight: 24,
   },
   categoryPill: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#EFF6FF',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
   categoryText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#1D4ED8',
   },
-  details: {
+  detailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 20,
   },
-  detailRow: {
+  detailBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
     gap: 6,
   },
   detailText: {
     fontSize: 13,
-    color: '#666',
+    fontWeight: '500',
+    color: '#4B5563',
   },
   applicationsBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F0F8FF',
+    backgroundColor: '#EFF6FF',
     padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
   },
   applicationsLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+  },
+  applicationsIconWrapper: {
+    backgroundColor: '#DBEAFE',
+    padding: 6,
+    borderRadius: 8,
   },
   applicationsText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#007AFF',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1D4ED8',
   },
   newBadge: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#EF4444',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   newBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#fff',
+    textTransform: 'uppercase',
   },
-  actions: {
+  actionsFooter: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    paddingTop: 12,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 16,
   },
-  actionButton: {
+  leftActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#F8F9FA',
+    flexWrap: 'wrap',
+    gap: 8,
+    flex: 1,
   },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  deleteButton: {
-    marginLeft: 'auto',
-  },
-  filledInfo: {
+  actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  actionBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+  },
+  deleteBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  filledBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   filledText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#34C759',
+    color: '#059669',
   },
 });

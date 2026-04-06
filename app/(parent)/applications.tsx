@@ -20,6 +20,7 @@ import { useJobApplications } from '@/hooks/useJobApplications';
 import { useParentJobs } from '@/hooks/useParentJobs';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuth } from '@/hooks/useAuth';
+import { useMasterData } from '@/hooks/useMasterData';
 
 // Components
 import { ApplicationCard } from '@/components/parent/jobs/ApplicationCard';
@@ -35,39 +36,36 @@ export default function JobApplications() {
   const { handleLogout } = useAuth();
 
   // ==========================================
-  // JOB SELECTION & FETCHING
+  // JOB SELECTION & FETCHING LOGIC
   // ==========================================
-  const { jobs } = useParentJobs();
   
-  const [selectedCategory, setSelectedCategory] = useState<string>('General Househelp');
-  const [selectedJobId, setSelectedJobId] = useState<string>((params.job_id as string) || '');
+  // 1. Fetch both datasets
+  const { masterCategories, masterJobs, loadingMaster } = useMasterData();
+  const { jobs: postedJobs } = useParentJobs(); // The jobs this parent actually posted
+  
+  // 2. Set default states to EMPTY so the user is forced to click
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedJobId, setSelectedJobId] = useState<string>('');
   
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isJobDropdownOpen, setIsJobDropdownOpen] = useState(false);
 
-  // 1. Get unique categories from the parent's posted jobs
-  const availableCategories = [
-    'General Household', 
-    ...Array.from(new Set(jobs.map(j => j.category_name).filter(c => c && c !== 'General Household')))
-  ];
-
-  // 2. Filter the jobs based on the selected category
-  const displayJobs = selectedCategory === 'General Household' 
-    ? jobs 
-    : jobs.filter(job => job.category_name === selectedCategory);
-
-  // 3. Auto-select the first job when the category changes
+  // 3. THE BUG FIX: Reset the Job ID when the Category changes
   useEffect(() => {
-    if (displayJobs.length > 0) {
-      const isCurrentJobInList = displayJobs.some(j => j.job_post_id === selectedJobId);
-      if (!isCurrentJobInList || !selectedJobId) {
-        setSelectedJobId(displayJobs[0].job_post_id);
+    if (selectedCategory) {
+      // When category changes, check if the currently selected job belongs to it
+      const jobStillValid = postedJobs.find(
+        (job: any) => job.job_post_id === selectedJobId && job.category_name === selectedCategory
+      );
+      
+      // If the job doesn't match the new category, clear it!
+      if (!jobStillValid) {
+        setSelectedJobId(''); 
       }
-    } else {
-      setSelectedJobId(''); // No jobs in this category
     }
-  }, [selectedCategory, jobs]);
+  }, [selectedCategory, postedJobs, selectedJobId]);
 
+  // 4. Fetch the applications based on the final selectedJobId
   const { 
     applications, 
     loading, 
@@ -80,17 +78,15 @@ export default function JobApplications() {
   } = useJobApplications(selectedJobId);
 
   // ==========================================
-  // UI STATES
+  // UI STATES & MODALS
   // ==========================================
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   
-  // Logout Modals State
   const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
   const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
 
-  // Profile & Status Update States
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [selectedHelper, setSelectedHelper] = useState<any>(null);
   const [notification, setNotification] = useState({ visible: false, message: '', type: 'success' as 'success'|'error' });
@@ -99,9 +95,6 @@ export default function JobApplications() {
     if (error) setErrorModalVisible(true);
   }, [error]);
 
-  // ==========================================
-  // HANDLERS
-  // ==========================================
   const initiateLogout = () => {
     setIsMobileMenuOpen(false);
     setConfirmLogoutVisible(true);
@@ -141,27 +134,21 @@ export default function JobApplications() {
     }
   };
 
-  // ==========================================
-  // MODALS GROUPING
-  // ==========================================
   const renderModals = () => (
     <>
       <NotificationModal visible={errorModalVisible} message={error || ''} type="error" onClose={() => setErrorModalVisible(false)} />
       <NotificationModal visible={notification.visible} message={notification.message} type={notification.type} onClose={() => setNotification({...notification, visible: false})} />
-      
       <ConfirmationModal visible={confirmLogoutVisible} title="Log Out" message="Are you sure you want to log out of your account?" confirmText="Log Out" cancelText="Cancel" type="danger" onConfirm={executeLogout} onCancel={() => setConfirmLogoutVisible(false)} />
       <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose={true} duration={1500} onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }} />
-      
       <HelperProfileModal visible={profileModalVisible} helper={selectedHelper} onClose={() => setProfileModalVisible(false)} onInvite={() => {}} />
     </>
   );
 
-  // 1. Loading State
-  if (loading || checkingJobs) {
+  // Added `loadingMaster` here so it doesn't crash while fetching master categories
+  if (loading || checkingJobs || loadingMaster) {
     return <LoadingSpinner visible={true} message="Loading applications..." />;
   }
 
-  // 2. Empty State (No jobs posted at all)
   if (!hasPostedJobs && !selectedJobId) {
     return (
       <SafeAreaView style={[styles.container, isDesktop && { flexDirection: 'row' }]}>
@@ -186,16 +173,28 @@ export default function JobApplications() {
     );
   }
 
-  // 3. Main Content Setup
   const filteredApps = getApplicationsByStatus(activeFilter);
 
+  // ==========================================
+  // TWO-STEP DROPDOWN UI
+  // ==========================================
   const JobSelector = () => {
-    const selectedJob = jobs.find(j => j.job_post_id === selectedJobId);
+    // --- LOCKING LOGIC ---
+    const isCategoryLocked = (catName: string) => {
+      return !postedJobs.some((posted: any) => posted.category_name === catName);
+    };
+
+    const isJobLocked = (jobTitle: string) => {
+      return !postedJobs.some((posted: any) => posted.title === jobTitle && posted.category_name === selectedCategory);
+    };
+
+    const availableMasterJobs = masterJobs.filter((mj: any) => mj.category_name === selectedCategory);
+    const currentlySelectedJob = postedJobs.find((j: any) => j.job_post_id === selectedJobId);
 
     return (
       <View style={styles.selectorsWrapper}>
         
-        {/* STEP 1: CATEGORY SELECTOR */}
+        {/* 1. CATEGORY DROPDOWN */}
         <View style={styles.dropdownContainer}>
           <Text style={styles.sectionTitle}>1. Select Category:</Text>
           <TouchableOpacity 
@@ -203,54 +202,72 @@ export default function JobApplications() {
             activeOpacity={0.7}
             onPress={() => {
               setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
-              setIsJobDropdownOpen(false); // Close the other one
+              setIsJobDropdownOpen(false);
             }}
           >
-            <Text style={styles.dropdownSelectedTitle}>{selectedCategory}</Text>
+            <Text style={styles.dropdownSelectedTitle}>
+              {selectedCategory || 'Select Category...'}
+            </Text>
             <Ionicons name={isCategoryDropdownOpen ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
           </TouchableOpacity>
 
           {isCategoryDropdownOpen && (
             <View style={styles.dropdownListContainer}>
               <ScrollView style={styles.dropdownListScroll} nestedScrollEnabled={true}>
-                {availableCategories.map((cat, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[styles.dropdownItem, selectedCategory === cat && styles.dropdownItemActive]}
-                    onPress={() => {
-                      setSelectedCategory(cat as string);
-                      setIsCategoryDropdownOpen(false);
-                    }}
-                  >
-                    <Text style={[styles.dropdownItemTitle, selectedCategory === cat && styles.dropdownItemTitleActive]}>
-                      {cat} {cat === 'General Household' && '(All Jobs)'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {masterCategories.map((cat: any) => {
+                  const locked = isCategoryLocked(cat.category_name);
+                  
+                  return (
+                    <TouchableOpacity
+                      key={cat.category_id}
+                      style={[styles.dropdownItem, selectedCategory === cat.category_name && styles.dropdownItemActive]}
+                      disabled={locked} // LOCK IT HERE
+                      onPress={() => {
+                        setSelectedCategory(cat.category_name);
+                        setIsCategoryDropdownOpen(false);
+                      }}
+                    >
+                      <Text style={[
+                        styles.dropdownItemTitle, 
+                        selectedCategory === cat.category_name && styles.dropdownItemTitleActive,
+                        locked && { color: '#ccc' } // GREY OUT TEXT IF LOCKED
+                      ]}>
+                        {cat.category_name} {locked ? '(No Jobs Posted)' : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
             </View>
           )}
         </View>
 
-        {/* STEP 2: JOB SELECTOR */}
+        {/* 2. JOB DROPDOWN */}
         <View style={[styles.dropdownContainer, { zIndex: -1 }]}>
           <Text style={styles.sectionTitle}>2. Select Job Post:</Text>
+          
           <TouchableOpacity 
-            style={[styles.dropdownHeader, isJobDropdownOpen && styles.dropdownHeaderActive, displayJobs.length === 0 && styles.dropdownHeaderDisabled]} 
+            style={[
+              styles.dropdownHeader, 
+              isJobDropdownOpen && styles.dropdownHeaderActive, 
+              !selectedCategory && styles.dropdownHeaderDisabled 
+            ]} 
             activeOpacity={0.7}
-            disabled={displayJobs.length === 0}
-            onPress={() => {
-              setIsJobDropdownOpen(!isJobDropdownOpen);
-              setIsCategoryDropdownOpen(false); // Close the other one
-            }}
+            disabled={!selectedCategory} 
+            onPress={() => setIsJobDropdownOpen(!isJobDropdownOpen)}
           >
             <View>
               <Text style={styles.dropdownSelectedTitle}>
-                {displayJobs.length === 0 ? 'No jobs in this category' : (selectedJob?.title || 'Select a Job')}
+                {!selectedCategory 
+                  ? 'Waiting for category...' 
+                  : currentlySelectedJob 
+                    ? currentlySelectedJob.title 
+                    : 'Select Job...'
+                }
               </Text>
-              {selectedJob && (
+              {currentlySelectedJob && (
                 <Text style={styles.dropdownSelectedSubtitle}>
-                  {selectedJob.status} • {selectedJob.application_count} Applicants
+                  {currentlySelectedJob.status} • {currentlySelectedJob.application_count} Applicants
                 </Text>
               )}
             </View>
@@ -260,25 +277,33 @@ export default function JobApplications() {
           {isJobDropdownOpen && (
             <View style={styles.dropdownListContainer}>
               <ScrollView style={styles.dropdownListScroll} nestedScrollEnabled={true}>
-                {displayJobs.map((job) => (
-                  <TouchableOpacity
-                    key={job.job_post_id}
-                    style={[styles.dropdownItem, selectedJobId === job.job_post_id && styles.dropdownItemActive]}
-                    onPress={() => {
-                      setSelectedJobId(job.job_post_id);
-                      setIsJobDropdownOpen(false);
-                    }}
-                  >
-                    <View style={styles.dropdownItemContent}>
-                      <Text style={[styles.dropdownItemTitle, selectedJobId === job.job_post_id && styles.dropdownItemTitleActive]}>
-                        {job.title}
+                {availableMasterJobs.map((masterJob: any) => {
+                  const locked = isJobLocked(masterJob.job_title);
+                  
+                  return (
+                    <TouchableOpacity
+                      key={masterJob.job_id}
+                      style={[styles.dropdownItem, currentlySelectedJob?.title === masterJob.job_title && styles.dropdownItemActive]}
+                      disabled={locked} // LOCK IT HERE
+                      onPress={() => {
+                        // Find the ACTUAL posted job ID so we can fetch applications
+                        const actualPostedJob = postedJobs.find((pj: any) => pj.title === masterJob.job_title && pj.category_name === selectedCategory);
+                        if (actualPostedJob) {
+                          setSelectedJobId(actualPostedJob.job_post_id);
+                          setIsJobDropdownOpen(false);
+                        }
+                      }}
+                    >
+                      <Text style={[
+                        styles.dropdownItemTitle, 
+                        currentlySelectedJob?.title === masterJob.job_title && styles.dropdownItemTitleActive,
+                        locked && { color: '#ccc' } // GREY OUT TEXT IF LOCKED
+                      ]}>
+                        {masterJob.job_title}
                       </Text>
-                      <View style={styles.dropdownBadge}>
-                        <Text style={styles.dropdownBadgeText}>{job.application_count} Apps</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
             </View>
           )}
@@ -292,7 +317,7 @@ export default function JobApplications() {
     <View style={styles.filterContainer}>
       {['all', 'Pending', 'Reviewed', 'Shortlisted', 'Accepted'].map((filter) => (
         <TouchableOpacity
-          key={filter}
+          key={filter} 
           style={[styles.filterTab, activeFilter === filter && styles.filterTabActive]}
           onPress={() => setActiveFilter(filter)}
         >
@@ -304,12 +329,8 @@ export default function JobApplications() {
     </View>
   );
 
-  // ==========================================
-  // UI VARIABLE (Shared Applications List)
-  // ==========================================
   const applicationsContent = (
     <View style={isDesktop ? styles.scrollContent : styles.mobileScrollContent}>
-      {/* Desktop Only Header */}
       {isDesktop && (
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>All Applications</Text>
@@ -346,9 +367,6 @@ export default function JobApplications() {
     </View>
   );
 
-  // ==========================================
-  // DESKTOP LAYOUT
-  // ==========================================
   if (isDesktop) {
     return (
       <View style={[styles.container, { flexDirection: 'row' }]}>
@@ -361,13 +379,9 @@ export default function JobApplications() {
     );
   }
 
-  // ==========================================
-  // MOBILE LAYOUT
-  // ==========================================
   return (
     <SafeAreaView style={styles.container}>
       {renderModals()}
-
       <View style={styles.mobileHeader}>
         <TouchableOpacity style={styles.menuButton} onPress={() => setIsMobileMenuOpen(true)}>
           <Ionicons name="menu" size={28} color="#1A1C1E" />
@@ -375,9 +389,7 @@ export default function JobApplications() {
         <Text style={styles.mobileTitle}>Applications</Text>
         <View style={{ width: 44 }} />
       </View>
-
       {applicationsContent}
-
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
     </SafeAreaView>
   );
