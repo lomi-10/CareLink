@@ -20,12 +20,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { styles } from './home.styles';
 
 // Custom Hooks
-import { useAuth } from '@/hooks/useAuth';
-import { useParentStats } from '@/hooks/useParentStats';
-import { useResponsive } from '@/hooks/useResponsive';
+import { useParentStats } from '@/hooks/parent';
+import { useAuth, useResponsive } from '@/hooks/shared';
 
 // Components
-import { NotificationModal, ConfirmationModal } from '@/components/common';
+import { NotificationModal, ConfirmationModal } from '@/components/shared';
 import { Sidebar, MobileMenu, GreetingCard } from '@/components/parent/home';
 import {
   MobileHeader,

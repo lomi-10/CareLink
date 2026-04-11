@@ -1,17 +1,21 @@
 // components/parent/jobs/CategorySelector.tsx
 
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import type { Category } from '@/hooks/shared';
 import { Ionicons } from '@expo/vector-icons';
-import type { Category } from '@/hooks/useJobReferences';
+import React from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-// You can map your database categories to specific icons here!
+// Mapping database categories to specific icons
 const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   'Babysitter': 'happy-outline',
   'Cook': 'restaurant-outline',
   'General Househelp': 'home-outline',
   'Cleaner': 'sparkles-outline',
   'Laundry': 'shirt-outline',
+  'Yaya': 'person-outline',
+  'Gardener': 'leaf-outline',
+  'Laundry Person': 'shirt-outline',
+  'Others': 'ellipsis-horizontal-outline',
 };
 
 interface CategorySelectorProps {
@@ -43,34 +47,31 @@ export function CategorySelector({
     return selectedCategoryIds.includes(categoryId);
   };
 
-  // We filter out the database's "Others" category because we will render a special "Custom" card for it
-  const visibleCategories = categories.filter(c => c.name.toLowerCase() !== 'others');
-  
-  // Assuming '6' is your "Others" ID from the database. Change this if yours is different!
+  // Assuming '6' is the "Others" ID from the database
   const OTHERS_CATEGORY_ID = '6'; 
-  const isCustomSelected = isSelected(OTHERS_CATEGORY_ID);
+  const isOthersSelected = isSelected(OTHERS_CATEGORY_ID);
 
   return (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>
-        Select Category <Text style={styles.asterisk}>*</Text>
+        Step 1: Select Work Category <Text style={styles.asterisk}>*</Text>
       </Text>
       
       <View style={styles.gridContainer}>
-        {/* Render Official Categories */}
-        {visibleCategories.map((category) => {
-          const selected = isSelected(category.category_id.toString());
+        {categories.map((category) => {
+          const catId = category.category_id.toString();
+          const selected = isSelected(catId);
           const iconName = CATEGORY_ICONS[category.name] || 'briefcase-outline';
 
           return (
             <TouchableOpacity
-              key={`category-${category.category_id}`}
+              key={`category-${catId}`}
               style={[
                 styles.categoryCard,
                 selected && styles.categoryCardActive,
                 disabled && styles.categoryCardDisabled,
               ]}
-              onPress={() => handleCategoryPress(category.category_id.toString())}
+              onPress={() => handleCategoryPress(catId)}
               disabled={disabled}
               activeOpacity={0.7}
             >
@@ -88,31 +89,27 @@ export function CategorySelector({
             </TouchableOpacity>
           );
         })}
-
-        {/* Render The Special "Custom" Card */}
-        <TouchableOpacity
-          style={[
-            styles.categoryCard,
-            isCustomSelected && styles.categoryCardActive,
-            disabled && styles.categoryCardDisabled,
-          ]}
-          onPress={() => handleCategoryPress(OTHERS_CATEGORY_ID)}
-          disabled={disabled}
-          activeOpacity={0.7}
-        >
-          {isCustomSelected && (
-            <View style={styles.checkBadge}>
-              <Ionicons name="checkmark" size={14} color="#fff" />
-            </View>
-          )}
-          <View style={[styles.iconContainer, isCustomSelected && styles.iconContainerActive]}>
-            <Ionicons name="create-outline" size={24} color={isCustomSelected ? "#007AFF" : "#666"} />
-          </View>
-          <Text style={[styles.categoryName, isCustomSelected && styles.categoryNameActive]}>
-            Custom
-          </Text>
-        </TouchableOpacity>
       </View>
+
+      {/* If OTHERS is selected, force a custom category name */}
+      {isOthersSelected && (
+        <View style={styles.customInputWrapper}>
+          <Text style={styles.inputLabel}>
+            Custom Category Name <Text style={styles.asterisk}>*</Text>
+          </Text>
+          <TextInput
+            style={[styles.textInput, disabled && styles.inputDisabled]}
+            placeholder="e.g., Pet Care, Private Tutor..."
+            value={customCategory}
+            onChangeText={onCustomCategoryChange}
+            placeholderTextColor="#999"
+            editable={!disabled}
+          />
+          <Text style={styles.helperText}>
+            Since you selected "Others", please specify the category.
+          </Text>
+        </View>
+      )}
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
@@ -141,11 +138,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
-    width: '47%', // Fits 2 side-by-side perfectly
+    width: '47%', 
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#E5E5EA',
+    borderColor: '#F3F4F6',
     position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   categoryCardActive: {
     borderColor: '#007AFF',
@@ -170,7 +172,7 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: '#4B5563',
     textAlign: 'center',
   },
   categoryNameActive: {
@@ -179,11 +181,14 @@ const styles = StyleSheet.create({
   },
   checkBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 8,
+    right: 8,
     backgroundColor: '#007AFF',
     borderRadius: 12,
-    padding: 2,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 1,
   },
   customInputWrapper: {
@@ -208,6 +213,16 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 15,
     color: '#111827',
+  },
+  inputDisabled: {
+    backgroundColor: '#F3F4F6',
+    color: '#9CA3AF',
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   errorText: {
     color: '#FF3B30',

@@ -21,9 +21,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { styles } from "./profile.styles"
 
 // Custom Hooks
-import { useHelperProfile } from '@/hooks/useHelperProfile';
-import { useAuth } from '@/hooks/useAuth';
-import { useResponsive } from '@/hooks/useResponsive';
+import { useHelperProfile } from '@/hooks/helper';
+import { useAuth, useResponsive } from '@/hooks/shared';
 
 // Components
 import { Sidebar } from '@/components/helper/home/Sidebar';
@@ -37,10 +36,10 @@ import {
 } from '@/components/helper/profile';
 
 // Common Components
-import {NotificationModal, LoadingSpinner, ConfirmationModal} from '@/components/common/';
-//import EditHelperProfileModal from '@/components/profile/EditProfileModal';
+import {NotificationModal, LoadingSpinner, ConfirmationModal} from '@/components/shared/';
 import EditHelperProfileModal from '@/components/helper/profile/profileEditModal/EditHelperProfileModal';
-import HelperDocumentModal from '@/components/profile/DocumentManagementModal';
+// STUDY: Helper document modal moved to components/helper/profile/.
+import HelperDocumentModal from '@/components/helper/profile/DocumentManagementModal';
 
 export default function HelperProfile() {
   const router = useRouter();

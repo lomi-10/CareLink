@@ -1,37 +1,43 @@
 // app/(parent)/jobs.tsx
 
-import React, { useState } from 'react';
-import {
-  View, FlatList, Text, TouchableOpacity,
-  RefreshControl, SafeAreaView, ScrollView
-} from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  FlatList,
+  RefreshControl,
+  SafeAreaView, ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
-import { useParentJobs } from '@/hooks/useParentJobs';
-import { useVerificationStatus } from '@/hooks/useVerificationStatus';
-import { useResponsive } from '@/hooks/useResponsive';
-import { useAuth } from '@/hooks/useAuth';
+import { useParentJobs } from '@/hooks/parent';
+import { useAuth, useResponsive } from '@/hooks/shared';
+import { useUserVerification } from '@/hooks/peso';
 
-import { Sidebar, MobileMenu } from '@/components/parent/home';
+import { ConfirmationModal, LoadingSpinner, NotificationModal } from '@/components/shared';
+import { MobileMenu, Sidebar } from '@/components/parent/home';
 import { JobCard, JobPostModal } from '@/components/parent/jobs';
 import { JobDetailsModal } from '@/components/parent/jobs/JobDetailsModal'; // Add this import
 import { PendingBanner } from '@/components/parent/verification/PendingBanner';
-import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/common';
-import { styles } from './jobs.styles';
 import API_URL from '@/constants/api';
+import { styles } from './jobs.styles';
 
 export default function MyJobs() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
   const { jobs, loading, refresh, stats } = useParentJobs();
-  const { verification, isPending } = useVerificationStatus();
+  const { verification } = useUserVerification();
+  const isPending = verification.status === 'Pending';
 
   const [editingJob, setEditingJob] = useState<any>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewingJob, setViewingJob] = useState<any>(null); // State for the Read-Only Details Modal
   
   // Modals State
@@ -43,9 +49,12 @@ export default function MyJobs() {
   const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
   const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
 
-  const filteredJobs = activeFilter === 'all' 
-    ? jobs 
-    : jobs.filter(job => job.status.toLowerCase() === activeFilter.toLowerCase());
+  const filteredJobs = jobs.filter(job => {
+    const matchesFilter = activeFilter === 'all' || job.status.toLowerCase() === activeFilter.toLowerCase();
+    const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         (job.category_name && job.category_name.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesFilter && matchesSearch;
+  });
 
   const initiateLogout = () => { setIsMobileMenuOpen(false); setConfirmLogoutVisible(true); };
   const executeLogout = () => { setConfirmLogoutVisible(false); setSuccessLogoutVisible(true); };
@@ -59,7 +68,9 @@ export default function MyJobs() {
     setIsPostModalVisible(true);
   };
 
-  const handleEditJob = (job: any) => { setEditingJob(job); setIsPostModalVisible(true); };
+  const handleEditJob = (job: any) => { 
+    setEditingJob(job); setIsPostModalVisible(true); 
+  };
   const promptDeleteJob = (jobId: string, jobTitle: string) => { setDeleteModal({ visible: true, jobId, jobTitle }); };
 
   const confirmDeleteJob = async () => {
@@ -177,6 +188,24 @@ export default function MyJobs() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+      </View>
+
+      <View style={[styles.searchContainer, isDesktop && styles.searchContainerDesktop]}>
+        <View style={styles.searchWrapper}>
+          <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by job title or category..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#9CA3AF"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {filteredJobs.length === 0 ? (

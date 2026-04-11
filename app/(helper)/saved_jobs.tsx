@@ -15,9 +15,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 // Custom Hooks
-import { useSavedJobs } from '@/hooks/useSavedJobs';
-import { useResponsive } from '@/hooks/useResponsive';
-import { useAuth } from '@/hooks/useAuth';
+import { useSavedJobs } from '@/hooks/helper';
+import { useAuth, useResponsive } from '@/hooks/shared';
 
 // Components
 import { Sidebar, MobileMenu } from '@/components/helper/home';
@@ -28,7 +27,7 @@ import {
   ApplicationModal,
 } from '@/components/helper/jobs/';
 
-import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/common/';
+import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared/';
 
 export default function SavedJobs() {
   const router = useRouter();

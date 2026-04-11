@@ -4,7 +4,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { JobStatusBadge } from './JobStatusBadge';
-import type { JobPost } from '@/hooks/useParentJobs';
+import type { JobPost } from '@/hooks/parent';
 
 interface JobCardProps {
   job: JobPost;
@@ -39,198 +39,193 @@ export function JobCard({
   const displayCategory = job.custom_category || job.category_name;
 
   return (
-    <View style={styles.container}>
+    <TouchableOpacity style={styles.container} onPress={onViewDetails} activeOpacity={0.9}>
       {/* --- HEADER --- */}
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Text style={styles.title} numberOfLines={2}>
+          <Text style={styles.title} numberOfLines={1}>
             {job.title}
           </Text>
-          {displayCategory && (
-            <View style={styles.categoryPill}>
-              <Text style={styles.categoryText}>{displayCategory}</Text>
-            </View>
-          )}
+          <View style={styles.badgeRow}>
+            {displayCategory && (
+              <View style={styles.categoryPill}>
+                <Text style={styles.categoryText}>Category: {displayCategory}</Text>
+              </View>
+            )}
+            <JobStatusBadge status={job.status} />
+          </View>
         </View>
-        <View style={styles.statusContainer}>
-          <JobStatusBadge status={job.status} />
+        <TouchableOpacity style={styles.menuBtn} onPress={(e) => { e.stopPropagation(); /* show more menu if needed */ }}>
+          <Ionicons name="ellipsis-vertical" size={20} color="#9CA3AF" />
+        </TouchableOpacity>
+      </View>
+
+      {/* --- KEY DETAILS BAR --- */}
+      <View style={styles.quickDetails}>
+        <View style={styles.quickItem}>
+          <Ionicons name="cash" size={16} color="#059669" />
+          <Text style={styles.quickValue}>₱{Number(job.salary_offered).toLocaleString()}</Text>
+        </View>
+        <View style={styles.divider} />
+        <View style={styles.quickItem}>
+          <Ionicons name="location" size={16} color="#1D4ED8" />
+          <Text style={styles.quickValue}>{job.barangay} {job.municipality}, {job.province}</Text>
+        </View>
+        <View style={styles.divider} />
+        <View style={styles.quickItem}>
+          <Ionicons name="time" size={16} color="#4B5563" />
+          <Text style={styles.quickValue}>{getTimeAgo(job.posted_at)}</Text>
         </View>
       </View>
 
-      {/* --- MODERN DETAIL PILLS --- */}
-      <View style={styles.detailsGrid}>
-        <View style={styles.detailBadge}>
-          <Ionicons name="cash-outline" size={14} color="#6B7280" />
-          <Text style={styles.detailText}>
-            ₱{job.salary_offered.toLocaleString()} / {job.salary_period}
-          </Text>
-        </View>
-
-        <View style={styles.detailBadge}>
-          <Ionicons name="briefcase-outline" size={14} color="#6B7280" />
-          <Text style={styles.detailText}>
-            {job.employment_type} • {job.work_schedule}
-          </Text>
-        </View>
-
-        <View style={styles.detailBadge}>
-          <Ionicons name="location-outline" size={14} color="#6B7280" />
-          <Text style={styles.detailText}>
-            {job.municipality}, {job.province}
-          </Text>
-        </View>
-
-        <View style={styles.detailBadge}>
-          <Ionicons name="time-outline" size={14} color="#6B7280" />
-          <Text style={styles.detailText}>Posted {getTimeAgo(job.posted_at)}</Text>
-        </View>
-      </View>
+      {/* --- SUBTITLE / SUMMARY --- */}
+      <Text style={styles.summary} numberOfLines={2}>
+        {job.description || "Looking for a reliable helper to join our household..."}
+      </Text>
 
       {/* --- APPLICATIONS CTA --- */}
-      {job.status === 'Open' && job.application_count > 0 && (
+      {job.status === 'Open' && job.application_count > 0 ? (
         <TouchableOpacity
           style={styles.applicationsBar}
-          onPress={onViewApplications}
+          onPress={(e) => { e.stopPropagation(); onViewApplications(); }}
           activeOpacity={0.7}
         >
           <View style={styles.applicationsLeft}>
-            <View style={styles.applicationsIconWrapper}>
-              <Ionicons name="people" size={18} color="#1D4ED8" />
+            <View style={styles.applicantsAvatars}>
+               <View style={[styles.avatarMini, { backgroundColor: '#DBEAFE' }]}><Text style={styles.avatarText}>A</Text></View>
+               <View style={[styles.avatarMini, { backgroundColor: '#D1FAE5', marginLeft: -8 }]}><Text style={styles.avatarText}>B</Text></View>
+               <View style={[styles.avatarMini, { backgroundColor: '#FEF3C7', marginLeft: -8 }]}><Text style={styles.avatarText}>C</Text></View>
             </View>
             <Text style={styles.applicationsText}>
-              {job.application_count} {job.application_count === 1 ? 'Applicant' : 'Applicants'}
+              <Text style={{ fontWeight: '700' }}>{job.application_count}</Text> {job.application_count === 1 ? 'Applicant' : 'Applicants'}
             </Text>
             {job.new_application_count > 0 && (
               <View style={styles.newBadge}>
-                <Text style={styles.newBadgeText}>
-                  {job.new_application_count} New
-                </Text>
+                <Text style={styles.newBadgeText}>NEW</Text>
               </View>
             )}
           </View>
-          <Ionicons name="arrow-forward" size={18} color="#1D4ED8" />
+          <Ionicons name="chevron-forward" size={16} color="#1D4ED8" />
         </TouchableOpacity>
+      ) : (
+        <View style={styles.spacer} />
       )}
 
       {/* --- ACTIONS FOOTER --- */}
       <View style={styles.actionsFooter}>
         <View style={styles.leftActions}>
-          {/* ALWAYS VISIBLE VIEW BUTTON */}
-          <TouchableOpacity style={styles.actionBtn} onPress={onViewDetails} activeOpacity={0.7}>
-            <Ionicons name="eye-outline" size={16} color="#4B5563" />
-            <Text style={styles.actionBtnText}>View</Text>
-          </TouchableOpacity>
-
-          {job.status === 'Open' && (
+          {job.status === 'Open' ? (
             <>
-              <TouchableOpacity style={styles.actionBtn} onPress={onEdit} activeOpacity={0.7}>
-                <Ionicons name="create-outline" size={16} color="#4B5563" />
-                <Text style={styles.actionBtnText}>Edit</Text>
+              <TouchableOpacity style={styles.primaryAction} onPress={(e) => { e.stopPropagation(); onEdit(); }} activeOpacity={0.7}>
+                <Ionicons name="create-outline" size={16} color="#1D4ED8" />
+                <Text style={styles.primaryActionText}>Edit</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity style={styles.actionBtn} onPress={() => onUpdateStatus('Closed')} activeOpacity={0.7}>
-                <Ionicons name="close-circle-outline" size={16} color="#D97706" />
-                <Text style={[styles.actionBtnText, { color: '#D97706' }]}>Close Job</Text>
+              <TouchableOpacity style={styles.secondaryAction} onPress={(e) => { e.stopPropagation(); onUpdateStatus('Closed'); }} activeOpacity={0.7}>
+                <Text style={styles.secondaryActionText}>Close</Text>
               </TouchableOpacity>
             </>
-          )}
-
-          {job.status === 'Closed' && (
-            <TouchableOpacity style={styles.actionBtn} onPress={() => onUpdateStatus('Open')} activeOpacity={0.7}>
+          ) : job.status === 'Closed' ? (
+            <TouchableOpacity style={styles.primaryAction} onPress={(e) => { e.stopPropagation(); onUpdateStatus('Open'); }} activeOpacity={0.7}>
               <Ionicons name="refresh-outline" size={16} color="#059669" />
-              <Text style={[styles.actionBtnText, { color: '#059669' }]}>Reopen</Text>
+              <Text style={[styles.primaryActionText, { color: '#059669' }]}>Reopen</Text>
             </TouchableOpacity>
-          )}
-
-          {job.status === 'Filled' && job.filled_at && (
-            <View style={styles.filledBadge}>
+          ) : (
+            <View style={styles.filledTag}>
               <Ionicons name="checkmark-circle" size={16} color="#059669" />
-              <Text style={styles.filledText}>
-                Filled on {new Date(job.filled_at).toLocaleDateString()}
-              </Text>
+              <Text style={styles.filledTagText}>Job Filled</Text>
             </View>
           )}
         </View>
 
-        <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} activeOpacity={0.7}>
-          <Ionicons name="trash-outline" size={16} color="#EF4444" />
-          <Text style={styles.deleteBtnText}>Delete</Text>
+        <TouchableOpacity style={styles.deleteBtn} onPress={(e) => { e.stopPropagation(); onDelete(); }} activeOpacity={0.7}>
+          <Ionicons name="trash-outline" size={18} color="#EF4444" />
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
-// ... Keep all the same styles from the previous code block ...
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#F3F4F6',
     shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 16,
-    gap: 12,
   },
   titleContainer: {
     flex: 1,
-    alignItems: 'flex-start',
     gap: 8,
   },
-  statusContainer: {
-    paddingTop: 4,
-  },
   title: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '800',
     color: '#111827',
-    lineHeight: 24,
+    letterSpacing: -0.5,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   categoryPill: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F9FAFB',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#DBEAFE',
+    borderColor: '#E5E7EB',
   },
   categoryText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1D4ED8',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4B5563',
+    textTransform: 'uppercase',
   },
-  detailsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 20,
+  menuBtn: {
+    padding: 4,
   },
-  detailBadge: {
+  quickDetails: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 12,
+  },
+  quickItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
   },
-  detailText: {
+  quickValue: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#4B5563',
+    fontWeight: '600',
+    color: '#374151',
+  },
+  divider: {
+    width: 1,
+    height: 14,
+    backgroundColor: '#E5E7EB',
+  },
+  summary: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+    marginBottom: 20,
   },
   applicationsBar: {
     flexDirection: 'row',
@@ -239,36 +234,50 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF6FF',
     padding: 12,
     borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#DBEAFE',
   },
   applicationsLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
-  applicationsIconWrapper: {
-    backgroundColor: '#DBEAFE',
-    padding: 6,
-    borderRadius: 8,
+  applicantsAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarMini: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1D4ED8',
   },
   applicationsText: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 13,
     color: '#1D4ED8',
   },
   newBadge: {
     backgroundColor: '#EF4444',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 12,
+    borderRadius: 4,
   },
   newBadgeText: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '800',
     color: '#fff',
-    textTransform: 'uppercase',
+  },
+  spacer: {
+    height: 12,
   },
   actionsFooter: {
     flexDirection: 'row',
@@ -280,51 +289,50 @@ const styles = StyleSheet.create({
   },
   leftActions: {
     flexDirection: 'row',
+    gap: 12,
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-    flex: 1,
   },
-  actionBtn: {
+  primaryAction: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#F3F4F6',
   },
-  actionBtnText: {
+  primaryActionText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#4B5563',
+    fontWeight: '700',
+    color: '#1D4ED8',
   },
-  deleteBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  secondaryAction: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#FEF2F2',
   },
-  deleteBtnText: {
+  secondaryActionText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#EF4444',
+    color: '#6B7280',
   },
-  filledBadge: {
+  filledTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#ECFDF5',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 8,
   },
-  filledText: {
+  filledTagText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#059669',
   },
+  deleteBtn: {
+    padding: 8,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 8,
+  },
 });
+  

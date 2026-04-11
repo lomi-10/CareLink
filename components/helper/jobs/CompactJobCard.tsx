@@ -1,16 +1,8 @@
 // components/helper/jobs/CompactJobCard.tsx
-// Compact job card for mobile 2-column grid
-
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { JobPost } from '@/hooks/useBrowseJobs';
+import type { JobPost } from '@/hooks/helper';
 
 interface CompactJobCardProps {
   job: JobPost;
@@ -19,215 +11,52 @@ interface CompactJobCardProps {
 }
 
 export function CompactJobCard({ job, onPress, onToggleSave }: CompactJobCardProps) {
-  const getSalaryDisplay = () => {
-    if (job.salary_period === 'Daily') {
-      return `₱${job.salary_offered.toLocaleString()}/day`;
-    }
-    return `₱${job.salary_offered.toLocaleString()}/mo`;
-  };
+  const displayCategory = job.category_name || (job.categories && job.categories[0]) || 'General';
+  const isOpen = job.status === 'Open';
 
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      
-      {/* Save Button */}
-      <TouchableOpacity
-        style={styles.saveButton}
-        onPress={(e) => {
-          e.stopPropagation();
-          onToggleSave?.(job.job_post_id);
-        }}
-        activeOpacity={0.7}
-      >
-        <Ionicons 
-          name={job.is_saved ? "bookmark" : "bookmark-outline"} 
-          size={20} 
-          color={job.is_saved ? "#007AFF" : "#666"} 
-        />
+    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9}>
+      <TouchableOpacity style={styles.saveBtn} onPress={(e) => { e.stopPropagation(); onToggleSave?.(job.job_post_id); }}>
+        <Ionicons name={job.is_saved ? "bookmark" : "bookmark-outline"} size={18} color={job.is_saved ? "#007AFF" : "#9CA3AF"} />
       </TouchableOpacity>
 
-      {/* Match Score Badge */}
-      {job.match_score && job.match_score >= 70 && (
-        <View style={styles.matchBadge}>
-          <Text style={styles.matchBadgeText}>{job.match_score}% Match</Text>
+      <View style={styles.header}>
+        <View style={[styles.categoryBadge, isOpen ? { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' } : { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }, { borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 2 }]}>
+          <Ionicons name={isOpen ? 'shield-checkmark' : 'hourglass-outline'} size={10} color={isOpen ? '#059669' : '#B45309'} />
+          <Text style={[styles.categoryText, { color: isOpen ? '#059669' : '#B45309' }]}>{isOpen ? 'Verified' : 'Pending'}</Text>
         </View>
-      )}
 
-      {/* Job Icon */}
-      <View style={styles.iconContainer}>
-        <Ionicons name="briefcase" size={32} color="#007AFF" />
-      </View>
-
-      {/* Job Title */}
-      <Text style={styles.title} numberOfLines={2}>
-        {job.title}
-      </Text>
-
-      {/* Categories */}
-      <View style={styles.categoriesContainer}>
-        {job.categories.slice(0, 2).map((category, index) => (
-          <View key={index} style={styles.categoryChip}>
-            <Text style={styles.categoryText} numberOfLines={1}>
-              {category}
-            </Text>
+        {displayCategory && (
+          <View style={styles.categoryBadge}>
+            <Text style={styles.categoryText}>{displayCategory}</Text>
           </View>
-        ))}
+        )}
       </View>
 
-      {/* Salary */}
-      <Text style={styles.salary}>{getSalaryDisplay()}</Text>
+      <Text style={styles.title} numberOfLines={2}>{job.title}</Text>
 
-      {/* Employment Type */}
-      <View style={styles.infoRow}>
-        <Ionicons name="time-outline" size={14} color="#666" />
-        <Text style={styles.infoText}>{job.work_schedule}</Text>
-      </View>
-
-      {/* Location */}
-      <View style={styles.infoRow}>
-        <Ionicons name="location-outline" size={14} color="#666" />
-        <Text style={styles.infoText} numberOfLines={1}>
-          {job.municipality}
-        </Text>
-      </View>
-
-      {/* Distance */}
-      {job.distance && (
-        <View style={styles.distanceContainer}>
-          <Ionicons name="navigate" size={12} color="#007AFF" />
-          <Text style={styles.distanceText}>{job.distance.toFixed(1)} km</Text>
+      <View style={styles.details}>
+        <View style={styles.detailRow}>
+          <Ionicons name="cash-outline" size={14} color="#6B7280" />
+          <Text style={styles.detailText}>₱{Number(job.salary_offered).toLocaleString()}</Text>
         </View>
-      )}
-
-      {/* Posted Time */}
-      <Text style={styles.postedText}>{job.posted_at}</Text>
+        <View style={styles.detailRow}>
+          <Ionicons name="location-outline" size={14} color="#6B7280" />
+          <Text style={styles.detailText} numberOfLines={1}>{job.municipality}</Text>
+        </View>
+      </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  saveButton: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: '#fff',
-    padding: 6,
-    borderRadius: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-    zIndex: 2,
-  },
-  matchBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#34C759',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    zIndex: 1,
-  },
-  matchBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#F0F7FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1C1E',
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  categoriesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginBottom: 8,
-  },
-  categoryChip: {
-    backgroundColor: '#F0F0F0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    maxWidth: '100%',
-  },
-  categoryText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#666',
-  },
-  salary: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#007AFF',
-    marginBottom: 8,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
-  },
-  infoText: {
-    fontSize: 12,
-    color: '#666',
-    flex: 1,
-  },
-  distanceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  distanceText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  postedText: {
-    fontSize: 11,
-    color: '#999',
-    marginTop: 4,
-  },
+  container: { backgroundColor: '#fff', borderRadius: 16, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#F3F4F6', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2, position: 'relative' },
+  saveBtn: { position: 'absolute', top: 10, right: 10, zIndex: 10, padding: 4 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, paddingRight: 24, flexWrap: 'wrap' },
+  categoryBadge: { backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  categoryText: { fontSize: 10, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase' },
+  title: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 10, lineHeight: 20, height: 40 },
+  details: { gap: 6 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  detailText: { fontSize: 12, color: '#4B5563', flex: 1 }
 });

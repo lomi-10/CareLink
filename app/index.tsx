@@ -20,7 +20,7 @@ const RootIndexPage = () => {
           if (userData.user_type === 'admin') {
             router.replace("/admin/dashboard");
           } else if (userData.user_type === 'peso') {
-            router.replace("/(PESO)/home");
+            router.replace("/(peso)/home");
           } else if (userData.user_type === 'helper') {
             router.replace("/(helper)/home");   // Points to app/(helper)/home.tsx
           } else if (userData.user_type === 'parent') { // or 'parent'

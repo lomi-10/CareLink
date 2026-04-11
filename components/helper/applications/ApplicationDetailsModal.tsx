@@ -1,18 +1,9 @@
 // components/helper/applications/ApplicationDetailsModal.tsx
-// Modal to view complete application details
 
 import React from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-} from 'react-native';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Application } from '@/hooks/useMyApplications';
+import type { Application } from '@/hooks/helper';
 
 interface ApplicationDetailsModalProps {
   visible: boolean;
@@ -21,445 +12,148 @@ interface ApplicationDetailsModalProps {
   onClose: () => void;
 }
 
-export default function ApplicationDetailsModal({
-  visible,
-  application,
-  onWithdraw,
-  onClose,
-}: ApplicationDetailsModalProps) {
+export default function ApplicationDetailsModal({ visible, application, onWithdraw, onClose }: ApplicationDetailsModalProps) {
   if (!application) return null;
 
-  // Status styling
-  const getStatusStyle = () => {
+  const getStatusConfig = () => {
     switch (application.status) {
-      case 'Pending':
-        return { color: '#FF9500', icon: 'time-outline', bg: '#FFF4E5' };
-      case 'Reviewed':
-        return { color: '#007AFF', icon: 'eye-outline', bg: '#E3F2FD' };
-      case 'Shortlisted':
-        return { color: '#007AFF', icon: 'checkmark-circle-outline', bg: '#E3F2FD' };
-      case 'Interview Scheduled':
-        return { color: '#9C27B0', icon: 'calendar-outline', bg: '#F3E5F5' };
-      case 'Accepted':
-        return { color: '#34C759', icon: 'checkmark-circle', bg: '#E8F5E9' };
-      case 'Rejected':
-        return { color: '#FF3B30', icon: 'close-circle-outline', bg: '#FFEBEE' };
-      case 'Withdrawn':
-        return { color: '#999', icon: 'remove-circle-outline', bg: '#F5F5F5' };
-      default:
-        return { color: '#666', icon: 'help-circle-outline', bg: '#F0F0F0' };
+      case 'Pending': return { color: '#D97706', bg: '#FEF3C7', icon: 'time' as const, title: 'Application Submitted', subtitle: 'Waiting for the employer to review your profile.' };
+      case 'Reviewed': return { color: '#2563EB', bg: '#DBEAFE', icon: 'eye' as const, title: 'Under Review', subtitle: 'The employer has viewed your application.' };
+      case 'Shortlisted': return { color: '#7C3AED', bg: '#F3E8FF', icon: 'star' as const, title: 'You are Shortlisted!', subtitle: 'You are among the top candidates. They may contact you soon.' };
+      case 'Interview Scheduled': return { color: '#059669', bg: '#D1FAE5', icon: 'calendar' as const, title: 'Interview Scheduled', subtitle: 'Check your messages for interview details.' };
+      case 'Accepted': return { color: '#059669', bg: '#D1FAE5', icon: 'checkmark-circle' as const, title: 'Congratulations!', subtitle: 'You have been hired for this position.' };
+      case 'Rejected': return { color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle' as const, title: 'Application Declined', subtitle: 'The employer has decided to move forward with other candidates.' };
+      case 'Withdrawn': return { color: '#6B7280', bg: '#F3F4F6', icon: 'arrow-undo' as const, title: 'Application Withdrawn', subtitle: 'You withdrew this application.' };
+      default: return { color: '#6B7280', bg: '#F3F4F6', icon: 'information-circle' as const, title: application.status, subtitle: '' };
     }
   };
 
-  const statusStyle = getStatusStyle();
-  const canWithdraw = ['Pending', 'Reviewed'].includes(application.status);
+  const statusConfig = getStatusConfig();
+  const canWithdraw = ['Pending', 'Reviewed', 'Shortlisted'].includes(application.status);
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'Recently';
+    return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
-          {/* Header */}
+          
+          {/* --- HEADER --- */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Application Details</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color="#1A1C1E" />
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.modalTitle} numberOfLines={2}>{application.job_title}</Text>
+              <Text style={styles.employerName}>{application.parent_name}</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <Ionicons name="close" size={24} color="#6B7280" />
             </TouchableOpacity>
           </View>
 
-          {/* Content */}
-          <ScrollView 
-            style={styles.content}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Status Banner */}
-            <View style={[styles.statusBanner, { backgroundColor: statusStyle.bg }]}>
-              <Ionicons name={statusStyle.icon as any} size={32} color={statusStyle.color} />
-              <View style={styles.statusInfo}>
-                <Text style={[styles.statusText, { color: statusStyle.color }]}>
-                  {application.status}
-                </Text>
-                <Text style={styles.statusSubtext}>
-                  Applied {application.applied_at}
-                  {application.reviewed_at && ` • Reviewed ${application.reviewed_at}`}
-                </Text>
+          <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+            {/* --- STATUS BANNER --- */}
+            <View style={[styles.statusBanner, { backgroundColor: statusConfig.bg, borderColor: statusConfig.color + '40' }]}>
+              <View style={[styles.statusIconBox, { backgroundColor: statusConfig.color + '20' }]}>
+                <Ionicons name={statusConfig.icon} size={24} color={statusConfig.color} />
+              </View>
+              <View style={styles.statusBannerText}>
+                <Text style={[styles.statusBannerTitle, { color: statusConfig.color }]}>{statusConfig.title}</Text>
+                <Text style={[styles.statusBannerSubtitle, { color: statusConfig.color }]}>{statusConfig.subtitle}</Text>
               </View>
             </View>
-
-            {/* Job Info */}
+            
+            {/* --- QUICK INFO GRID --- */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Job Position</Text>
-              <Text style={styles.jobTitle}>{application.job_title}</Text>
-              
-              <View style={styles.parentInfo}>
-                <Text style={styles.parentName}>{application.parent_name}</Text>
-                {application.parent_verified && (
-                  <Ionicons name="checkmark-circle" size={18} color="#34C759" />
-                )}
-                {application.parent_rating && (
-                  <View style={styles.ratingContainer}>
-                    <Ionicons name="star" size={16} color="#FF9500" />
-                    <Text style={styles.ratingText}>{application.parent_rating.toFixed(1)}</Text>
+              <Text style={styles.sectionTitle}>Application Details</Text>
+              <View style={styles.detailsList}>
+                <View style={styles.detailItem}>
+                  <Ionicons name="calendar-outline" size={18} color="#1D4ED8" />
+                  <View>
+                    <Text style={styles.detailLabel}>Applied On</Text>
+                    <Text style={styles.detailValue}>{formatDate(application.applied_at)}</Text>
                   </View>
-                )}
-              </View>
-
-              <View style={styles.infoGrid}>
-                <InfoItem 
-                  icon="cash-outline" 
-                  label="Salary" 
-                  value={`₱${application.salary_offered.toLocaleString()}/${application.salary_period === 'Daily' ? 'day' : 'month'}`} 
-                />
-                <InfoItem 
-                  icon="time-outline" 
-                  label="Schedule" 
-                  value={application.work_schedule} 
-                />
-                <InfoItem 
-                  icon="home-outline" 
-                  label="Type" 
-                  value={application.employment_type} 
-                />
-                <InfoItem 
-                  icon="location-outline" 
-                  label="Location" 
-                  value={`${application.municipality}, ${application.province}`} 
-                />
-              </View>
-            </View>
-
-            {/* Job Description */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Job Description</Text>
-              <Text style={styles.description}>{application.job_description}</Text>
-            </View>
-
-            {/* Cover Letter */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Your Cover Letter</Text>
-              <View style={styles.coverLetterContainer}>
-                <Text style={styles.coverLetter}>{application.cover_letter}</Text>
-              </View>
-            </View>
-
-            {/* Parent Feedback (if rejected) */}
-            {application.status === 'Rejected' && application.parent_notes && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Feedback from Employer</Text>
-                <View style={styles.feedbackContainer}>
-                  <Ionicons name="chatbox-ellipses-outline" size={20} color="#666" />
-                  <Text style={styles.feedbackText}>{application.parent_notes}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Ionicons name="cash-outline" size={18} color="#1D4ED8" />
+                  <View>
+                    <Text style={styles.detailLabel}>Offered Salary</Text>
+                    <Text style={styles.detailValue}>₱{Number(application.salary_offered || 0).toLocaleString()}</Text>
+                  </View>
                 </View>
               </View>
-            )}
+            </View>
 
-            {/* Next Steps (based on status) */}
-            {application.status === 'Pending' && (
-              <View style={styles.tipsContainer}>
-                <Text style={styles.tipsTitle}>⏳ Application Pending</Text>
-                <Text style={styles.tipsText}>
-                  Your application is being reviewed by the employer. You will be notified of any updates.
-                </Text>
+            {/* --- COVER LETTER SECTION --- */}
+            {application.cover_letter ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Your Pitch / Cover Letter</Text>
+                <View style={styles.coverLetterBox}>
+                  <Text style={styles.coverLetterText}>{application.cover_letter}</Text>
+                </View>
               </View>
-            )}
+            ) : null}
 
-            {application.status === 'Reviewed' && (
-              <View style={styles.tipsContainer}>
-                <Text style={styles.tipsTitle}>👀 Under Review</Text>
-                <Text style={styles.tipsText}>
-                  The employer has reviewed your application. You may be contacted for an interview soon.
-                </Text>
+            {/* --- EMPLOYER FEEDBACK --- */}
+            {application.message_from_parent ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Message from Employer</Text>
+                <View style={styles.feedbackBox}>
+                  <Ionicons name="chatbubble-ellipses" size={20} color="#059669" />
+                  <Text style={styles.feedbackText}>{application.message_from_parent}</Text>
+                </View>
               </View>
-            )}
+            ) : null}
 
-            {application.status === 'Shortlisted' && (
-              <View style={[styles.tipsContainer, { backgroundColor: '#E3F2FD' }]}>
-                <Text style={[styles.tipsTitle, { color: '#007AFF' }]}>🎯 Shortlisted!</Text>
-                <Text style={styles.tipsText}>
-                  Congratulations! You've been shortlisted for this position. The employer may contact you for an interview.
-                </Text>
-              </View>
-            )}
-
-            {application.status === 'Interview Scheduled' && (
-              <View style={[styles.tipsContainer, { backgroundColor: '#F3E5F5' }]}>
-                <Text style={[styles.tipsTitle, { color: '#9C27B0' }]}>📅 Interview Scheduled</Text>
-                <Text style={styles.tipsText}>
-                  Your interview has been scheduled. Check your messages for details about date, time, and location.
-                </Text>
-              </View>
-            )}
-
-            {application.status === 'Accepted' && (
-              <View style={[styles.tipsContainer, { backgroundColor: '#E8F5E9' }]}>
-                <Text style={[styles.tipsTitle, { color: '#34C759' }]}>🎉 Congratulations!</Text>
-                <Text style={styles.tipsText}>
-                  Your application has been accepted! The employer will contact you to discuss next steps and contract details.
-                </Text>
-              </View>
-            )}
-
-            {/* Job Status Warning */}
-            {application.job_status !== 'Open' && (
-              <View style={styles.warningContainer}>
-                <Ionicons name="alert-circle" size={20} color="#FF9500" />
-                <Text style={styles.warningText}>
-                  This position has been {application.job_status.toLowerCase()}
-                </Text>
-              </View>
-            )}
-
-            <View style={{ height: 20 }} />
           </ScrollView>
 
-          {/* Footer */}
-          {canWithdraw && (
-            <View style={styles.footer}>
-              <TouchableOpacity 
-                style={styles.withdrawButton} 
-                onPress={onWithdraw}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="close-circle-outline" size={20} color="#FF3B30" />
-                <Text style={styles.withdrawButtonText}>Withdraw Application</Text>
+          {/* --- FOOTER ACTIONS --- */}
+          <View style={styles.footer}>
+            {canWithdraw && (
+              <TouchableOpacity style={styles.withdrawBtn} onPress={onWithdraw}>
+                <Text style={styles.withdrawBtnText}>Withdraw Application</Text>
               </TouchableOpacity>
-            </View>
-          )}
+            )}
+            <TouchableOpacity style={styles.doneBtn} onPress={onClose}>
+              <Text style={styles.doneBtnText}>Close Details</Text>
+            </TouchableOpacity>
+          </View>
+          
         </View>
       </View>
     </Modal>
   );
 }
 
-const InfoItem = ({ 
-  icon, 
-  label, 
-  value 
-}: { 
-  icon: string; 
-  label: string; 
-  value: string;
-}) => (
-  <View style={styles.infoItem}>
-    <Ionicons name={icon as any} size={18} color="#666" />
-    <View style={styles.infoItemContent}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
-    </View>
-  </View>
-);
-
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContainer: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  content: {
-    flex: 1,
-  },
-  statusBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    padding: 20,
-    marginHorizontal: 20,
-    marginTop: 20,
-    borderRadius: 16,
-  },
-  statusInfo: {
-    flex: 1,
-  },
-  statusText: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  statusSubtext: {
-    fontSize: 13,
-    color: '#666',
-  },
-  section: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1C1E',
-    marginBottom: 12,
-  },
-  jobTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1A1C1E',
-    marginBottom: 8,
-  },
-  parentInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  parentName: {
-    fontSize: 15,
-    color: '#666',
-    fontWeight: '600',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  infoGrid: {
-    gap: 12,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  infoItemContent: {
-    flex: 1,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 2,
-  },
-  infoValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1C1E',
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#666',
-  },
-  coverLetterContainer: {
-    backgroundColor: '#F8F9FA',
-    padding: 16,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
-  },
-  coverLetter: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#1A1C1E',
-  },
-  feedbackContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    backgroundColor: '#FFEBEE',
-    padding: 16,
-    borderRadius: 12,
-  },
-  feedbackText: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#666',
-  },
-  tipsContainer: {
-    marginHorizontal: 20,
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: '#FFF4E5',
-    borderRadius: 12,
-  },
-  tipsTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FF9500',
-    marginBottom: 8,
-  },
-  tipsText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#666',
-  },
-  warningContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 20,
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: '#FFF4E5',
-    borderRadius: 12,
-  },
-  warningText: {
-    fontSize: 14,
-    color: '#FF9500',
-    fontWeight: '600',
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
-  },
-  withdrawButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FF3B30',
-    backgroundColor: '#fff',
-  },
-  withdrawButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FF3B30',
-  },
+  overlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 },
+  modalContainer: { width: '100%', maxWidth: 650, maxHeight: '90%', backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 24, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', backgroundColor: '#fff' },
+  headerTitleContainer: { flex: 1, paddingRight: 16 },
+  modalTitle: { fontSize: 24, fontWeight: '800', color: '#111827', marginBottom: 4, letterSpacing: -0.5 },
+  employerName: { fontSize: 15, fontWeight: '600', color: '#6B7280' },
+  closeBtn: { padding: 8, backgroundColor: '#F3F4F6', borderRadius: 20 },
+  scrollContent: { paddingHorizontal: 24, paddingTop: 16 },
+  statusBanner: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 32, gap: 16 },
+  statusIconBox: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  statusBannerText: { flex: 1 },
+  statusBannerTitle: { fontSize: 16, fontWeight: '800', marginBottom: 4 },
+  statusBannerSubtitle: { fontSize: 13, fontWeight: '500', lineHeight: 18 },
+  section: { marginBottom: 32 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#111827', marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: 8, letterSpacing: -0.3 },
+  detailsList: { gap: 16 },
+  detailItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  detailLabel: { fontSize: 12, fontWeight: '600', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.5 },
+  detailValue: { fontSize: 15, fontWeight: '600', color: '#1F2937' },
+  coverLetterBox: { backgroundColor: '#F9FAFB', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB' },
+  coverLetterText: { fontSize: 15, lineHeight: 24, color: '#374151', fontStyle: 'italic' },
+  feedbackBox: { flexDirection: 'row', backgroundColor: '#ECFDF5', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#A7F3D0', gap: 12 },
+  feedbackText: { flex: 1, fontSize: 15, lineHeight: 24, color: '#065F46', fontWeight: '500' },
+  footer: { flexDirection: 'row', padding: 20, borderTopWidth: 1, borderTopColor: '#F3F4F6', backgroundColor: '#fff', gap: 12 },
+  withdrawBtn: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 12, borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FEF2F2', alignItems: 'center' },
+  withdrawBtnText: { color: '#DC2626', fontSize: 15, fontWeight: '700' },
+  doneBtn: { flex: 1, backgroundColor: '#1F2937', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  doneBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

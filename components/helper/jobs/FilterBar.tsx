@@ -10,8 +10,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { JobFilters } from '@/hooks/useBrowseJobs';
-import { Category } from '@/hooks/useJobReferences';
+import type { JobFilters } from '@/hooks/helper';
+import type { Category } from '@/hooks/shared';
 
 interface FilterBarProps {
   filters: JobFilters;

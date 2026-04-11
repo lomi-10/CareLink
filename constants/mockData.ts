@@ -1,8 +1,7 @@
 // constants/mockData.ts
 // Separate mock data file - NOT imported in production
 
-import { JobPost } from '@/hooks/useBrowseJobs';
-import { Application } from '@/hooks/useMyApplications'
+import type { Application, JobPost } from '@/hooks/helper';
 
 export const MOCK_JOBS: JobPost[] = [
   {

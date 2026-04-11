@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
-import { HelperProfile } from '@/hooks/useBrowseHelpers';
+import type { HelperProfile } from '@/hooks/parent';
 
 // 1. FIXED INTERFACE: Changed salary_amount to salary_offered
 interface Job {

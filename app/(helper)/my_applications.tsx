@@ -14,9 +14,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 // Custom Hooks
-import { useMyApplications } from '@/hooks/useMyApplications';
-import { useResponsive } from '@/hooks/useResponsive';
-import { useAuth } from '@/hooks/useAuth';
+import { useMyApplications } from '@/hooks/helper';
+import { useAuth, useResponsive } from '@/hooks/shared';
 
 // Components
 import { Sidebar, MobileMenu } from '@/components/helper/home';
@@ -24,7 +23,7 @@ import {
   ApplicationCard,
   ApplicationDetailsModal,
 } from '@/components/helper/applications/';
-import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/common/';
+import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared/';
 
 // Styles
 import { styles } from './my_applications.styles';

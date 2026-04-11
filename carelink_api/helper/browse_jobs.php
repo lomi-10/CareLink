@@ -1,6 +1,13 @@
 <?php
 // carelink_api/helper/browse_jobs.php
-// Get job posts with smart matching and JSON array decoding
+//
+// STUDY NOTES (CareLink):
+// - Jobs are created as "Pending" until PESO approves them → "Open" (see peso/update_job_status.php).
+// - We list BOTH Open and Pending so helpers *see* all active listings; apply_job.php still only
+//   accepts applications when status === 'Open' (helpers cannot apply to Pending jobs).
+// - Legacy rows may have category_id (column) but not category_ids (JSON): we normalize below.
+// - Distance is NOT real GPS yet: we use location tier estimates (see below). Future: lat/lng +
+//   Haversine formula, or a geocoding API (see carelink_api/README.md).
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -12,7 +19,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit(0);
 }
 
-// Ensure errors don't output HTML, breaking the React Native JSON parser
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
@@ -25,19 +31,22 @@ try {
         throw new Exception('Helper ID is required');
     }
 
-    // 1. Get helper's profile using user_id
-    $helperStmt = $conn->prepare("
-        SELECT * FROM helper_profiles WHERE user_id = ?
-    ");
+    // NEW: Fetch all skills into a dictionary map so we can actually translate skill_ids into names!
+    $allSkills = [];
+    $skillsRes = $conn->query("SELECT skill_id, skill_name FROM ref_skills");
+    if ($skillsRes) {
+        while ($r = $skillsRes->fetch_assoc()) {
+            $allSkills[$r['skill_id']] = $r['skill_name'];
+        }
+    }
+
+    $helperStmt = $conn->prepare("SELECT * FROM helper_profiles WHERE user_id = ?");
     $helperStmt->bind_param("i", $helper_id);
     $helperStmt->execute();
     $helper = $helperStmt->get_result()->fetch_assoc();
     
-    if (!$helper) {
-        throw new Exception('Helper profile not found');
-    }
+    if (!$helper) throw new Exception('Helper profile not found');
 
-    // 2. Get helper's categories and skills from the actual structure
     $helperCats = [];
     $catStmt = $conn->prepare("
         SELECT rc.category_id 
@@ -49,9 +58,7 @@ try {
     $catStmt->bind_param("i", $helper['profile_id']);
     $catStmt->execute();
     $catRes = $catStmt->get_result();
-    while ($row = $catRes->fetch_assoc()) {
-        $helperCats[] = (string)$row['category_id'];
-    }
+    while ($row = $catRes->fetch_assoc()) $helperCats[] = (string)$row['category_id'];
 
     $helperSkills = [];
     $skillStmt = $conn->prepare("SELECT skill_id FROM helper_skills WHERE profile_id = ?");
@@ -59,23 +66,30 @@ try {
         $skillStmt->bind_param("i", $helper['profile_id']);
         $skillStmt->execute();
         $skillRes = $skillStmt->get_result();
-        while ($row = $skillRes->fetch_assoc()) {
-            $helperSkills[] = (string)$row['skill_id'];
-        }
+        while ($row = $skillRes->fetch_assoc()) $helperSkills[] = (string)$row['skill_id'];
     }
 
-    // 3. Main query - Get jobs and handle saved status
     $jobQuery = "
         SELECT 
             jp.*,
             u.first_name as parent_first_name,
             u.last_name as parent_last_name,
             u.status as parent_account_status,
+            u.email as parent_email,
+            pp.contact_number as parent_contact_number,
+            pp.profile_image as parent_profile_image,
+            pp.barangay as parent_barangay,
+            pp.municipality as parent_municipality,
+            pp.province as parent_province,
+            pp.address as parent_address,
+            pp.landmark as parent_landmark,
+            pp.bio as parent_bio,
             COALESCE(pr.rating, 0) as parent_rating,
             CASE WHEN sj.saved_id IS NOT NULL THEN 1 ELSE 0 END as is_saved,
             sj.saved_at
         FROM job_posts jp
         JOIN users u ON jp.parent_id = u.user_id
+        LEFT JOIN parent_profiles pp ON jp.parent_id = pp.user_id
         LEFT JOIN (
             SELECT reviewee_id, AVG(rating) as rating
             FROM placement_reviews
@@ -83,8 +97,8 @@ try {
         ) pr ON jp.parent_id = pr.reviewee_id   
         LEFT JOIN saved_jobs sj ON jp.job_post_id = sj.job_post_id AND sj.helper_id = ?
         LEFT JOIN job_applications ja ON jp.job_post_id = ja.job_post_id AND ja.helper_id = ? AND ja.status != 'Withdrawn'
-        WHERE jp.status = 'Open' 
-        AND ja.application_id IS NULL -- Hides jobs the helper already applied to!
+        WHERE jp.status IN ('Open', 'Pending')
+        AND ja.application_id IS NULL 
         ORDER BY jp.posted_at DESC
     ";
     
@@ -93,49 +107,59 @@ try {
     $stmt->execute();
     $jobsResult = $stmt->get_result();
     
-    // 4. Process each job using JSON Decoding (No N+1 Queries!)
     $processedJobs = [];
     while ($job = $jobsResult->fetch_assoc()) {
         
-        // Safely decode JSON Arrays from your database
-        $category_ids = json_decode($job['category_ids'], true) ?: [];
-        $job_ids = json_decode($job['job_ids'], true) ?: [];
-        $skill_ids = json_decode($job['skill_ids'], true) ?: [];
+        // Normalize category_ids: JSON column may be missing on older rows; fall back to category_id.
+        $category_ids = [];
+        if (!empty($job['category_ids'])) {
+            $category_ids = json_decode($job['category_ids'], true) ?: [];
+        }
+        if (empty($category_ids) && isset($job['category_id']) && $job['category_id'] !== null && $job['category_id'] !== '') {
+            $category_ids = [(string) $job['category_id']];
+        }
+        $job_ids = json_decode($job['job_ids'] ?? '[]', true) ?: [];
+        $skill_ids = json_decode($job['skill_ids'] ?? '[]', true) ?: [];
         $daysOff = json_decode($job['days_off'], true) ?: [];
+
+        // NEW: Map those raw IDs to actual readable skill strings!
+        $job_skills = [];
+        foreach($skill_ids as $sid) {
+            if(isset($allSkills[$sid])) {
+                $job_skills[] = $allSkills[$sid];
+            }
+        }
 
         $matchScore = 0;
         $matchReasons = [];
         
-        // Category match 
         $categoryMatch = count(array_intersect($category_ids, $helperCats));
         if ($categoryMatch > 0) {
             $matchScore += 30;
             $matchReasons[] = "Category matches your profile";
         }
         
-        // Skill match
         $skillMatch = count(array_intersect($skill_ids, $helperSkills));
         if ($skillMatch > 0) {
             $matchScore += 20;
             $matchReasons[] = "Required skills match yours";
         }
         
-        // Location proximity
-        $sameProvince = ($job['parent_province'] == $helper['province']);
-        $sameMunicipality = ($job['parent_municipality'] == $helper['municipality']);
+        $sameProvince = ($job['province'] == $helper['province']);
+        $sameMunicipality = ($job['municipality'] == $helper['municipality']);
         
-        $distance = rand(50, 100);
+        // Deterministic distance tiers (km-ish) until real coordinates exist — avoids random flicker on refresh.
+        $distance = 80;
         if ($sameMunicipality) {
-            $distance = rand(1, 5); 
+            $distance = 3;
             $matchScore += 15;
             $matchReasons[] = "Very close to your location";
         } elseif ($sameProvince) {
-            $distance = rand(10, 30);
+            $distance = 22;
             $matchScore += 10;
             $matchReasons[] = "Location nearby";
-        } 
+        }
         
-        // Salary match
         $monthlySalary = ($job['salary_period'] == 'Daily') ? $job['salary_offered'] * 26 : $job['salary_offered'];
         $helperExpectedSalary = $helper['expected_salary'] ?? 8000;
         
@@ -147,10 +171,23 @@ try {
             $matchReasons[] = "Salary above your range";
         }
         
-        // Work schedule match
         $helperPreferredSchedule = $helper['work_schedule'] ?? 'any';
         if (strtolower($helperPreferredSchedule) == 'any' || strtolower($job['work_schedule']) == strtolower($helperPreferredSchedule)) {
             $matchScore += 10;
+        }
+
+        // FETCH PARENT DOCUMENTS
+        $docs_query = "SELECT document_type, file_path FROM user_documents WHERE user_id = " . (int)$job['parent_id'];
+        $docs_result = $conn->query($docs_query);
+        
+        $parent_valid_id = null;
+        $parent_proof_of_billing = null;
+
+        if ($docs_result) {
+            while ($doc = $docs_result->fetch_assoc()) {
+                if ($doc['document_type'] === 'Valid ID') $parent_valid_id = $doc['file_path'];
+                if ($doc['document_type'] === 'Proof of Billing') $parent_proof_of_billing = $doc['file_path'];
+            }
         }
         
         $processedJobs[] = [
@@ -168,11 +205,14 @@ try {
             'distance' => $distance,
             
             'category_ids' => $category_ids,
-            'categories' => [], // Add names via frontend or reference dictionary
+            'categories' => [], 
             'job_ids' => $job_ids,
             'jobs' => [],
             'skill_ids' => $skill_ids,
-            'skills' => [],
+            
+            // NEW: Passing both formats so the React frontend handles it perfectly
+            'skills' => $job_skills,
+            'skill_names' => implode(', ', $job_skills), 
             
             'min_age' => $job['min_age'],
             'max_age' => $job['max_age'],
@@ -193,6 +233,17 @@ try {
             'expires_at' => $job['expires_at'],
             
             'parent_name' => trim($job['parent_first_name'] . ' ' . $job['parent_last_name']),
+            'parent_email' => $job['parent_email'],
+            'parent_contact_number' => $job['parent_contact_number'],
+            'parent_profile_image' => $job['parent_profile_image'],
+            'parent_barangay' => $job['parent_barangay'],
+            'parent_municipality' => $job['parent_municipality'],
+            'parent_province' => $job['parent_province'],
+            'parent_address' => $job['parent_address'],
+            'parent_landmark' => $job['parent_landmark'],
+            'parent_bio' => $job['parent_bio'],
+            'parent_valid_id' => $parent_valid_id,
+            'parent_proof_of_billing' => $parent_proof_of_billing,
             'parent_verified' => ($job['parent_account_status'] === 'approved'),
             'parent_rating' => floatval($job['parent_rating']),
             
@@ -204,7 +255,6 @@ try {
         ];
     }
     
-    // Sort by match score
     usort($processedJobs, function($a, $b) {
         return $b['match_score'] - $a['match_score'];
     });
@@ -216,7 +266,6 @@ try {
     ]);
     
 } catch (Exception $e) {
-    // Return a strict JSON error message instead of crashing with HTML!
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()

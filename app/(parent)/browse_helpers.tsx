@@ -15,11 +15,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 // Custom Hooks
-import { useBrowseHelpers } from '@/hooks/useBrowseHelpers';
-import { useJobReferences } from '@/hooks/useJobReferences';
-import { useResponsive } from '@/hooks/useResponsive';
-import { useAuth } from '@/hooks/useAuth';
-import { useParentJobs } from '@/hooks/useParentJobs';
+import { useBrowseHelpers, useParentJobs } from '@/hooks/parent';
+import { useAuth, useJobReferences, useResponsive } from '@/hooks/shared';
 
 // Components
 import { Sidebar, MobileMenu } from '@/components/parent/home';
@@ -32,7 +29,7 @@ import {
   InviteHelperModal,
 } from '@/components/parent/browse/';
 
-import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/common/';
+import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared/';
 import {styles} from './browse_helpers.styles';
 
 export default function BrowseHelpers() {

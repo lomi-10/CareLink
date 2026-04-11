@@ -106,7 +106,7 @@ export default function AdminLoginScreen() {
             if (data.user_type === 'admin') {
               router.replace("/admin/dashboard");
             } else {
-              router.replace("/(PESO)/home");
+              router.replace("/(peso)/home");
             }
           }, 1500);
         } else {

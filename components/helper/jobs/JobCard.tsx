@@ -1,16 +1,11 @@
 // components/helper/jobs/JobCard.tsx
 // Full job card for desktop 3-column grid
+// STUDY: Job listings can be Open (apply allowed) or Pending (visible after API change; apply blocked until PESO approves).
 
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { JobPost } from '@/hooks/useBrowseJobs';
+import type { JobPost } from '@/hooks/helper';
 
 interface JobCardProps {
   job: JobPost;
@@ -20,128 +15,90 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, onPress, onApply, onToggleSave }: JobCardProps) {
-  const getSalaryDisplay = () => {
-    if (job.salary_period === 'Daily') {
-      return `₱${job.salary_offered.toLocaleString()}/day`;
-    }
-    return `₱${job.salary_offered.toLocaleString()}/month`;
-  };
+  const displayCategory = job.category_name || (job.categories && job.categories[0]) || 'General';
+  const canApply = job.status === 'Open';
 
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      {/* Header */}
+    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9}>
+      {/* --- HEADER --- */}
       <View style={styles.header}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="briefcase" size={40} color="#007AFF" />
+        <View style={styles.titleContainer}>
+          <Text style={styles.title} numberOfLines={1}>{job.title}</Text>
+          <View style={styles.badgeRow}>
+            
+            {canApply ? (
+              <View style={[styles.categoryPill, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                <Ionicons name="shield-checkmark" size={12} color="#059669" />
+                <Text style={[styles.categoryText, { color: '#059669' }]}>PESO Verified</Text>
+              </View>
+            ) : (
+              <View style={[styles.categoryPill, { backgroundColor: '#FFFBEB', borderColor: '#FDE68A', flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                <Ionicons name="hourglass-outline" size={12} color="#B45309" />
+                <Text style={[styles.categoryText, { color: '#B45309' }]}>Awaiting PESO</Text>
+              </View>
+            )}
+
+            {displayCategory && (
+              <View style={styles.categoryPill}>
+                <Text style={styles.categoryText}>{displayCategory}</Text>
+              </View>
+            )}
+            {job.match_score && job.match_score >= 70 && (
+              <View style={[styles.categoryPill, { backgroundColor: '#F0FDF4', borderColor: '#D1FAE5' }]}>
+                <Text style={[styles.categoryText, { color: '#059669' }]}>{job.match_score}% Match</Text>
+              </View>
+            )}
+          </View>
         </View>
-
-
-        <View style={styles.headerRight}>
-        {/* Save Button */}
-        <TouchableOpacity
-          style={styles.saveButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            onToggleSave?.(job.job_post_id); // Add this prop to interface
-          }}
-          activeOpacity={0.7}
-        >
-          <Ionicons 
-            name={job.is_saved ? "bookmark" : "bookmark-outline"} 
-            size={24} 
-            color={job.is_saved ? "#007AFF" : "#666"} 
-          />
+        <TouchableOpacity style={styles.saveBtn} onPress={(e) => { e.stopPropagation(); onToggleSave?.(job.job_post_id); }}>
+          <Ionicons name={job.is_saved ? "bookmark" : "bookmark-outline"} size={22} color={job.is_saved ? "#007AFF" : "#9CA3AF"} />
         </TouchableOpacity>
+      </View>
 
-        {job.match_score && job.match_score >= 70 && (
-          <View style={styles.matchBadge}>
-            <Ionicons name="checkmark-circle" size={16} color="#34C759" />
-            <Text style={styles.matchText}>{job.match_score}% Match</Text>
+      {/* --- QUICK DETAILS --- */}
+      <View style={styles.quickDetails}>
+        <View style={styles.quickItem}>
+          <Ionicons name="location-outline" size={16} color="#6B7280" />
+          <Text style={styles.quickValue} numberOfLines={1}>{job.municipality}</Text>
+        </View>
+        <View style={styles.divider} />
+        <View style={styles.quickItem}>
+          <Ionicons name="cash-outline" size={16} color="#6B7280" />
+          <Text style={styles.quickValue}>₱{Number(job.salary_offered).toLocaleString()}</Text>
+        </View>
+        <View style={styles.divider} />
+        <View style={styles.quickItem}>
+          <Ionicons name="time-outline" size={16} color="#6B7280" />
+          <Text style={styles.quickValue}>{job.employment_type}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.summary} numberOfLines={2}>{job.description}</Text>
+
+      {/* --- EMPLOYER INFO --- */}
+      <View style={styles.employerRow}>
+        <View style={styles.employerLeft}>
+          <View style={styles.avatarMini}>
+            <Text style={styles.avatarText}>{job.parent_name ? job.parent_name.charAt(0).toUpperCase() : 'E'}</Text>
           </View>
-        )}
-      </View>
-      </View>
-
-      {/* Job Title */}
-      <Text style={styles.title} numberOfLines={2}>
-        {job.title}
-      </Text>
-
-      {/* Parent Info */}
-      <View style={styles.parentInfo}>
-        <Text style={styles.parentName}>{job.parent_name}</Text>
-        {job.parent_verified && (
-          <Ionicons name="checkmark-circle" size={16} color="#34C759" />
-        )}
-      </View>
-
-      {/* Categories */}
-      <View style={styles.categoriesContainer}>
-        {job.categories.slice(0, 3).map((category, index) => (
-          <View key={index} style={styles.categoryChip}>
-            <Text style={styles.categoryText}>{category}</Text>
+          <View>
+            <Text style={styles.employerName}>{job.parent_name || 'Employer'}</Text>
+            <Text style={styles.postedTime}>Posted {job.posted_at ? new Date(job.posted_at).toLocaleDateString() : 'Recently'}</Text>
           </View>
-        ))}
-      </View>
-
-      {/* Salary */}
-      <View style={styles.salaryContainer}>
-        <Text style={styles.salary}>{getSalaryDisplay()}</Text>
-        <View style={styles.employmentBadge}>
-          <Text style={styles.employmentText}>{job.work_schedule}</Text>
         </View>
       </View>
 
-      {/* Key Info */}
-      <View style={styles.infoSection}>
-        <View style={styles.infoRow}>
-          <Ionicons name="home-outline" size={16} color="#666" />
-          <Text style={styles.infoText}>{job.employment_type}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Ionicons name="location-outline" size={16} color="#666" />
-          <Text style={styles.infoText} numberOfLines={1}>
-            {job.municipality}, {job.province}
-          </Text>
-        </View>
-        {job.distance && (
-          <View style={styles.infoRow}>
-            <Ionicons name="navigate" size={16} color="#007AFF" />
-            <Text style={[styles.infoText, { color: '#007AFF' }]}>
-              {job.distance.toFixed(1)} km away
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* Match Reasons */}
-      {job.match_reasons && job.match_reasons.length > 0 && (
-        <View style={styles.matchReasons}>
-          {job.match_reasons.slice(0, 2).map((reason, index) => (
-            <View key={index} style={styles.matchReasonItem}>
-              <Ionicons name="checkmark" size={14} color="#34C759" />
-              <Text style={styles.matchReasonText}>{reason}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.postedText}>Posted {job.posted_at}</Text>
+      {/* --- ACTIONS --- */}
+      <View style={styles.actionsFooter}>
+        <TouchableOpacity style={styles.viewBtn} onPress={(e) => { e.stopPropagation(); onPress(); }}>
+          <Text style={styles.viewBtnText}>View Details</Text>
+        </TouchableOpacity>
         <TouchableOpacity
-          style={styles.applyButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            onApply();
-          }}
-          activeOpacity={0.7}
+          style={[styles.applyBtn, !canApply && styles.applyBtnDisabled]}
+          onPress={(e) => { e.stopPropagation(); if (canApply) onApply(); }}
+          disabled={!canApply}
         >
-          <Text style={styles.applyButtonText}>Apply Now</Text>
+          <Text style={[styles.applyBtnText, !canApply && styles.applyBtnTextDisabled]}>{canApply ? 'Apply Now' : 'Apply when open'}</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -149,169 +106,30 @@ export function JobCard({ job, onPress, onApply, onToggleSave }: JobCardProps) {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#F0F7FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  saveButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#F5F5F5',
-  },
-  matchBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  matchText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#34C759',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1C1E',
-    marginBottom: 8,
-    lineHeight: 24,
-  },
-  parentInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
-  },
-  parentName: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
-  },
-  categoriesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 16,
-  },
-  categoryChip: {
-    backgroundColor: '#F0F0F0',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  categoryText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-  },
-  salaryContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  salary: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#007AFF',
-  },
-  employmentBadge: {
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  employmentText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  infoSection: {
-    gap: 8,
-    marginBottom: 16,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#666',
-    flex: 1,
-  },
-  matchReasons: {
-    backgroundColor: '#F8F9FA',
-    padding: 12,
-    borderRadius: 12,
-    gap: 6,
-    marginBottom: 16,
-  },
-  matchReasonItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  matchReasonText: {
-    fontSize: 13,
-    color: '#666',
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  postedText: {
-    fontSize: 13,
-    color: '#999',
-  },
-  applyButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  applyButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
-  },
+  container: { backgroundColor: '#fff', borderRadius: 20, padding: 24, marginBottom: 20, borderWidth: 1, borderColor: '#F3F4F6', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
+  titleContainer: { flex: 1, paddingRight: 16 },
+  title: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 10, letterSpacing: -0.3 },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  categoryPill: { backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#DBEAFE' },
+  categoryText: { fontSize: 12, fontWeight: '700', color: '#1D4ED8' },
+  saveBtn: { padding: 4 },
+  quickDetails: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, marginBottom: 16, gap: 12 },
+  quickItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  quickValue: { fontSize: 13, fontWeight: '600', color: '#374151' },
+  divider: { width: 1, height: 14, backgroundColor: '#E5E7EB' },
+  summary: { fontSize: 14, color: '#6B7280', lineHeight: 20, marginBottom: 20 },
+  employerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  employerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  avatarMini: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 10, fontWeight: '700', color: '#1D4ED8' },
+  employerName: { fontSize: 13, fontWeight: '600', color: '#4B5563' },
+  postedTime: { fontSize: 12, color: '#9CA3AF' },
+  actionsFooter: { flexDirection: 'row', gap: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 16 },
+  viewBtn: { flex: 1, backgroundColor: '#F3F4F6', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  viewBtnText: { color: '#4B5563', fontSize: 14, fontWeight: '700' },
+  applyBtn: { flex: 1, backgroundColor: '#007AFF', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  applyBtnDisabled: { backgroundColor: '#E5E7EB' },
+  applyBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  applyBtnTextDisabled: { color: '#9CA3AF' },
 });

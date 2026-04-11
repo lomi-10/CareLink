@@ -15,9 +15,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 // Custom Hooks
-import { useParentProfile } from '@/hooks/useParentProfile';
-import { useAuth } from '@/hooks/useAuth';
-import { useResponsive } from '@/hooks/useResponsive';
+import { useParentProfile } from '@/hooks/parent';
+import { useAuth, useResponsive } from '@/hooks/shared';
 
 // Components
 import { Sidebar, MobileMenu } from '@/components/parent/home';
@@ -33,9 +32,10 @@ import {
 import { styles } from './profile.style';
 
 // Common Components
-import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/common';
-import EditParentProfileModal from '@/components/profile/EditParentProfileModal';
-import ParentDocumentModal from '@/components/profile/ParentDocumentModal';
+import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared';
+// STUDY: Parent modals live under components/parent/profile/ (role-aligned folder).
+import EditParentProfileModal from '@/components/parent/profile/EditParentProfileModal';
+import ParentDocumentModal from '@/components/parent/profile/ParentDocumentModal';
 
 export default function ParentProfile() {
   const router = useRouter();

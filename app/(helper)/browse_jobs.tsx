@@ -14,10 +14,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 // Custom Hooks
-import { useBrowseJobs, JobFilters } from '@/hooks/useBrowseJobs';
-import { useJobReferences } from '@/hooks/useJobReferences';
-import { useResponsive } from '@/hooks/useResponsive';
-import { useAuth } from '@/hooks/useAuth';
+import { useBrowseJobs, type JobFilters } from '@/hooks/helper';
+import { useJobReferences, useResponsive, useAuth } from '@/hooks/shared';
 
 // Components
 import { Sidebar, MobileMenu } from '@/components/helper/home';
@@ -33,7 +31,7 @@ import {
 
 // Styles & Common Components
 import { styles } from './browse_jobs.styles';
-import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/common/';
+import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared/';
 
 export default function BrowseJobs() {
   const router = useRouter();
@@ -97,7 +95,7 @@ export default function BrowseJobs() {
     refresh();
   };
 
-  if (loading) {
+  if (loading && jobs.length === 0) {
     return <LoadingSpinner visible={true} message="Loading jobs..." />;
   }
 
@@ -158,7 +156,7 @@ export default function BrowseJobs() {
       ) : (
         <FlatList
           data={jobs}
-          keyExtractor={(item) => item.job_post_id}
+          keyExtractor={(item) => item.job_post_id.toString()} 
           renderItem={({ item }) =>
             isDesktop ? (
               <View style={styles.desktopCardWrapper}>
@@ -174,7 +172,7 @@ export default function BrowseJobs() {
           numColumns={isDesktop ? 3 : 2}
           key={isDesktop ? 'desktop-3' : 'mobile-2'}
           columnWrapperStyle={styles.columnWrapper}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
           showsVerticalScrollIndicator={false}
         />
       )}

@@ -1,48 +1,46 @@
 // app/(parent)/post_job.tsx
 // Refactored to match the strict Desktop/Mobile architecture and Sidebar consistency
 
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  ScrollView,
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-  SafeAreaView
-} from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import API_URL from '../../constants/api';
 import { styles } from './post_job.styles';
 
 // Custom Hooks
-import { useJobForm } from '@/hooks/useJobForm';
-import { useJobReferences } from '@/hooks/useJobReferences';
-import { useResponsive } from '@/hooks/useResponsive';
-import { useVerificationStatus } from '@/hooks/useVerificationStatus';
-import { useAuth } from '@/hooks/useAuth'; // NEW: Added for consistent logout
+import { useJobForm } from '@/hooks/parent';
+import { useAuth, useJobReferences, useResponsive } from '@/hooks/shared';
+import { useUserVerification } from '@/hooks/peso';
 
 // Components
-import { Sidebar, MobileMenu } from '@/components/parent/home'; // NEW: Added for consistent layout
+import { MobileMenu, Sidebar } from '@/components/parent/home'; // NEW: Added for consistent layout
 import {
-  CategorySelector,
-  JobTitleInput,
-  WorkArrangementCard,
-  SalaryInputCard,
-  PreferencesCard,
-  DescriptionInput,
-  SkillsSelector,
   AgeRangeSelector,
-  ExperienceSelector,
-  WorkScheduleCard,
-  ContractDetailsCard,
   BenefitsCard,
+  CategorySelector,
+  ContractDetailsCard,
+  DescriptionInput,
+  ExperienceSelector,
+  JobTitleInput,
   LocationSelector,
+  PreferencesCard,
+  SalaryInputCard,
+  SkillsSelector,
+  WorkArrangementCard,
+  WorkScheduleCard,
 } from '@/components/parent/jobs';
 
 // Common Components
-import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/common'; // NEW: Added ConfirmationModal
+import { ConfirmationModal, LoadingSpinner, NotificationModal } from '@/components/shared'; // NEW: Added ConfirmationModal
 import { PendingBanner } from '@/components/parent/verification/PendingBanner';
 
 export default function PostJob() {
@@ -52,7 +50,8 @@ export default function PostJob() {
   const { handleLogout } = useAuth(); // NEW: Added for consistent logout
 
   // Verification status
-  const { verification, isPending } = useVerificationStatus();
+  const { verification, loading: verificationLoading } = useUserVerification();
+  const isPending = verification.status === 'Pending';
   const isDisabled = !verification.canPostJobs;
 
   // Custom hooks
@@ -102,16 +101,14 @@ export default function PostJob() {
   };
 
   // MULTI-SELECT Helpers
-  const availableJobs = formData.category_ids.length > 0 ? getJobsByCategories(formData.category_ids) : [];
+  const availableJobs = formData.category_id ? getJobsByCategories([formData.category_id]) : [];
   const availableSkills = formData.job_ids.length > 0 ? getSkillsByJobs(formData.job_ids) : [];
 
   // Handlers
-  const handleToggleCategory = (categoryId: string | number) => {
+  const handleSelectCategory = (categoryId: string | number) => {
     if (isDisabled) return;
     const idStr = categoryId.toString();
-    const currentCategories = formData.category_ids;
-    const newCategories = currentCategories.includes(idStr) ? currentCategories.filter((id) => id !== idStr) : [...currentCategories, idStr];
-    updateFields({ category_ids: newCategories, job_ids: [], skill_ids: [] });
+    updateFields({ category_id: idStr, job_ids: [], skill_ids: [] });
   };
 
   const handleToggleJob = (jobId: string | number, jobTitle: string) => {
@@ -156,7 +153,7 @@ export default function PostJob() {
       return;
     }
 
-    if (!validate()) {
+    if (!validate(categories)) {
       setNotification({ visible: true, message: 'Please fill in all required fields correctly', type: 'error' });
       return;
     }
@@ -218,9 +215,9 @@ export default function PostJob() {
     <ScrollView contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}>
       <View style={[styles.formContainer, isDesktop && styles.formContainerDesktop]}>
         
-        <CategorySelector categories={categories} selectedCategoryIds={formData.category_ids} customCategory={formData.custom_category} onToggleCategory={handleToggleCategory} onCustomCategoryChange={(value: string) => updateField('custom_category', value)} error={errors.category} disabled={isDisabled} />
-        <JobTitleInput categoryIds={formData.category_ids} availableJobs={availableJobs} selectedJobIds={formData.job_ids} customJobTitle={formData.custom_job_title} title={formData.title} onToggleJob={handleToggleJob} onCustomJobChange={(value: string) => updateField('custom_job_title', value)} onTitleChange={(value: string) => updateField('title', value)} error={errors.title} disabled={isDisabled} />
-        <SkillsSelector selectedJobIds={formData.job_ids} availableSkills={availableSkills} selectedSkills={formData.skill_ids} onToggleSkill={handleToggleSkill} disabled={isDisabled} />
+        <CategorySelector categories={categories} selectedCategoryIds={formData.category_id ? [formData.category_id] : []} customCategory={formData.custom_category} onToggleCategory={handleSelectCategory} onCustomCategoryChange={(value: string) => updateField('custom_category', value)} error={errors.category} disabled={isDisabled} />
+        <JobTitleInput categoryIds={formData.category_id ? [formData.category_id] : []} availableJobs={availableJobs} selectedJobIds={formData.job_ids} customJobTitle={formData.custom_job_title} title={formData.title} onToggleJob={handleToggleJob} onCustomJobChange={(value: string) => updateField('custom_job_title', value)} onTitleChange={(value: string) => updateField('title', value)} error={errors.title} disabled={isDisabled} />
+        <SkillsSelector selectedJobIds={formData.job_ids} availableSkills={availableSkills} selectedSkills={formData.skill_ids} customSkills={formData.custom_skills} onToggleSkill={handleToggleSkill} onCustomSkillsChange={(value: string) => updateField('custom_skills', value)} disabled={isDisabled} />
         <DescriptionInput value={formData.description} onChange={(value) => updateField('description', value)} error={errors.description} disabled={isDisabled} />
         <LocationSelector province={formData.province} municipality={formData.municipality} barangay={formData.barangay} onProvinceChange={(value) => updateField('province', value)} onMunicipalityChange={(value) => updateField('municipality', value)} onBarangayChange={(value) => updateField('barangay', value)} disabled={isDisabled} />
         <WorkArrangementCard employmentType={formData.employment_type} workSchedule={formData.work_schedule} onEmploymentTypeChange={(type: string) => updateField('employment_type', type)} onWorkScheduleChange={(schedule: string) => updateField('work_schedule', schedule)} disabled={isDisabled} />

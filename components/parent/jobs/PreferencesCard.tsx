@@ -11,7 +11,7 @@ import {
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { Language } from '@/hooks/useJobReferences';
+import type { Language } from '@/hooks/shared';
 
 interface PreferencesCardProps {
   religions: string[];

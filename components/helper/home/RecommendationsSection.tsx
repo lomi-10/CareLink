@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useRecommendations } from '@/hooks/useRecommendations';
+import { useRecommendations } from '@/hooks/helper';
 import { CompactJobCard } from '@/components/helper/jobs';
 import { Ionicons } from '@expo/vector-icons';
 

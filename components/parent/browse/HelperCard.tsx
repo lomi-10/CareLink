@@ -4,7 +4,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { HelperProfile } from '@/hooks/useBrowseHelpers';
+import type { HelperProfile } from '@/hooks/parent';
 
 interface HelperCardProps {
   helper: HelperProfile;

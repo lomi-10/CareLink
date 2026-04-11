@@ -12,8 +12,8 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BrowseFilters } from '@/hooks/useBrowseHelpers';
-import { Category } from '@/hooks/useJobReferences';
+import type { BrowseFilters } from '@/hooks/parent';
+import type { Category } from '@/hooks/shared';
 
 interface FilterModalProps {
   visible: boolean;

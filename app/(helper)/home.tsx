@@ -17,12 +17,11 @@ import { useNavigation } from '@react-navigation/native';
 import { styles } from './home.styles';
 
 // Custom Hooks
-import { useAuth } from '@/hooks/useAuth';
-import { useHelperStats } from '@/hooks/useHelperStats';
-import { useResponsive } from '@/hooks/useResponsive';
+import { useHelperStats } from '@/hooks/helper';
+import { useAuth, useResponsive } from '@/hooks/shared';
 
 // Components
-import { NotificationModal, ConfirmationModal } from '@/components/common'; // <-- Added ConfirmationModal
+import { NotificationModal, ConfirmationModal } from '@/components/shared'; // <-- Added ConfirmationModal
 import { 
   Sidebar, 
   MobileHeader, 
