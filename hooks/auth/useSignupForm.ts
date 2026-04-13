@@ -37,6 +37,12 @@ export function useSignupForm() {
     setForm({ ...form, [key]: value });
 
   useEffect(() => {
+    if (role && typeof role === "string") {
+      setForm((prev) => ({ ...prev, user_type: role }));
+    }
+  }, [role]);
+
+  useEffect(() => {
     const { password, confirmpass } = form;
     const hasUpperCase = /[A-Z]/.test(password);
     const hasNumber = /[0-9]/.test(password);

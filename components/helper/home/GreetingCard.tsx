@@ -1,16 +1,15 @@
-// components/helper/home/GreetingCard.tsx
-// Mobile greeting card with time-based greeting and user name
+// Helper home greeting — green CareLink theme
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '@/constants/theme';
 
 interface GreetingCardProps {
   userName: string;
 }
 
 export function GreetingCard({ userName }: GreetingCardProps) {
-  // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
@@ -20,15 +19,15 @@ export function GreetingCard({ userName }: GreetingCardProps) {
 
   return (
     <View style={styles.container}>
+      <View style={styles.accentStrip} />
       <View style={styles.content}>
+        <Text style={styles.kicker}>Helper Portal</Text>
         <Text style={styles.greeting}>{getGreeting()}</Text>
         <Text style={styles.userName}>{userName}</Text>
-        <Text style={styles.subtext}>
-          Find your next opportunity today
-        </Text>
+        <Text style={styles.subtext}>Find your next opportunity today</Text>
       </View>
       <View style={styles.illustration}>
-        <Ionicons name="briefcase" size={60} color="rgba(255,255,255,0.3)" />
+        <Ionicons name="leaf-outline" size={56} color="rgba(255,255,255,0.35)" />
       </View>
     </View>
   );
@@ -37,32 +36,53 @@ export function GreetingCard({ userName }: GreetingCardProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#FF9500',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
+    backgroundColor: theme.color.helper,
+    borderRadius: theme.radius.xl,
+    padding: theme.space.xxl,
+    marginBottom: theme.space.xl,
     overflow: 'hidden',
+    position: 'relative',
+  },
+  accentStrip: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 5,
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   content: {
     flex: 1,
+    paddingLeft: 4,
+  },
+  kicker: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.85)',
+    letterSpacing: 1.2,
+    marginBottom: 6,
+    textTransform: 'uppercase',
   },
   greeting: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.88)',
     marginBottom: 4,
   },
   userName: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#fff',
     marginBottom: 8,
+    letterSpacing: -0.4,
   },
   subtext: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.92)',
+    lineHeight: 18,
   },
   illustration: {
     alignItems: 'center',
     justifyContent: 'center',
+    opacity: 0.95,
   },
 });

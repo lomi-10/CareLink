@@ -47,6 +47,12 @@ try {
     $password = $data['password'];
     $user_type = strtolower(trim($data['user_type'])); // "parent", "helper", etc.
 
+    // Public self-service registration: parent & helper only (PESO / super admin are created elsewhere)
+    if (!in_array($user_type, ['parent', 'helper'], true)) {
+        echo json_encode(["success" => false, "message" => "Invalid account type for self-registration."]);
+        exit();
+    }
+
     // 5. GENERATE USERNAME
     $username_base = explode('@', $email)[0];
     $username_base = preg_replace("/[^a-zA-Z0-9]/", "", $username_base);
@@ -106,7 +112,7 @@ try {
     } 
     else if ($user_type === 'helper') {
         // Setting a default verification status for helpers
-        $profSql = "INSERT INTO helper_profiles (user_id, verification_status) VALUES (?, 'Unverified')";
+        $profSql = "INSERT INTO helper_profiles (user_id) VALUES (?)";
         $profStmt = $conn->prepare($profSql);
         if ($profStmt) {
             $profStmt->bind_param("i", $new_user_id);

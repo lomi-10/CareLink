@@ -1,7 +1,7 @@
 // app/(parent)/applicant_profile.tsx
 // Applicant Profile - Review full details and take actions
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -9,7 +9,6 @@ import {
   Text,
   TouchableOpacity,
   Image,
-  Alert,
   TextInput,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -17,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Components
-import {NotificationModal, LoadingSpinner} from '@/components/common';
+import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared';
 import API_URL from '@/constants/api';
 
 interface ApplicantDetails {
@@ -54,11 +53,27 @@ export default function ApplicantProfile() {
   const [applicant, setApplicant] = useState<ApplicantDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState('');
-  const [notification, setNotification] = useState({
+  const [notification, setNotification] = useState<{
+    visible: boolean;
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title?: string;
+  }>({
     visible: false,
     message: '',
-    type: 'success' as 'success' | 'error',
+    type: 'success',
   });
+
+  const [hireConfirmOpen, setHireConfirmOpen] = useState(false);
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
+  const afterNotificationClose = useRef<(() => void) | null>(null);
+
+  const dismissNotification = () => {
+    setNotification((prev) => ({ ...prev, visible: false }));
+    const fn = afterNotificationClose.current;
+    afterNotificationClose.current = null;
+    fn?.();
+  };
 
   useEffect(() => {
     fetchApplicantDetails();
@@ -81,65 +96,57 @@ export default function ApplicantProfile() {
         throw new Error(data.message);
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to load applicant details');
-      router.back();
+      afterNotificationClose.current = () => router.back();
+      setNotification({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: error.message || 'Failed to load applicant details',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAcceptAndHire = async () => {
-    Alert.alert(
-      'Hire Helper',
-      `Are you sure you want to hire ${applicant?.helper_name}? This will mark the job as filled and notify the helper.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Hire',
-          onPress: async () => {
-            try {
-              const userData = await AsyncStorage.getItem('user_data');
-              if (!userData) return;
-              const user = JSON.parse(userData);
+  const runHire = async () => {
+    setHireConfirmOpen(false);
+    try {
+      const userData = await AsyncStorage.getItem('user_data');
+      if (!userData) return;
+      const user = JSON.parse(userData);
 
-              const response = await fetch(`${API_URL}/parent/hire_helper.php`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  application_id: applicationId,
-                  job_post_id: jobId,
-                  parent_id: user.user_id,
-                  helper_id: helperId,
-                }),
-              });
+      const response = await fetch(`${API_URL}/parent/hire_helper.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          application_id: applicationId,
+          job_post_id: jobId,
+          parent_id: user.user_id,
+          helper_id: helperId,
+        }),
+      });
 
-              const data = await response.json();
+      const data = await response.json();
 
-              if (data.success) {
-                Alert.alert(
-                  'Success!',
-                  `You have successfully hired ${applicant?.helper_name}. The job has been marked as filled.`,
-                  [
-                    {
-                      text: 'OK',
-                      onPress: () => router.push('/(parent)/jobs'),
-                    },
-                  ]
-                );
-              } else {
-                throw new Error(data.message);
-              }
-            } catch (error: any) {
-              setNotification({
-                visible: true,
-                message: error.message || 'Failed to hire helper',
-                type: 'error',
-              });
-            }
-          },
-        },
-      ]
-    );
+      if (data.success) {
+        afterNotificationClose.current = () => router.push('/(parent)/jobs');
+        setNotification({
+          visible: true,
+          type: 'success',
+          title: 'Success',
+          message: `You have hired ${applicant?.helper_name}. The job has been marked as filled.`,
+        });
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error: any) {
+      setNotification({
+        visible: true,
+        message: error.message || 'Failed to hire helper',
+        type: 'error',
+        title: 'Error',
+      });
+    }
   };
 
   const handleShortlist = async () => {
@@ -178,53 +185,43 @@ export default function ApplicantProfile() {
     }
   };
 
-  const handleReject = async () => {
-    Alert.alert(
-      'Reject Applicant',
-      `Are you sure you want to reject ${applicant?.helper_name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
+  const runReject = async () => {
+    setRejectConfirmOpen(false);
+    try {
+      const response = await fetch(
+        `${API_URL}/parent/update_application_status.php`,
         {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await fetch(
-                `${API_URL}/parent/update_application_status.php`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    application_id: applicationId,
-                    status: 'Rejected',
-                    parent_notes: notes,
-                  }),
-                }
-              );
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            application_id: applicationId,
+            status: 'Rejected',
+            parent_notes: notes,
+          }),
+        }
+      );
 
-              const data = await response.json();
+      const data = await response.json();
 
-              if (data.success) {
-                Alert.alert('Applicant Rejected', '', [
-                  {
-                    text: 'OK',
-                    onPress: () => router.back(),
-                  },
-                ]);
-              } else {
-                throw new Error(data.message);
-              }
-            } catch (error: any) {
-              setNotification({
-                visible: true,
-                message: error.message || 'Failed to reject',
-                type: 'error',
-              });
-            }
-          },
-        },
-      ]
-    );
+      if (data.success) {
+        afterNotificationClose.current = () => router.back();
+        setNotification({
+          visible: true,
+          type: 'success',
+          title: 'Applicant rejected',
+          message: 'The applicant has been notified of this decision.',
+        });
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error: any) {
+      setNotification({
+        visible: true,
+        message: error.message || 'Failed to reject',
+        type: 'error',
+        title: 'Error',
+      });
+    }
   };
 
   const handleSaveNotes = async () => {
@@ -278,9 +275,34 @@ export default function ApplicantProfile() {
     <View style={styles.container}>
       <NotificationModal
         visible={notification.visible}
+        title={notification.title}
         message={notification.message}
         type={notification.type}
-        onClose={() => setNotification({ ...notification, visible: false })}
+        onClose={dismissNotification}
+        autoClose={notification.type === 'success'}
+        duration={2200}
+      />
+
+      <ConfirmationModal
+        visible={hireConfirmOpen}
+        title="Hire helper"
+        message={`Hire ${applicant?.helper_name}? This will mark the job as filled and notify the helper.`}
+        confirmText="Hire"
+        cancelText="Cancel"
+        type="success"
+        onConfirm={runHire}
+        onCancel={() => setHireConfirmOpen(false)}
+      />
+
+      <ConfirmationModal
+        visible={rejectConfirmOpen}
+        title="Reject applicant"
+        message={`Reject ${applicant?.helper_name}? This cannot be undone from here.`}
+        confirmText="Reject"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={runReject}
+        onCancel={() => setRejectConfirmOpen(false)}
       />
 
       {/* Header */}
@@ -448,7 +470,7 @@ export default function ApplicantProfile() {
         <View style={styles.actionBar}>
           <TouchableOpacity
             style={styles.rejectButton}
-            onPress={handleReject}
+            onPress={() => setRejectConfirmOpen(true)}
             activeOpacity={0.7}
           >
             <Ionicons name="close-circle" size={20} color="#FF3B30" />
@@ -468,7 +490,7 @@ export default function ApplicantProfile() {
 
           <TouchableOpacity
             style={styles.hireButton}
-            onPress={handleAcceptAndHire}
+            onPress={() => setHireConfirmOpen(true)}
             activeOpacity={0.7}
           >
             <Ionicons name="checkmark-circle" size={20} color="#fff" />

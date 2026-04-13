@@ -30,10 +30,10 @@ import {
   MobileProfileHeader,
 } from '@/components/parent/profile';
 import { styles } from './profile.style';
+import { theme } from '@/constants/theme';
 
 // Common Components
-import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared';
-// STUDY: Parent modals live under components/parent/profile/ (role-aligned folder).
+import { NotificationModal, LoadingSpinner, ConfirmationModal, ProfileCompletionCard } from '@/components/shared';
 import EditParentProfileModal from '@/components/parent/profile/EditParentProfileModal';
 import ParentDocumentModal from '@/components/parent/profile/ParentDocumentModal';
 
@@ -181,6 +181,11 @@ export default function ParentProfile() {
         />
       )}
 
+      <ProfileCompletionCard
+        percent={profileData.profile_completeness ?? 0}
+        role="parent"
+      />
+
       {/* Shared Info Cards */}
       <InfoCard icon="person-outline" iconColor="#007AFF" title="Personal Information" items={personalInfoItems} />
       
@@ -189,7 +194,7 @@ export default function ParentProfile() {
         <ElderlyList elderly={elderly} />
       </InfoCard>
 
-      <InfoCard icon="location-outline" iconColor="#FF9500" title="Address Details" items={addressItems} />
+      <InfoCard icon="location-outline" iconColor={theme.color.parent} title="Address Details" items={addressItems} />
 
       <DocumentsCard
         barangayClearance={barangayClearance}

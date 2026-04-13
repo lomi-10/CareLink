@@ -22,16 +22,16 @@ export function AddressSection({
       {/* RESPONSIVE ROW FOR WEB */}
       <View style={isWeb ? styles.webRow : undefined}>
         <View style={isWeb ? { flex: 1, paddingRight: 12 } : undefined}>
-          <LabeledInput label="Province *" value={province} onChangeText={setProvince} placeholder="Leyte" />
+          <LabeledInput label="Province" required value={province} onChangeText={setProvince} placeholder="Leyte" />
         </View>
         
         <View style={isWeb ? { flex: 2 } : undefined}>
           <View style={styles.inputGrid}>
             <View style={styles.inputHalf}>
-              <LabeledInput label="Municipality *" value={municipality} onChangeText={setMunicipality} placeholder="Isabel" />
+              <LabeledInput label="Municipality" required value={municipality} onChangeText={setMunicipality} placeholder="Isabel" />
             </View>
             <View style={styles.inputHalf}>
-              <LabeledInput label="Barangay *" value={barangay} onChangeText={setBarangay} placeholder="San Jose" />
+              <LabeledInput label="Barangay" required value={barangay} onChangeText={setBarangay} placeholder="San Jose" />
             </View>
           </View>
         </View>

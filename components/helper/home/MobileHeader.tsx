@@ -1,33 +1,44 @@
-// components/helper/home/MobileHeader.tsx
-// Mobile top header with menu button and notifications
+// Mobile top header — menu, branding, notifications entry
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '@/constants/theme';
 
 interface MobileHeaderProps {
   onMenuPress: () => void;
   notificationCount?: number;
+  onNotificationPress?: () => void;
+  /** Primary accent for title + icons (helper green or parent blue) */
+  accentColor?: string;
+  subtitle?: string;
 }
 
 export function MobileHeader({
   onMenuPress,
   notificationCount = 0,
+  onNotificationPress,
+  accentColor = theme.color.ink,
+  subtitle,
 }: MobileHeaderProps) {
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.menuButton}
-        onPress={onMenuPress}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="menu" size={28} color="#1A1C1E" />
+      <TouchableOpacity style={styles.menuButton} onPress={onMenuPress} activeOpacity={0.7}>
+        <Ionicons name="menu" size={28} color={accentColor} />
       </TouchableOpacity>
 
-      <Text style={styles.title}>CareLink</Text>
+      <View style={styles.titleBlock}>
+        <Text style={[styles.title, { color: accentColor }]}>CareLink</Text>
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      </View>
 
-      <TouchableOpacity style={styles.notificationButton} activeOpacity={0.7}>
-        <Ionicons name="notifications-outline" size={24} color="#1A1C1E" />
+      <TouchableOpacity
+        style={styles.notificationButton}
+        activeOpacity={0.7}
+        onPress={onNotificationPress}
+        disabled={!onNotificationPress}
+      >
+        <Ionicons name="notifications-outline" size={24} color={accentColor} />
         {notificationCount > 0 && (
           <View style={styles.notificationBadge}>
             <Text style={styles.notificationText}>
@@ -47,17 +58,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: theme.color.surfaceElevated,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: theme.color.line,
+    ...theme.shadow.nav,
   },
   menuButton: {
     padding: 8,
   },
+  titleBlock: {
+    alignItems: 'center',
+  },
   title: {
     fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: 11,
     fontWeight: '700',
-    color: '#1A1C1E',
+    color: theme.color.muted,
+    marginTop: 2,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   notificationButton: {
     padding: 8,
@@ -67,7 +90,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 6,
     right: 6,
-    backgroundColor: '#FF3B30',
+    backgroundColor: theme.color.danger,
     borderRadius: 10,
     minWidth: 18,
     height: 18,

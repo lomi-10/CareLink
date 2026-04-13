@@ -20,6 +20,7 @@ ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/../error.log');
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/sync_profile_completed.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -430,6 +431,11 @@ try {
         }
 
         // ====================================================================
+        // PROFILE COMPLETION (for onboarding / PESO prep)
+        // ====================================================================
+        $profile_completed = carelink_sync_helper_profile_completed($conn, $user_id);
+
+        // ====================================================================
         // COMMIT TRANSACTION
         // ====================================================================
         
@@ -441,7 +447,8 @@ try {
             'profile_image' => $profile_image_url,
             'skills_count' => count($skill_ids),
             'languages_count' => count($language_ids),
-            'jobs_count' => count($job_ids)
+            'jobs_count' => count($job_ids),
+            'profile_completed' => $profile_completed
         ));
 
     } catch (Exception $e) {

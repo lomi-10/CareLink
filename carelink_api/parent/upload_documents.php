@@ -21,6 +21,7 @@ ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/../error.log');
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/sync_profile_completed.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -123,10 +124,14 @@ try {
         $updateProfile->execute();
         $updateProfile->close();
 
+        $profile_completed = carelink_sync_parent_profile_completed($conn, $user_id);
+
         $conn->commit();
         error_log("✅ Successfully uploaded $filesProcessed documents for User $user_id");
 
-        sendResponse(true, "Documents uploaded successfully! Your account is now pending review.");
+        sendResponse(true, "Documents uploaded successfully! Your account is now pending review.", array(
+            'profile_completed' => $profile_completed
+        ));
 
     } catch (Exception $e) {
         $conn->rollback();

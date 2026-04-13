@@ -1,6 +1,4 @@
-// app/(helper)/my_applications.styles.ts
-
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform } from "react-native";
 
 export const styles = StyleSheet.create({
   container: {
@@ -28,8 +26,9 @@ export const styles = StyleSheet.create({
   },
   desktopPageTitle: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1C1E',
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.5,
   },
   browseJobsButton: {
     flexDirection: 'row',
@@ -38,14 +37,12 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    backgroundColor: '#fff',
+    backgroundColor: '#EFF6FF',
   },
   browseJobsButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1D4ED8',
   },
   
   // Mobile Styles
@@ -54,15 +51,16 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: '#F3F4F6',
   },
   mobileTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1C1E',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.5,
   },
   mobileHeaderActions: {
     flexDirection: 'row',
@@ -71,75 +69,79 @@ export const styles = StyleSheet.create({
   },
   browseIconButton: {
     padding: 8,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
   },
   menuButton: {
     padding: 8,
   },
   
-  // Stats Bar
+  // Stats Bar (Redesigned to floating cards)
   statsBar: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   statsBarDesktop: {
-    marginHorizontal: 32,
-    marginTop: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
+    paddingHorizontal: 32,
+    gap: 16,
   },
   statBox: {
     flex: 1,
     alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8 },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }
+    }),
   },
   statValue: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#1A1C1E',
+    fontWeight: '800',
+    color: '#111827',
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 11,
-    color: '#666',
-    fontWeight: '600',
+    color: '#6B7280',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   
   // Filter Tabs
   filterContainer: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    flexWrap: 'wrap',
     gap: 8,
   },
   filterContainerDesktop: {
-    backgroundColor: 'transparent',
-    borderBottomWidth: 0,
     paddingHorizontal: 32,
-    paddingTop: 24,
   },
   filterTab: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
     backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   filterTabActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#1D4ED8',
+    borderColor: '#1D4ED8',
   },
   filterTabText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: '#6B7280',
   },
   filterTabTextActive: {
     color: '#fff',
@@ -152,7 +154,7 @@ export const styles = StyleSheet.create({
   },
   listContainerDesktop: {
     paddingHorizontal: 32,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 60,
   },
   
@@ -165,22 +167,22 @@ export const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1C1E',
+    fontWeight: '800',
+    color: '#111827',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#666',
+    color: '#6B7280',
     textAlign: 'center',
     marginBottom: 24,
   },
   browseButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+    backgroundColor: '#1D4ED8',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 14,
   },
   browseButtonText: {
     color: '#fff',

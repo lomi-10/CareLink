@@ -14,6 +14,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../constants/api";
+import { RoleScreenBackground } from "@/components/shared";
+import { theme } from "@/constants/theme";
 
 export default function HelperLayout() {
   const router = useRouter();
@@ -72,7 +74,7 @@ export default function HelperLayout() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF9500" />
+        <ActivityIndicator size="large" color={theme.color.helper} />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
@@ -81,25 +83,39 @@ export default function HelperLayout() {
   // Show different content based on status
   if (userStatus === "pending") {
     return (
+      <RoleScreenBackground role="helper">
       <View style={styles.container}>
         {/* Pending Status Banner */}
         <View style={styles.pendingBanner}>
-          <Ionicons name="time-outline" size={20} color="#FF9500" />
+          <Ionicons name="time-outline" size={20} color={theme.color.warning} />
           <View style={styles.bannerText}>
-            <Text style={styles.bannerTitle}>Account Pending Verification</Text>
+            <Text style={styles.bannerTitle}>Account pending verification</Text>
             <Text style={styles.bannerSubtitle}>
-              Complete your profile and upload documents. Full access after PESO approval.
+              Complete your profile, upload documents, and wait for PESO to approve your account.
             </Text>
           </View>
+          <TouchableOpacity
+            style={styles.bannerCta}
+            onPress={() => router.push("/(helper)/profile")}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.bannerCtaText}>Complete profile</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.color.warning} />
+          </TouchableOpacity>
         </View>
         <View style={styles.content}>
           <Slot />
         </View>
       </View>
+      </RoleScreenBackground>
     );
   } else if (userStatus === "approved") {
     // Approved users - no banner, full access
-    return <Slot />;
+    return (
+      <RoleScreenBackground role="helper">
+        <Slot />
+      </RoleScreenBackground>
+    );
   } else if (userStatus === "suspended") {
     return <SuspendedScreen />;
   } else {
@@ -125,7 +141,7 @@ function SuspendedScreen() {
 
   const handleLogout = async () => {
     await AsyncStorage.clear();
-    router.replace("/welcome");
+    router.replace("/");
   };
 
   return (
@@ -162,21 +178,34 @@ function SuspendedScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA" },
+  container: { flex: 1, backgroundColor: "transparent" },
   content: { flex: 1 },
   pendingBanner: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF4E5",
+    backgroundColor: theme.color.warningSoft,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#FFE5B4",
+    borderBottomColor: theme.color.line,
     gap: 12,
+    flexWrap: "wrap",
   },
+  bannerCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.color.surfaceElevated,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: theme.color.warning + "55",
+  },
+  bannerCtaText: { fontSize: 13, fontWeight: "800", color: theme.color.warning },
   bannerText: { flex: 1 },
-  bannerTitle: { fontSize: 14, fontWeight: "700", color: "#FF9500", marginBottom: 2 },
-  bannerSubtitle: { fontSize: 12, color: "#B87503", lineHeight: 16 },
+  bannerTitle: { fontSize: 14, fontWeight: "700", color: theme.color.ink, marginBottom: 2 },
+  bannerSubtitle: { fontSize: 12, color: theme.color.muted, lineHeight: 16 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F8F9FA" },
   loadingText: { marginTop: 12, fontSize: 14, color: "#666" },
   errorContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24, backgroundColor: "#F8F9FA" },

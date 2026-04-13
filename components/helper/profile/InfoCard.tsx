@@ -1,9 +1,10 @@
 // components/helper/profile/InfoCard.tsx
-// Reusable info card for displaying profile sections
+// Profile section card — themed, readable, not a wall of bold text
 
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { theme } from "@/constants/theme";
 
 interface InfoItem {
   label: string;
@@ -21,71 +22,108 @@ interface InfoCardProps {
 export function InfoCard({ icon, iconColor, title, items, children }: InfoCardProps) {
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Ionicons name={icon} size={22} color={iconColor} />
-        <Text style={styles.title}>{title}</Text>
-      </View>
-
-      {/* Items Grid */}
-      <View style={styles.grid}>
-        {items.map((item, index) => (
-          <View key={index} style={styles.gridItem}>
-            <Text style={styles.label}>{item.label}</Text>
-            <Text style={styles.value}>{item.value}</Text>
+      <View style={[styles.accentBar, { backgroundColor: iconColor }]} />
+      <View style={styles.inner}>
+        <View style={styles.header}>
+          <View style={[styles.iconBadge, { borderLeftColor: iconColor }]}>
+            <Ionicons name={icon} size={20} color={iconColor} />
           </View>
-        ))}
-      </View>
+          <Text style={styles.title}>{title}</Text>
+        </View>
 
-      {/* Additional content */}
-      {children}
+        <View style={styles.grid}>
+          {items.map((item, index) => (
+            <View
+              key={index}
+              style={[styles.gridItem, items.length === 1 && styles.gridItemFull]}
+            >
+              <Text style={styles.label}>{item.label}</Text>
+              <View style={styles.valuePill}>
+                <Text style={styles.value}>{item.value}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {children}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: theme.radius.xl,
+    marginBottom: theme.space.lg,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    ...theme.shadow.card,
+  },
+  accentBar: {
+    height: 3,
+    width: "100%",
+    opacity: 0.95,
+  },
+  inner: {
+    padding: theme.space.lg,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.space.md,
+    marginBottom: theme.space.lg,
+  },
+  iconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.color.surface,
+    borderLeftWidth: 3,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1C1E',
+    fontSize: theme.font.subtitle,
+    fontWeight: "800",
+    color: theme.color.ink,
+    letterSpacing: -0.3,
+    flex: 1,
   },
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -8,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -6,
   },
   gridItem: {
-    width: '50%',
-    paddingHorizontal: 8,
-    marginBottom: 16,
+    width: "50%",
+    paddingHorizontal: 6,
+    marginBottom: theme.space.md,
+  },
+  gridItemFull: {
+    width: "100%",
   },
   label: {
-    fontSize: 11,
-    color: '#6C757D',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    fontSize: 10,
+    color: theme.color.muted,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  valuePill: {
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius.md,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: theme.color.line,
   },
   value: {
-    fontSize: 14,
-    color: '#1A1C1E',
-    fontWeight: '700',
+    fontSize: theme.font.small,
+    color: theme.color.ink,
+    fontWeight: "600",
+    lineHeight: 20,
   },
 });

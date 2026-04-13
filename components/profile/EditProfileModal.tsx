@@ -18,8 +18,8 @@ import {
 } from 'react-native';
 import API_URL from "../../constants/api";
 
-import LabeledInput from '../common/LabeledInput';
-import {NotificationModal} from '../common';
+import LabeledInput from '../shared/LabeledInput';
+import {NotificationModal} from '../shared';
 
 interface EditProfileModalProps {
   visible: boolean;

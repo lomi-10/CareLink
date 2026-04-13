@@ -129,8 +129,7 @@ export default function NotificationModal({
               <TouchableOpacity
                 style={[styles.button, styles.actionButton, { backgroundColor: config.color }]}
                 onPress={() => {
-                  onAction();
-                  handleClose();
+                  void Promise.resolve(onAction()).finally(() => handleClose());
                 }}
               >
                 <Text style={styles.actionButtonText}>{actionLabel}</Text>

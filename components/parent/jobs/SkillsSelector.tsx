@@ -1,8 +1,7 @@
 // components/parent/jobs/SkillsSelector.tsx
-// UPDATED - Shows skills from ALL selected jobs (multi-job support)
 
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Skill {
@@ -13,10 +12,12 @@ interface Skill {
 }
 
 interface SkillsSelectorProps {
-  selectedJobIds: (string | number)[]; // CHANGED: Now array instead of single jobId
+  selectedJobIds: (string | number)[]; 
   availableSkills: Skill[];
   selectedSkills: (string | number)[];
+  customSkills: string;
   onToggleSkill: (skillId: string | number) => void;
+  onCustomSkillsChange: (value: string) => void;
   disabled?: boolean;
 }
 
@@ -24,88 +25,107 @@ export function SkillsSelector({
   selectedJobIds,
   availableSkills,
   selectedSkills,
+  customSkills,
   onToggleSkill,
+  onCustomSkillsChange,
   disabled = false,
 }: SkillsSelectorProps) {
+  const [showCustom, setShowCustom] = useState(false);
+
   // Don't show if no jobs selected
   if (selectedJobIds.length === 0) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.label}>Preferred Skills (Optional)</Text>
-        <Text style={styles.hint}>
-          Select job titles first to see available skills
-        </Text>
-      </View>
-    );
-  }
-
-  // Don't show if no skills for selected jobs
-  if (availableSkills.length === 0) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.label}>Preferred Skills (Optional)</Text>
-        <Text style={styles.hint}>
-          No specific skills defined for the selected job{selectedJobIds.length > 1 ? 's' : ''}
-        </Text>
-      </View>
-    );
+    return null;
   }
 
   return (
     <View style={styles.container}>
       <Text style={styles.label}>
-        Preferred Skills (Optional) - {selectedSkills.length} selected
+        Step 3: Preferred Skills <Text style={styles.asterisk}>*</Text>
       </Text>
       <Text style={styles.hint}>
-        Select skills you want the helper to have for {selectedJobIds.length > 1 ? 'these jobs' : 'this job'}
+        Select at least 2 skills or specify your own to help us match the right helper.
       </Text>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.skillsContainer}
-      >
-        {availableSkills.map((skill) => {
-          const isSelected = selectedSkills.includes(skill.skill_id);
-          return (
-            <TouchableOpacity
-              key={skill.skill_id}
-              style={[
-                styles.skillChip,
-                isSelected && styles.skillChipActive,
-                disabled && styles.skillChipDisabled,
-              ]}
-              onPress={() => !disabled && onToggleSkill(skill.skill_id)}
-              activeOpacity={0.7}
-              disabled={disabled}
-            >
-              <Text
+      {availableSkills.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.skillsContainer}
+        >
+          {availableSkills.map((skill) => {
+            const isSelected = selectedSkills.includes(skill.skill_id.toString());
+            return (
+              <TouchableOpacity
+                key={`skill-${skill.skill_id}`}
                 style={[
-                  styles.skillText,
-                  isSelected && styles.skillTextActive,
-                  disabled && styles.skillTextDisabled,
+                  styles.skillChip,
+                  isSelected && styles.skillChipActive,
+                  disabled && styles.skillChipDisabled,
                 ]}
+                onPress={() => !disabled && onToggleSkill(skill.skill_id.toString())}
+                activeOpacity={0.7}
+                disabled={disabled}
               >
-                {skill.skill_name}
-              </Text>
-              {isSelected && (
-                <Ionicons name="checkmark-circle" size={16} color="#007AFF" />
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+                <Text
+                  style={[
+                    styles.skillText,
+                    isSelected && styles.skillTextActive,
+                    disabled && styles.skillTextDisabled,
+                  ]}
+                >
+                  {skill.skill_name}
+                </Text>
+                {isSelected && (
+                  <Ionicons name="checkmark-circle" size={16} color="#007AFF" />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
 
-      {selectedSkills.length > 0 && (
+      <TouchableOpacity
+        style={styles.customToggle}
+        onPress={() => setShowCustom(!showCustom)}
+        disabled={disabled}
+      >
+        <Ionicons 
+          name={showCustom ? "remove-circle-outline" : "add-circle-outline"} 
+          size={18} 
+          color="#007AFF" 
+        />
+        <Text style={styles.customToggleText}>
+          {showCustom ? "Hide custom skills" : "Add other specific skills"}
+        </Text>
+      </TouchableOpacity>
+
+      {showCustom && (
+        <View style={styles.customInputWrapper}>
+          <Text style={styles.inputLabel}>Other Skills (Comma separated)</Text>
+          <TextInput
+            style={[styles.input, disabled && styles.disabled]}
+            placeholder="e.g., Driving, First Aid, Swimming..."
+            value={customSkills}
+            onChangeText={onCustomSkillsChange}
+            placeholderTextColor="#9CA3AF"
+            editable={!disabled}
+            multiline
+          />
+        </View>
+      )}
+
+      {(selectedSkills.length > 0 || customSkills) && (
         <View style={styles.selectedContainer}>
           <Text style={styles.selectedLabel}>
-            Selected: {selectedSkills.length} skill{selectedSkills.length > 1 ? 's' : ''}
+            Selected requirements:
           </Text>
           <Text style={styles.selectedSkills}>
-            {availableSkills
-              .filter((skill) => selectedSkills.includes(skill.skill_id))
-              .map((skill) => skill.skill_name)
-              .join(', ')}
+            {[
+              ...availableSkills
+                .filter((skill) => selectedSkills.includes(skill.skill_id.toString()))
+                .map((skill) => skill.skill_name),
+              ...(customSkills ? customSkills.split(',').map(s => s.trim()).filter(s => s) : [])
+            ].join(' • ')}
           </Text>
         </View>
       )}
@@ -123,14 +143,18 @@ const styles = StyleSheet.create({
     color: '#1A1C1E',
     marginBottom: 4,
   },
+  asterisk: {
+    color: '#FF3B30',
+  },
   hint: {
     fontSize: 13,
-    color: '#666',
-    marginBottom: 12,
+    color: '#6B7280',
+    marginBottom: 16,
+    lineHeight: 18,
   },
   skillsContainer: {
     paddingVertical: 4,
-    gap: 8,
+    marginBottom: 8,
   },
   skillChip: {
     flexDirection: 'row',
@@ -138,46 +162,91 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: '#fff',
     borderWidth: 1.5,
-    borderColor: '#E5E5EA',
+    borderColor: '#E5E7EB',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    marginRight: 8,
+    marginRight: 10,
   },
   skillChipActive: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#F0F8FF',
     borderColor: '#007AFF',
   },
   skillChipDisabled: {
     opacity: 0.5,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F3F4F6',
   },
   skillText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: '#4B5563',
   },
   skillTextActive: {
     color: '#007AFF',
   },
   skillTextDisabled: {
-    color: '#999',
+    color: '#9CA3AF',
+  },
+  customToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  customToggleText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  customInputWrapper: {
+    marginTop: 8,
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    color: '#111827',
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  disabled: {
+    backgroundColor: '#F3F4F6',
+    opacity: 0.6,
   },
   selectedContainer: {
-    marginTop: 12,
+    marginTop: 16,
     padding: 12,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#F0F9FF',
     borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007AFF',
   },
   selectedLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#1976D2',
+    color: '#0369A1',
     marginBottom: 4,
+    textTransform: 'uppercase',
   },
   selectedSkills: {
-    fontSize: 12,
-    color: '#1976D2',
-    lineHeight: 18,
+    fontSize: 13,
+    color: '#0C4A6E',
+    lineHeight: 20,
+    fontWeight: '500',
   },
 });
+

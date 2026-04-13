@@ -1,6 +1,5 @@
 // components/helper/jobs/JobCard.tsx
 // Full job card for desktop 3-column grid
-// STUDY: Job listings can be Open (apply allowed) or Pending (visible after API change; apply blocked until PESO approves).
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
@@ -16,7 +15,6 @@ interface JobCardProps {
 
 export function JobCard({ job, onPress, onApply, onToggleSave }: JobCardProps) {
   const displayCategory = job.category_name || (job.categories && job.categories[0]) || 'General';
-  const canApply = job.status === 'Open';
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9}>
@@ -26,17 +24,11 @@ export function JobCard({ job, onPress, onApply, onToggleSave }: JobCardProps) {
           <Text style={styles.title} numberOfLines={1}>{job.title}</Text>
           <View style={styles.badgeRow}>
             
-            {canApply ? (
-              <View style={[styles.categoryPill, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                <Ionicons name="shield-checkmark" size={12} color="#059669" />
-                <Text style={[styles.categoryText, { color: '#059669' }]}>PESO Verified</Text>
-              </View>
-            ) : (
-              <View style={[styles.categoryPill, { backgroundColor: '#FFFBEB', borderColor: '#FDE68A', flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                <Ionicons name="hourglass-outline" size={12} color="#B45309" />
-                <Text style={[styles.categoryText, { color: '#B45309' }]}>Awaiting PESO</Text>
-              </View>
-            )}
+            {/* NEW: PESO VERIFIED BADGE */}
+            <View style={[styles.categoryPill, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+              <Ionicons name="shield-checkmark" size={12} color="#059669" />
+              <Text style={[styles.categoryText, { color: '#059669' }]}>PESO Verified</Text>
+            </View>
 
             {displayCategory && (
               <View style={styles.categoryPill}>
@@ -93,12 +85,8 @@ export function JobCard({ job, onPress, onApply, onToggleSave }: JobCardProps) {
         <TouchableOpacity style={styles.viewBtn} onPress={(e) => { e.stopPropagation(); onPress(); }}>
           <Text style={styles.viewBtnText}>View Details</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.applyBtn, !canApply && styles.applyBtnDisabled]}
-          onPress={(e) => { e.stopPropagation(); if (canApply) onApply(); }}
-          disabled={!canApply}
-        >
-          <Text style={[styles.applyBtnText, !canApply && styles.applyBtnTextDisabled]}>{canApply ? 'Apply Now' : 'Apply when open'}</Text>
+        <TouchableOpacity style={styles.applyBtn} onPress={(e) => { e.stopPropagation(); onApply(); }}>
+          <Text style={styles.applyBtnText}>Apply Now</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -129,7 +117,5 @@ const styles = StyleSheet.create({
   viewBtn: { flex: 1, backgroundColor: '#F3F4F6', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   viewBtnText: { color: '#4B5563', fontSize: 14, fontWeight: '700' },
   applyBtn: { flex: 1, backgroundColor: '#007AFF', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  applyBtnDisabled: { backgroundColor: '#E5E7EB' },
-  applyBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  applyBtnTextDisabled: { color: '#9CA3AF' },
+  applyBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' }
 });

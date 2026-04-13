@@ -4,7 +4,6 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     FlatList,
     SafeAreaView,
     StyleSheet,
@@ -13,6 +12,7 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
+import { NotificationModal } from "@/components/shared/NotificationModal";
 import API_URL from "../../constants/api"; // Adjust path if needed: ../../constants/api
 
 export default function UserManagementScreen() {
@@ -22,6 +22,12 @@ export default function UserManagementScreen() {
   const [filter, setFilter] = useState("all"); // 'all' or 'pending'
   const [searchQuery, setSearchQuery] = useState("");
   const [currentUserType, setCurrentUserType] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    visible: boolean;
+    type: "success" | "error" | "warning" | "info";
+    message: string;
+    title?: string;
+  }>({ visible: false, type: "info", message: "" });
 
   useEffect(() => {
     loadUserType();
@@ -51,7 +57,7 @@ export default function UserManagementScreen() {
       setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "Failed to fetch users.");
+      setToast({ visible: true, type: "error", message: "Failed to fetch users.", title: "Error" });
     } finally {
       setLoading(false);
     }
@@ -74,13 +80,13 @@ export default function UserManagementScreen() {
 
       const result = await response.json();
       if (result.success) {
-        Alert.alert("Success", result.message);
+        setToast({ visible: true, type: "success", message: result.message, title: "Success" });
         fetchUsers(); // Refresh list
       } else {
-        Alert.alert("Failed", result.message);
+        setToast({ visible: true, type: "error", message: result.message, title: "Failed" });
       }
     } catch (error) {
-      Alert.alert("Error", "Could not update status.");
+      setToast({ visible: true, type: "error", message: "Could not update status.", title: "Error" });
     }
   };
 
@@ -213,6 +219,16 @@ export default function UserManagementScreen() {
           }
         />
       )}
+
+      <NotificationModal
+        visible={toast.visible}
+        title={toast.title}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((t) => ({ ...t, visible: false }))}
+        autoClose={toast.type === "success"}
+        duration={2200}
+      />
     </SafeAreaView>
   );
 }

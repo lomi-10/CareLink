@@ -4,6 +4,7 @@
 export { ProfileHeader } from './ProfileHeader';
 export { MobileProfileHeader } from './MobileProfileHeader';
 export { InfoCard } from './InfoCard';
+export { SpecialtiesShowcase } from './SpecialtiesShowcase';
 export { DocumentsCard } from './DocumentsCard';
 export { DocumentViewer } from './DocumentViewer';
 export { MobileMenu } from './MobileMenu';

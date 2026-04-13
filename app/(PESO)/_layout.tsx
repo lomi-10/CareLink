@@ -2,8 +2,8 @@
 // Shared Layout with Persistent Sidebar for PESO Admin
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter, usePathname, Slot } from "expo-router";
-import React, { useState, useEffect } from "react";
+import { Slot, usePathname, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   Modal,
   SafeAreaView,
@@ -15,6 +15,17 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { theme } from "@/constants/theme";
+import { RoleScreenBackground } from "@/components/shared";
+
+const NAV_LINKS = [
+  { icon: "grid" as const, label: "Dashboard", path: "/(peso)/home" },
+  { icon: "people" as const, label: "User verification", path: "/(peso)/user_verification" },
+  { icon: "briefcase" as const, label: "Job verification", path: "/(peso)/job_verification" },
+  { icon: "analytics" as const, label: "Analytics", path: "/(peso)/analytics" },
+  { icon: "person-add" as const, label: "Create PESO user", path: "/(peso)/create_peso_user" },
+  { icon: "bar-chart" as const, label: "Reports", path: "/(peso)/reports" },
+];
 
 export default function PESOLayout() {
   const router = useRouter();
@@ -25,6 +36,7 @@ export default function PESOLayout() {
   const [userName, setUserName] = useState("PESO Officer");
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -43,7 +55,7 @@ export default function PESOLayout() {
   const confirmLogout = async () => {
     await AsyncStorage.clear();
     setLogoutModalVisible(false);
-    router.replace("/welcome");
+    router.replace("/");
   };
 
   const isActive = (path: string) => pathname === path;
@@ -56,7 +68,7 @@ export default function PESOLayout() {
       <Ionicons 
         name={icon} 
         size={22} 
-        color={isActive(path) ? "#FF9500" : "#666"} 
+        color={isActive(path) ? theme.color.peso : "#666"} 
         style={{ marginRight: sidebarCollapsed ? 0 : 12 }}
       />
       {!sidebarCollapsed && (
@@ -70,13 +82,71 @@ export default function PESOLayout() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
-      
+
+      {!isWideScreen && (
+        <View style={styles.mobileTopBar}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.mobileLogo}>CareLink</Text>
+            <Text style={styles.mobileSub}>PESO Portal</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setMobileMenuOpen(true)}
+            style={styles.mobileMenuBtn}
+            accessibilityLabel="Open menu"
+          >
+            <Ionicons name="menu" size={26} color="#1A1C1E" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <Modal
+        visible={mobileMenuOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setMobileMenuOpen(false)}
+      >
+        <View style={styles.drawerOverlay}>
+          <View style={styles.drawerSheet}>
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerTitle}>Navigate</Text>
+              <TouchableOpacity onPress={() => setMobileMenuOpen(false)} hitSlop={12}>
+                <Ionicons name="close" size={28} color="#334155" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.drawerScroll}>
+              {NAV_LINKS.map((item) => (
+                <TouchableOpacity
+                  key={item.path}
+                  style={styles.drawerItem}
+                  onPress={() => {
+                    setMobileMenuOpen(false);
+                    router.push(item.path as never);
+                  }}
+                >
+                  <Ionicons name={item.icon} size={22} color="#EA580C" />
+                  <Text style={styles.drawerItemText}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={styles.drawerLogout}
+                onPress={() => {
+                  setMobileMenuOpen(false);
+                  handleLogout();
+                }}
+              >
+                <Ionicons name="log-out-outline" size={22} color="#DC2626" />
+                <Text style={styles.drawerLogoutText}>Log out</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.container}>
-        
-        {/* PERSISTENT SIDEBAR */}
+        {isWideScreen && (
         <View style={[
           styles.sidebar, 
-          isWideScreen ? (sidebarCollapsed ? styles.sidebarCollapsed : styles.sidebarWide) : styles.sidebarMobile
+          sidebarCollapsed ? styles.sidebarCollapsed : styles.sidebarWide
         ]}>
           
           {/* Header */}
@@ -109,32 +179,9 @@ export default function PESOLayout() {
           {/* Navigation */}
           <ScrollView style={styles.navItems}>
             {!sidebarCollapsed && <Text style={styles.navLabel}>MENU</Text>}
-            
-            <SidebarItem 
-              icon="grid" 
-              label="Dashboard" 
-              path="/(PESO)/home" 
-            />
-            <SidebarItem 
-              icon="people" 
-              label="User Verification" 
-              path="/(PESO)/user_verification" 
-            />
-            <SidebarItem 
-              icon="analytics" 
-              label="Analytics & Insights" 
-              path="/(PESO)/analytics" 
-            />
-            <SidebarItem 
-              icon="person-add" 
-              label="Create PESO User" 
-              path="/(PESO)/create_peso_user" 
-            />
-            <SidebarItem 
-              icon="bar-chart" 
-              label="Reports" 
-              path="/(PESO)/reports" 
-            />
+            {NAV_LINKS.map((item) => (
+              <SidebarItem key={item.path} icon={item.icon} label={item.label} path={item.path} />
+            ))}
           </ScrollView>
 
           {/* User Profile & Logout */}
@@ -155,10 +202,13 @@ export default function PESOLayout() {
             </TouchableOpacity>
           </View>
         </View>
+        )}
 
         {/* MAIN CONTENT AREA */}
         <View style={styles.mainContent}>
-          <Slot />
+          <RoleScreenBackground role="peso">
+            <Slot />
+          </RoleScreenBackground>
         </View>
       </View>
 
@@ -193,7 +243,7 @@ export default function PESOLayout() {
 const styles = StyleSheet.create({
   safeArea: { 
     flex: 1, 
-    backgroundColor: "#F8F9FA" 
+    backgroundColor: theme.color.canvasPeso,
   },
   container: { 
     flex: 1, 
@@ -222,9 +272,61 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     alignItems: 'center',
   },
-  sidebarMobile: { 
-    display: 'none' // Hide on mobile for now
+  mobileTopBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5EA",
   },
+  mobileLogo: { fontSize: 18, fontWeight: "800", color: "#1A1C1E" },
+  mobileSub: { fontSize: 11, color: "#64748B", fontWeight: "600" },
+  mobileMenuBtn: { padding: 8 },
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  drawerSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "85%",
+    paddingBottom: 24,
+  },
+  drawerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  drawerTitle: { fontSize: 20, fontWeight: "800", color: "#0F172A" },
+  drawerScroll: { paddingHorizontal: 8 },
+  drawerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  drawerItemText: { fontSize: 16, fontWeight: "600", color: "#1A1C1E" },
+  drawerLogout: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+  drawerLogoutText: { fontSize: 16, fontWeight: "700", color: "#DC2626" },
   sidebarHeader: { 
     flexDirection: "row", 
     alignItems: "center", 
@@ -277,7 +379,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15, 
     borderRadius: 10, 
     marginBottom: 6,
-    transition: 'all 0.2s',
   },
   sidebarItemActive: { 
     backgroundColor: "#FFF4E5" 

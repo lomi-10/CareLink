@@ -171,6 +171,62 @@ try {
     $docsStmt->close();
 
     // ========================================================================
+    // Profile completeness (0–100), aligned with UI expectations
+    // ========================================================================
+    $completeness = 0;
+    if ($profile !== null) {
+        $total = 0;
+        $completed = 0;
+
+        $requiredFields = array('contact_number', 'province', 'municipality', 'barangay');
+        foreach ($requiredFields as $field) {
+            $total += 10;
+            if (!empty($profile[$field])) {
+                $completed += 10;
+            }
+        }
+
+        $total += 10;
+        if (!empty($profile['bio'])) {
+            $completed += 10;
+        }
+
+        $total += 10;
+        if (!empty($profile['profile_image'])) {
+            $completed += 10;
+        }
+
+        $total += 10;
+        if ($household !== null && isset($household['household_size']) && $household['household_size'] !== null && $household['household_size'] !== '') {
+            $completed += 10;
+        }
+
+        $has_valid_id = false;
+        $has_brgy = false;
+        foreach ($documents as $d) {
+            $dt = isset($d['document_type']) ? $d['document_type'] : '';
+            if ($dt === 'Valid ID') {
+                $has_valid_id = true;
+            }
+            if ($dt === 'Barangay Clearance') {
+                $has_brgy = true;
+            }
+        }
+
+        $total += 20;
+        if ($has_valid_id) {
+            $completed += 20;
+        }
+
+        $total += 20;
+        if ($has_brgy) {
+            $completed += 20;
+        }
+
+        $completeness = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
+    }
+
+    // ========================================================================
     // COMBINE DATA & SEND RESPONSE
     // ========================================================================
     $responseData = array(
@@ -181,7 +237,8 @@ try {
         'children_count' => $children_count,
         'elderly' => $elderly, // NEW
         'elderly_count' => $elderly_count, // NEW
-        'documents' => $documents
+        'documents' => $documents,
+        'profile_completeness' => $completeness
     );
     
     error_log("✅ Retrieved profile with $children_count children, $elderly_count elderly, and " . count($documents) . " documents");

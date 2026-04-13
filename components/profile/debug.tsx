@@ -9,8 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import API_URL from "../../constants/api";
 
-import LabeledInput from '../common/LabeledInput';
-import NotificationModal from '../common/NotificationModal';
+import LabeledInput from '../shared/LabeledInput';
+import { NotificationModal } from '../shared/NotificationModal';
 
 interface EditProfileModalProps {
   visible: boolean;

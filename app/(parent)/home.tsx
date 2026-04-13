@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 // Import your separated styles!
 import { styles } from './home.styles';
+import { theme } from '@/constants/theme';
 
 // Custom Hooks
 import { useParentStats } from '@/hooks/parent';
@@ -63,7 +64,7 @@ export default function ParentHome() {
   if (statsLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.color.parent} />
       </View>
     );
   }
@@ -127,8 +128,8 @@ export default function ParentHome() {
             />
             <StatCard
               icon="chatbubbles"
-              iconColor="#FF9500"
-              iconBg="#FFF4E5"
+              iconColor={theme.color.info}
+              iconBg={theme.color.infoSoft}
               title="Messages"
               value={stats.messages}
               onPress={() => router.push('/(parent)/messages')}
@@ -163,7 +164,7 @@ export default function ParentHome() {
               icon="chatbubble"
               title="Messages"
               description="Chat with applicants"
-              color="#FF9500"
+              color={theme.color.info}
               onPress={() => router.push('/(parent)/messages')}
             />
           </View>
@@ -179,6 +180,9 @@ export default function ParentHome() {
     <SafeAreaView style={styles.container}>
       <MobileHeader
         onMenuPress={() => setIsMobileMenuOpen(true)}
+        accentColor={theme.color.parent}
+        subtitle="Parent Portal"
+        onNotificationPress={() => router.push('/(parent)/notifications')}
       />
       <ScrollView
         contentContainerStyle={styles.mobileScrollContent}
@@ -204,7 +208,7 @@ export default function ParentHome() {
           />
           <MobileStatCard
             icon="chatbubbles"
-            color="#FF9500"
+            color={theme.color.info}
             value={stats.messages}
             label="Messages"
             onPress={() => router.push('/(parent)/messages')}
@@ -229,7 +233,7 @@ export default function ParentHome() {
           <QuickAction
             icon="chatbubbles"
             label="Messages"
-            color="#FF9500"
+            color={theme.color.info}
             onPress={() => router.push('/(parent)/messages')}
           />
           <QuickAction

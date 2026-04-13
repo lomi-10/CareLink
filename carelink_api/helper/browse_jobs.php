@@ -1,13 +1,5 @@
 <?php
 // carelink_api/helper/browse_jobs.php
-//
-// STUDY NOTES (CareLink):
-// - Jobs are created as "Pending" until PESO approves them → "Open" (see peso/update_job_status.php).
-// - We list BOTH Open and Pending so helpers *see* all active listings; apply_job.php still only
-//   accepts applications when status === 'Open' (helpers cannot apply to Pending jobs).
-// - Legacy rows may have category_id (column) but not category_ids (JSON): we normalize below.
-// - Distance is NOT real GPS yet: we use location tier estimates (see below). Future: lat/lng +
-//   Haversine formula, or a geocoding API (see carelink_api/README.md).
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -97,7 +89,7 @@ try {
         ) pr ON jp.parent_id = pr.reviewee_id   
         LEFT JOIN saved_jobs sj ON jp.job_post_id = sj.job_post_id AND sj.helper_id = ?
         LEFT JOIN job_applications ja ON jp.job_post_id = ja.job_post_id AND ja.helper_id = ? AND ja.status != 'Withdrawn'
-        WHERE jp.status IN ('Open', 'Pending')
+        WHERE jp.status = 'Open' 
         AND ja.application_id IS NULL 
         ORDER BY jp.posted_at DESC
     ";
@@ -110,16 +102,9 @@ try {
     $processedJobs = [];
     while ($job = $jobsResult->fetch_assoc()) {
         
-        // Normalize category_ids: JSON column may be missing on older rows; fall back to category_id.
-        $category_ids = [];
-        if (!empty($job['category_ids'])) {
-            $category_ids = json_decode($job['category_ids'], true) ?: [];
-        }
-        if (empty($category_ids) && isset($job['category_id']) && $job['category_id'] !== null && $job['category_id'] !== '') {
-            $category_ids = [(string) $job['category_id']];
-        }
-        $job_ids = json_decode($job['job_ids'] ?? '[]', true) ?: [];
-        $skill_ids = json_decode($job['skill_ids'] ?? '[]', true) ?: [];
+        $category_ids = json_decode($job['category_ids'], true) ?: [];
+        $job_ids = json_decode($job['job_ids'], true) ?: [];
+        $skill_ids = json_decode($job['skill_ids'], true) ?: [];
         $daysOff = json_decode($job['days_off'], true) ?: [];
 
         // NEW: Map those raw IDs to actual readable skill strings!
@@ -148,14 +133,13 @@ try {
         $sameProvince = ($job['province'] == $helper['province']);
         $sameMunicipality = ($job['municipality'] == $helper['municipality']);
         
-        // Deterministic distance tiers (km-ish) until real coordinates exist — avoids random flicker on refresh.
-        $distance = 80;
+        $distance = rand(50, 100);
         if ($sameMunicipality) {
-            $distance = 3;
+            $distance = rand(1, 5); 
             $matchScore += 15;
             $matchReasons[] = "Very close to your location";
         } elseif ($sameProvince) {
-            $distance = 22;
+            $distance = rand(10, 30);
             $matchScore += 10;
             $matchReasons[] = "Location nearby";
         }

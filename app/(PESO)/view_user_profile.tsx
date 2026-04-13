@@ -1,21 +1,22 @@
 // app/(PESO)/view_user_profile.tsx
 // View User Profile - UPDATED with NotificationModal (better for web)
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router"; 
-import React, { useEffect, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import API_URL from "../../constants/api";
 import NotificationModal from "../../components/peso/NotificationModal";
+import API_URL from "../../constants/api";
+import { theme } from "@/constants/theme";
 
 export default function ViewUserProfile() {
   const router = useRouter();
@@ -89,6 +90,10 @@ export default function ViewUserProfile() {
   };
 
   const handleApproveUser = () => {
+    if (!canApproveUser) {
+      showNotification("warning", "Cannot approve yet", approvalBlockReason);
+      return;
+    }
     showNotification(
       "warning",
       "Verify User",
@@ -231,7 +236,7 @@ export default function ViewUserProfile() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF9500" />
+        <ActivityIndicator size="large" color={theme.color.peso} />
         <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
@@ -247,6 +252,33 @@ export default function ViewUserProfile() {
   }
 
   const { user, profile, documents } = userData;
+
+  const docList = documents ?? [];
+  const hasRejectedDoc = useMemo(
+    () => docList.some((d: { status: string }) => d.status === "Rejected"),
+    [docList]
+  );
+  const hasPendingDoc = useMemo(
+    () => docList.some((d: { status: string }) => d.status === "Pending"),
+    [docList]
+  );
+  const allDocsVerified = useMemo(
+    () => docList.length > 0 && docList.every((d: { status: string }) => d.status === "Verified"),
+    [docList]
+  );
+
+  const approvalBlockReason = hasRejectedDoc
+    ? "One or more documents were rejected. Resolve or re-upload documents before approving the account."
+    : hasPendingDoc
+      ? "Some documents are still pending review. Approve or reject each document first."
+      : docList.length === 0
+        ? "No documents on file. The applicant must upload required documents before account approval."
+        : !allDocsVerified
+          ? "All submitted documents must be marked Verified before you can approve this user."
+          : "";
+
+  const canApproveUser =
+    profile?.verification_status === "Pending" && docList.length > 0 && allDocsVerified;
 
   return (
     <View style={styles.container}>
@@ -274,6 +306,35 @@ export default function ViewUserProfile() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {profile?.verification_status === "Pending" && (
+          <View
+            style={[
+              styles.noticeBanner,
+              hasRejectedDoc ? styles.noticeDanger : hasPendingDoc ? styles.noticeWarning : styles.noticeInfo,
+            ]}
+          >
+            <Ionicons
+              name={hasRejectedDoc ? "alert-circle" : hasPendingDoc ? "hourglass-outline" : "shield-checkmark"}
+              size={22}
+              color="#fff"
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.noticeTitle}>Verification checklist</Text>
+              <Text style={styles.noticeBody}>
+                {hasRejectedDoc
+                  ? "Rejected documents block account approval. The applicant must replace rejected files."
+                  : hasPendingDoc
+                    ? "Review every document below (approve or reject) before approving the user."
+                    : docList.length === 0
+                      ? "Wait until required documents are uploaded."
+                      : canApproveUser
+                        ? "All documents are verified. You may approve this account when ready."
+                        : "Complete document review before approving this account."}
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
@@ -433,22 +494,29 @@ export default function ViewUserProfile() {
 
         {/* Approve/Reject Buttons */}
         {profile?.verification_status === "Pending" && (
-          <View style={styles.actionButtons}>
+          <View style={styles.actionButtonsColumn}>
             <TouchableOpacity
-              style={[styles.actionButton, styles.approveButtonLarge]}
+              style={[
+                styles.actionButton,
+                styles.approveButtonLarge,
+                !canApproveUser && styles.actionButtonDisabled,
+              ]}
               onPress={handleApproveUser}
               disabled={processing}
             >
               <Ionicons name="checkmark-circle" size={24} color="#fff" />
-              <Text style={styles.actionButtonText}>Verify User</Text>
+              <Text style={styles.actionButtonText}>Approve account</Text>
             </TouchableOpacity>
+            {!canApproveUser && (
+              <Text style={styles.helperHint}>{approvalBlockReason}</Text>
+            )}
             <TouchableOpacity
               style={[styles.actionButton, styles.rejectButtonLarge]}
               onPress={() => setRejectModalVisible(true)}
               disabled={processing}
             >
               <Ionicons name="close-circle" size={24} color="#fff" />
-              <Text style={styles.actionButtonText}>Reject User</Text>
+              <Text style={styles.actionButtonText}>Reject account</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -578,28 +646,74 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 // Styles remain the same as before - just copied from previous version
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 20, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
+  container: { flex: 1, backgroundColor: "transparent" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 20,
+    backgroundColor: theme.color.surfaceElevated,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.color.line,
+    ...theme.shadow.nav,
+  },
   backButton: { padding: 8 },
   headerTitle: { flex: 1, alignItems: "center" },
-  pageTitle: { fontSize: 18, fontWeight: "700", color: "#1A1C1E" },
-  pageSubtitle: { fontSize: 13, color: "#666" },
+  pageTitle: { fontSize: 18, fontWeight: "800", color: theme.color.ink },
+  pageSubtitle: { fontSize: 13, color: theme.color.muted, fontWeight: "500" },
   scrollContent: { padding: 20, paddingBottom: 40 },
-  profileCard: { backgroundColor: "#fff", borderRadius: 16, padding: 20, marginBottom: 20, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
+  noticeBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 16,
+  },
+  noticeInfo: { backgroundColor: "#0284C7" },
+  noticeWarning: { backgroundColor: "#D97706" },
+  noticeDanger: { backgroundColor: "#DC2626" },
+  noticeTitle: { color: "#fff", fontWeight: "800", fontSize: 15, marginBottom: 4 },
+  noticeBody: { color: "rgba(255,255,255,0.95)", fontSize: 13, lineHeight: 19 },
+  profileCard: {
+    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: theme.radius.lg,
+    padding: 20,
+    marginBottom: 20,
+    ...theme.shadow.card,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+  },
   profileHeader: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
   profileImage: { width: 80, height: 80, borderRadius: 40, marginRight: 16 },
   profileImagePlaceholder: { width: 80, height: 80, borderRadius: 40, backgroundColor: "#F0F0F0", alignItems: "center", justifyContent: "center", marginRight: 16 },
   profileInfo: { flex: 1 },
   profileName: { fontSize: 20, fontWeight: "700", color: "#1A1C1E", marginBottom: 4 },
   profileEmail: { fontSize: 14, color: "#666", marginBottom: 4 },
-  profileType: { fontSize: 13, color: "#FF9500", fontWeight: "600" },
+  profileType: { fontSize: 13, color: theme.color.peso, fontWeight: "700" },
   statusBadgeLarge: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, gap: 8 },
   statusTextLarge: { fontSize: 14, fontWeight: "700", color: "#fff" },
   statusPending: { backgroundColor: "#FF9500" },
   statusVerified: { backgroundColor: "#34C759" },
   statusRejected: { backgroundColor: "#FF3B30" },
-  section: { backgroundColor: "#fff", borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1A1C1E", marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
+  section: {
+    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: theme.radius.lg,
+    padding: 20,
+    marginBottom: 16,
+    ...theme.shadow.card,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: theme.color.ink,
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.color.line,
+  },
   infoRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F8F9FA" },
   infoLabel: { fontSize: 14, color: "#666", fontWeight: "500" },
   infoValue: { fontSize: 14, color: "#1A1C1E", fontWeight: "600", textAlign: "right", flex: 1, marginLeft: 16 },
@@ -619,11 +733,13 @@ const styles = StyleSheet.create({
   rejectButton: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: "#FF3B30", gap: 6 },
   rejectButtonText: { fontSize: 14, fontWeight: "600", color: "#fff" },
   noDocumentsText: { textAlign: "center", color: "#999", fontSize: 14, paddingVertical: 20 },
-  actionButtons: { flexDirection: "row", gap: 12, marginTop: 8 },
-  actionButton: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 16, borderRadius: 12, gap: 8 },
-  approveButtonLarge: { backgroundColor: "#34C759" },
-  rejectButtonLarge: { backgroundColor: "#FF3B30" },
+  actionButtonsColumn: { gap: 12, marginTop: 8 },
+  actionButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 16, borderRadius: 12, gap: 8 },
+  approveButtonLarge: { backgroundColor: "#16A34A" },
+  rejectButtonLarge: { backgroundColor: "#DC2626" },
+  actionButtonDisabled: { opacity: 0.45 },
   actionButtonText: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  helperHint: { fontSize: 13, color: "#64748B", lineHeight: 18, textAlign: "center", paddingHorizontal: 8 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 12, color: "#666", fontSize: 14 },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center" },

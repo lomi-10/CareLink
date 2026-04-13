@@ -4,6 +4,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '@/constants/theme';
 
 interface ProfileHeaderProps {
   profileImage?: string;
@@ -13,6 +14,7 @@ interface ProfileHeaderProps {
     icon: string;
     text: string;
     color: string;
+    variant?: 'peso_verified' | 'default';
   };
   onEditProfile: () => void;
   onManageDocuments: () => void;
@@ -28,8 +30,10 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   return (
     <View style={styles.container}>
-      {/* Cover Photo */}
-      <View style={styles.coverPhoto} />
+      <View style={styles.coverPhoto}>
+        <View style={styles.coverWash} />
+        <View style={styles.coverBand} />
+      </View>
 
       {/* Avatar */}
       <View style={styles.avatarWrapper}>
@@ -42,18 +46,43 @@ export function ProfileHeader({
             </View>
           )}
         </View>
-        <View style={[styles.miniStatusBadge, { backgroundColor: badge.color }]}>
-          <Ionicons name={badge.icon as any} size={12} color="#fff" />
+        <View
+          style={[
+            styles.miniStatusBadge,
+            badge.variant === 'peso_verified' && styles.miniStatusBadgePeso,
+            { backgroundColor: badge.color },
+          ]}
+        >
+          <Ionicons
+            name={(badge.variant === 'peso_verified' ? 'shield-checkmark' : badge.icon) as any}
+            size={badge.variant === 'peso_verified' ? 16 : 12}
+            color="#fff"
+          />
         </View>
       </View>
 
       {/* Info */}
       <View style={styles.info}>
         <Text style={styles.name}>{fullName}</Text>
-        <View style={[styles.verificationBadge, { backgroundColor: badge.color }]}>
-          <Ionicons name={badge.icon as any} size={14} color="#fff" />
-          <Text style={styles.badgeText}>{badge.text}</Text>
-        </View>
+        {badge.variant === 'peso_verified' ? (
+          <View
+            style={[
+              styles.pesoVerifiedBlock,
+              { borderColor: badge.color + '55', backgroundColor: theme.color.helperSoft },
+            ]}
+          >
+            <View style={[styles.pesoShieldCircle, { backgroundColor: badge.color }]}>
+              <Ionicons name="shield-checkmark" size={30} color="#fff" />
+            </View>
+            <Text style={styles.pesoVerifiedTitle}>PESO Verified</Text>
+            <Text style={styles.pesoVerifiedSub}>Account cleared by PESO</Text>
+          </View>
+        ) : (
+          <View style={[styles.verificationBadge, { backgroundColor: badge.color }]}>
+            <Ionicons name={badge.icon as any} size={14} color="#fff" />
+            <Text style={styles.badgeText}>{badge.text}</Text>
+          </View>
+        )}
         {bio && (
           <Text style={styles.bio} numberOfLines={2}>
             {bio}
@@ -76,7 +105,7 @@ export function ProfileHeader({
           onPress={onManageDocuments}
           activeOpacity={0.7}
         >
-          <Ionicons name="cloud-upload-outline" size={18} color="#FF9500" />
+          <Ionicons name="cloud-upload-outline" size={18} color={theme.color.helper} />
           <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>
             Manage Documents
           </Text>
@@ -88,18 +117,31 @@ export function ProfileHeader({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    marginBottom: 24,
+    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: theme.radius.xl,
+    marginBottom: theme.space.lg,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    ...theme.shadow.card,
   },
   coverPhoto: {
-    height: 120,
-    backgroundColor: '#FF9500',
+    height: 112,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  coverWash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: theme.color.helperSoft,
+  },
+  coverBand: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 36,
+    backgroundColor: theme.color.helper,
+    opacity: 0.2,
   },
   avatarWrapper: {
     alignItems: 'center',
@@ -113,7 +155,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 4,
-    borderColor: '#fff',
+    borderColor: theme.color.surfaceElevated,
   },
   avatarPlaceholder: {
     width: 100,
@@ -137,6 +179,41 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fff',
   },
+  miniStatusBadgePeso: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  pesoVerifiedBlock: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    marginBottom: 12,
+    paddingVertical: theme.space.md,
+    paddingHorizontal: theme.space.lg,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1.5,
+    maxWidth: 320,
+  },
+  pesoShieldCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  pesoVerifiedTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.color.ink,
+    letterSpacing: -0.3,
+  },
+  pesoVerifiedSub: {
+    marginTop: 4,
+    fontSize: theme.font.caption,
+    color: theme.color.muted,
+    fontWeight: '600',
+  },
   info: {
     alignItems: 'center',
     paddingHorizontal: 24,
@@ -144,9 +221,10 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#1A1C1E',
+    fontWeight: '800',
+    color: theme.color.ink,
     marginBottom: 8,
+    letterSpacing: -0.4,
   },
   verificationBadge: {
     flexDirection: 'row',
@@ -164,7 +242,7 @@ const styles = StyleSheet.create({
   },
   bio: {
     fontSize: 14,
-    color: '#666',
+    color: theme.color.muted,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -179,15 +257,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FF9500',
+    backgroundColor: theme.color.helper,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: theme.radius.md,
     gap: 8,
   },
   actionButtonSecondary: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.color.surfaceElevated,
     borderWidth: 1.5,
-    borderColor: '#FF9500',
+    borderColor: theme.color.helper,
   },
   actionButtonText: {
     color: '#fff',
@@ -195,6 +273,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   actionButtonTextSecondary: {
-    color: '#FF9500',
+    color: theme.color.helper,
   },
 });

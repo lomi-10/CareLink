@@ -12,7 +12,6 @@ interface CompactJobCardProps {
 
 export function CompactJobCard({ job, onPress, onToggleSave }: CompactJobCardProps) {
   const displayCategory = job.category_name || (job.categories && job.categories[0]) || 'General';
-  const isOpen = job.status === 'Open';
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9}>
@@ -21,9 +20,10 @@ export function CompactJobCard({ job, onPress, onToggleSave }: CompactJobCardPro
       </TouchableOpacity>
 
       <View style={styles.header}>
-        <View style={[styles.categoryBadge, isOpen ? { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' } : { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }, { borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 2 }]}>
-          <Ionicons name={isOpen ? 'shield-checkmark' : 'hourglass-outline'} size={10} color={isOpen ? '#059669' : '#B45309'} />
-          <Text style={[styles.categoryText, { color: isOpen ? '#059669' : '#B45309' }]}>{isOpen ? 'Verified' : 'Pending'}</Text>
+        {/* NEW: COMPACT VERIFIED BADGE */}
+        <View style={[styles.categoryBadge, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 2 }]}>
+          <Ionicons name="shield-checkmark" size={10} color="#059669" />
+          <Text style={[styles.categoryText, { color: '#059669' }]}>Verified</Text>
         </View>
 
         {displayCategory && (

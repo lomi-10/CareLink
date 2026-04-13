@@ -137,6 +137,10 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 16,
   },
+  requiredMark: {
+    color: '#FF3B30',
+    fontWeight: '700',
+  },
   infoAlert: {
     flexDirection: 'row',
     alignItems: 'center',

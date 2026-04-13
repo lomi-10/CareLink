@@ -2,9 +2,8 @@
 // Create PESO User - Form to create new PESO admin accounts
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,25 +13,50 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { NotificationModal } from "@/components/shared/NotificationModal";
 import API_URL from "../../constants/api";
+
+const emptyForm = {
+  first_name: "",
+  middle_name: "",
+  last_name: "",
+  email: "",
+  username: "",
+  password: "",
+  confirm_password: "",
+  contact_number: "",
+};
 
 export default function CreatePESOUser() {
   const router = useRouter();
 
-  const [formData, setFormData] = useState({
-    first_name: "",
-    middle_name: "",
-    last_name: "",
-    email: "",
-    username: "",
-    password: "",
-    confirm_password: "",
-    contact_number: "",
-  });
+  const [formData, setFormData] = useState({ ...emptyForm });
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [modal, setModal] = useState<{
+    visible: boolean;
+    type: "success" | "error" | "warning" | "info";
+    message: string;
+    title?: string;
+  }>({ visible: false, type: "info", message: "" });
+  const pendingNavigateBack = useRef(false);
+
+  const showModal = (
+    type: "success" | "error" | "warning" | "info",
+    message: string,
+    title?: string
+  ) => setModal({ visible: true, type, message, title });
+
+  const closeModal = () => {
+    setModal((m) => ({ ...m, visible: false }));
+    if (pendingNavigateBack.current) {
+      pendingNavigateBack.current = false;
+      setFormData({ ...emptyForm });
+      router.back();
+    }
+  };
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -46,23 +70,23 @@ export default function CreatePESOUser() {
       !formData.username ||
       !formData.password
     ) {
-      Alert.alert("Error", "Please fill in all required fields");
+      showModal("error", "Please fill in all required fields");
       return false;
     }
 
     if (formData.password !== formData.confirm_password) {
-      Alert.alert("Error", "Passwords do not match");
+      showModal("error", "Passwords do not match");
       return false;
     }
 
     if (formData.password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+      showModal("error", "Password must be at least 6 characters");
       return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      Alert.alert("Error", "Please enter a valid email address");
+      showModal("error", "Please enter a valid email address");
       return false;
     }
 
@@ -88,34 +112,14 @@ export default function CreatePESOUser() {
       const data = JSON.parse(text);
 
       if (data.success) {
-        Alert.alert(
-          "Success",
-          "PESO user account created successfully",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                setFormData({
-                  first_name: "",
-                  middle_name: "",
-                  last_name: "",
-                  email: "",
-                  username: "",
-                  password: "",
-                  confirm_password: "",
-                  contact_number: "",
-                });
-                router.back();
-              },
-            },
-          ]
-        );
+        pendingNavigateBack.current = true;
+        showModal("success", "PESO user account created successfully.", "Success");
       } else {
-        Alert.alert("Error", data.message || "Failed to create account");
+        showModal("error", data.message || "Failed to create account");
       }
     } catch (error) {
       console.error("Error creating user:", error);
-      Alert.alert("Error", "Network error occurred. Please try again.");
+      showModal("error", "Network error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -300,6 +304,16 @@ export default function CreatePESOUser() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <NotificationModal
+        visible={modal.visible}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        onClose={closeModal}
+        autoClose={modal.type === "success"}
+        duration={2200}
+      />
     </KeyboardAvoidingView>
   );
 }

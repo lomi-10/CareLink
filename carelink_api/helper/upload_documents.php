@@ -20,6 +20,7 @@ ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/../error.log');
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/sync_profile_completed.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -349,6 +350,8 @@ try {
             $savedCount++;
         }
 
+        $profile_completed = carelink_sync_helper_profile_completed($conn, $user_id);
+
         // Commit transaction
         $conn->commit();
         error_log("=== TRANSACTION COMMITTED === Saved $savedCount documents");
@@ -365,7 +368,8 @@ try {
         sendResponse(true, "$savedCount document(s) uploaded successfully!", array(
             'documents_uploaded' => $savedCount,
             'files' => array_keys($uploadedDocs),
-            'errors' => $errors
+            'errors' => $errors,
+            'profile_completed' => $profile_completed
         ));
 
     } catch (Exception $e) {

@@ -38,12 +38,6 @@ export function ApplicationModal({
   const handleSubmit = async () => {
     if (!job) return;
 
-    // STUDY: browse_jobs lists Pending + Open; applications only accepted for Open (apply_job.php).
-    if (job.status !== 'Open') {
-      setError('This job is still awaiting PESO verification. Applications open once the listing is approved.');
-      return;
-    }
-
     // Validate cover letter
     if (!coverLetter.trim()) {
       setError('Please write a cover letter to introduce yourself');

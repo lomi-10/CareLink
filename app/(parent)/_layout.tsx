@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../constants/api";
+import { RoleScreenBackground } from "@/components/shared";
 
 export default function ParentLayout() {
   const router = useRouter();
@@ -78,24 +79,37 @@ export default function ParentLayout() {
   // Show different content based on status
   if (userStatus === "pending") {
     return (
+      <RoleScreenBackground role="parent">
       <View style={styles.container}>
-        {/* Pending Status Banner */}
         <View style={styles.pendingBanner}>
           <Ionicons name="time-outline" size={20} color="#007AFF" />
           <View style={styles.bannerText}>
-            <Text style={styles.bannerTitle}>Account Pending Verification</Text>
+            <Text style={styles.bannerTitle}>Account pending verification</Text>
             <Text style={styles.bannerSubtitle}>
-              Complete your profile and upload documents. Full access after PESO approval.
+              Complete your profile, upload documents, and wait for PESO to approve your account.
             </Text>
           </View>
+          <TouchableOpacity
+            style={styles.bannerCta}
+            onPress={() => router.push("/(parent)/profile")}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.bannerCtaText}>Complete profile</Text>
+            <Ionicons name="chevron-forward" size={16} color="#1D4ED8" />
+          </TouchableOpacity>
         </View>
         <View style={styles.content}>
           <Slot />
         </View>
       </View>
+      </RoleScreenBackground>
     );
   } else if (userStatus === "approved") {
-    return <Slot />;
+    return (
+      <RoleScreenBackground role="parent">
+        <Slot />
+      </RoleScreenBackground>
+    );
   } else if (userStatus === "suspended") {
     return <SuspendedScreen />;
   } else {
@@ -121,7 +135,7 @@ function SuspendedScreen() {
 
   const handleLogout = async () => {
     await AsyncStorage.clear();
-    router.replace("/welcome");
+    router.replace("/");
   };
 
   return (
@@ -160,7 +174,7 @@ function SuspendedScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA"
+    backgroundColor: "transparent"
   },
   content: {
     flex: 1
@@ -173,8 +187,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#BBDEFB",
-    gap: 12
+    gap: 12,
+    flexWrap: "wrap",
   },
+  bannerCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#BFDBFE",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 4,
+  },
+  bannerCtaText: { fontSize: 13, fontWeight: "800", color: "#1E40AF" },
   bannerText: {
     flex: 1
   },

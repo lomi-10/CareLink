@@ -28,10 +28,10 @@ export function BasicInfoSection({
       
       <View style={styles.inputGrid}>
         <View style={styles.inputHalf}>
-          <LabeledInput label="First Name *" value={firstName} onChangeText={setFirstName} placeholder="Juan" />
+          <LabeledInput label="First Name" required value={firstName} onChangeText={setFirstName} placeholder="Juan" />
         </View>
         <View style={styles.inputHalf}>
-          <LabeledInput label="Last Name *" value={lastName} onChangeText={setLastName} placeholder="Cruz" />
+          <LabeledInput label="Last Name" required value={lastName} onChangeText={setLastName} placeholder="Cruz" />
         </View>
       </View>
       
@@ -42,14 +42,14 @@ export function BasicInfoSection({
           <LabeledInput label="Username" value={username} onChangeText={setUsername} placeholder="juandelacruz" />
         </View>
         <View style={styles.inputHalf}>
-          <LabeledInput label="Contact Number *" value={contactNumber} onChangeText={setContactNumber} keyboardType="phone-pad" placeholder="09XX XXX XXXX" />
+          <LabeledInput label="Contact Number" required value={contactNumber} onChangeText={setContactNumber} keyboardType="phone-pad" placeholder="09XX XXX XXXX" />
         </View>
       </View>
       
       <LabeledInput label="Email Address" value={email} onChangeText={setEmail} keyboardType="email-address" editable={false} placeholder="email@example.com" />
-      <LabeledInput label="Birth Date (YYYY-MM-DD) *" value={birthDate} onChangeText={setBirthDate} placeholder="2000-01-15" />
+      <LabeledInput label="Birth Date (YYYY-MM-DD)" required value={birthDate} onChangeText={setBirthDate} placeholder="2000-01-15" />
       
-      <Text style={styles.label}>Gender *</Text>
+      <Text style={styles.label}>Gender <Text style={styles.requiredMark}>*</Text></Text>
       <View style={styles.row}>
         {['Male', 'Female'].map(opt => (
           <TouchableOpacity key={opt} onPress={() => setGender(opt as any)} style={[styles.option, gender === opt && styles.optionActive]}>

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_URL from "@/constants/api";
+import { isProfileCompleted } from "./authProfile";
 
 export function useLoginForm() {
   const router = useRouter();
@@ -74,17 +75,30 @@ export function useLoginForm() {
           return;
         }
 
-        // SUCCESS: Regular users
+        // SUCCESS: parent / helper — complete profile first when needed (Phase A)
+        const mergedUser = {
+          ...data.user,
+          profile_completed: data.user.profile_completed,
+          status: data.user.status ?? "approved",
+        };
         await AsyncStorage.setItem("user_token", data.user.user_id.toString());
-        await AsyncStorage.setItem("user_data", JSON.stringify(data.user));
+        await AsyncStorage.setItem("user_data", JSON.stringify(mergedUser));
 
         setAttemptsLeft(5);
         setNotification({ visible: true, message: data.message || "Welcome Back!", type: "success" });
 
+        const go =
+          data.user_type === "helper"
+            ? !isProfileCompleted(mergedUser)
+              ? "/(helper)/profile"
+              : "/(helper)/home"
+            : !isProfileCompleted(mergedUser)
+              ? "/(parent)/profile"
+              : "/(parent)/home";
+
         setTimeout(() => {
           setNotification(prev => ({ ...prev, visible: false }));
-          if (data.user_type === "helper") router.replace("/(helper)/home"); 
-          else router.replace("/(parent)/home");
+          router.replace(go);
         }, 1500);
 
       } else {
@@ -99,17 +113,32 @@ export function useLoginForm() {
           else setNotification({ visible: true, message: `${data.message}\n${newAttempts} attempts left.`, type: "error" });
         
         } else if(data.reason === "Account Pending") {
-          // PENDING USER
+          // PENDING USER (not yet approved by PESO — still complete profile & docs for verification)
+          const mergedUser = {
+            ...data.user,
+            profile_completed: data.user.profile_completed,
+            status: data.user.status ?? "pending",
+          };
           await AsyncStorage.setItem("user_token", data.user.user_id.toString());
-          await AsyncStorage.setItem("user_data", JSON.stringify(data.user));
+          await AsyncStorage.setItem("user_data", JSON.stringify(mergedUser));
           setAttemptsLeft(5);
 
-          setNotification({ visible: true, message: "Account Pending. Setup your profile for PESO approval.", type: "info" });
+          setNotification({ visible: true, message: "Account pending. Complete your profile and documents for PESO review.", type: "info" });
+
+          const go =
+            data.user_type === "helper"
+              ? !isProfileCompleted(mergedUser)
+                ? "/(helper)/profile"
+                : "/(helper)/home"
+              : data.user_type === "parent"
+                ? !isProfileCompleted(mergedUser)
+                  ? "/(parent)/profile"
+                  : "/(parent)/home"
+                : "/(parent)/home";
 
           setTimeout(() => {
             setNotification(prev => ({ ...prev, visible: false }));
-            if (data.user_type === "helper") router.replace("/(helper)/home"); 
-            else if (data.user_type === "parent") router.replace("/(parent)/home");
+            router.replace(go);
           }, 2000);
         }
       }

@@ -36,6 +36,9 @@ export default function RootLayout() {
         {/* This covers: app/(helper)/home.tsx, etc. */}
         <Stack.Screen name="(helper)" options={{ headerShown: false }} />
 
+        {/* PESO staff (web-first; routes under app/(peso)/) */}
+        <Stack.Screen name="(peso)" options={{ headerShown: false }} />
+
         {/* 6. Utility Screens */}
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         

@@ -85,24 +85,15 @@ try {
 
         error_log("User type: $user_type, Current status: $current_status");
 
-        // ====================================================================
-        // STEP 1b: Approve is blocked if ANY document was rejected (PESO policy)
-        // STUDY: Rejecting a document does not auto-reject the user account; but you
-        // must not "Verify User" until rejected docs are re-uploaded and cleared.
-        // Frontend also disables the Approve button when a Rejected doc exists.
-        // ====================================================================
+        // Cannot approve account if any document was rejected (resolve with user first)
         if ($action === 'approve') {
-            $rejSql = "SELECT COUNT(*) AS cnt FROM user_documents WHERE user_id = ? AND status = 'Rejected'";
-            $rejStmt = $conn->prepare($rejSql);
-            $rejStmt->bind_param("i", $user_id);
-            $rejStmt->execute();
-            $rejRow = $rejStmt->get_result()->fetch_assoc();
-            $rejStmt->close();
-            if ($rejRow && intval($rejRow['cnt']) > 0) {
-                throw new Exception(
-                    "Cannot approve this user: one or more documents are marked Rejected. " .
-                    "Ask the user to re-upload corrected documents, then verify those documents first."
-                );
+            $docCheck = $conn->prepare("SELECT COUNT(*) AS c FROM user_documents WHERE user_id = ? AND status = 'Rejected'");
+            $docCheck->bind_param("i", $user_id);
+            $docCheck->execute();
+            $rejectedCount = (int) ($docCheck->get_result()->fetch_assoc()['c'] ?? 0);
+            $docCheck->close();
+            if ($rejectedCount > 0) {
+                throw new Exception("Cannot approve this user while one or more documents are rejected. Resolve documents first.");
             }
         }
 

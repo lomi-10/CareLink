@@ -1,100 +1,53 @@
 <?php
 // carelink_api/peso/get_dashboard_stats.php
-// PESO dashboard statistics
 
-ob_start();
+header('Access-Control-Allow-Origin: *');
+header('Content-Type: application/json');
 
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
-header("Content-Type: application/json; charset=UTF-8");
+require_once '../dbcon.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
-ini_set('display_errors', 0);
-error_reporting(0);
-
-include_once '../dbcon.php';
-
-function sendResponse($success, $message, $data = null) {
-    if (ob_get_level()) ob_clean();
-    
-    $response = array(
-        "success" => $success,
-        "message" => $message
-    );
-    
-    if ($data !== null) {
-        $response['data'] = $data;
-    }
-    
-    echo json_encode($response);
-    exit();
-}
+$stats = [
+    'total_helpers' => 0,
+    'pending_helpers' => 0,
+    'verified_helpers' => 0,
+    'total_parents' => 0,
+    'pending_documents' => 0,
+    'verified_documents' => 0,
+    'pending_jobs' => 0,
+    'total_jobs' => 0
+];
 
 try {
-    if (!$conn) {
-        throw new Exception("Database connection failed");
-    }
+    // Helper Stats (Checking helper_profiles for verification_status)
+    $res = $conn->query("SELECT COUNT(*) as count FROM users WHERE user_type = 'helper'");
+    if($res) $stats['total_helpers'] = $res->fetch_assoc()['count'];
 
-    // Get total helpers
-    $totalHelpersSql = "SELECT COUNT(*) as count FROM users WHERE user_type = 'helper'";
-    $totalHelpersResult = $conn->query($totalHelpersSql);
-    $total_helpers = $totalHelpersResult->fetch_assoc()['count'];
+    $res = $conn->query("SELECT COUNT(*) as count FROM helper_profiles WHERE verification_status = 'Pending'");
+    if($res) $stats['pending_helpers'] = $res->fetch_assoc()['count'];
 
-    // Get pending helpers
-    $pendingHelpersSql = "SELECT COUNT(*) as count 
-                          FROM helper_profiles 
-                          WHERE verification_status = 'Pending'";
-    $pendingHelpersResult = $conn->query($pendingHelpersSql);
-    $pending_helpers = $pendingHelpersResult->fetch_assoc()['count'];
+    $res = $conn->query("SELECT COUNT(*) as count FROM helper_profiles WHERE verification_status = 'Verified'");
+    if($res) $stats['verified_helpers'] = $res->fetch_assoc()['count'];
 
-    // Get verified helpers
-    $verifiedHelpersSql = "SELECT COUNT(*) as count 
-                           FROM helper_profiles 
-                           WHERE verification_status = 'Verified'";
-    $verifiedHelpersResult = $conn->query($verifiedHelpersSql);
-    $verified_helpers = $verifiedHelpersResult->fetch_assoc()['count'];
+    // Parent Stats
+    $res = $conn->query("SELECT COUNT(*) as count FROM users WHERE user_type = 'parent'");
+    if($res) $stats['total_parents'] = $res->fetch_assoc()['count'];
 
-    // Get total parents
-    $totalParentsSql = "SELECT COUNT(*) as count FROM users WHERE user_type = 'parent'";
-    $totalParentsResult = $conn->query($totalParentsSql);
-    $total_parents = $totalParentsResult->fetch_assoc()['count'];
+    // Job Stats
+    $res = $conn->query("SELECT COUNT(*) as count FROM job_posts WHERE status = 'Pending'");
+    if($res) $stats['pending_jobs'] = $res->fetch_assoc()['count'];
 
-    // Get pending documents
-    $pendingDocsSql = "SELECT COUNT(*) as count 
-                       FROM user_documents 
-                       WHERE status = 'Pending'";
-    $pendingDocsResult = $conn->query($pendingDocsSql);
-    $pending_documents = $pendingDocsResult->fetch_assoc()['count'];
+    $res = $conn->query("SELECT COUNT(*) as count FROM job_posts WHERE status = 'Open'");
+    if($res) $stats['total_jobs'] = $res->fetch_assoc()['count'];
 
-    // Get verified documents
-    $verifiedDocsSql = "SELECT COUNT(*) as count 
-                        FROM user_documents 
-                        WHERE status = 'Verified'";
-    $verifiedDocsResult = $conn->query($verifiedDocsSql);
-    $verified_documents = $verifiedDocsResult->fetch_assoc()['count'];
+    // Document Stats (Using your user_documents table)
+    $res = $conn->query("SELECT COUNT(*) as count FROM user_documents WHERE status = 'Pending'");
+    if($res) $stats['pending_documents'] = $res->fetch_assoc()['count'];
 
-    $stats = array(
-        'total_helpers' => intval($total_helpers),
-        'pending_helpers' => intval($pending_helpers),
-        'verified_helpers' => intval($verified_helpers),
-        'total_parents' => intval($total_parents),
-        'pending_documents' => intval($pending_documents),
-        'verified_documents' => intval($verified_documents),
-    );
+    $res = $conn->query("SELECT COUNT(*) as count FROM user_documents WHERE status = 'Verified'");
+    if($res) $stats['verified_documents'] = $res->fetch_assoc()['count'];
 
-    sendResponse(true, "Stats retrieved successfully", $stats);
-
+    echo json_encode(['success' => true, 'data' => $stats]);
 } catch (Exception $e) {
-    error_log("ERROR: " . $e->getMessage());
-    sendResponse(false, $e->getMessage());
-}
-
-if (isset($conn) && $conn) {
-    $conn->close();
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 ?>

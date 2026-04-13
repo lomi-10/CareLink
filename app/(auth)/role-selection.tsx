@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-  Dimensions,
   ImageBackground,
   Platform,
   SafeAreaView,
@@ -12,8 +11,7 @@ import {
   View,
 } from "react-native";
 
-const { width } = Dimensions.get("window");
-const isWeb = Platform.OS === "web";
+import { theme } from "@/constants/theme";
 
 export default function RoleSelectionScreen() {
   const router = useRouter();
@@ -24,88 +22,81 @@ export default function RoleSelectionScreen() {
   });
 
   const handleRoleSelect = (role: string) => {
-    // Navigate to signup with role parameter
     router.push({
       pathname: "/(auth)/signup",
       params: { role },
     });
   };
 
-  const RoleCard = ({ 
-    role, 
-    title, 
-    description, 
-    icon, 
-    color 
-  }: { 
-    role: string; 
-    title: string; 
-    description: string; 
-    icon: any; 
-    color: string; 
+  const RoleCard = ({
+    role,
+    title,
+    description,
+    icon,
+    accent,
+    soft,
+  }: {
+    role: string;
+    title: string;
+    description: string;
+    icon: React.ComponentProps<typeof Ionicons>["name"];
+    accent: string;
+    soft: string;
   }) => (
     <TouchableOpacity
-      style={[styles.card, { borderLeftColor: color }]}
+      style={[styles.card, { borderLeftColor: accent, backgroundColor: soft }]}
       onPress={() => handleRoleSelect(role)}
-      activeOpacity={0.8}
+      activeOpacity={0.88}
     >
-      <View style={[styles.iconContainer, { backgroundColor: color + "15" }]}>
-        <Ionicons name={icon} size={32} color={color} />
+      <View style={[styles.iconContainer, { backgroundColor: `${accent}18` }]}>
+        <Ionicons name={icon} size={30} color={accent} />
       </View>
       <View style={styles.cardContent}>
         <Text style={styles.cardTitle}>{title}</Text>
         <Text style={styles.cardDescription}>{description}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#CCC" />
+      <Ionicons name="chevron-forward" size={22} color={theme.color.subtle} />
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <ImageBackground
-        source={backgroundImage}
-        style={styles.background}
-        resizeMode="cover"
-      >
+      <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
         <View style={styles.overlay}>
-          <View style={styles.content}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#000" />
+          <View style={styles.sheet}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.replace("/")}>
+              <Ionicons name="arrow-back" size={22} color={theme.color.ink} />
             </TouchableOpacity>
 
-            <View style={styles.header}>
-              <Text style={styles.title}>Join CareLink</Text>
-              <Text style={styles.subtitle}>Select how you want to use the platform</Text>
-            </View>
+            <Text style={styles.kicker}>Get started</Text>
+            <Text style={styles.title}>Choose your role</Text>
+            <Text style={styles.subtitle}>
+              This decides how CareLink guides you — you can’t change it later without support.
+            </Text>
 
             <View style={styles.cardsContainer}>
               <RoleCard
                 role="parent"
-                title="I'm a Parent"
-                description="I want to find and hire trusted help for my home."
+                title="I'm a parent"
+                description="Post jobs, browse helpers, and hire with PESO-aligned verification."
                 icon="people"
-                color="#007AFF"
+                accent={theme.color.parent}
+                soft={theme.color.parentSoft}
               />
-
               <RoleCard
                 role="helper"
-                title="I'm a Helper"
-                description="I want to find jobs and offer my services to families."
+                title="I'm a helper"
+                description="Build your profile, upload documents, and apply to trusted employers."
                 icon="briefcase"
-                color="#34C759"
+                accent={theme.color.helper}
+                soft={theme.color.helperSoft}
               />
             </View>
 
             <Text style={styles.footerText}>
-              Already have an account?{" "}
-              <Text 
-                style={styles.link} 
-                onPress={() => router.push("/login")}
-              >
-                Login here
+              Already registered?{" "}
+              <Text style={styles.link} onPress={() => router.push("/login")}>
+                Sign in
               </Text>
             </Text>
           </View>
@@ -116,105 +107,81 @@ export default function RoleSelectionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  background: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
+  container: { flex: 1, backgroundColor: theme.color.surface },
+  background: { flex: 1, width: "100%", height: "100%" },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.85)",
+    backgroundColor: "rgba(248, 250, 252, 0.92)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: theme.space.lg,
   },
-  content: {
+  sheet: {
     width: "100%",
-    maxWidth: 500,
-    backgroundColor: "#fff",
-    borderRadius: 24,
-    padding: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 5,
+    maxWidth: 520,
+    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: theme.radius.xl,
+    padding: theme.space.xxl,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    ...theme.shadow.card,
   },
   backButton: {
     position: "absolute",
-    top: 20,
-    left: 20,
+    top: theme.space.lg,
+    left: theme.space.lg,
     zIndex: 10,
-    padding: 8,
+    padding: theme.space.sm,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.color.surface,
   },
-  header: {
-    alignItems: "center",
-    marginBottom: 30,
-    marginTop: 10,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#1A1A1A",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#666",
+  kicker: {
+    fontSize: theme.font.caption,
+    fontWeight: "700",
+    color: theme.color.peso,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: theme.space.sm,
+    marginTop: theme.space.xl,
     textAlign: "center",
   },
-  cardsContainer: {
-    gap: 16,
-    marginBottom: 30,
+  title: {
+    fontSize: theme.font.title,
+    fontWeight: "800",
+    color: theme.color.ink,
+    marginBottom: theme.space.sm,
+    textAlign: "center",
   },
+  subtitle: {
+    fontSize: theme.font.small,
+    color: theme.color.muted,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: theme.space.xxl,
+    paddingHorizontal: theme.space.sm,
+  },
+  cardsContainer: { gap: theme.space.md, marginBottom: theme.space.xl },
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: theme.radius.lg,
+    padding: theme.space.lg,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
-    borderLeftWidth: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: theme.color.line,
+    borderLeftWidth: 5,
+    ...theme.shadow.nav,
   },
   iconContainer: {
     width: 56,
     height: 56,
-    borderRadius: 16,
+    borderRadius: theme.radius.md,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
+    marginRight: theme.space.md,
   },
-  cardContent: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginBottom: 4,
-  },
-  cardDescription: {
-    fontSize: 13,
-    color: "#666",
-    lineHeight: 18,
-  },
-  footerText: {
-    textAlign: "center",
-    color: "#666",
-    fontSize: 14,
-  },
-  link: {
-    color: "#007AFF",
-    fontWeight: "600",
-    textDecorationLine: "underline",
-  },
+  cardContent: { flex: 1 },
+  cardTitle: { fontSize: theme.font.subtitle, fontWeight: "800", color: theme.color.ink, marginBottom: 4 },
+  cardDescription: { fontSize: theme.font.small, color: theme.color.muted, lineHeight: 20 },
+  footerText: { textAlign: "center", color: theme.color.muted, fontSize: theme.font.small },
+  link: { color: theme.color.parent, fontWeight: "700" },
 });

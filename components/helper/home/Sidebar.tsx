@@ -5,6 +5,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
+import { theme } from '@/constants/theme';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -63,7 +64,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
               <Ionicons
                 name={item.icon}
                 size={22}
-                color={isActive(item.path) ? '#FF9500' : '#666'}
+                color={isActive(item.path) ? theme.color.helper : theme.color.muted}
               />
               <Text
                 style={[
@@ -116,7 +117,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#FF9500',
+    backgroundColor: theme.color.helper,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -154,7 +155,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   navItemActive: {
-    backgroundColor: '#FFF4E5',
+    backgroundColor: theme.color.helperSoft,
   },
   navItemContent: {
     flexDirection: 'row',
@@ -165,10 +166,10 @@ const styles = StyleSheet.create({
   navItemText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#666',
+    color: theme.color.muted,
   },
   navItemTextActive: {
-    color: '#FF9500',
+    color: theme.color.helper,
     fontWeight: '700',
   },
   badge: {
@@ -191,7 +192,7 @@ const styles = StyleSheet.create({
     marginTop: -12,
     width: 3,
     height: 24,
-    backgroundColor: '#FF9500',
+    backgroundColor: theme.color.helper,
     borderTopLeftRadius: 3,
     borderBottomLeftRadius: 3,
   },

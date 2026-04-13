@@ -71,12 +71,15 @@ if (password_verify($password, $row["password"]) || $password === $row["password
         
         $user = [
             "user_id" => $row['user_id'],
-            "first_name" => $first,       // Fixed semicolon to comma
+            "username" => $row['username'] ?? '',
+            "first_name" => $first,       
             "middle_name" => $row['middle_name'] ?? '',
             "last_name" => $last,
-            "full_name" => $clean_full_name, // Added for frontend convenience
+            "full_name" => $clean_full_name, 
             "email" => $row['email'],
-            "user_type" => $row['user_type'], 
+            "user_type" => $row['user_type'],
+            "status" => $row['status'],
+            "profile_completed" => (bool)($row['profile_completed'] ?? 0),
         ];
 
         echo json_encode([
@@ -97,12 +100,14 @@ if (password_verify($password, $row["password"]) || $password === $row["password
     $user = [
         "user_id" => $row['user_id'],
         "username" => $row['username'] ?? '',
-        "first_name" => $first,       // Fixed semicolon to comma
+        "first_name" => $first,       
         "middle_name" => $row['middle_name'] ?? '',
         "last_name" => $last,
-        "full_name" => $clean_full_name, // Added for frontend convenience
+        "full_name" => $clean_full_name, 
         "email" => $row['email'],
-        "user_type" => $row['user_type'], 
+        "user_type" => $row['user_type'],
+        "status" => $row['status'],
+        "profile_completed" => (bool)($row['profile_completed'] ?? 0),
     ];
 
     echo json_encode([
@@ -113,9 +118,8 @@ if (password_verify($password, $row["password"]) || $password === $row["password
     ]);
 
 } else {
-    // Log Failed Password 
-    // (Note: I added 'module' -> 'Auth' here so it matches your other logs!)
-    $log_stmt = $conn->prepare("INSERT INTO log_trail (user_id, action, module, status, ip_address, device_info) VALUES (?, 'LOGIN', 'Auth', 'Failed (Password)', ?, ?)");
+    // FIXED: Changed 'Failed (Password)' to 'Failed' to prevent DB enum/varchar crashes!
+    $log_stmt = $conn->prepare("INSERT INTO log_trail (user_id, action, module, status, ip_address, device_info) VALUES (?, 'LOGIN', 'Auth', 'Failed', ?, ?)");
     $log_stmt->bind_param("iss", $user_id, $ip_address, $user_agent);
     $log_stmt->execute();
     

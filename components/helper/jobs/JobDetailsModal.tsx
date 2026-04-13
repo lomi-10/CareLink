@@ -26,8 +26,6 @@ export function JobDetailsModal({ visible, onClose, onApply, job }: JobDetailsMo
 
   if (!job) return null;
 
-  // STUDY: Same rule as JobCard — only Open jobs accept applications.
-  const canApply = job.status === 'Open';
   const displayCategory = job.custom_category || job.category_name || (job.categories && job.categories[0]) || 'General';
   const isTrue = (val: any) => val === 1 || val === '1' || val === true;
 
@@ -202,16 +200,9 @@ export function JobDetailsModal({ visible, onClose, onApply, job }: JobDetailsMo
             </ScrollView>
 
             <SafeAreaView style={styles.footer}>
-              <TouchableOpacity
-                style={[styles.applyBtn, !canApply && styles.applyBtnDisabled]}
-                onPress={canApply ? onApply : undefined}
-                activeOpacity={0.8}
-                disabled={!canApply}
-              >
+              <TouchableOpacity style={styles.applyBtn} onPress={onApply} activeOpacity={0.8}>
                 <Ionicons name="paper-plane" size={20} color="#fff" />
-                <Text style={styles.applyBtnText}>
-                  {canApply ? 'Apply for this Position' : 'Awaiting PESO — apply when open'}
-                </Text>
+                <Text style={styles.applyBtnText}>Apply for this Position</Text>
               </TouchableOpacity>
             </SafeAreaView>
 
@@ -283,7 +274,6 @@ const styles = StyleSheet.create({
   
   footer: { padding: 20, borderTopWidth: 1, borderTopColor: '#F3F4F6', backgroundColor: '#fff' },
   applyBtn: { backgroundColor: '#1D4ED8', paddingVertical: 16, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10, shadowColor: '#1D4ED8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
-  applyBtnDisabled: { backgroundColor: '#E5E7EB', shadowOpacity: 0 },
   applyBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   listContainer: { gap: 4 },
 });

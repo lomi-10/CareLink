@@ -18,7 +18,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 // styles
-import { styles } from "./profile.styles"
+import { styles } from "./profile.styles";
+import { theme } from "@/constants/theme";
 
 // Custom Hooks
 import { useHelperProfile } from '@/hooks/helper';
@@ -30,15 +31,15 @@ import {
   ProfileHeader,
   MobileProfileHeader,
   InfoCard,
+  SpecialtiesShowcase,
   DocumentsCard,
   DocumentViewer,
   MobileMenu,
 } from '@/components/helper/profile';
 
 // Common Components
-import {NotificationModal, LoadingSpinner, ConfirmationModal} from '@/components/shared/';
+import {NotificationModal, LoadingSpinner, ConfirmationModal, ProfileCompletionCard} from '@/components/shared/';
 import EditHelperProfileModal from '@/components/helper/profile/profileEditModal/EditHelperProfileModal';
-// STUDY: Helper document modal moved to components/helper/profile/.
 import HelperDocumentModal from '@/components/helper/profile/DocumentManagementModal';
 
 export default function HelperProfile() {
@@ -171,12 +172,9 @@ export default function HelperProfile() {
     { label: 'Expected Salary', value: profile?.expected_salary ? `₱${profile.expected_salary} / ${profile?.salary_period || 'month'}` : 'Negotiable' },
   ];
 
-  // Prepare specialties items (Using the new mapped data from the hook!)
-  const specialtiesItems = [
-    { label: 'Job Categories', value: profileData?.mappedSpecialties?.jobs?.join(', ') || 'None selected' },
-    { label: 'Skills', value: profileData?.mappedSpecialties?.skills?.join(', ') || 'None selected' },
-    { label: 'Languages', value: profileData?.mappedSpecialties?.languages?.join(', ') || 'None selected' },
-  ];
+  const jobList = profileData?.mappedSpecialties?.jobs?.filter(Boolean) ?? [];
+  const skillList = profileData?.mappedSpecialties?.skills?.filter(Boolean) ?? [];
+  const languageList = profileData?.mappedSpecialties?.languages?.filter(Boolean) ?? [];
 
   // DESKTOP LAYOUT
   if (isDesktop) {
@@ -228,6 +226,11 @@ export default function HelperProfile() {
               </TouchableOpacity>
             </View>
 
+            <ProfileCompletionCard
+              percent={profileData.profile_completeness ?? 0}
+              role="helper"
+            />
+
             <ProfileHeader
               profileImage={profile?.profile_image}
               fullName={getFullName()}
@@ -239,7 +242,7 @@ export default function HelperProfile() {
 
             <InfoCard
               icon="person-outline"
-              iconColor="#FF9500"
+              iconColor={theme.color.helper}
               title="Personal Information"
               items={personalInfoItems}
             />
@@ -251,11 +254,11 @@ export default function HelperProfile() {
               items={workInfoItems}
             />
 
-            <InfoCard
-              icon="star-outline"
-              iconColor="#FF2D55"
-              title="Specialties & Skills"
-              items={specialtiesItems}
+            <SpecialtiesShowcase
+              jobs={jobList}
+              skills={skillList}
+              languages={languageList}
+              onPressEdit={() => setIsEditModalOpen(true)}
             />
 
             <InfoCard
@@ -330,7 +333,7 @@ export default function HelperProfile() {
           style={styles.editIconButton}
           onPress={() => setIsEditModalOpen(true)}
         >
-          <Ionicons name="pencil" size={24} color="#FF9500" />
+          <Ionicons name="pencil" size={24} color={theme.color.helper} />
         </TouchableOpacity>
       </View>
 
@@ -338,6 +341,11 @@ export default function HelperProfile() {
         contentContainerStyle={styles.mobileScrollContent}
         refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
       >
+        <ProfileCompletionCard
+          percent={profileData.profile_completeness ?? 0}
+          role="helper"
+        />
+
         <MobileProfileHeader
           profileImage={profile?.profile_image}
           fullName={getFullName()}
@@ -349,7 +357,7 @@ export default function HelperProfile() {
 
         <InfoCard
           icon="person-outline"
-          iconColor="#FF9500"
+          iconColor={theme.color.helper}
           title="Personal Information"
           items={personalInfoItems}
         />
@@ -361,12 +369,11 @@ export default function HelperProfile() {
           items={workInfoItems}
         />
 
-        {/* ADD THIS RIGHT HERE FOR MOBILE */}
-        <InfoCard
-          icon="star-outline"
-          iconColor="#FF2D55"
-          title="Specialties & Skills"
-          items={specialtiesItems}
+        <SpecialtiesShowcase
+          jobs={jobList}
+          skills={skillList}
+          languages={languageList}
+          onPressEdit={() => setIsEditModalOpen(true)}
         />
 
         <DocumentsCard

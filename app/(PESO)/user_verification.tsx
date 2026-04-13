@@ -4,18 +4,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Image,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import API_URL from "../../constants/api";
+import { theme } from "@/constants/theme";
 
 export interface VerificationUser {
   user_id: number;
@@ -100,7 +101,7 @@ export default function UserVerification() {
       style={styles.userCard}
       onPress={() =>
         router.push({
-          pathname: "/(PESO)/view_user_profile",
+          pathname: "/(peso)/view_user_profile",
           params: { user_id: item.user_id, user_type: item.user_type },
         })
       }
@@ -256,7 +257,7 @@ export default function UserVerification() {
       {/* User List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF9500" />
+          <ActivityIndicator size="large" color={theme.color.peso} />
           <Text style={styles.loadingText}>Loading {activeRoleTab}s...</Text>
         </View>
       ) : filteredUsers.length === 0 ? (
@@ -284,77 +285,82 @@ export default function UserVerification() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA" },
+  container: { flex: 1, backgroundColor: "transparent" },
 
   header: {
     padding: 24,
     paddingBottom: 16,
-    backgroundColor: "#fff",
+    backgroundColor: "transparent",
   },
   pageTitle: {
     fontSize: 28,
-    fontWeight: "bold",
-    color: "#1A1C1E",
+    fontWeight: "800",
+    color: theme.color.ink,
     marginBottom: 4,
+    letterSpacing: -0.5,
   },
   pageSubtitle: {
     fontSize: 14,
-    color: "#666",
-    textTransform: 'capitalize',
+    color: theme.color.muted,
+    textTransform: "capitalize",
+    fontWeight: "500",
   },
 
-  // NEW: Role Tabs Styles
   roleTabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    backgroundColor: "transparent",
     paddingHorizontal: 16,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
     gap: 12,
   },
   roleTab: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 12,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 12,
+    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: theme.radius.lg,
     gap: 8,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    ...theme.shadow.nav,
   },
   roleTabActive: {
-    backgroundColor: '#007AFF', // Using standard blue to indicate selection
+    backgroundColor: theme.color.peso,
+    borderColor: theme.color.peso,
   },
   roleTabText: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#666',
+    fontWeight: "700",
+    color: theme.color.muted,
   },
   roleTabTextActive: {
-    color: '#fff',
+    color: "#fff",
   },
 
   searchSection: {
     padding: 16,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    paddingTop: 0,
+    backgroundColor: "transparent",
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
+    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: theme.radius.lg,
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 12,
     gap: 10,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    ...theme.shadow.nav,
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: "#1A1C1E",
+    color: theme.color.ink,
   },
 
   filterChips: { flexDirection: "row" },
@@ -364,38 +370,39 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: theme.color.surfaceElevated,
     marginRight: 8,
     gap: 6,
+    borderWidth: 1,
+    borderColor: theme.color.line,
   },
-  filterChipActive: { backgroundColor: "#FF9500" },
-  filterChipText: { fontSize: 14, fontWeight: "600", color: "#666" },
+  filterChipActive: { backgroundColor: theme.color.peso, borderColor: theme.color.peso },
+  filterChipText: { fontSize: 14, fontWeight: "600", color: theme.color.muted },
   filterChipTextActive: { color: "#fff" },
   filterCount: {
-    backgroundColor: "#fff",
+    backgroundColor: theme.color.surface,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
     minWidth: 20,
     alignItems: "center",
   },
-  filterCountActive: { backgroundColor: "rgba(255,255,255,0.3)" },
-  filterCountText: { fontSize: 12, fontWeight: "700", color: "#666" },
+  filterCountActive: { backgroundColor: "rgba(255,255,255,0.28)" },
+  filterCountText: { fontSize: 12, fontWeight: "700", color: theme.color.muted },
   filterCountTextActive: { color: "#fff" },
 
   listContent: { padding: 16, paddingBottom: 40 },
 
   userCard: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 16,
+    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: theme.radius.lg,
     padding: 16,
     marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    ...theme.shadow.card,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.color.line,
   },
   cardLeft: { marginRight: 16 },
   profileImage: { width: 64, height: 64, borderRadius: 32 },
@@ -403,17 +410,19 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: theme.color.surface,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: theme.color.line,
   },
   cardCenter: { flex: 1 },
-  userName: { fontSize: 16, fontWeight: "700", color: "#1A1C1E", marginBottom: 6 },
+  userName: { fontSize: 16, fontWeight: "800", color: theme.color.ink, marginBottom: 6 },
   userMeta: { flexDirection: "row", alignItems: "center", marginBottom: 4, gap: 6 },
-  userEmail: { fontSize: 13, color: "#666" },
-  userType: { fontSize: 13, color: "#666" },
-  userContact: { fontSize: 13, color: "#666" },
-  
+  userEmail: { fontSize: 13, color: theme.color.muted },
+  userType: { fontSize: 13, color: theme.color.muted },
+  userContact: { fontSize: 13, color: theme.color.muted },
+
   cardRight: { alignItems: "flex-end" },
   statusBadge: {
     flexDirection: "row",
@@ -423,15 +432,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 4,
   },
-  statusPending: { backgroundColor: "#FF9500" },
-  statusVerified: { backgroundColor: "#34C759" },
-  statusRejected: { backgroundColor: "#FF3B30" },
+  statusPending: { backgroundColor: theme.color.warning },
+  statusVerified: { backgroundColor: theme.color.success },
+  statusRejected: { backgroundColor: theme.color.danger },
   statusText: { fontSize: 12, fontWeight: "700", color: "#fff" },
 
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80 },
-  loadingText: { marginTop: 12, color: "#666", fontSize: 14 },
+  loadingText: { marginTop: 12, color: theme.color.muted, fontSize: 14 },
 
   emptyState: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80 },
-  emptyText: { fontSize: 18, fontWeight: "600", color: "#666", marginTop: 16 },
-  emptySubtext: { fontSize: 14, color: "#999", marginTop: 8 },
+  emptyText: { fontSize: 18, fontWeight: "700", color: theme.color.muted, marginTop: 16 },
+  emptySubtext: { fontSize: 14, color: theme.color.subtle, marginTop: 8 },
 });

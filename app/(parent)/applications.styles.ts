@@ -1,163 +1,217 @@
 // app/(parent)/applications.styles.ts
-
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 
 export const styles = StyleSheet.create({
-  // Base Styles (Matched to profile.tsx)
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
-  mainContent: { flex: 1 },
-  scrollContent: { padding: 32, paddingBottom: 60, flex: 1 },
-  mobileScrollContent: { padding: 16, paddingBottom: 40, flex: 1 },
-  
-  // Empty State
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#F8F9FA' },
-  emptyText: { fontSize: 16, color: '#666', marginTop: 16, marginBottom: 24 },
-  createProfileBtn: { backgroundColor: '#007AFF', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 12 },
-  createProfileText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  
-  // Desktop Header
-  pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  pageTitle: { fontSize: 32, fontWeight: '700', color: '#1A1C1E' },
-  editButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#007AFF', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, gap: 8 },
-  editButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  mainContent: {
+    flex: 1,
+  },
+  scrollContent: {
+    flex: 1,
+  },
+  mobileScrollContent: {
+    flex: 1,
+  },
   
   // Mobile Header
-  mobileHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  menuButton: { padding: 8 },
-  mobileTitle: { fontSize: 18, fontWeight: '700', color: '#1A1C1E' },
-
-  // Filters specific to this page
-  filterContainer: {
+  mobileHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  mobileTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.5,
+  },
+  menuButton: {
+    padding: 8,
+  },
+
+  // Desktop Header
+  pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 32,
+    paddingVertical: 24,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.5,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    backgroundColor: '#1D4ED8',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // Dropdown Selectors
+  selectorsWrapper: {
+    padding: 16,
+    paddingTop: 24,
+    gap: 16,
+  },
+  dropdownContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8 },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }
+    }),
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#4B5563',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+    borderRadius: 12,
+  },
+  dropdownHeaderActive: {
+    borderColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+  },
+  dropdownHeaderDisabled: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+    opacity: 0.6,
+  },
+  dropdownSelectedTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  dropdownSelectedSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  dropdownListContainer: {
+    marginTop: 8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    maxHeight: 200,
+    overflow: 'hidden',
+  },
+  dropdownListScroll: {
+    maxHeight: 200,
+  },
+  dropdownItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dropdownItemActive: {
+    backgroundColor: '#EFF6FF',
+  },
+  dropdownItemTitle: {
+    fontSize: 15,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  dropdownItemTitleActive: {
+    color: '#1D4ED8',
+    fontWeight: '700',
+  },
+
+  // Filter Tabs
+  filterContainer: {
+    paddingHorizontal: 16,
     marginBottom: 16,
   },
+  filterContent: {
+    gap: 8,
+    paddingRight: 32,
+  },
   filterTab: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: '#E5E7EB',
   },
   filterTabActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#1D4ED8',
+    borderColor: '#1D4ED8',
   },
   filterTabText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: '#6B7280',
   },
   filterTabTextActive: {
     color: '#fff',
   },
 
+  // Lists & Empty States
   listContent: {
+    padding: 16,
     paddingBottom: 40,
   },
-
-  // --- Add these to your applications.styles.ts ---
-  selectorsWrapper: {
-    marginBottom: 20,
-    marginTop: 10,
-    gap: 16, // Space between Category dropdown and Job dropdown
-    zIndex: 10,
-  },
-  dropdownContainer: {
-    position: 'relative',
-    zIndex: 10,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  dropdownHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 16,
-  },
-  dropdownHeaderActive: {
-    borderColor: '#007AFF',
-    backgroundColor: '#F8FAFC',
-  },
-  dropdownHeaderDisabled: {
-    backgroundColor: '#F1F5F9',
-    opacity: 0.7,
-  },
-  dropdownSelectedTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1C1E',
-  },
-  dropdownSelectedSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 4,
-  },
-  dropdownListContainer: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    marginTop: 4,
-    maxHeight: 220,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    zIndex: 20,
-  },
-  dropdownListScroll: {
-    flexGrow: 0,
-  },
-  dropdownItem: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  dropdownItemActive: {
-    backgroundColor: '#F8FAFC',
-  },
-  dropdownItemContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dropdownItemTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#334155',
+  emptyState: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
   },
-  dropdownItemTitleActive: {
-    color: '#007AFF',
-    fontWeight: '600',
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 24,
   },
-  dropdownBadge: {
-    backgroundColor: '#E2E8F0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  createProfileBtn: {
+    backgroundColor: '#1D4ED8',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
     borderRadius: 12,
   },
-  dropdownBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#475569',
+  createProfileText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

@@ -3,19 +3,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
   Platform,
-  ScrollView,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import API_URL from "@/constants/api";
-import { NotificationModal } from '@/components/common';
+import { FormModalLayout, NotificationModal } from '@/components/shared';
 
 // Import our modular UI blocks
 import { styles, 
@@ -419,87 +415,114 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   // ============================================================================
   return (
     <>
-      <Modal visible={visible} animationType="slide" transparent={isWeb} presentationStyle={isWeb ? "overFullScreen" : "pageSheet"}>
-        <View style={isWeb ? styles.webOverlay : { flex: 1 }}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[styles.container, isWeb && styles.webContainer]}>
-            
-            <View style={[styles.header, isWeb && styles.headerWeb]}>
-              <View>
-                <Text style={styles.title}>Edit Profile</Text>
-                <Text style={styles.subtitle}>Keep your information up to date</Text>
-              </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
-                <Text style={styles.loadingText}>Preparing your profile...</Text>
-              </View>
-            ) : (
-              <>
-                <ScrollView style={[styles.content, isWeb && styles.contentWeb]} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-                  
-                  <PhotoSection profileImage={profileImage} pickImage={pickImage} />
-                  
-                  <BasicInfoSection 
-                    firstName={firstName} setFirstName={setFirstName} lastName={lastName} setLastName={setLastName} 
-                    middleName={middleName} setMiddleName={setMiddleName} username={username} setUsername={setUsername} 
-                    contactNumber={contactNumber} setContactNumber={setContactNumber} email={email} setEmail={setEmail} 
-                    birthDate={birthDate} setBirthDate={setBirthDate} gender={gender} setGender={setGender} 
-                    civilStatus={civilStatus} setCivilStatus={setCivilStatus} religion={religion} setReligion={setReligion}
-                  />
-                  
-                  <AddressSection 
-                    isWeb={isWeb} province={province} setProvince={setProvince} municipality={municipality} 
-                    setMunicipality={setMunicipality} barangay={barangay} setBarangay={setBarangay} 
-                    landmark={landmark} setLandmark={setLandmark}
-                  />
-                  
-                  <SpecialtiesSection 
-                    selectedCategories={selectedCategories} selectedCategoryIds={selectedCategoryIds}
-                    selectedJobs={selectedJobs} selectedJobIds={selectedJobIds} customJobs={customJobs}
-                    selectedSkills={selectedSkills} customSkills={customSkills}
-                    selectedLanguages={selectedLanguages}
-                    setCategoryModalVisible={setCategoryModalVisible} setJobModalVisible={setJobModalVisible} 
-                    setSkillModalVisible={setSkillModalVisible} setLanguageModalVisible={setLanguageModalVisible}
-                    isGeneralHousehelpSelected={isGeneralHousehelpSelected}
-                  />
-                  
-                  <AboutSection 
-                    bio={bio} setBio={setBio} educationLevel={educationLevel} setEducationLevel={setEducationLevel} 
-                    experienceYears={experienceYears} setExperienceYears={setExperienceYears}
-                  />
-                  
-                  <WorkPreferencesSection 
-                    employmentType={employmentType} setEmploymentType={setEmploymentType} 
-                    workSchedule={workSchedule} setWorkSchedule={setWorkSchedule} 
-                    expectedSalary={expectedSalary} setExpectedSalary={setExpectedSalary} 
-                    availabilityStatus={availabilityStatus} setAvailabilityStatus={setAvailabilityStatus}
-                  />
-
-                  <View style={{ height: 100 }} />
-                </ScrollView>
-
-                <View style={styles.footer}>
-                  <TouchableOpacity style={[styles.saveBtn, saving && styles.saveBtnDisabled]} onPress={handleSave} disabled={saving}>
-                    {saving ? (
-                      <View style={styles.savingRow}>
-                        <ActivityIndicator color="#fff" style={{ marginRight: 10 }} />
-                        <Text style={styles.saveText}>Saving Changes...</Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.saveText}>Save Profile</Text>
-                    )}
-                  </TouchableOpacity>
+      <FormModalLayout
+        visible={visible}
+        onClose={onClose}
+        title="Edit Profile"
+        subtitle="Keep your information up to date"
+        accent="helper"
+        variant="wide"
+        loading={loading}
+        loadingText="Preparing your profile..."
+        scrollContentStyle={{ paddingBottom: 40 }}
+        footer={
+          !loading ? (
+            <TouchableOpacity
+              style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+              onPress={handleSave}
+              disabled={saving}
+            >
+              {saving ? (
+                <View style={styles.savingRow}>
+                  <ActivityIndicator color="#fff" style={{ marginRight: 10 }} />
+                  <Text style={styles.saveText}>Saving Changes...</Text>
                 </View>
-              </>
-            )}
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
+              ) : (
+                <Text style={styles.saveText}>Save Profile</Text>
+              )}
+            </TouchableOpacity>
+          ) : null
+        }
+      >
+        {!loading && (
+          <>
+            <PhotoSection profileImage={profileImage} pickImage={pickImage} />
+
+            <BasicInfoSection
+              firstName={firstName}
+              setFirstName={setFirstName}
+              lastName={lastName}
+              setLastName={setLastName}
+              middleName={middleName}
+              setMiddleName={setMiddleName}
+              username={username}
+              setUsername={setUsername}
+              contactNumber={contactNumber}
+              setContactNumber={setContactNumber}
+              email={email}
+              setEmail={setEmail}
+              birthDate={birthDate}
+              setBirthDate={setBirthDate}
+              gender={gender}
+              setGender={setGender}
+              civilStatus={civilStatus}
+              setCivilStatus={setCivilStatus}
+              religion={religion}
+              setReligion={setReligion}
+            />
+
+            <AddressSection
+              isWeb={isWeb}
+              province={province}
+              setProvince={setProvince}
+              municipality={municipality}
+              setMunicipality={setMunicipality}
+              barangay={barangay}
+              setBarangay={setBarangay}
+              landmark={landmark}
+              setLandmark={setLandmark}
+            />
+
+            <SpecialtiesSection
+              selectedCategories={selectedCategories}
+              selectedCategoryIds={selectedCategoryIds}
+              selectedJobs={selectedJobs}
+              selectedJobIds={selectedJobIds}
+              customJobs={customJobs}
+              selectedSkills={selectedSkills}
+              customSkills={customSkills}
+              selectedLanguages={selectedLanguages}
+              setCategoryModalVisible={setCategoryModalVisible}
+              setJobModalVisible={setJobModalVisible}
+              setSkillModalVisible={setSkillModalVisible}
+              setLanguageModalVisible={setLanguageModalVisible}
+              isGeneralHousehelpSelected={isGeneralHousehelpSelected}
+            />
+
+            <AboutSection
+              bio={bio}
+              setBio={setBio}
+              educationLevel={educationLevel}
+              setEducationLevel={setEducationLevel}
+              experienceYears={experienceYears}
+              setExperienceYears={setExperienceYears}
+            />
+
+            <WorkPreferencesSection
+              employmentType={employmentType}
+              setEmploymentType={setEmploymentType}
+              workSchedule={workSchedule}
+              setWorkSchedule={setWorkSchedule}
+              expectedSalary={expectedSalary}
+              setExpectedSalary={setExpectedSalary}
+              availabilityStatus={availabilityStatus}
+              setAvailabilityStatus={setAvailabilityStatus}
+            />
+
+            <View style={{ height: 100 }} />
+          </>
+        )}
+      </FormModalLayout>
 
       {/* Render Selection Modals */}
       <SelectionModal 
