@@ -293,8 +293,8 @@ export function HelperProfileModal({
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.primaryButton} onPress={onInvite ? onInvite : onClose}>
-                {onInvite && <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />}
-                <Text style={styles.primaryButtonText}>{onInvite ? "Message Applicant" : "Close Profile"}</Text>
+                {onInvite && <Ionicons name="paper-plane-outline" size={18} color="#fff" />}
+                <Text style={styles.primaryButtonText}>{onInvite ? "Invite to Apply" : "Close Profile"}</Text>
               </TouchableOpacity>
             </View>
 

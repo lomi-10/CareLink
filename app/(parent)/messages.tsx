@@ -186,58 +186,54 @@ export default function ParentMessages() {
     }
   }, [params.partner_id, params.partner_name, loadingConvs]);
 
-  const MobileContent = () => (
-    <>
-      {!activePartner ? (
-        <SafeAreaView style={{ flex: 1, backgroundColor: CANVAS }}>
-          <View style={s.mobileHeader}>
-            <TouchableOpacity onPress={() => setIsMobileMenuOpen(true)} style={s.menuBtn}>
-              <Ionicons name="menu-outline" size={26} color={theme.color.ink} />
-            </TouchableOpacity>
-            <Text style={s.mobileTitle}>Messages</Text>
-          </View>
-          {loadingConvs ? (
-            <LoadingSpinner />
-          ) : conversations.length === 0 ? (
-            <View style={s.emptyWrap}>
-              <Ionicons name="chatbubbles-outline" size={56} color={theme.color.subtle} />
-              <Text style={s.emptyTitle}>No messages yet</Text>
-              <Text style={s.emptySub}>When helpers apply to your jobs, you can message them here.</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={conversations}
-              keyExtractor={c => String(c.partner_id)}
-              renderItem={({ item }) => (
-                <ConvItem item={item} onPress={() => setActivePartner(item)} active={false} />
-              )}
-              contentContainerStyle={{ paddingBottom: 24 }}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
-        </SafeAreaView>
-      ) : (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-          <ChatPanel
-            partnerId={activePartner.partner_id}
-            partnerName={activePartner.partner_name}
-            partnerPhoto={activePartner.partner_photo}
-            jobPostId={activePartner.job_post_id}
-            onBack={() => { setActivePartner(null); refresh(); }}
-          />
-        </SafeAreaView>
-      )}
-    </>
-  );
-
   if (!isDesktop) {
     return (
-      <>
-        <MobileContent />
+      <View style={{ flex: 1, backgroundColor: CANVAS }}>
+        {!activePartner ? (
+          <SafeAreaView style={{ flex: 1 }}>
+            <View style={s.mobileHeader}>
+              <TouchableOpacity onPress={() => setIsMobileMenuOpen(true)} style={s.menuBtn}>
+                <Ionicons name="menu-outline" size={26} color={theme.color.ink} />
+              </TouchableOpacity>
+              <Text style={s.mobileTitle}>Messages</Text>
+            </View>
+            {loadingConvs ? (
+              <LoadingSpinner />
+            ) : conversations.length === 0 ? (
+              <View style={s.emptyWrap}>
+                <Ionicons name="chatbubbles-outline" size={56} color={theme.color.subtle} />
+                <Text style={s.emptyTitle}>No messages yet</Text>
+                <Text style={s.emptySub}>When helpers apply to your jobs, you can message them here.</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={conversations}
+                keyExtractor={c => String(c.partner_id)}
+                renderItem={({ item }) => (
+                  <ConvItem item={item} onPress={() => setActivePartner(item)} active={false} />
+                )}
+                contentContainerStyle={{ paddingBottom: 24 }}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
+          </SafeAreaView>
+        ) : (
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+            <ChatPanel
+              partnerId={activePartner.partner_id}
+              partnerName={activePartner.partner_name}
+              partnerPhoto={activePartner.partner_photo}
+              jobPostId={activePartner.job_post_id}
+              onBack={() => { setActivePartner(null); refresh(); }}
+            />
+          </SafeAreaView>
+        )}
+
+        {/* Modals */}
         <MobileMenu
-          visible={isMobileMenuOpen}
+          isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
-          onLogout={() => { setIsMobileMenuOpen(false); setConfirmLogoutVisible(true); }}
+          handleLogout={() => { setIsMobileMenuOpen(false); setConfirmLogoutVisible(true); }}
         />
         <ConfirmationModal
           visible={confirmLogoutVisible}
@@ -246,7 +242,7 @@ export default function ParentMessages() {
           onConfirm={async () => { setConfirmLogoutVisible(false); setTimeout(() => handleLogout(), 1500); }}
           onCancel={() => setConfirmLogoutVisible(false)}
         />
-      </>
+      </View>
     );
   }
 

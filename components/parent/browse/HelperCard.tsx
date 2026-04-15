@@ -5,6 +5,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { HelperProfile } from '@/hooks/parent';
+import { theme } from '@/constants/theme';
 
 interface HelperCardProps {
   helper: HelperProfile;
@@ -113,8 +114,8 @@ export function HelperCard({ helper, onPress, onInvite }: HelperCardProps) {
             }}
             activeOpacity={0.7}
           >
-            <Ionicons name="mail-outline" size={14} color="#007AFF" />
-            <Text style={styles.inviteButtonText}>Invite</Text>
+            <Ionicons name="paper-plane-outline" size={14} color={theme.color.parent} />
+            <Text style={styles.inviteButtonText}>Invite to Apply</Text>
           </TouchableOpacity>
         )}
       </View>

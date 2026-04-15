@@ -128,7 +128,15 @@ export default function BrowseHelpers() {
       
       <FilterModal visible={filterModalVisible} filters={filters} categories={categories} onApply={handleApplyFilters} onReset={handleResetFilters} onClose={() => setFilterModalVisible(false)} />
       <HelperProfileModal visible={profileModalVisible} helper={selectedHelper} onInvite={handleInviteFromProfile} onClose={() => setProfileModalVisible(false)} />
-      <InviteHelperModal visible={inviteModalVisible} helper={selectedHelper} jobs={jobs} onSuccess={() => { setInviteModalVisible(false); setNotification({ visible: true, message: `Invitation sent to ${selectedHelper?.full_name}`, type: 'success' }); }} onClose={() => setInviteModalVisible(false)} />
+      <InviteHelperModal
+        visible={inviteModalVisible}
+        helper={selectedHelper}
+        jobs={jobs}
+        onSuccess={(helperId, helperName) => {
+          setNotification({ visible: true, message: `Invitation sent to ${helperName}!`, type: 'success' });
+        }}
+        onClose={() => setInviteModalVisible(false)}
+      />
     </>
   );
 

@@ -1,7 +1,9 @@
 // hooks/shared/useNotifications.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
+
+const POLL_INTERVAL_MS = 30_000; // refresh every 30 s
 
 export interface Notification {
   notification_id: number;
@@ -23,6 +25,7 @@ export function useNotifications(role: 'helper' | 'parent') {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount,   setUnreadCount]   = useState(0);
   const [loading,       setLoading]       = useState(true);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -37,7 +40,7 @@ export function useNotifications(role: 'helper' | 'parent') {
         setUnreadCount(data.unread_count ?? 0);
       }
     } catch (e) {
-      console.error('[useNotifications] fetch error:', e);
+      // silent — don't log on every poll
     } finally {
       setLoading(false);
     }
@@ -45,6 +48,9 @@ export function useNotifications(role: 'helper' | 'parent') {
 
   useEffect(() => {
     fetchNotifications();
+    // Poll every 30 seconds so the bell badge stays live
+    pollRef.current = setInterval(fetchNotifications, POLL_INTERVAL_MS);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [fetchNotifications]);
 
   const markAllRead = async () => {
