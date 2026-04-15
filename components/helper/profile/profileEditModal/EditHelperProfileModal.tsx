@@ -58,6 +58,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const [barangay, setBarangay] = useState('');
   const [address, setAddress] = useState('');
   const [landmark, setLandmark] = useState('');
+  const [latitude,  setLatitude]  = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
 
   // Bio & Background
   const [bio, setBio] = useState('');
@@ -218,6 +220,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         setMunicipality(p.municipality || '');
         setBarangay(p.barangay || '');
         setLandmark(p.landmark || '');
+        setLatitude(p.latitude  ? parseFloat(p.latitude)  : null);
+        setLongitude(p.longitude ? parseFloat(p.longitude) : null);
         setBio(p.bio || '');
         setEducationLevel(p.education_level || 'High School Grad');
         setExperienceYears(p.experience_years ? String(p.experience_years) : '0');
@@ -356,6 +360,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       formData.append('barangay', barangay);
       formData.append('address', address);
       formData.append('landmark', landmark);
+      if (latitude  !== null) formData.append('latitude',  String(latitude));
+      if (longitude !== null) formData.append('longitude', String(longitude));
       formData.append('bio', bio);
       formData.append('education_level', educationLevel);
       formData.append('experience_years', experienceYears);
@@ -484,6 +490,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
               setBarangay={setBarangay}
               landmark={landmark}
               setLandmark={setLandmark}
+              setLatitude={setLatitude}
+              setLongitude={setLongitude}
             />
 
             <SpecialtiesSection

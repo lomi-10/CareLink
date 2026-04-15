@@ -8,3 +8,5 @@ export { RoleScreenBackground } from './RoleScreenBackground';
 export type { ScreenRole } from './RoleScreenBackground';
 export { InterviewModal } from './InterviewModal';
 export type { InterviewInfo } from './InterviewModal';
+export { LocationSearchInput } from './LocationSearchInput';
+export type { LocationResult } from './LocationSearchInput';

@@ -24,6 +24,8 @@ export interface JobFormData {
   province: string;
   municipality: string;
   barangay: string;
+  latitude: number | null;
+  longitude: number | null;
   min_age: number;
   max_age: number;
   min_experience_years: number;
@@ -61,6 +63,8 @@ const initialFormData: JobFormData = {
   province: 'Leyte',
   municipality: 'Ormoc City',
   barangay: '',
+  latitude: null,
+  longitude: null,
   min_age: 18,
   max_age: 65,
   min_experience_years: 0,

@@ -299,7 +299,9 @@ export function JobPostModal({
         barangay={formData.barangay} 
         onProvinceChange={(val) => updateField('province', val)} 
         onMunicipalityChange={(val) => updateField('municipality', val)} 
-        onBarangayChange={(val) => updateField('barangay', val)} 
+        onBarangayChange={(val) => updateField('barangay', val)}
+        onLatitudeChange={(val) => updateField('latitude', val)}
+        onLongitudeChange={(val) => updateField('longitude', val)}
         disabled={isDisabled} 
       />
 

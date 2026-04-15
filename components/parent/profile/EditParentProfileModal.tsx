@@ -17,8 +17,9 @@ import {
 } from 'react-native';
 import API_URL from '@/constants/api';
 
-import { FormModalLayout, NotificationModal } from '@/components/shared';
+import { FormModalLayout, NotificationModal, LocationSearchInput, LocationResult } from '@/components/shared';
 import LabeledInput from '@/components/shared/LabeledInput';
+import { theme } from '@/constants/theme';
 
 interface EditProfileModalProps {
   visible: boolean;
@@ -53,6 +54,8 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
   const [province, setProvince] = useState('');
   const [municipality, setMunicipality] = useState('');
   const [barangay, setBarangay] = useState('');
+  const [latitude,  setLatitude]  = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const [bio, setBio] = useState('');
   const [landmark, setLandmark] = useState('');
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -118,6 +121,8 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
           setProvince(p.province || 'Leyte');
           setMunicipality(p.municipality || '');
           setBarangay(p.barangay || '');
+          setLatitude(p.latitude  ? parseFloat(p.latitude)  : null);
+          setLongitude(p.longitude ? parseFloat(p.longitude) : null);
           setBio(p.bio || '');
           setLandmark(p.landmark || '');
           if (p.profile_image) setProfileImage(p.profile_image);
@@ -226,6 +231,8 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
       formData.append('barangay', barangay.trim());
       formData.append('bio', bio.trim());
       formData.append('landmark', landmark.trim());
+      if (latitude  !== null) formData.append('latitude',  String(latitude));
+      if (longitude !== null) formData.append('longitude', String(longitude));
       formData.append('household_size', householdSize || '0');
       
       formData.append('has_children', hasChildren ? '1' : '0');
@@ -344,14 +351,32 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
                 {/* SECTION 2: Location */}
                 <View style={styles.card}>
                   <Text style={styles.cardTitle}>Location & Address</Text>
+
+                  {/* Search-based location picker */}
+                  <LocationSearchInput
+                    province={province}
+                    municipality={municipality}
+                    barangay={barangay}
+                    onSelect={(result: LocationResult) => {
+                      setProvince(result.province);
+                      setMunicipality(result.municipality);
+                      setBarangay(result.barangay);
+                      setLatitude(result.latitude);
+                      setLongitude(result.longitude);
+                    }}
+                    accentColor={theme.color.parent}
+                    label="Search Location"
+                  />
+
+                  {/* Manual override fields */}
                   <View style={isWeb ? styles.webRow : undefined}>
                     <View style={isWeb ? { flex: 1, paddingRight: 12 } : undefined}>
-                      <LabeledInput label="Province" required value={province} onChangeText={setProvince} />
+                      <LabeledInput label="Province" required value={province} onChangeText={v => { setProvince(v); setLatitude(null); setLongitude(null); }} />
                     </View>
                     <View style={isWeb ? { flex: 1, paddingRight: 12 } : styles.row}>
-                      <View style={{ flex: 1 }}><LabeledInput label="Municipality" required value={municipality} onChangeText={setMunicipality} /></View>
+                      <View style={{ flex: 1 }}><LabeledInput label="Municipality" required value={municipality} onChangeText={v => { setMunicipality(v); setLatitude(null); setLongitude(null); }} /></View>
                       {!isWeb && <View style={{ width: 12 }} />}
-                      <View style={{ flex: 1, marginLeft: isWeb ? 12 : 0 }}><LabeledInput label="Barangay" required value={barangay} onChangeText={setBarangay} /></View>
+                      <View style={{ flex: 1, marginLeft: isWeb ? 12 : 0 }}><LabeledInput label="Barangay" required value={barangay} onChangeText={v => { setBarangay(v); setLatitude(null); setLongitude(null); }} /></View>
                     </View>
                   </View>
 
