@@ -37,7 +37,8 @@ export default function ApplicationCard({ application, onPress, onWithdraw }: Pr
   const canWithdraw = ['Pending', 'Reviewed', 'Shortlisted'].includes(application.status);
 
   const salary = Number(application.salary_offered ?? 0).toLocaleString();
-  const period = application.salary_period ? `/${application.salary_period.toLowerCase().replace('ly', '').replace('ily', 'ily')}` : '';
+  const PERIOD_LABEL: Record<string, string> = { Monthly: 'mo', Daily: 'day', Weekly: 'wk' };
+  const period = application.salary_period ? `/${PERIOD_LABEL[application.salary_period] ?? application.salary_period.toLowerCase()}` : '';
   const location = application.location || [application.municipality, application.province].filter(Boolean).join(', ') || 'Location N/A';
 
   return (

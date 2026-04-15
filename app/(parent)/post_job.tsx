@@ -178,7 +178,8 @@ export default function PostJob() {
       const data = await response.json();
 
       if (data.success) {
-        setNotification({ visible: true, message: 'Job posted successfully!', type: 'success' });
+        const msg = edit_id ? 'Job updated successfully!' : 'Job posted! Awaiting PESO verification.';
+        setNotification({ visible: true, message: msg, type: 'success' });
         setTimeout(() => {
           reset();
           router.push('/(parent)/jobs');

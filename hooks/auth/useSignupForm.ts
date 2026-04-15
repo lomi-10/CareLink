@@ -34,7 +34,7 @@ export function useSignupForm() {
   });
 
   const handleChange = (key: keyof FormData, value: string) =>
-    setForm({ ...form, [key]: value });
+    setForm(prev => ({ ...prev, [key]: value }));
 
   useEffect(() => {
     if (role && typeof role === "string") {

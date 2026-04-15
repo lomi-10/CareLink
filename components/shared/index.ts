@@ -6,3 +6,5 @@ export type { FormModalAccent, FormModalVariant } from './FormModalLayout';
 export { ProfileCompletionCard } from './ProfileCompletionCard';
 export { RoleScreenBackground } from './RoleScreenBackground';
 export type { ScreenRole } from './RoleScreenBackground';
+export { InterviewModal } from './InterviewModal';
+export type { InterviewInfo } from './InterviewModal';

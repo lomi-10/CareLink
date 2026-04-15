@@ -11,13 +11,13 @@ import {
   StyleSheet,
   Image,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useJobApplications, useParentJobs } from '@/hooks/parent';
 import { useAuth, useResponsive } from '@/hooks/shared';
 import { ApplicationCard } from '@/components/parent/jobs/ApplicationCard';
-import { LoadingSpinner, NotificationModal, ConfirmationModal } from '@/components/shared/';
+import { LoadingSpinner, NotificationModal, ConfirmationModal, InterviewModal } from '@/components/shared/';
 import { Sidebar, MobileMenu } from '@/components/parent/home';
 import { HelperProfileModal } from '@/components/parent/browse/';
 import { theme } from '@/constants/theme';
@@ -35,6 +35,7 @@ export default function JobApplications() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
+  const params = useLocalSearchParams<{ job_id?: string }>();
 
   const { jobs: postedJobs, loading: loadingJobs } = useParentJobs();
   const [selectedCategory,         setSelectedCategory]         = useState('');
@@ -45,6 +46,17 @@ export default function JobApplications() {
   const parentCategories = Array.from(new Set(postedJobs.map((j: any) => j.category_name))).filter(Boolean) as string[];
   const availableJobs    = postedJobs.filter((j: any) => j.category_name === selectedCategory);
   const currentJob       = postedJobs.find((j: any) => j.job_post_id === selectedJobId);
+
+  // Pre-select job when navigated from jobs.tsx with a job_id param
+  useEffect(() => {
+    if (params.job_id && postedJobs.length > 0) {
+      const job = postedJobs.find((j: any) => String(j.job_post_id) === String(params.job_id));
+      if (job) {
+        setSelectedCategory(job.category_name || '');
+        setSelectedJobId(String(job.job_post_id));
+      }
+    }
+  }, [params.job_id, postedJobs]);
 
   useEffect(() => {
     if (selectedCategory) {
@@ -63,6 +75,8 @@ export default function JobApplications() {
   const [statusConfirm,         setStatusConfirm]         = useState<{ visible: boolean; appId: string; action: 'Shortlisted' | 'Rejected' | null }>({ visible: false, appId: '', action: null });
   const [confirmLogoutVisible,  setConfirmLogoutVisible]  = useState(false);
   const [successLogoutVisible,  setSuccessLogoutVisible]  = useState(false);
+  const [interviewTarget,       setInterviewTarget]       = useState<{ appId: number; helperName: string; jobTitle: string } | null>(null);
+  const { userData } = useAuth();
 
   useEffect(() => {
     if (error) setNotification({ visible: true, message: error, type: 'error' });
@@ -110,7 +124,35 @@ export default function JobApplications() {
       <NotificationModal visible={notification.visible} message={notification.message} type={notification.type} onClose={() => setNotification(n => ({ ...n, visible: false }))} autoClose duration={2000} />
       <ConfirmationModal visible={confirmLogoutVisible} title="Log Out" message="Are you sure you want to log out?" confirmText="Log Out" cancelText="Cancel" type="danger" onConfirm={executeLogout} onCancel={() => setConfirmLogoutVisible(false)} />
       <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose duration={1500} onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }} />
-      <HelperProfileModal visible={profileModalVisible} helper={selectedHelper} onClose={() => setProfileModalVisible(false)} onInvite={() => { setProfileModalVisible(false); setNotification({ visible: true, message: 'Messaging coming soon!', type: 'success' }); }} />
+      <HelperProfileModal
+        visible={profileModalVisible}
+        helper={selectedHelper}
+        onClose={() => setProfileModalVisible(false)}
+        onInvite={() => {
+          setProfileModalVisible(false);
+          if (selectedHelper) {
+            router.push({
+              pathname: '/(parent)/messages',
+              params: {
+                partner_id:   String(selectedHelper.helper_id ?? selectedHelper.user_id),
+                partner_name: encodeURIComponent(selectedHelper.helper_name ?? selectedHelper.full_name ?? ''),
+                job_post_id:  selectedJobId,
+              },
+            } as any);
+          }
+        }}
+      />
+      {interviewTarget && (
+        <InterviewModal
+          visible={!!interviewTarget}
+          onClose={() => setInterviewTarget(null)}
+          applicationId={interviewTarget.appId}
+          helperName={interviewTarget.helperName}
+          jobTitle={interviewTarget.jobTitle}
+          scheduledBy={userData?.user_id ?? 0}
+          onScheduled={() => { setInterviewTarget(null); refresh(); setNotification({ visible: true, message: 'Interview invite sent!', type: 'success' }); }}
+        />
+      )}
       <ConfirmationModal
         visible={statusConfirm.visible}
         title={statusConfirm.action === 'Shortlisted' ? 'Shortlist Applicant?' : 'Reject Applicant?'}
@@ -285,6 +327,19 @@ export default function JobApplications() {
             onViewProfile={() => handleViewProfile(item)}
             onShortlist={() => setStatusConfirm({ visible: true, appId: item.application_id, action: 'Shortlisted' })}
             onReject={() => setStatusConfirm({ visible: true, appId: item.application_id, action: 'Rejected' })}
+            onScheduleInterview={() => setInterviewTarget({
+              appId: Number(item.application_id),
+              helperName: item.helper_name,
+              jobTitle: currentJob?.title ?? 'this position',
+            })}
+            onMessage={() => router.push({
+              pathname: '/(parent)/messages',
+              params: {
+                partner_id:   String(item.helper_id),
+                partner_name: encodeURIComponent(item.helper_name ?? ''),
+                job_post_id:  selectedJobId,
+              },
+            } as any)}
           />
         )}
         contentContainerStyle={[s.listPad, isDesktop && s.listPadDesktop]}

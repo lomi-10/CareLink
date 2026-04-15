@@ -8,9 +8,11 @@ interface ApplicationCardProps {
   onViewProfile: () => void;
   onShortlist: () => void;
   onReject: () => void;
+  onScheduleInterview?: () => void;
+  onMessage?: () => void;
 }
 
-export function ApplicationCard({ application, onViewProfile, onShortlist, onReject }: ApplicationCardProps) {
+export function ApplicationCard({ application, onViewProfile, onShortlist, onReject, onScheduleInterview, onMessage }: ApplicationCardProps) {
   
   // Dynamic status configuration for premium badges
   const getStatusConfig = () => {
@@ -28,6 +30,7 @@ export function ApplicationCard({ application, onViewProfile, onShortlist, onRej
 
   const statusConfig = getStatusConfig();
   const canTakeAction = ['Pending', 'Reviewed'].includes(application.status);
+  const canSchedule   = ['Shortlisted', 'Interview Scheduled'].includes(application.status);
 
   // Format the applied date cleanly
   const formatDate = (dateStr: string) => {
@@ -111,21 +114,31 @@ export function ApplicationCard({ application, onViewProfile, onShortlist, onRej
 
       {/* --- FOOTER ACTIONS --- */}
       <View style={styles.footer}>
-        {canTakeAction ? (
+        {canTakeAction && (
           <>
             <TouchableOpacity style={styles.rejectBtn} onPress={(e) => { e.stopPropagation(); onReject(); }}>
               <Ionicons name="close" size={18} color="#DC2626" />
               <Text style={styles.rejectBtnText}>Reject</Text>
             </TouchableOpacity>
-            
             <TouchableOpacity style={styles.shortlistBtn} onPress={(e) => { e.stopPropagation(); onShortlist(); }}>
               <Ionicons name="star" size={16} color="#fff" />
               <Text style={styles.shortlistBtnText}>Shortlist</Text>
             </TouchableOpacity>
           </>
-        ) : (
-          <View style={{ flex: 1 }} /> // Spacer to push "View Profile" to the right if no actions
         )}
+        {canSchedule && onScheduleInterview && (
+          <TouchableOpacity style={styles.scheduleBtn} onPress={(e) => { e.stopPropagation(); onScheduleInterview(); }}>
+            <Ionicons name="calendar-outline" size={15} color="#fff" />
+            <Text style={styles.scheduleBtnText}>Interview</Text>
+          </TouchableOpacity>
+        )}
+        {onMessage && !canTakeAction && (
+          <TouchableOpacity style={styles.msgBtn} onPress={(e) => { e.stopPropagation(); onMessage(); }}>
+            <Ionicons name="chatbubble-outline" size={15} color="#2563EB" />
+            <Text style={styles.msgBtnText}>Message</Text>
+          </TouchableOpacity>
+        )}
+        {!canTakeAction && !canSchedule && <View style={{ flex: 1 }} />}
 
         <TouchableOpacity style={styles.viewProfileBtn} onPress={(e) => { e.stopPropagation(); onViewProfile(); }}>
           <Text style={styles.viewProfileText}>View Profile</Text>
@@ -319,4 +332,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  scheduleBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: 10, backgroundColor: '#059669',
+  },
+  scheduleBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  msgBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: 10, backgroundColor: '#EFF6FF',
+    borderWidth: 1, borderColor: '#DBEAFE',
+  },
+  msgBtnText: { color: '#2563EB', fontSize: 13, fontWeight: '700' },
 });

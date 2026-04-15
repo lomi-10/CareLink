@@ -1,8 +1,9 @@
 // components/helper/applications/ApplicationDetailsModal.tsx
-import React from 'react';
-import { View, Text, Modal, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/constants/theme';
+import API_URL from '@/constants/api';
 import type { Application } from '@/hooks/helper';
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
   application: Application | null;
   onWithdraw: () => void;
   onClose: () => void;
+  onMessage?: () => void;
+  onInterviewResponded?: () => void;
 }
 
 const STATUS_CONFIG: Record<string, {
@@ -80,8 +83,27 @@ function DetailRow({ icon, label, value }: {
   );
 }
 
-export default function ApplicationDetailsModal({ visible, application, onWithdraw, onClose }: Props) {
+export default function ApplicationDetailsModal({ visible, application, onWithdraw, onClose, onMessage, onInterviewResponded }: Props) {
+  const [interviewLoading, setInterviewLoading] = useState(false);
+
   if (!application) return null;
+
+  const handleInterviewAction = async (action: 'confirm' | 'decline') => {
+    const intv = (application as any).interview;
+    if (!intv?.interview_id) return;
+    setInterviewLoading(true);
+    try {
+      await fetch(`${API_URL}/interviews/confirm.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interview_id: intv.interview_id, user_id: (application as any).helper_id, action }),
+      });
+      onInterviewResponded?.();
+      onClose();
+    } finally {
+      setInterviewLoading(false);
+    }
+  };
 
   const cfg = STATUS_CONFIG[application.status] ?? {
     color: theme.color.muted, bg: theme.color.surface,
@@ -125,6 +147,51 @@ export default function ApplicationDetailsModal({ visible, application, onWithdr
                 <Text style={[s.bannerSub, { color: cfg.color + 'CC' }]}>{cfg.subtitle}</Text>
               </View>
             </View>
+
+            {/* ── Interview card (if scheduled) ── */}
+            {(application as any).interview && (application as any).interview.interview_id && (
+              <View style={s.interviewCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <Ionicons name="calendar" size={18} color={theme.color.parent} />
+                  <Text style={s.interviewTitle}>Interview Scheduled</Text>
+                </View>
+                <Text style={s.interviewDate}>
+                  {new Date((application as any).interview.interview_date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                </Text>
+                <Text style={s.interviewType}>
+                  {(application as any).interview.interview_type}
+                  {(application as any).interview.location_or_link ? ` · ${(application as any).interview.location_or_link}` : ''}
+                </Text>
+                {(application as any).interview.notes ? (
+                  <Text style={s.interviewNotes}>{(application as any).interview.notes}</Text>
+                ) : null}
+                {(application as any).interview.status === 'Scheduled' && !(application as any).interview.helper_confirmed && (
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                    <TouchableOpacity
+                      style={[s.interviewBtn, { backgroundColor: theme.color.helperSoft }]}
+                      onPress={() => handleInterviewAction('decline')}
+                      disabled={interviewLoading}
+                    >
+                      <Ionicons name="close" size={15} color={theme.color.danger} />
+                      <Text style={[s.interviewBtnTxt, { color: theme.color.danger }]}>Decline</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[s.interviewBtn, { flex: 1, backgroundColor: theme.color.helper }]}
+                      onPress={() => handleInterviewAction('confirm')}
+                      disabled={interviewLoading}
+                    >
+                      {interviewLoading
+                        ? <ActivityIndicator size="small" color="#fff" />
+                        : <><Ionicons name="checkmark" size={15} color="#fff" /><Text style={[s.interviewBtnTxt, { color: '#fff' }]}>Confirm Attendance</Text></>
+                      }
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {(application as any).interview.helper_confirmed && (
+                  <Text style={s.interviewConfirmed}>✓ You confirmed attendance</Text>
+                )}
+              </View>
+            )}
 
             {/* ── Job details ── */}
             <View style={s.section}>
@@ -181,6 +248,12 @@ export default function ApplicationDetailsModal({ visible, application, onWithdr
                 <Text style={s.withdrawText}>Withdraw</Text>
               </TouchableOpacity>
             )}
+            {onMessage && (
+              <TouchableOpacity style={s.messageBtn} onPress={onMessage}>
+                <Ionicons name="chatbubble-outline" size={16} color={theme.color.helper} />
+                <Text style={s.messageBtnText}>Message</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={s.closeFullBtn} onPress={onClose}>
               <Text style={s.closeFullBtnText}>Close</Text>
             </TouchableOpacity>
@@ -228,4 +301,14 @@ const s = StyleSheet.create({
   withdrawText:   { color: theme.color.danger, fontSize: 14, fontWeight: '700' },
   closeFullBtn:   { flex: 1, backgroundColor: theme.color.helper, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
   closeFullBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  messageBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 13, paddingHorizontal: 18, borderRadius: 12, backgroundColor: theme.color.helperSoft, borderWidth: 1, borderColor: theme.color.helper + '40' },
+  messageBtnText: { color: theme.color.helper, fontSize: 14, fontWeight: '700' },
+  interviewCard:  { backgroundColor: theme.color.parentSoft, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: theme.color.parent + '30', marginTop: 14 },
+  interviewTitle: { fontSize: 14, fontWeight: '800', color: theme.color.parent },
+  interviewDate:  { fontSize: 16, fontWeight: '700', color: theme.color.ink, marginBottom: 2 },
+  interviewType:  { fontSize: 13, color: theme.color.muted },
+  interviewNotes: { fontSize: 13, color: theme.color.inkMuted, marginTop: 6, fontStyle: 'italic' },
+  interviewBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10 },
+  interviewBtnTxt:{ fontSize: 13, fontWeight: '700' },
+  interviewConfirmed: { fontSize: 13, color: theme.color.helper, fontWeight: '700', marginTop: 8 },
 });

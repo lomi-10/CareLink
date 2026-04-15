@@ -76,7 +76,24 @@ export default function MyApplications() {
       <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose duration={1500} onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }} />
       <NotificationModal visible={notification.visible} message={notification.message} type={notification.type} onClose={() => setNotification(n => ({ ...n, visible: false }))} autoClose duration={2000} />
       <ConfirmationModal visible={withdrawModal.visible} title="Withdraw Application?" message="Are you sure? This action cannot be undone." confirmText="Withdraw" cancelText="Cancel" type="danger" onConfirm={confirmWithdraw} onCancel={() => setWithdrawModal({ visible: false, applicationId: '' })} />
-      <ApplicationDetailsModal visible={detailsVisible} application={selectedApplication} onWithdraw={() => selectedApplication && handleWithdraw(selectedApplication.application_id)} onClose={() => setDetailsVisible(false)} />
+      <ApplicationDetailsModal
+        visible={detailsVisible}
+        application={selectedApplication}
+        onWithdraw={() => selectedApplication && handleWithdraw(selectedApplication.application_id)}
+        onClose={() => setDetailsVisible(false)}
+        onMessage={() => {
+          if (!selectedApplication) return;
+          setDetailsVisible(false);
+          router.push({
+            pathname: '/(helper)/messages',
+            params: {
+              partner_id:   String(selectedApplication.parent_id ?? ''),
+              partner_name: encodeURIComponent(selectedApplication.parent_name ?? ''),
+              job_post_id:  String(selectedApplication.job_post_id ?? ''),
+            },
+          } as any);
+        }}
+      />
     </>
   );
 
@@ -164,7 +181,7 @@ export default function MyApplications() {
       ) : (
         <FlatList
           data={applications}
-          keyExtractor={item => item?.application_id ?? Math.random().toString()}
+          keyExtractor={(item, idx) => item?.application_id ? String(item.application_id) : `app-${idx}`}
           renderItem={({ item }) => (
             <ApplicationCard
               application={item}
@@ -173,7 +190,7 @@ export default function MyApplications() {
             />
           )}
           contentContainerStyle={[s.listPad, isDesktop && s.listPadDesktop]}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={theme.color.helper} />}
           showsVerticalScrollIndicator={false}
         />
       )}
