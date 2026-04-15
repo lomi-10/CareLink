@@ -86,29 +86,7 @@ export function InviteHelperModal({
         throw new Error(data.message || 'Failed to load jobs');
       }
     } catch (err: any) {
-      console.log('Backend not ready, using mock data...');
-      
-      // 2. FIXED MOCK DATA: Changed salary_amount to salary_offered
-      const mockJobs: Job[] = [
-        {
-          job_post_id: '1',
-          title: 'Live-in Yaya Needed',
-          description: 'Looking for experienced yaya...',
-          salary_offered: 8000, 
-          status: 'Open',
-          category_name: 'Yaya',
-        },
-        {
-          job_post_id: '2',
-          title: 'Part-time Cook',
-          description: 'Need a cook for weekends...',
-          salary_offered: 400,
-          status: 'Open',
-          category_name: 'Cook',
-        },
-      ];
-      
-      setJob(mockJobs);
+      setError(err.message || 'Failed to load your job posts.');
     } finally {
       setLoading(false);
     }
@@ -144,15 +122,10 @@ export function InviteHelperModal({
         onSuccess?.();
         onClose();
       } else {
-        throw new Error(data.message || 'Failed to send invitation');
+        setError(data.message || 'Failed to send invitation');
       }
     } catch (err: any) {
-      console.log('Backend error:', err.message);
-      // For development: simulate success
-      setTimeout(() => {
-        onSuccess?.();
-        onClose();
-      }, 500);
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setSending(false);
     }

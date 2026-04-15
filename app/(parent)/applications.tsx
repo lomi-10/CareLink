@@ -166,7 +166,7 @@ export default function JobApplications() {
     </>
   );
 
-  if (loadingJobs || (loadingApps && selectedJobId !== '')) return <LoadingSpinner visible message="Loading…" />;
+  if (loadingJobs) return <LoadingSpinner visible message="Loading…" />;
 
   // ── Empty — no jobs posted ──────────────────────────────────────────────────
   if (postedJobs.length === 0) {
@@ -211,61 +211,37 @@ export default function JobApplications() {
 
   const mainContent = (
     <View style={s.content}>
-      {/* ── Job selector ── */}
+      {/* ── Optional job filter ── */}
       <View style={[s.selectorSection, isDesktop && { paddingHorizontal: 32 }]}>
-
-        {/* Category dropdown */}
+        {/* "All jobs" pill + job dropdown in one row */}
         <View style={s.dropCard}>
-          <Text style={s.dropLabel}>1 · Select Category</Text>
-          <TouchableOpacity
-            style={[s.dropHead, isCategoryDropdownOpen && s.dropHeadActive]}
-            onPress={() => { setIsCategoryDropdownOpen(v => !v); setIsJobDropdownOpen(false); }}
-            activeOpacity={0.8}
-          >
-            <Text style={[s.dropHeadText, !selectedCategory && { color: theme.color.subtle }]}>
-              {selectedCategory || 'Choose a category…'}
-            </Text>
-            <Ionicons name={isCategoryDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={theme.color.muted} />
-          </TouchableOpacity>
-          {isCategoryDropdownOpen && (
-            <View style={s.dropList}>
-              <ScrollView nestedScrollEnabled style={{ maxHeight: 180 }}>
-                {parentCategories.map(cat => (
-                  <TouchableOpacity key={cat} style={[s.dropItem, selectedCategory === cat && s.dropItemActive]} onPress={() => { setSelectedCategory(cat); setIsCategoryDropdownOpen(false); }}>
-                    <Text style={[s.dropItemText, selectedCategory === cat && s.dropItemTextActive]}>{cat}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-        </View>
-
-        {/* Job dropdown */}
-        <View style={[s.dropCard, { zIndex: -1 }]}>
-          <Text style={s.dropLabel}>2 · Select Job Post</Text>
-          <TouchableOpacity
-            style={[s.dropHead, isJobDropdownOpen && s.dropHeadActive, !selectedCategory && s.dropHeadDisabled]}
-            disabled={!selectedCategory}
-            onPress={() => setIsJobDropdownOpen(v => !v)}
-            activeOpacity={0.8}
-          >
-            <View style={{ flex: 1 }}>
+          <Text style={s.dropLabel}>Filter by Job Post <Text style={{ color: theme.color.muted, fontWeight: '400' }}>(optional)</Text></Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              style={[s.allJobBtn, !selectedJobId && s.allJobBtnActive]}
+              onPress={() => { setSelectedJobId(''); setSelectedCategory(''); }}
+            >
+              <Ionicons name="layers-outline" size={14} color={!selectedJobId ? '#fff' : theme.color.muted} />
+              <Text style={[s.allJobBtnText, !selectedJobId && { color: '#fff' }]}>All Jobs</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.dropHead, { flex: 1 }, isJobDropdownOpen && s.dropHeadActive]}
+              onPress={() => { setIsJobDropdownOpen(v => !v); setIsCategoryDropdownOpen(false); }}
+              activeOpacity={0.8}
+            >
               <Text style={[s.dropHeadText, !currentJob && { color: theme.color.subtle }]} numberOfLines={1}>
-                {!selectedCategory ? 'Waiting for category…' : currentJob ? currentJob.title : 'Choose a job post…'}
+                {currentJob ? currentJob.title : 'Specific job…'}
               </Text>
-              {currentJob && (
-                <Text style={s.dropHeadSub}>{currentJob.status} · {currentJob.application_count ?? 0} applicant{currentJob.application_count !== 1 ? 's' : ''}</Text>
-              )}
-            </View>
-            <Ionicons name={isJobDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={theme.color.muted} />
-          </TouchableOpacity>
+              <Ionicons name={isJobDropdownOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.color.muted} />
+            </TouchableOpacity>
+          </View>
           {isJobDropdownOpen && (
             <View style={s.dropList}>
-              <ScrollView nestedScrollEnabled style={{ maxHeight: 180 }}>
-                {availableJobs.map((j: any) => (
+              <ScrollView nestedScrollEnabled style={{ maxHeight: 200 }}>
+                {postedJobs.map((j: any) => (
                   <TouchableOpacity key={j.job_post_id} style={[s.dropItem, currentJob?.job_post_id === j.job_post_id && s.dropItemActive]} onPress={() => { setSelectedJobId(j.job_post_id); setIsJobDropdownOpen(false); }}>
-                    <Text style={[s.dropItemText, currentJob?.job_post_id === j.job_post_id && s.dropItemTextActive]}>{j.title}</Text>
-                    <Text style={s.dropItemSub}>{j.status} · {j.application_count ?? 0} applicants</Text>
+                    <Text style={[s.dropItemText, currentJob?.job_post_id === j.job_post_id && s.dropItemTextActive]} numberOfLines={1}>{j.title}</Text>
+                    <Text style={s.dropItemSub}>{j.category_name} · {j.status}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -274,48 +250,44 @@ export default function JobApplications() {
         </View>
       </View>
 
-      {/* ── Stats strip (shown only when job is selected) ── */}
-      {selectedJobId ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[s.statsScroll, isDesktop && { paddingHorizontal: 32 }]}
-        >
-          {appStats.map(t => (
-            <View key={t.label} style={[s.statTile, { backgroundColor: t.bg }]}>
-              <View style={[s.statIconCircle, { backgroundColor: t.color + '22' }]}>
-                <Ionicons name={t.icon} size={16} color={t.color} />
-              </View>
-              <Text style={[s.statValue, { color: t.color }]}>{t.value}</Text>
-              <Text style={s.statLabel}>{t.label}</Text>
+      {/* ── Stats strip ── */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[s.statsScroll, isDesktop && { paddingHorizontal: 32 }]}
+      >
+        {appStats.map(t => (
+          <View key={t.label} style={[s.statTile, { backgroundColor: t.bg }]}>
+            <View style={[s.statIconCircle, { backgroundColor: t.color + '22' }]}>
+              <Ionicons name={t.icon} size={16} color={t.color} />
             </View>
-          ))}
-        </ScrollView>
-      ) : null}
+            <Text style={[s.statValue, { color: t.color }]}>{t.value}</Text>
+            <Text style={s.statLabel}>{t.label}</Text>
+          </View>
+        ))}
+      </ScrollView>
 
       {/* ── Filter chips ── */}
-      {selectedJobId ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[s.filterScroll, isDesktop && { paddingHorizontal: 32 }]}
-        >
-          {STATUS_FILTERS.map(f => {
-            const isActive = activeFilter === f.key;
-            return (
-              <TouchableOpacity
-                key={f.key}
-                style={[s.filterChip, isActive && s.filterChipActive]}
-                onPress={() => setActiveFilter(f.key)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name={f.icon} size={13} color={isActive ? '#fff' : theme.color.muted} />
-                <Text style={[s.filterChipText, isActive && s.filterChipTextActive]}>{f.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      ) : null}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[s.filterScroll, isDesktop && { paddingHorizontal: 32 }]}
+      >
+        {STATUS_FILTERS.map(f => {
+          const isActive = activeFilter === f.key;
+          return (
+            <TouchableOpacity
+              key={f.key}
+              style={[s.filterChip, isActive && s.filterChipActive]}
+              onPress={() => setActiveFilter(f.key)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name={f.icon} size={13} color={isActive ? '#fff' : theme.color.muted} />
+              <Text style={[s.filterChipText, isActive && s.filterChipTextActive]}>{f.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
       {/* ── Application list ── */}
       <FlatList
@@ -327,11 +299,14 @@ export default function JobApplications() {
             onViewProfile={() => handleViewProfile(item)}
             onShortlist={() => setStatusConfirm({ visible: true, appId: item.application_id, action: 'Shortlisted' })}
             onReject={() => setStatusConfirm({ visible: true, appId: item.application_id, action: 'Rejected' })}
-            onScheduleInterview={() => setInterviewTarget({
-              appId: Number(item.application_id),
-              helperName: item.helper_name,
-              jobTitle: currentJob?.title ?? 'this position',
-            })}
+            onScheduleInterview={() => {
+              const jobForApp = postedJobs.find((j: any) => String(j.job_post_id) === String(item.job_post_id));
+              setInterviewTarget({
+                appId: Number(item.application_id),
+                helperName: item.helper_name,
+                jobTitle: jobForApp?.title ?? currentJob?.title ?? 'this position',
+              });
+            }}
             onMessage={() => router.push({
               pathname: '/(parent)/messages',
               params: {
@@ -349,13 +324,9 @@ export default function JobApplications() {
             <View style={s.emptyIconCircle}>
               <Ionicons name="folder-open-outline" size={38} color={theme.color.parent} />
             </View>
-            <Text style={s.emptyTitle}>
-              {selectedJobId ? 'No applications found' : 'Select a job above'}
-            </Text>
+            <Text style={s.emptyTitle}>No applications found</Text>
             <Text style={s.emptySub}>
-              {selectedJobId
-                ? activeFilter !== 'all' ? 'Try selecting a different filter' : 'No one has applied yet'
-                : 'Choose a category and job post to view its applications'}
+              {activeFilter !== 'all' ? 'Try selecting a different status filter' : 'No one has applied yet'}
             </Text>
           </View>
         }
@@ -374,7 +345,7 @@ export default function JobApplications() {
             <View>
               <Text style={s.pageTitle}>Review Applications</Text>
               <Text style={s.pageSubtitle}>
-                {selectedJobId ? `${filteredApps.length} application${filteredApps.length !== 1 ? 's' : ''} shown` : 'Select a job to view applicants'}
+                {loadingApps ? 'Loading…' : `${filteredApps.length} application${filteredApps.length !== 1 ? 's' : ''} shown`}
               </Text>
             </View>
             <TouchableOpacity style={s.viewJobsBtn} onPress={() => router.push('/(parent)/jobs')} activeOpacity={0.8}>
@@ -457,6 +428,11 @@ const s = StyleSheet.create({
   statIconCircle: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   statValue:      { fontSize: 20, fontWeight: '800' },
   statLabel:      { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, color: theme.color.muted },
+
+  // ── All jobs toggle ──
+  allJobBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: theme.color.line, backgroundColor: theme.color.surface },
+  allJobBtnActive:  { backgroundColor: theme.color.parent, borderColor: theme.color.parent },
+  allJobBtnText:    { fontSize: 13, fontWeight: '700', color: theme.color.muted },
 
   // ── Filters ──
   filterScroll:         { paddingHorizontal: 16, paddingBottom: 4, gap: 8, flexDirection: 'row', alignItems: 'center' },

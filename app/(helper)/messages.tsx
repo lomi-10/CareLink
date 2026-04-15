@@ -201,29 +201,28 @@ export default function HelperMessages() {
   const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
   const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
 
-  // Open a chat from deep-link params (e.g. from browse_jobs "Message parent")
+  // Open a chat from deep-link params — fires once loading is done (works even with 0 conversations)
   useEffect(() => {
-    if (params.partner_id && conversations.length > 0) {
-      const found = conversations.find(c => String(c.partner_id) === params.partner_id);
-      if (found) {
-        setActivePartner(found);
-      } else if (params.partner_name) {
-        // Partner has no conversation yet — create a synthetic entry
-        setActivePartner({
-          partner_id:    Number(params.partner_id),
-          partner_name:  decodeURIComponent(params.partner_name),
-          partner_type:  'parent',
-          partner_photo: null,
-          last_message:  '',
-          last_sent_at:  new Date().toISOString(),
-          is_mine:       false,
-          unread_count:  0,
-          job_post_id:   params.job_post_id ? Number(params.job_post_id) : null,
-          job_title:     null,
-        });
-      }
+    if (!params.partner_id || loadingConvs) return;
+    const found = conversations.find(c => String(c.partner_id) === params.partner_id);
+    if (found) {
+      setActivePartner(found);
+    } else if (params.partner_name) {
+      // New conversation — no prior messages yet
+      setActivePartner({
+        partner_id:    Number(params.partner_id),
+        partner_name:  decodeURIComponent(params.partner_name),
+        partner_type:  'parent',
+        partner_photo: null,
+        last_message:  '',
+        last_sent_at:  new Date().toISOString(),
+        is_mine:       false,
+        unread_count:  0,
+        job_post_id:   params.job_post_id ? Number(params.job_post_id) : null,
+        job_title:     null,
+      });
     }
-  }, [params.partner_id, conversations]);
+  }, [params.partner_id, params.partner_name, loadingConvs]);
 
   const MobileContent = () => (
     <>

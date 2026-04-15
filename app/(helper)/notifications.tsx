@@ -24,6 +24,12 @@ const TYPE_CONFIG: Record<string, { icon: React.ComponentProps<typeof Ionicons>[
   document_rejected:    { icon: 'document-text-outline',   color: theme.color.danger,  bg: theme.color.dangerSoft },
   job_verified:         { icon: 'briefcase',               color: theme.color.helper,  bg: theme.color.helperSoft },
   job_rejected:         { icon: 'briefcase-outline',       color: theme.color.danger,  bg: theme.color.dangerSoft },
+  job_invite:           { icon: 'mail-open-outline',       color: theme.color.parent,  bg: theme.color.parentSoft },
+  new_message:          { icon: 'chatbubble-outline',      color: theme.color.info,    bg: theme.color.infoSoft },
+  profile_update:       { icon: 'person-circle-outline',   color: theme.color.helper,  bg: theme.color.helperSoft },
+  interview_scheduled:  { icon: 'calendar-outline',        color: '#7C3AED',           bg: '#F3E8FF' },
+  interview_confirmed:  { icon: 'checkmark-circle-outline',color: theme.color.success, bg: theme.color.successSoft },
+  interview_declined:   { icon: 'close-circle-outline',    color: theme.color.danger,  bg: theme.color.dangerSoft },
 };
 
 function timeAgo(dateStr: string) {

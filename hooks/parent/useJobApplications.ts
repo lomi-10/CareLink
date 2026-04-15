@@ -38,14 +38,7 @@ export function useJobApplications(jobPostId: string) {
   }, []);
 
   useEffect(() => {
-    if (jobPostId) {
-      console.log('[useJobApplications] Fetching applications for job:', jobPostId);
-      fetchApplications();
-    } else {
-      console.log('[useJobApplications] No jobPostId provided - showing empty state');
-      setLoading(false);
-      setApplications([]);
-    }
+    fetchApplications();
   }, [jobPostId]);
 
   // Check if parent has posted any jobs at all
@@ -79,12 +72,19 @@ export function useJobApplications(jobPostId: string) {
 
   const fetchApplications = async () => {
     try {
-      console.log('[useJobApplications] Starting fetch...');
       setLoading(true);
       setError(null);
 
-      const url = `${API_URL}/parent/get_job_applications.php?job_post_id=${jobPostId}`;
-      console.log('[useJobApplications] Fetching from:', url);
+      // If no specific job selected, fetch ALL applications for this parent
+      let url: string;
+      if (jobPostId) {
+        url = `${API_URL}/parent/get_job_applications.php?job_post_id=${jobPostId}`;
+      } else {
+        const raw  = await AsyncStorage.getItem('user_data');
+        const user = raw ? JSON.parse(raw) : null;
+        if (!user) { setLoading(false); return; }
+        url = `${API_URL}/parent/get_job_applications.php?parent_id=${user.user_id}`;
+      }
 
       const response = await fetch(url);
       

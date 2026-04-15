@@ -163,27 +163,28 @@ export default function ParentMessages() {
   const [isMobileMenuOpen,     setIsMobileMenuOpen]     = useState(false);
   const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
 
+  // Open chat from navigation params — fires once loading is done (works even if 0 conversations)
   useEffect(() => {
-    if (params.partner_id && conversations.length > 0) {
-      const found = conversations.find(c => String(c.partner_id) === params.partner_id);
-      if (found) {
-        setActivePartner(found);
-      } else if (params.partner_name) {
-        setActivePartner({
-          partner_id:    Number(params.partner_id),
-          partner_name:  decodeURIComponent(params.partner_name),
-          partner_type:  'helper',
-          partner_photo: null,
-          last_message:  '',
-          last_sent_at:  new Date().toISOString(),
-          is_mine:       false,
-          unread_count:  0,
-          job_post_id:   params.job_post_id ? Number(params.job_post_id) : null,
-          job_title:     null,
-        });
-      }
+    if (!params.partner_id || loadingConvs) return;
+    const found = conversations.find(c => String(c.partner_id) === params.partner_id);
+    if (found) {
+      setActivePartner(found);
+    } else if (params.partner_name) {
+      // New conversation — no prior messages yet
+      setActivePartner({
+        partner_id:    Number(params.partner_id),
+        partner_name:  decodeURIComponent(params.partner_name),
+        partner_type:  'helper',
+        partner_photo: null,
+        last_message:  '',
+        last_sent_at:  new Date().toISOString(),
+        is_mine:       false,
+        unread_count:  0,
+        job_post_id:   params.job_post_id ? Number(params.job_post_id) : null,
+        job_title:     null,
+      });
     }
-  }, [params.partner_id, conversations]);
+  }, [params.partner_id, params.partner_name, loadingConvs]);
 
   const MobileContent = () => (
     <>
