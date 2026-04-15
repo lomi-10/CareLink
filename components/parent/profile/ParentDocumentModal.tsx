@@ -150,8 +150,14 @@ export default function ParentDocumentModal({
   };
 
   const validateDocument = (): boolean => {
-    if (!validIdDoc.uri && !brgyClearanceDoc.uri) {
-      setNotifMessage("Please select at least one document to upload.");
+    if (!brgyClearanceDoc.uri) {
+      setNotifMessage("Barangay Clearance is required.");
+      setNotifType('error');
+      setNotifVisible(true);
+      return false;
+    }
+    if (!validIdDoc.uri) {
+      setNotifMessage("Valid ID is required.");
       setNotifType('error');
       setNotifVisible(true);
       return false;

@@ -50,13 +50,13 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: '#059669',
     backgroundColor: '#fff',
   },
   myApplicationsButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#059669',
   },
   
   // Mobile Styles
@@ -147,7 +147,7 @@ export const styles = StyleSheet.create({
     marginBottom: 24,
   },
   resetButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#059669',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,

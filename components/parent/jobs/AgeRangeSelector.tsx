@@ -73,9 +73,9 @@ export function AgeRangeSelector({
             value={minAge}
             onValueChange={handleMinChange}
             step={1}
-            minimumTrackTintColor="#007AFF"
+            minimumTrackTintColor="#2563EB"
             maximumTrackTintColor="#E5E5EA"
-            thumbTintColor="#007AFF"
+            thumbTintColor="#2563EB"
             disabled={disabled}
           />
           <Text style={styles.sliderValue}>70</Text>
@@ -94,9 +94,9 @@ export function AgeRangeSelector({
             value={maxAge}
             onValueChange={handleMaxChange}
             step={1}
-            minimumTrackTintColor="#007AFF"
+            minimumTrackTintColor="#2563EB"
             maximumTrackTintColor="#E5E5EA"
-            thumbTintColor="#007AFF"
+            thumbTintColor="#2563EB"
             disabled={disabled}
           />
           <Text style={styles.sliderValue}>70</Text>

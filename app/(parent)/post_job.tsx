@@ -153,8 +153,9 @@ export default function PostJob() {
       return;
     }
 
-    if (!validate(categories)) {
-      setNotification({ visible: true, message: 'Please fill in all required fields correctly', type: 'error' });
+    const { isValid, firstError } = validate(categories);
+    if (!isValid) {
+      setNotification({ visible: true, message: firstError || 'Please fill in all required fields', type: 'error' });
       return;
     }
 

@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#1D4ED8',
+    color: '#2563EB',
   },
   nameContainer: {
     marginLeft: 12,

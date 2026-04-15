@@ -1,19 +1,18 @@
-// app/(PESO)/user_verification.tsx
-// User Verification Screen - Separated Helpers and Parents
+// app/(peso)/user_verification.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import API_URL from "../../constants/api";
 import { theme } from "@/constants/theme";
@@ -26,258 +25,307 @@ export interface VerificationUser {
   contact_number?: string;
   profile_image?: string;
   verification_status: string;
+  created_at?: string;
 }
+
+const STATUS_CONFIG = {
+  Pending:  { bg: theme.color.warningSoft,  text: theme.color.warning, icon: "time-outline"             as const },
+  Verified: { bg: theme.color.successSoft,  text: theme.color.success, icon: "shield-checkmark-outline" as const },
+  Rejected: { bg: theme.color.dangerSoft,   text: theme.color.danger,  icon: "close-circle-outline"     as const },
+  Unverified:{ bg: theme.color.surface,     text: theme.color.muted,   icon: "ellipse-outline"          as const },
+};
+
+const FILTER_TABS = ["Pending", "Verified", "Rejected", "All"] as const;
+type FilterStatus = (typeof FILTER_TABS)[number];
 
 export default function UserVerification() {
   const router = useRouter();
 
-  const [users, setUsers] = useState<VerificationUser[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<VerificationUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [users, setUsers]             = useState<VerificationUser[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [refreshing, setRefreshing]   = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState("Pending"); // Pending, Verified, Rejected, All
-  
-  // NEW: State for Role Tabs
-  const [activeRoleTab, setActiveRoleTab] = useState<"helper" | "parent">("helper");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("Pending");
+  const [activeRole, setActiveRole]   = useState<"helper" | "parent">("helper");
 
-  useEffect(() => {
-    fetchPendingUsers();
-  }, []);
+  useEffect(() => { fetchUsers(); }, []);
 
-  // Update filter whenever ANY of these states change
-  useEffect(() => {
-    filterUsers();
-  }, [searchQuery, filterStatus, users, activeRoleTab]);
-
-  const fetchPendingUsers = async () => {
+  const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/peso/get_pending_users.php`);
-      const text = await response.text();
+      const res  = await fetch(`${API_URL}/peso/get_pending_users.php`);
+      const text = await res.text();
       const data = JSON.parse(text);
-
-      if (data.success) {
-        setUsers(data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching users:", error);
+      if (data.success) setUsers(data.data ?? []);
+    } catch (e) {
+      console.error("fetchUsers:", e);
     } finally {
       setLoading(false);
     }
   };
 
-  const filterUsers = () => {
-    // 1. FIRST filter by the selected role tab (helper or parent)
-    let filtered = users.filter((user) => user.user_type === activeRoleTab);
-
-    // 2. THEN filter by verification status
-    if (filterStatus !== "All") {
-      filtered = filtered.filter(
-        (user) => user.verification_status === filterStatus
-      );
-    }
-
-    // 3. FINALLY filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (user) =>
-          user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.email.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    setFilteredUsers(filtered);
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchPendingUsers();
+    await fetchUsers();
     setRefreshing(false);
   };
 
-  const renderUserCard = ({ item }: { item: VerificationUser }) => (
-    <TouchableOpacity
-      style={styles.userCard}
-      onPress={() =>
-        router.push({
-          pathname: "/(peso)/view_user_profile",
-          params: { user_id: item.user_id, user_type: item.user_type },
-        })
-      }
-    >
-      {/* Profile Image */}
-      <View style={styles.cardLeft}>
-        {item.profile_image ? (
-          <Image source={{ uri: item.profile_image }} style={styles.profileImage} />
-        ) : (
-          <View style={styles.profileImagePlaceholder}>
-            <Ionicons name="person" size={32} color="#ccc" />
-          </View>
-        )}
-      </View>
+  // ─── derived counts ────────────────────────────────────────────────────────
+  const helperCount  = useMemo(() => users.filter((u) => u.user_type === "helper").length,  [users]);
+  const parentCount  = useMemo(() => users.filter((u) => u.user_type === "parent").length,  [users]);
+  const pendingHelpers = useMemo(() => users.filter((u) => u.user_type === "helper" && u.verification_status === "Pending").length, [users]);
+  const pendingParents = useMemo(() => users.filter((u) => u.user_type === "parent" && u.verification_status === "Pending").length, [users]);
 
-      {/* User Info */}
-      <View style={styles.cardCenter}>
-        <Text style={styles.userName}>{item.name}</Text>
-        <View style={styles.userMeta}>
-          <Ionicons name="mail" size={14} color="#666" />
-          <Text style={styles.userEmail}>{item.email}</Text>
-        </View>
-        <View style={styles.userMeta}>
-          <Ionicons name="briefcase" size={14} color="#666" />
-          <Text style={styles.userType}>
-            {item.user_type === "helper" ? "Domestic Helper" : "Parent / Employer"}
-          </Text>
-        </View>
-        {item.contact_number && (
-          <View style={styles.userMeta}>
-            <Ionicons name="call" size={14} color="#666" />
-            <Text style={styles.userContact}>{item.contact_number}</Text>
-          </View>
-        )}
-      </View>
+  const countFor = (status: string) =>
+    users.filter((u) => u.user_type === activeRole && u.verification_status === status).length;
 
-      {/* Status Badge */}
-      <View style={styles.cardRight}>
-        <View
-          style={[
-            styles.statusBadge,
-            item.verification_status === "Verified" && styles.statusVerified,
-            item.verification_status === "Pending" && styles.statusPending,
-            item.verification_status === "Rejected" && styles.statusRejected,
-          ]}
-        >
-          <Ionicons
-            name={
-              item.verification_status === "Verified"
-                ? "checkmark-circle"
-                : item.verification_status === "Pending"
-                ? "time"
-                : "close-circle"
-            }
-            size={16}
-            color="#fff"
-          />
-          <Text style={styles.statusText}>{item.verification_status}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color="#ccc" style={{ marginTop: 8 }} />
-      </View>
-    </TouchableOpacity>
-  );
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return users.filter((u) => {
+      if (u.user_type !== activeRole) return false;
+      if (filterStatus !== "All" && u.verification_status !== filterStatus) return false;
+      if (!q) return true;
+      return (
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        (u.contact_number ?? "").includes(q)
+      );
+    });
+  }, [users, activeRole, filterStatus, searchQuery]);
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.pageTitle}>User Verification</Text>
-          <Text style={styles.pageSubtitle}>
-            {filteredUsers.length} {activeRoleTab}{filteredUsers.length !== 1 ? "s" : ""} found
-          </Text>
-        </View>
-      </View>
+  // ─── card ──────────────────────────────────────────────────────────────────
+  const renderCard = ({ item, index }: { item: VerificationUser; index: number }) => {
+    const cfg = STATUS_CONFIG[item.verification_status as keyof typeof STATUS_CONFIG]
+      ?? STATUS_CONFIG.Unverified;
+    const isHelper = item.user_type === "helper";
+    const ringColor = isHelper ? theme.color.helper : theme.color.parent;
+    const ringBg    = isHelper ? theme.color.helperSoft : theme.color.parentSoft;
+    const joinDate  = item.created_at
+      ? new Date(item.created_at).toLocaleDateString("en-PH", { month: "short", year: "numeric" })
+      : null;
 
-      {/* NEW: Main Role Tabs */}
-      <View style={styles.roleTabsContainer}>
-        <TouchableOpacity 
-          style={[styles.roleTab, activeRoleTab === 'helper' && styles.roleTabActive]}
-          onPress={() => setActiveRoleTab('helper')}
-        >
-          <Ionicons name="briefcase-outline" size={20} color={activeRoleTab === 'helper' ? '#fff' : '#666'} />
-          <Text style={[styles.roleTabText, activeRoleTab === 'helper' && styles.roleTabTextActive]}>Helpers</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.roleTab, activeRoleTab === 'parent' && styles.roleTabActive]}
-          onPress={() => setActiveRoleTab('parent')}
-        >
-          <Ionicons name="people-outline" size={20} color={activeRoleTab === 'parent' ? '#fff' : '#666'} />
-          <Text style={[styles.roleTabText, activeRoleTab === 'parent' && styles.roleTabTextActive]}>Parents</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Search and Filters */}
-      <View style={styles.searchSection}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#999" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={`Search ${activeRoleTab}s by name or email...`}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#999"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Ionicons name="close-circle" size={20} color="#999" />
-            </TouchableOpacity>
+    return (
+      <TouchableOpacity
+        style={[styles.card, index === 0 && { marginTop: 0 }]}
+        activeOpacity={0.78}
+        onPress={() =>
+          router.push({
+            pathname: "/(peso)/view_user_profile",
+            params: { user_id: item.user_id, user_type: item.user_type },
+          })
+        }
+      >
+        {/* Avatar */}
+        <View style={[styles.avatarRing, { backgroundColor: ringBg, borderColor: ringColor + "55" }]}>
+          {item.profile_image ? (
+            <Image source={{ uri: item.profile_image }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatarFallback, { backgroundColor: ringBg }]}>
+              <Ionicons name={isHelper ? "person" : "people"} size={30} color={ringColor} />
+            </View>
           )}
         </View>
 
-        {/* Filter Chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChips}>
-          {["All", "Pending", "Verified", "Rejected"].map((status) => (
+        {/* Info */}
+        <View style={styles.cardBody}>
+          <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+          <Text style={styles.cardEmail} numberOfLines={1}>{item.email}</Text>
+
+          <View style={styles.cardMeta}>
+            {item.contact_number ? (
+              <View style={styles.metaChip}>
+                <Ionicons name="call-outline" size={12} color={theme.color.muted} />
+                <Text style={styles.metaText}>{item.contact_number}</Text>
+              </View>
+            ) : null}
+            {joinDate && (
+              <View style={styles.metaChip}>
+                <Ionicons name="calendar-outline" size={12} color={theme.color.muted} />
+                <Text style={styles.metaText}>Joined {joinDate}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Status + arrow */}
+        <View style={styles.cardRight}>
+          <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
+            <Ionicons name={cfg.icon} size={13} color={cfg.text} />
+            <Text style={[styles.statusPillText, { color: cfg.text }]}>
+              {item.verification_status}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={theme.color.subtle} style={{ marginTop: 8 }} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+
+      {/* ── PAGE HEADER ── */}
+      <View style={styles.pageHeader}>
+        <View>
+          <Text style={styles.pageTitle}>User Verification</Text>
+          <Text style={styles.pageSubtitle}>
+            {loading ? "Loading…" : `${users.length} total account${users.length !== 1 ? "s" : ""} in queue`}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.refreshBtn} onPress={fetchUsers} activeOpacity={0.8}>
+          <Ionicons name="refresh" size={16} color={theme.color.peso} />
+          <Text style={styles.refreshText}>Refresh</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── SUMMARY STATS ── */}
+      {!loading && (
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Ionicons name="time-outline" size={20} color={theme.color.warning} />
+            <Text style={styles.statNum}>{pendingHelpers + pendingParents}</Text>
+            <Text style={styles.statLabel}>Pending</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="briefcase-outline" size={20} color={theme.color.helper} />
+            <Text style={styles.statNum}>{helperCount}</Text>
+            <Text style={styles.statLabel}>Helpers</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="people-outline" size={20} color={theme.color.parent} />
+            <Text style={styles.statNum}>{parentCount}</Text>
+            <Text style={styles.statLabel}>Parents</Text>
+          </View>
+        </View>
+      )}
+
+      {/* ── ROLE TABS ── */}
+      <View style={styles.roleTabs}>
+        {(["helper", "parent"] as const).map((role) => {
+          const active   = activeRole === role;
+          const accent   = role === "helper" ? theme.color.helper : theme.color.parent;
+          const accentBg = role === "helper" ? theme.color.helperSoft : theme.color.parentSoft;
+          const pending  = role === "helper" ? pendingHelpers : pendingParents;
+          const icon     = role === "helper" ? "briefcase-outline" : "people-outline" as const;
+
+          return (
             <TouchableOpacity
-              key={status}
-              style={[styles.filterChip, filterStatus === status && styles.filterChipActive]}
-              onPress={() => setFilterStatus(status)}
+              key={role}
+              style={[
+                styles.roleTab,
+                active && { backgroundColor: accent, borderColor: accent },
+              ]}
+              onPress={() => setActiveRole(role)}
+              activeOpacity={0.8}
             >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  filterStatus === status && styles.filterChipTextActive,
-                ]}
-              >
-                {status}
+              <Ionicons name={icon} size={18} color={active ? "#fff" : accent} />
+              <Text style={[styles.roleTabLabel, active ? { color: "#fff" } : { color: accent }]}>
+                {role === "helper" ? "Helpers" : "Parents"}
               </Text>
-              {status !== "All" && (
+              {pending > 0 && (
                 <View
                   style={[
-                    styles.filterCount,
-                    filterStatus === status && styles.filterCountActive,
+                    styles.roleTabBadge,
+                    { backgroundColor: active ? "rgba(255,255,255,0.3)" : accentBg },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.filterCountText,
-                      filterStatus === status && styles.filterCountTextActive,
-                    ]}
-                  >
-                    {/* Calculate count based on BOTH status AND current role tab */}
-                    {users.filter((u) => u.verification_status === status && u.user_type === activeRoleTab).length}
+                  <Text style={[styles.roleTabBadgeText, { color: active ? "#fff" : accent }]}>
+                    {pending}
                   </Text>
                 </View>
               )}
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+          );
+        })}
       </View>
 
-      {/* User List */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.color.peso} />
-          <Text style={styles.loadingText}>Loading {activeRoleTab}s...</Text>
+      {/* ── SEARCH ── */}
+      <View style={styles.searchWrap}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={16} color={theme.color.muted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={`Search ${activeRole}s by name or email…`}
+            placeholderTextColor={theme.color.subtle}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {!!searchQuery && (
+            <TouchableOpacity onPress={() => setSearchQuery("")} hitSlop={10}>
+              <Ionicons name="close-circle" size={16} color={theme.color.subtle} />
+            </TouchableOpacity>
+          )}
         </View>
-      ) : filteredUsers.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name={activeRoleTab === 'helper' ? "briefcase-outline" : "people-outline"} size={64} color="#ccc" />
-          <Text style={styles.emptyText}>No {activeRoleTab}s found</Text>
-          <Text style={styles.emptySubtext}>
+      </View>
+
+      {/* ── STATUS FILTER CHIPS ── */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterChipsRow}
+      >
+        {FILTER_TABS.map((status) => {
+          const active = filterStatus === status;
+          const cfg    = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
+          const count  = status === "All" ? undefined : countFor(status);
+          return (
+            <TouchableOpacity
+              key={status}
+              style={[styles.filterChip, active && styles.filterChipActive]}
+              onPress={() => setFilterStatus(status)}
+              activeOpacity={0.75}
+            >
+              {cfg && !active && (
+                <Ionicons name={cfg.icon} size={13} color={active ? "#fff" : cfg.text} />
+              )}
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                {status === "All" ? "All statuses" : status}
+              </Text>
+              {count !== undefined && (
+                <View style={[styles.chipCount, active && styles.chipCountActive]}>
+                  <Text style={[styles.chipCountText, active && styles.chipCountTextActive]}>
+                    {count}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* ── LIST ── */}
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={theme.color.peso} />
+          <Text style={styles.centerText}>Loading accounts…</Text>
+        </View>
+      ) : filtered.length === 0 ? (
+        <View style={styles.center}>
+          <Ionicons
+            name={activeRole === "helper" ? "briefcase-outline" : "people-outline"}
+            size={64}
+            color={theme.color.subtle}
+          />
+          <Text style={styles.emptyTitle}>
+            No {activeRole}s {filterStatus !== "All" ? `with "${filterStatus}" status` : "found"}
+          </Text>
+          <Text style={styles.emptyBody}>
             {searchQuery
-              ? "Try a different search term"
-              : `No ${activeRoleTab}s waiting for verification`}
+              ? "Try a different search term or clear filters."
+              : filterStatus === "Pending"
+              ? `No ${activeRole}s are waiting for review right now.`
+              : `No ${filterStatus.toLowerCase()} ${activeRole} accounts match.`}
           </Text>
         </View>
       ) : (
         <FlatList
-          data={filteredUsers}
-          renderItem={renderUserCard}
-          keyExtractor={(item) => item.user_id.toString()}
+          data={filtered}
+          keyExtractor={(item) => String(item.user_id)}
+          renderItem={renderCard}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.color.peso} />}
+          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         />
       )}
     </View>
@@ -287,160 +335,192 @@ export default function UserVerification() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
 
-  header: {
-    padding: 24,
+  pageHeader: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingTop: 24,
     paddingBottom: 16,
-    backgroundColor: "transparent",
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: "800",
+    fontSize: 26,
+    fontWeight: "900",
     color: theme.color.ink,
-    marginBottom: 4,
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: theme.color.muted,
-    textTransform: "capitalize",
-    fontWeight: "500",
+    fontWeight: "600",
+    marginTop: 3,
   },
-
-  roleTabsContainer: {
+  refreshBtn: {
     flexDirection: "row",
-    backgroundColor: "transparent",
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    alignItems: "center",
+    gap: 7,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: theme.color.surfaceElevated,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    ...theme.shadow.nav,
+  },
+  refreshText: { fontSize: 13, fontWeight: "700", color: theme.color.ink },
+
+  statsRow: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  statCard: {
+    flex: 1,
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: theme.radius.lg,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    ...theme.shadow.nav,
+  },
+  statNum: { fontSize: 22, fontWeight: "900", color: theme.color.ink },
+  statLabel: { fontSize: 12, fontWeight: "700", color: theme.color.muted },
+
+  roleTabs: {
+    flexDirection: "row",
     gap: 12,
+    paddingHorizontal: 24,
+    marginBottom: 14,
   },
   roleTab: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: theme.radius.lg,
     gap: 8,
-    borderWidth: 1,
+    paddingVertical: 13,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.surfaceElevated,
+    borderWidth: 1.5,
     borderColor: theme.color.line,
     ...theme.shadow.nav,
   },
-  roleTabActive: {
-    backgroundColor: theme.color.peso,
-    borderColor: theme.color.peso,
+  roleTabLabel: { fontSize: 15, fontWeight: "800" },
+  roleTabBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    minWidth: 24,
+    alignItems: "center",
   },
-  roleTabText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: theme.color.muted,
-  },
-  roleTabTextActive: {
-    color: "#fff",
-  },
+  roleTabBadgeText: { fontSize: 12, fontWeight: "900" },
 
-  searchSection: {
-    padding: 16,
-    paddingTop: 0,
-    backgroundColor: "transparent",
-  },
+  searchWrap: { paddingHorizontal: 24, marginBottom: 12 },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: theme.radius.lg,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 12,
     gap: 10,
+    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     borderWidth: 1,
     borderColor: theme.color.line,
-    ...theme.shadow.nav,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: theme.color.ink,
-  },
+  searchInput: { flex: 1, fontSize: 14, color: theme.color.ink, fontWeight: "500" },
 
-  filterChips: { flexDirection: "row" },
+  filterChipsRow: { flexDirection: "row", paddingHorizontal: 24, paddingBottom: 14, gap: 8 },
   filterChip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: theme.color.surfaceElevated,
-    marginRight: 8,
     gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: theme.color.surfaceElevated,
     borderWidth: 1,
     borderColor: theme.color.line,
   },
   filterChipActive: { backgroundColor: theme.color.peso, borderColor: theme.color.peso },
-  filterChipText: { fontSize: 14, fontWeight: "600", color: theme.color.muted },
+  filterChipText: { fontSize: 13, fontWeight: "700", color: theme.color.muted },
   filterChipTextActive: { color: "#fff" },
-  filterCount: {
+  chipCount: {
     backgroundColor: theme.color.surface,
-    paddingHorizontal: 6,
+    borderRadius: 999,
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
+    minWidth: 22,
     alignItems: "center",
   },
-  filterCountActive: { backgroundColor: "rgba(255,255,255,0.28)" },
-  filterCountText: { fontSize: 12, fontWeight: "700", color: theme.color.muted },
-  filterCountTextActive: { color: "#fff" },
+  chipCountActive: { backgroundColor: "rgba(255,255,255,0.25)" },
+  chipCountText: { fontSize: 11, fontWeight: "800", color: theme.color.muted },
+  chipCountTextActive: { color: "#fff" },
 
-  listContent: { padding: 16, paddingBottom: 40 },
+  listContent: { paddingHorizontal: 24, paddingBottom: 40, paddingTop: 4 },
 
-  userCard: {
+  card: {
     flexDirection: "row",
+    alignItems: "center",
     backgroundColor: theme.color.surfaceElevated,
     borderRadius: theme.radius.lg,
-    padding: 16,
-    marginBottom: 12,
-    ...theme.shadow.card,
-    alignItems: "center",
+    padding: 14,
     borderWidth: 1,
     borderColor: theme.color.line,
+    ...theme.shadow.card,
   },
-  cardLeft: { marginRight: 16 },
-  profileImage: { width: 64, height: 64, borderRadius: 32 },
-  profileImagePlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: theme.color.surface,
+
+  avatarRing: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 14,
+    overflow: "hidden",
+  },
+  avatar: { width: 56, height: 56, borderRadius: 28 },
+  avatarFallback: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  cardBody: { flex: 1, gap: 3 },
+  cardName: { fontSize: 15, fontWeight: "800", color: theme.color.ink },
+  cardEmail: { fontSize: 13, color: theme.color.muted, fontWeight: "500" },
+  cardMeta: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
+  metaChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: theme.color.surface,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderWidth: 1,
     borderColor: theme.color.line,
   },
-  cardCenter: { flex: 1 },
-  userName: { fontSize: 16, fontWeight: "800", color: theme.color.ink, marginBottom: 6 },
-  userMeta: { flexDirection: "row", alignItems: "center", marginBottom: 4, gap: 6 },
-  userEmail: { fontSize: 13, color: theme.color.muted },
-  userType: { fontSize: 13, color: theme.color.muted },
-  userContact: { fontSize: 13, color: theme.color.muted },
+  metaText: { fontSize: 11, color: theme.color.muted, fontWeight: "600" },
 
-  cardRight: { alignItems: "flex-end" },
-  statusBadge: {
+  cardRight: { alignItems: "flex-end", gap: 4, marginLeft: 10 },
+  statusPill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    gap: 4,
+    gap: 5,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 999,
   },
-  statusPending: { backgroundColor: theme.color.warning },
-  statusVerified: { backgroundColor: theme.color.success },
-  statusRejected: { backgroundColor: theme.color.danger },
-  statusText: { fontSize: 12, fontWeight: "700", color: "#fff" },
+  statusPillText: { fontSize: 12, fontWeight: "800" },
 
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80 },
-  loadingText: { marginTop: 12, color: theme.color.muted, fontSize: 14 },
-
-  emptyState: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80 },
-  emptyText: { fontSize: 18, fontWeight: "700", color: theme.color.muted, marginTop: 16 },
-  emptySubtext: { fontSize: 14, color: theme.color.subtle, marginTop: 8 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80, paddingHorizontal: 24 },
+  centerText: { marginTop: 12, color: theme.color.muted, fontSize: 14 },
+  emptyTitle: { marginTop: 16, fontSize: 17, fontWeight: "800", color: theme.color.ink, textAlign: "center" },
+  emptyBody: { marginTop: 8, fontSize: 13, color: theme.color.muted, textAlign: "center", lineHeight: 20 },
 });

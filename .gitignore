@@ -41,3 +41,9 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Backend PHP — lives on Laragon, not tracked in this repo
+carelink_api/
+
+# Database dumps — never commit these
+*.sql

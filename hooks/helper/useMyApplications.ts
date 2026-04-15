@@ -42,6 +42,10 @@ export interface Application {
   
   // Job Status
   job_status: string; // 'Open', 'Filled', 'Closed', 'Expired'
+
+  // Category / Job type info
+  category_name?: string;
+  job_names?: string[];
 }
 
 export interface ApplicationStats {
@@ -152,7 +156,6 @@ export function useMyApplications() {
       const data = await response.json();
 
       if (data.success) {
-        // Update local state
         setApplications((prev) =>
           prev.map((app) =>
             app.application_id === applicationId
@@ -165,16 +168,7 @@ export function useMyApplications() {
         throw new Error(data.message || 'Failed to withdraw application');
       }
     } catch (err: any) {
-      console.log('Backend error:', err.message);
-      // For development: simulate success
-      setApplications((prev) =>
-        prev.map((app) =>
-          app.application_id === applicationId
-            ? { ...app, status: 'Withdrawn' as const }
-            : app
-        )
-      );
-      return { success: true };
+      throw new Error(err.message || 'Failed to withdraw application');
     }
   };
 

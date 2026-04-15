@@ -1,111 +1,178 @@
 // components/helper/applications/ApplicationCard.tsx
-
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '@/constants/theme';
 import type { Application } from '@/hooks/helper';
 
-interface ApplicationCardProps {
+interface Props {
   application: Application;
   onPress: () => void;
   onWithdraw: () => void;
 }
 
-export default function ApplicationCard({ application, onPress, onWithdraw }: ApplicationCardProps) {
-  
-  const getStatusConfig = () => {
-    switch (application.status) {
-      case 'Pending': return { color: '#D97706', bg: '#FEF3C7', icon: 'time' as const, label: 'Pending Review' };
-      case 'Reviewed': return { color: '#2563EB', bg: '#DBEAFE', icon: 'eye' as const, label: 'Reviewed' };
-      case 'Shortlisted': return { color: '#7C3AED', bg: '#F3E8FF', icon: 'star' as const, label: 'Shortlisted' };
-      case 'Interview Scheduled': return { color: '#059669', bg: '#D1FAE5', icon: 'calendar' as const, label: 'Interviewing' };
-      case 'Accepted': return { color: '#059669', bg: '#D1FAE5', icon: 'checkmark-circle' as const, label: 'Hired!' };
-      case 'Rejected': return { color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle' as const, label: 'Not Selected' };
-      case 'Withdrawn': return { color: '#6B7280', bg: '#F3F4F6', icon: 'arrow-undo' as const, label: 'Withdrawn' };
-      default: return { color: '#6B7280', bg: '#F3F4F6', icon: 'information-circle' as const, label: application.status };
-    }
-  };
+const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: React.ComponentProps<typeof Ionicons>['name']; label: string }> = {
+  'Pending':            { color: theme.color.warning,  bg: theme.color.warningSoft,  icon: 'time-outline',          label: 'Pending Review' },
+  'Reviewed':           { color: theme.color.info,     bg: theme.color.infoSoft,     icon: 'eye-outline',           label: 'Reviewed' },
+  'Shortlisted':        { color: '#7C3AED',            bg: '#F3E8FF',                icon: 'star-outline',          label: 'Shortlisted' },
+  'Interview Scheduled':{ color: theme.color.helper,   bg: theme.color.helperSoft,   icon: 'calendar-outline',      label: 'Interview' },
+  'Accepted':           { color: theme.color.success,  bg: theme.color.successSoft,  icon: 'checkmark-circle',      label: 'Hired!' },
+  'Rejected':           { color: theme.color.danger,   bg: theme.color.dangerSoft,   icon: 'close-circle-outline',  label: 'Not Selected' },
+  'Withdrawn':          { color: theme.color.muted,    bg: theme.color.surface,      icon: 'arrow-undo-outline',    label: 'Withdrawn' },
+};
 
-  const statusConfig = getStatusConfig();
+const LEFT_ACCENT: Record<string, string> = {
+  'Accepted':    theme.color.success,
+  'Shortlisted': '#7C3AED',
+  'Rejected':    theme.color.danger,
+  'Withdrawn':   theme.color.subtle,
+};
+
+export default function ApplicationCard({ application, onPress, onWithdraw }: Props) {
+  const cfg = STATUS_CONFIG[application.status] ?? {
+    color: theme.color.muted, bg: theme.color.surface,
+    icon: 'information-circle-outline' as const, label: application.status,
+  };
+  const accent = LEFT_ACCENT[application.status];
   const canWithdraw = ['Pending', 'Reviewed', 'Shortlisted'].includes(application.status);
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return 'Recently';
-    return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  const salary = Number(application.salary_offered ?? 0).toLocaleString();
+  const period = application.salary_period ? `/${application.salary_period.toLowerCase().replace('ly', '').replace('ily', 'ily')}` : '';
+  const location = application.location || [application.municipality, application.province].filter(Boolean).join(', ') || 'Location N/A';
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9}>
-      {/* Header: Title & Status */}
-      <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.jobTitle} numberOfLines={1}>{application.job_title}</Text>
-          <Text style={styles.appliedDate}>Applied {formatDate(application.applied_at)}</Text>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
-          <Ionicons name={statusConfig.icon} size={14} color={statusConfig.color} />
-          <Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
-        </View>
-      </View>
-
-      {/* Employer & Details Row */}
-      <View style={styles.employerRow}>
-        <View style={styles.employerLeft}>
-          <View style={styles.avatarMini}>
-            <Text style={styles.avatarText}>{application.parent_name ? application.parent_name.charAt(0).toUpperCase() : 'E'}</Text>
+    <TouchableOpacity
+      style={[s.card, accent ? { borderLeftColor: accent, borderLeftWidth: 4 } : {}]}
+      onPress={onPress}
+      activeOpacity={0.92}
+    >
+      {/* ── Title row ── */}
+      <View style={s.topRow}>
+        <View style={s.titleWrap}>
+          <Text style={s.jobTitle} numberOfLines={1}>{application.job_title}</Text>
+          <View style={s.employerRow}>
+            <View style={s.employerDot}>
+              <Text style={s.employerDotText}>
+                {application.parent_name?.charAt(0).toUpperCase() ?? 'E'}
+              </Text>
+            </View>
+            <Text style={s.employerName} numberOfLines={1}>{application.parent_name}</Text>
+            {application.parent_verified && (
+              <Ionicons name="shield-checkmark" size={13} color={theme.color.helper} />
+            )}
           </View>
-          <Text style={styles.employerName} numberOfLines={1}>{application.parent_name}</Text>
+        </View>
+        <View style={[s.badge, { backgroundColor: cfg.bg }]}>
+          <Ionicons name={cfg.icon} size={12} color={cfg.color} />
+          <Text style={[s.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
         </View>
       </View>
 
-      {/* Quick Info Grid */}
-      <View style={styles.quickDetails}>
-        <View style={styles.quickItem}>
-          <Ionicons name="cash-outline" size={16} color="#6B7280" />
-          <Text style={styles.quickValue}>₱{Number(application.salary_offered || 0).toLocaleString()}</Text>
+      {/* ── Category / Job type ── */}
+      {(application.category_name || (application.job_names && application.job_names.length > 0)) && (
+        <View style={s.catJobRow}>
+          {application.category_name && (
+            <View style={s.catJobItem}>
+              <Ionicons name="grid-outline" size={11} color={theme.color.muted} />
+              <Text style={s.catJobLabel}>Category:</Text>
+              <Text style={s.catJobValue}>{application.category_name}</Text>
+            </View>
+          )}
+          {application.job_names && application.job_names.length > 0 && (
+            <View style={s.catJobItem}>
+              <Ionicons name="briefcase-outline" size={11} color={theme.color.muted} />
+              <Text style={s.catJobLabel}>Job:</Text>
+              <Text style={s.catJobValue} numberOfLines={1}>{application.job_names.join(', ')}</Text>
+            </View>
+          )}
         </View>
-        <View style={styles.divider} />
-        <View style={styles.quickItem}>
-          <Ionicons name="location-outline" size={16} color="#6B7280" />
-          <Text style={styles.quickValue} numberOfLines={1}>{application.location || 'Location hidden'}</Text>
+      )}
+
+      {/* ── Details strip ── */}
+      <View style={s.strip}>
+        <View style={s.stripItem}>
+          <Ionicons name="cash-outline" size={13} color={theme.color.helper} />
+          <Text style={s.stripText}>₱{salary}{period}</Text>
         </View>
+        <View style={s.stripDivider} />
+        <View style={s.stripItem}>
+          <Ionicons name="location-outline" size={13} color={theme.color.muted} />
+          <Text style={s.stripText} numberOfLines={1}>{location}</Text>
+        </View>
+        {application.employment_type ? (
+          <>
+            <View style={s.stripDivider} />
+            <View style={s.stripItem}>
+              <Ionicons name="briefcase-outline" size={13} color={theme.color.muted} />
+              <Text style={s.stripText}>{application.employment_type}</Text>
+            </View>
+          </>
+        ) : null}
       </View>
 
-      {/* Footer Actions */}
-      <View style={styles.footer}>
+      {/* ── Applied date ── */}
+      <Text style={s.dateText}>Applied {application.applied_at}</Text>
+
+      {/* ── Footer ── */}
+      <View style={s.footer}>
         {canWithdraw && (
-          <TouchableOpacity style={styles.withdrawBtn} onPress={(e) => { e.stopPropagation(); onWithdraw(); }}>
-            <Text style={styles.withdrawBtnText}>Withdraw</Text>
+          <TouchableOpacity
+            style={s.withdrawBtn}
+            onPress={(e) => { e.stopPropagation(); onWithdraw(); }}
+            hitSlop={4}
+          >
+            <Ionicons name="arrow-undo-outline" size={14} color={theme.color.danger} />
+            <Text style={s.withdrawText}>Withdraw</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={styles.viewBtn} onPress={(e) => { e.stopPropagation(); onPress(); }}>
-          <Text style={styles.viewBtnText}>View Details</Text>
+        <TouchableOpacity
+          style={s.detailsBtn}
+          onPress={(e) => { e.stopPropagation(); onPress(); }}
+        >
+          <Text style={s.detailsBtnText}>View Details</Text>
+          <Ionicons name="chevron-forward" size={14} color={theme.color.helper} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { backgroundColor: '#fff', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#F3F4F6', ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12 }, android: { elevation: 3 }, web: { boxShadow: '0 4px 12px rgba(0,0,0,0.03)' } }) },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  titleContainer: { flex: 1, paddingRight: 12 },
-  jobTitle: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 4, letterSpacing: -0.3 },
-  appliedDate: { fontSize: 13, color: '#6B7280' },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
-  statusText: { fontSize: 12, fontWeight: '700' },
-  employerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  employerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  avatarMini: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 12, fontWeight: '800', color: '#1D4ED8' },
-  employerName: { fontSize: 14, fontWeight: '600', color: '#374151' },
-  quickDetails: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, marginBottom: 20, gap: 12 },
-  quickItem: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
-  quickValue: { fontSize: 13, fontWeight: '600', color: '#374151' },
-  divider: { width: 1, height: 16, backgroundColor: '#E5E7EB' },
-  footer: { flexDirection: 'row', gap: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 16 },
-  withdrawBtn: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FEF2F2' },
-  withdrawBtnText: { color: '#DC2626', fontSize: 14, fontWeight: '700' },
-  viewBtn: { flex: 1, backgroundColor: '#F3F4F6', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  viewBtnText: { color: '#4B5563', fontSize: 14, fontWeight: '700' }
+const s = StyleSheet.create({
+  card: {
+    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    ...theme.shadow.card,
+  },
+  topRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  titleWrap:    { flex: 1, paddingRight: 10 },
+  jobTitle:     { fontSize: 17, fontWeight: '800', color: theme.color.ink, marginBottom: 5, letterSpacing: -0.3 },
+  employerRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  employerDot:  { width: 20, height: 20, borderRadius: 10, backgroundColor: theme.color.parentSoft, alignItems: 'center', justifyContent: 'center' },
+  employerDotText: { fontSize: 10, fontWeight: '800', color: theme.color.parent },
+  employerName: { fontSize: 13, color: theme.color.inkMuted, fontWeight: '600' },
+
+  badge:     { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10 },
+  badgeText: { fontSize: 11, fontWeight: '700' },
+
+  catJobRow:   { flexDirection: 'column', gap: 3, marginBottom: 8 },
+  catJobItem:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  catJobLabel: { fontSize: 10, fontWeight: '700', color: theme.color.subtle, textTransform: 'uppercase', letterSpacing: 0.3 },
+  catJobValue: { flex: 1, fontSize: 12, fontWeight: '600', color: theme.color.inkMuted },
+
+  strip:        { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.color.surface, padding: 10, borderRadius: 10, marginBottom: 10, gap: 8 },
+  stripItem:    { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
+  stripText:    { fontSize: 12, fontWeight: '600', color: theme.color.inkMuted },
+  stripDivider: { width: 1, height: 14, backgroundColor: theme.color.line },
+
+  dateText: { fontSize: 12, color: theme.color.subtle, marginBottom: 14, fontWeight: '500' },
+
+  footer:       { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: theme.color.line, paddingTop: 14, gap: 10 },
+  withdrawBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 9, backgroundColor: theme.color.dangerSoft, borderWidth: 1, borderColor: theme.color.danger + '30' },
+  withdrawText: { color: theme.color.danger, fontSize: 13, fontWeight: '700' },
+  detailsBtn:   { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, paddingVertical: 9 },
+  detailsBtnText: { color: theme.color.helper, fontSize: 13, fontWeight: '700' },
 });

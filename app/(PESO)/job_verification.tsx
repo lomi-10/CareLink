@@ -1,6 +1,6 @@
 // app/(PESO)/job_verification.tsx
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,65 +13,55 @@ import {
   View,
 } from "react-native";
 import API_URL from "../../constants/api";
-
-// IMPORT YOUR NEW MODAL!
+import { theme } from "../../constants/theme";
 import { JobVerificationModal } from "../../components/peso/JobVerificationModal";
 
 export interface VerificationJob {
   job_post_id: number;
   parent_name: string;
+  parent_email: string;
   title: string;
   category_name: string;
   custom_category: string;
-  salary_offered: string;
+  salary_offered: number;
   salary_period: string;
   status: string;
   posted_at: string;
+  verified_at: string | null;
+  verified_by_name: string | null;
+  rejection_reason: string | null;
 }
 
-export default function JobVerification() {
-  const [jobs, setJobs] = useState<VerificationJob[]>([]);
-  const [filteredJobs, setFilteredJobs] = useState<VerificationJob[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState("Pending"); 
+const STATUS_FILTERS = ["All", "Pending", "Open", "Rejected", "Closed"] as const;
 
-  // NEW MODAL STATE
+const STATUS_CFG: Record<string, { label: string; color: string; bg: string; icon: React.ComponentProps<typeof Ionicons>["name"] }> = {
+  Pending:  { label: "Pending",  color: theme.color.warning, bg: theme.color.warningSoft,  icon: "time" },
+  Open:     { label: "Approved", color: theme.color.success, bg: theme.color.successSoft,  icon: "checkmark-circle" },
+  Rejected: { label: "Rejected", color: theme.color.danger,  bg: theme.color.dangerSoft,   icon: "close-circle" },
+  Closed:   { label: "Closed",   color: theme.color.muted,   bg: theme.color.surface,      icon: "archive" },
+};
+
+export default function JobVerification() {
+  const [jobs, setJobs]             = useState<VerificationJob[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch]         = useState("");
+  const [filterStatus, setFilter]   = useState<string>("Pending");
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
-
-  useEffect(() => {
-    filterJobs();
-  }, [searchQuery, filterStatus, jobs]);
+  useEffect(() => { fetchJobs(); }, []);
 
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/peso/get_jobs_for_verification.php`);
-      const data = await response.json();
-      if (data.success) setJobs(data.data);
-    } catch (error) {
-      console.error("Error fetching jobs:", error);
+      const res  = await fetch(`${API_URL}/peso/get_jobs_for_verification.php`);
+      const data = await res.json();
+      if (data.success) setJobs(data.data ?? []);
+    } catch (e) {
+      console.error("JobVerification fetch:", e);
     } finally {
       setLoading(false);
     }
-  };
-
-  const filterJobs = () => {
-    let filtered = jobs;
-    if (filterStatus !== "All") filtered = filtered.filter((job) => job.status === filterStatus);
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (job) =>
-          job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.parent_name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    setFilteredJobs(filtered);
   };
 
   const onRefresh = async () => {
@@ -80,161 +70,232 @@ export default function JobVerification() {
     setRefreshing(false);
   };
 
-  const renderJobCard = ({ item }: { item: VerificationJob }) => (
-    <TouchableOpacity
-      style={styles.jobCard}
-      onPress={() => setSelectedJobId(item.job_post_id)} // OPEN MODAL INSTEAD OF ROUTING
-    >
-      <View style={styles.cardLeft}>
-        <View style={styles.jobIconPlaceholder}>
-          <Ionicons name="briefcase" size={28} color="#0284C7" />
-        </View>
-      </View>
+  const filtered = useMemo(() => {
+    let list = jobs;
+    if (filterStatus !== "All") list = list.filter((j) => j.status === filterStatus);
+    const q = search.trim().toLowerCase();
+    if (q) list = list.filter(
+      (j) =>
+        j.title.toLowerCase().includes(q) ||
+        j.parent_name.toLowerCase().includes(q) ||
+        (j.custom_category || j.category_name || "").toLowerCase().includes(q)
+    );
+    return list;
+  }, [jobs, filterStatus, search]);
 
-      <View style={styles.cardCenter}>
-        <Text style={styles.jobTitle} numberOfLines={1}>{item.title || 'Untitled Job'}</Text>
-        <Text style={styles.categoryText}>{item.custom_category || item.category_name}</Text>
-        
-        <View style={styles.jobMeta}>
-          <Ionicons name="person" size={14} color="#666" />
-          <Text style={styles.metaText}>{item.parent_name}</Text>
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { All: jobs.length };
+    for (const s of ["Pending", "Open", "Rejected", "Closed"]) {
+      c[s] = jobs.filter((j) => j.status === s).length;
+    }
+    return c;
+  }, [jobs]);
+
+  const pendingCount = counts["Pending"] ?? 0;
+
+  const renderJobCard = ({ item }: { item: VerificationJob }) => {
+    const cfg = STATUS_CFG[item.status] ?? STATUS_CFG["Pending"];
+    return (
+      <TouchableOpacity
+        style={styles.jobCard}
+        onPress={() => setSelectedJobId(item.job_post_id)}
+        activeOpacity={0.85}
+      >
+        {/* Icon */}
+        <View style={[styles.jobIconWrap, { backgroundColor: cfg.bg }]}>
+          <Ionicons name="briefcase" size={26} color={cfg.color} />
         </View>
-        <View style={styles.jobMeta}>
-          <Ionicons name="cash" size={14} color="#059669" />
-          <Text style={[styles.metaText, {color: '#059669', fontWeight: '600'}]}>
-            ₱{Number(item.salary_offered).toLocaleString()} / {item.salary_period}
+
+        {/* Main */}
+        <View style={styles.jobMain}>
+          <Text style={styles.jobTitle} numberOfLines={1}>{item.title || "Untitled Job"}</Text>
+          <Text style={styles.jobCategory} numberOfLines={1}>
+            {item.custom_category || item.category_name || "General"}
           </Text>
-        </View>
-      </View>
 
-      <View style={styles.cardRight}>
-        <View
-          style={[
-            styles.statusBadge,
-            item.status === "Open" && styles.statusVerified,
-            item.status === "Pending" && styles.statusPending,
-            item.status === "Rejected" && styles.statusRejected,
-          ]}
-        >
-          <Ionicons
-            name={
-              item.status === "Open" ? "checkmark-circle"
-                : item.status === "Pending" ? "time"
-                : "close-circle"
-            }
-            size={16}
-            color="#fff"
-          />
-          <Text style={styles.statusText}>{item.status === "Open" ? "Approved" : item.status}</Text>
+          <View style={styles.jobMeta}>
+            <Ionicons name="person-outline" size={13} color={theme.color.muted} />
+            <Text style={styles.jobMetaText}>{item.parent_name}</Text>
+          </View>
+
+          <View style={styles.jobMeta}>
+            <Ionicons name="cash-outline" size={13} color={theme.color.success} />
+            <Text style={[styles.jobMetaText, { color: theme.color.success, fontWeight: "700" }]}>
+              ₱{Number(item.salary_offered).toLocaleString()} / {item.salary_period}
+            </Text>
+          </View>
+
+          <View style={styles.jobMeta}>
+            <Ionicons name="calendar-outline" size={13} color={theme.color.muted} />
+            <Text style={styles.jobMetaText}>
+              Posted {new Date(item.posted_at).toLocaleDateString("en-PH", { dateStyle: "medium" })}
+            </Text>
+          </View>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#ccc" style={{ marginTop: 8 }} />
-      </View>
-    </TouchableOpacity>
-  );
+
+        {/* Status + chevron */}
+        <View style={styles.jobRight}>
+          <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
+            <Ionicons name={cfg.icon} size={13} color={cfg.color} />
+            <Text style={[styles.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={theme.color.subtle} style={{ marginTop: 8 }} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      {/* ── Page Header ── */}
+      <View style={styles.pageHeader}>
         <View>
           <Text style={styles.pageTitle}>Job Verification</Text>
-          <Text style={styles.pageSubtitle}>
-            {filteredJobs.length} Job Post{filteredJobs.length !== 1 ? "s" : ""} found
-          </Text>
+          <Text style={styles.pageSubtitle}>Review and approve parent job postings</Text>
         </View>
+        {pendingCount > 0 && (
+          <View style={styles.pendingBadge}>
+            <Text style={styles.pendingBadgeText}>{pendingCount} pending</Text>
+          </View>
+        )}
       </View>
 
+      {/* ── Summary Stats ── */}
+      <View style={styles.statsRow}>
+        {[
+          { label: "Total",    count: counts["All"],      color: theme.color.peso },
+          { label: "Pending",  count: counts["Pending"],  color: theme.color.warning },
+          { label: "Approved", count: counts["Open"],     color: theme.color.success },
+          { label: "Rejected", count: counts["Rejected"], color: theme.color.danger },
+        ].map((s) => (
+          <View key={s.label} style={styles.statTile}>
+            <Text style={[styles.statCount, { color: s.color }]}>{s.count}</Text>
+            <Text style={styles.statLabel}>{s.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* ── Search ── */}
       <View style={styles.searchSection}>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#999" />
+          <Ionicons name="search" size={18} color={theme.color.muted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by job title or employer..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#999"
+            placeholder="Search by title, employer, category…"
+            value={search}
+            onChangeText={setSearch}
+            placeholderTextColor={theme.color.subtle}
           />
+          {!!search && (
+            <TouchableOpacity onPress={() => setSearch("")} hitSlop={8}>
+              <Ionicons name="close-circle" size={18} color={theme.color.subtle} />
+            </TouchableOpacity>
+          )}
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChips}>
-          {["All", "Pending", "Open", "Rejected", "Closed"].map((status) => (
-            <TouchableOpacity
-              key={status}
-              style={[styles.filterChip, filterStatus === status && styles.filterChipActive]}
-              onPress={() => setFilterStatus(status)}
-            >
-              <Text style={[styles.filterChipText, filterStatus === status && styles.filterChipTextActive]}>
-                {status === "Open" ? "Approved" : status}
-              </Text>
-              {status !== "All" && (
-                <View style={[styles.filterCount, filterStatus === status && styles.filterCountActive]}>
-                  <Text style={[styles.filterCountText, filterStatus === status && styles.filterCountTextActive]}>
-                    {jobs.filter((j) => j.status === status).length}
+        {/* ── Filter chips ── */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          {STATUS_FILTERS.map((s) => {
+            const active = filterStatus === s;
+            return (
+              <TouchableOpacity
+                key={s}
+                style={[styles.chip, active && styles.chipActive]}
+                onPress={() => setFilter(s)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  {s === "Open" ? "Approved" : s}
+                </Text>
+                <View style={[styles.chipBadge, active && styles.chipBadgeActive]}>
+                  <Text style={[styles.chipBadgeText, active && styles.chipBadgeTextActive]}>
+                    {counts[s] ?? 0}
                   </Text>
                 </View>
-              )}
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </View>
 
+      {/* ── List ── */}
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0284C7" />
-          <Text style={styles.loadingText}>Loading job posts...</Text>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={theme.color.peso} />
+          <Text style={styles.loadingText}>Loading job posts…</Text>
+        </View>
+      ) : filtered.length === 0 ? (
+        <View style={styles.centered}>
+          <Ionicons name="briefcase-outline" size={64} color={theme.color.subtle} />
+          <Text style={styles.emptyTitle}>No job posts found</Text>
+          <Text style={styles.emptyBody}>
+            {filterStatus !== "All"
+              ? `No ${STATUS_CFG[filterStatus]?.label ?? filterStatus} jobs match your search.`
+              : "No job postings have been submitted yet."}
+          </Text>
         </View>
       ) : (
         <FlatList
-          data={filteredJobs}
+          data={filtered}
           renderItem={renderJobCard}
-          keyExtractor={(item) => item.job_post_id.toString()}
+          keyExtractor={(item) => String(item.job_post_id)}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.color.peso} />}
+          showsVerticalScrollIndicator={false}
         />
       )}
 
-      {/* RENDER MODAL HERE */}
-      <JobVerificationModal 
-        visible={!!selectedJobId} 
-        jobId={selectedJobId} 
-        onClose={() => setSelectedJobId(null)} 
-        onStatusChanged={fetchJobs} 
+      {/* ── Modal ── */}
+      <JobVerificationModal
+        visible={!!selectedJobId}
+        jobId={selectedJobId}
+        onClose={() => setSelectedJobId(null)}
+        onStatusChanged={fetchJobs}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA" },
-  header: { padding: 24, paddingBottom: 16, backgroundColor: "#fff" },
-  pageTitle: { fontSize: 28, fontWeight: "bold", color: "#1A1C1E", marginBottom: 4 },
-  pageSubtitle: { fontSize: 14, color: "#666" },
-  searchSection: { padding: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
-  searchBar: { flexDirection: "row", alignItems: "center", backgroundColor: "#F8F9FA", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 12, gap: 10 },
-  searchInput: { flex: 1, fontSize: 15, color: "#1A1C1E" },
-  filterChips: { flexDirection: "row" },
-  filterChip: { flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: "#F0F0F0", marginRight: 8, gap: 6 },
-  filterChipActive: { backgroundColor: "#0284C7" },
-  filterChipText: { fontSize: 14, fontWeight: "600", color: "#666" },
-  filterChipTextActive: { color: "#fff" },
-  filterCount: { backgroundColor: "#fff", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, minWidth: 20, alignItems: "center" },
-  filterCountActive: { backgroundColor: "rgba(255,255,255,0.3)" },
-  filterCountText: { fontSize: 12, fontWeight: "700", color: "#666" },
-  filterCountTextActive: { color: "#fff" },
-  listContent: { padding: 16, paddingBottom: 40 },
-  jobCard: { flexDirection: "row", backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, elevation: 3, alignItems: "center" },
-  cardLeft: { marginRight: 16 },
-  jobIconPlaceholder: { width: 56, height: 56, borderRadius: 14, backgroundColor: "#E0F2FE", alignItems: "center", justifyContent: "center" },
-  cardCenter: { flex: 1 },
-  jobTitle: { fontSize: 16, fontWeight: "700", color: "#1A1C1E", marginBottom: 2 },
-  categoryText: { fontSize: 13, color: "#0284C7", fontWeight: "600", marginBottom: 6 },
-  jobMeta: { flexDirection: "row", alignItems: "center", marginBottom: 4, gap: 6 },
-  metaText: { fontSize: 13, color: "#666" },
-  cardRight: { alignItems: "flex-end", justifyContent: 'space-between', height: '100%' },
-  statusBadge: { flexDirection: "row", alignItems: "center", paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, gap: 4 },
-  statusPending: { backgroundColor: "#FF9500" },
-  statusVerified: { backgroundColor: "#34C759" },
-  statusRejected: { backgroundColor: "#FF3B30" },
-  statusText: { fontSize: 12, fontWeight: "700", color: "#fff" },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80 },
-  loadingText: { marginTop: 12, color: "#666", fontSize: 14 }
+  container:     { flex: 1, backgroundColor: theme.color.canvasPeso },
+  pageHeader:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, backgroundColor: theme.color.surface, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  pageTitle:     { fontSize: 26, fontWeight: "800", color: theme.color.ink, letterSpacing: -0.5 },
+  pageSubtitle:  { fontSize: 13, color: theme.color.muted, marginTop: 2 },
+  pendingBadge:  { backgroundColor: theme.color.warning, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
+  pendingBadgeText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+
+  statsRow:  { flexDirection: "row", backgroundColor: theme.color.surface, borderBottomWidth: 1, borderBottomColor: theme.color.line, paddingVertical: 12 },
+  statTile:  { flex: 1, alignItems: "center" },
+  statCount: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
+  statLabel: { fontSize: 11, color: theme.color.muted, marginTop: 2, fontWeight: "600", textTransform: "uppercase" },
+
+  searchSection: { backgroundColor: theme.color.surface, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  searchBar:     { flexDirection: "row", alignItems: "center", backgroundColor: theme.color.canvasPeso, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, gap: 10, marginBottom: 10 },
+  searchInput:   { flex: 1, fontSize: 14, color: theme.color.ink },
+  filterRow:     { flexDirection: "row", gap: 8, paddingBottom: 10 },
+  chip:          { flexDirection: "row", alignItems: "center", paddingVertical: 7, paddingHorizontal: 14, borderRadius: 20, backgroundColor: theme.color.canvasPeso, gap: 6, borderWidth: 1, borderColor: theme.color.line },
+  chipActive:    { backgroundColor: theme.color.peso, borderColor: theme.color.peso },
+  chipText:      { fontSize: 13, fontWeight: "600", color: theme.color.muted },
+  chipTextActive:{ color: "#fff" },
+  chipBadge:     { backgroundColor: theme.color.line, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1, minWidth: 20, alignItems: "center" },
+  chipBadgeActive: { backgroundColor: "rgba(255,255,255,0.25)" },
+  chipBadgeText: { fontSize: 11, fontWeight: "700", color: theme.color.muted },
+  chipBadgeTextActive: { color: "#fff" },
+
+  listContent: { padding: 16, paddingBottom: 48 },
+  jobCard:     { flexDirection: "row", alignItems: "flex-start", backgroundColor: theme.color.surface, borderRadius: 16, padding: 14, marginBottom: 10, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
+  jobIconWrap: { width: 50, height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", marginRight: 12, flexShrink: 0 },
+  jobMain:     { flex: 1 },
+  jobTitle:    { fontSize: 15, fontWeight: "700", color: theme.color.ink, marginBottom: 2 },
+  jobCategory: { fontSize: 12, fontWeight: "600", color: theme.color.peso, marginBottom: 6 },
+  jobMeta:     { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 3 },
+  jobMetaText: { fontSize: 12, color: theme.color.muted },
+  jobRight:    { alignItems: "flex-end", flexShrink: 0, marginLeft: 8 },
+  statusPill:  { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  statusPillText: { fontSize: 11, fontWeight: "700" },
+
+  centered:     { flex: 1, justifyContent: "center", alignItems: "center", padding: 40 },
+  loadingText:  { marginTop: 12, color: theme.color.muted, fontSize: 14 },
+  emptyTitle:   { fontSize: 18, fontWeight: "700", color: theme.color.ink, marginTop: 16, marginBottom: 6 },
+  emptyBody:    { fontSize: 14, color: theme.color.muted, textAlign: "center" },
 });

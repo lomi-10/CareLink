@@ -116,7 +116,7 @@ export default function SignUpScreen() {
 
               <View style={styles.inputRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>First name</Text>
+                  <Text style={styles.label}>First name <Text style={styles.required}>*</Text></Text>
                   <TextInput
                     placeholder="Juan"
                     placeholderTextColor={ph}
@@ -127,7 +127,7 @@ export default function SignUpScreen() {
                 </View>
                 <View style={{ width: 12 }} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>Last name</Text>
+                  <Text style={styles.label}>Last name <Text style={styles.required}>*</Text></Text>
                   <TextInput
                     placeholder="Dela Cruz"
                     placeholderTextColor={ph}
@@ -138,7 +138,7 @@ export default function SignUpScreen() {
                 </View>
               </View>
 
-              <Text style={styles.label}>Middle name (optional)</Text>
+              <Text style={styles.label}>Middle name <Text style={styles.optional}>(optional)</Text></Text>
               <TextInput
                 placeholder="Optional"
                 placeholderTextColor={ph}
@@ -146,7 +146,7 @@ export default function SignUpScreen() {
                 value={form.middle_name}
                 onChangeText={(v) => handleChange("middle_name", v)}
               />
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>Email <Text style={styles.required}>*</Text></Text>
               <TextInput
                 placeholder="you@email.com"
                 placeholderTextColor={ph}
@@ -158,7 +158,7 @@ export default function SignUpScreen() {
                 onChangeText={(v) => handleChange("email", v)}
               />
 
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>Password <Text style={styles.required}>*</Text></Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   placeholder="Create a strong password"
@@ -173,7 +173,7 @@ export default function SignUpScreen() {
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.label}>Confirm password</Text>
+              <Text style={styles.label}>Confirm password <Text style={styles.required}>*</Text></Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   placeholder="Repeat password"

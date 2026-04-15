@@ -216,12 +216,15 @@ export default function HelperProfile() {
           >
             {/* Page Header */}
             <View style={styles.pageHeader}>
-              <Text style={styles.pageTitle}>My Profile</Text>
+              <View>
+                <Text style={styles.pageTitle}>My Profile</Text>
+                <Text style={styles.pageSubtitle}>Manage your account and documents</Text>
+              </View>
               <TouchableOpacity
                 style={styles.editButton}
                 onPress={() => setIsEditModalOpen(true)}
               >
-                <Ionicons name="pencil" size={18} color="#fff" />
+                <Ionicons name="pencil" size={16} color="#fff" />
                 <Text style={styles.editButtonText}>Edit Profile</Text>
               </TouchableOpacity>
             </View>
@@ -249,7 +252,7 @@ export default function HelperProfile() {
 
             <InfoCard
               icon="briefcase-outline"
-              iconColor="#007AFF"
+              iconColor={theme.color.info}
               title="Work Preferences"
               items={workInfoItems}
             />
@@ -263,7 +266,7 @@ export default function HelperProfile() {
 
             <InfoCard
               icon="location-outline"
-              iconColor="#34C759"
+              iconColor={theme.color.success}
               title="Address"
               items={[
                 {
@@ -364,7 +367,7 @@ export default function HelperProfile() {
 
         <InfoCard
           icon="briefcase-outline"
-          iconColor="#007AFF"
+          iconColor={theme.color.info}
           title="Work Preferences"
           items={workInfoItems}
         />

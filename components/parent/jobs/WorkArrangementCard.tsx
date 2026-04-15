@@ -35,7 +35,7 @@ export function WorkArrangementCard({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="briefcase-outline" size={22} color="#007AFF" />
+        <Ionicons name="briefcase-outline" size={22} color="#2563EB" />
         <Text style={styles.title}>Work Arrangement *</Text>
       </View>
 
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   optionButtonActive: {
-    borderColor: '#007AFF',
+    borderColor: '#2563EB',
     backgroundColor: '#F0F8FF',
   },
   optionText: {
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   optionTextActive: {
-    color: '#007AFF',
+    color: '#2563EB',
     fontWeight: '700',
   },
 });

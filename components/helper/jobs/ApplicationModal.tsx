@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
+import { theme } from '@/constants/theme';
 import type { JobPost } from '@/hooks/helper';
 
 interface ApplicationModalProps {
@@ -118,7 +119,7 @@ export function ApplicationModal({
             {/* Job Info Card */}
             <View style={styles.jobInfoCard}>
               <View style={styles.iconContainer}>
-                <Ionicons name="briefcase" size={24} color="#007AFF" />
+                <Ionicons name="briefcase" size={24} color={theme.color.helper} />
               </View>
               <View style={styles.jobDetails}>
                 <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: theme.color.helperSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -430,14 +431,14 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     flex: 2,
-    backgroundColor: '#1D4ED8',
+    backgroundColor: theme.color.helper,
     paddingVertical: 16,
     borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#1D4ED8',
+    shadowColor: theme.color.helper,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

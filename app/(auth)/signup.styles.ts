@@ -72,6 +72,14 @@ export const styles = StyleSheet.create({
     marginBottom: theme.space.xs,
     marginLeft: 2,
   },
+  required: {
+    color: theme.color.danger,
+    fontWeight: "700",
+  },
+  optional: {
+    color: theme.color.muted,
+    fontWeight: "500",
+  },
   input: {
     height: 48,
     borderColor: theme.color.line,

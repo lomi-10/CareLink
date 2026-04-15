@@ -1,50 +1,74 @@
 // app/(parent)/profile.style.ts
-
 import { StyleSheet } from "react-native";
 import { theme } from "@/constants/theme";
 
 export const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
+
+  // ── empty / error state ─────────────────────────────────────────────────
   emptyState: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    padding: 32,
     backgroundColor: "transparent",
+    gap: 12,
   },
-  emptyText: { fontSize: 16, color: theme.color.muted, marginTop: 16, marginBottom: 24 },
+  emptyText: {
+    fontSize: 17,
+    color: theme.color.muted,
+    fontWeight: "600",
+    textAlign: "center",
+  },
   createProfileBtn: {
     backgroundColor: theme.color.parent,
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: theme.radius.md,
+    marginTop: 8,
+    ...theme.shadow.nav,
   },
   createProfileText: { color: "#fff", fontSize: 15, fontWeight: "800" },
+
+  // ── desktop layout ───────────────────────────────────────────────────────
   mainContent: { flex: 1 },
-  scrollContent: { padding: 32, paddingBottom: 60 },
+  scrollContent: { padding: 32, paddingBottom: 64 },
+
+  // ── page header (desktop) ────────────────────────────────────────────────
   pageHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
+    alignItems: "flex-end",
+    marginBottom: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.color.line,
   },
   pageTitle: {
-    fontSize: 32,
-    fontWeight: "800",
+    fontSize: 30,
+    fontWeight: "900",
     color: theme.color.ink,
     letterSpacing: -0.8,
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    color: theme.color.muted,
+    fontWeight: "600",
   },
   editButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: theme.color.parent,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 11,
+    paddingHorizontal: 18,
     borderRadius: theme.radius.md,
     gap: 8,
     ...theme.shadow.nav,
   },
-  editButtonText: { color: "#fff", fontSize: 15, fontWeight: "800" },
+  editButtonText: { color: "#fff", fontSize: 14, fontWeight: "800" },
+
+  // ── mobile header ────────────────────────────────────────────────────────
   mobileHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -56,13 +80,28 @@ export const styles = StyleSheet.create({
     borderBottomColor: theme.color.line,
     ...theme.shadow.nav,
   },
-  menuButton: { padding: 8 },
+  menuButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+  },
   mobileTitle: {
     fontSize: 18,
     fontWeight: "800",
     color: theme.color.ink,
     letterSpacing: -0.3,
   },
-  editIconButton: { padding: 8 },
-  mobileScrollContent: { padding: 16, paddingBottom: 40 },
+  editIconButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+    backgroundColor: theme.color.parentSoft,
+    borderWidth: 1,
+    borderColor: theme.color.parent + "33",
+  },
+  mobileScrollContent: { padding: 16, paddingBottom: 48 },
 });

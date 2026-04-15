@@ -49,7 +49,7 @@ export function BenefitsCard({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="gift-outline" size={24} color="#007AFF" />
+        <Ionicons name="gift-outline" size={24} color="#2563EB" />
         <Text style={styles.title}>Benefits & Perks (Optional)</Text>
       </View>
 
@@ -69,7 +69,7 @@ export function BenefitsCard({
             <Ionicons
               name={providesMeals ? 'checkbox' : 'square-outline'}
               size={24}
-              color={disabled ? '#ccc' : providesMeals ? '#007AFF' : '#999'}
+              color={disabled ? '#ccc' : providesMeals ? '#2563EB' : '#999'}
             />
             <Text
               style={[
@@ -93,7 +93,7 @@ export function BenefitsCard({
             <Ionicons
               name={providesAccommodation ? 'checkbox' : 'square-outline'}
               size={24}
-              color={disabled ? '#ccc' : providesAccommodation ? '#007AFF' : '#999'}
+              color={disabled ? '#ccc' : providesAccommodation ? '#2563EB' : '#999'}
             />
             <Text
               style={[
@@ -126,7 +126,7 @@ export function BenefitsCard({
             <Ionicons
               name={providesSSS ? 'checkbox' : 'square-outline'}
               size={24}
-              color={disabled ? '#ccc' : providesSSS ? '#007AFF' : '#999'}
+              color={disabled ? '#ccc' : providesSSS ? '#2563EB' : '#999'}
             />
             <Text
               style={[
@@ -150,7 +150,7 @@ export function BenefitsCard({
             <Ionicons
               name={providesPhilHealth ? 'checkbox' : 'square-outline'}
               size={24}
-              color={disabled ? '#ccc' : providesPhilHealth ? '#007AFF' : '#999'}
+              color={disabled ? '#ccc' : providesPhilHealth ? '#2563EB' : '#999'}
             />
             <Text
               style={[
@@ -174,7 +174,7 @@ export function BenefitsCard({
             <Ionicons
               name={providesPagIbig ? 'checkbox' : 'square-outline'}
               size={24}
-              color={disabled ? '#ccc' : providesPagIbig ? '#007AFF' : '#999'}
+              color={disabled ? '#ccc' : providesPagIbig ? '#2563EB' : '#999'}
             />
             <Text
               style={[
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   },
   leaveChipActive: {
     backgroundColor: '#E3F2FD',
-    borderColor: '#007AFF',
+    borderColor: '#2563EB',
   },
   leaveChipDisabled: {
     opacity: 0.5,
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   leaveChipTextActive: {
-    color: '#007AFF',
+    color: '#2563EB',
   },
   leaveChipTextDisabled: {
     color: '#999',

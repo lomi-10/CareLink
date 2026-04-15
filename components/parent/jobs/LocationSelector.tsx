@@ -102,7 +102,7 @@ export function LocationSelector({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Job Location *</Text>
+      <Text style={styles.label}>Job Location <Text style={{ color: '#EF4444' }}>*</Text></Text>
       <Text style={styles.hint}>
         Where will the helper work?
       </Text>
@@ -123,7 +123,7 @@ export function LocationSelector({
             <Ionicons
               name={useMyAddress ? 'radio-button-on' : 'radio-button-off'}
               size={24}
-              color={disabled ? '#ccc' : useMyAddress ? '#007AFF' : '#999'}
+              color={disabled ? '#ccc' : useMyAddress ? '#2563EB' : '#999'}
             />
             <Text
               style={[
@@ -162,7 +162,7 @@ export function LocationSelector({
           <Ionicons
             name={!useMyAddress ? 'radio-button-on' : 'radio-button-off'}
             size={24}
-            color={disabled ? '#ccc' : !useMyAddress ? '#007AFF' : '#999'}
+            color={disabled ? '#ccc' : !useMyAddress ? '#2563EB' : '#999'}
           />
           <Text
             style={[
@@ -218,7 +218,7 @@ export function LocationSelector({
 
       {/* Current Address Preview */}
       <View style={styles.previewBox}>
-        <Ionicons name="location" size={16} color="#007AFF" />
+        <Ionicons name="location" size={16} color="#2563EB" />
         <Text style={styles.previewText}>{getAddressPreview()}</Text>
       </View>
     </View>
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E5EA',
   },
   addressOptionActive: {
-    borderColor: '#007AFF',
+    borderColor: '#2563EB',
     backgroundColor: '#F0F8FF',
   },
   addressOptionDisabled: {

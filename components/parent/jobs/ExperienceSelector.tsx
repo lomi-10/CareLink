@@ -60,7 +60,7 @@ export function ExperienceSelector({
                 <Ionicons
                   name="checkmark-circle"
                   size={20}
-                  color="#007AFF"
+                  color="#2563EB"
                   style={styles.checkmark}
                 />
               )}
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   optionCardActive: {
-    borderColor: '#007AFF',
+    borderColor: '#2563EB',
     backgroundColor: '#F0F8FF',
   },
   optionCardDisabled: {
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   optionTextActive: {
-    color: '#007AFF',
+    color: '#2563EB',
     fontWeight: '700',
   },
   optionTextDisabled: {

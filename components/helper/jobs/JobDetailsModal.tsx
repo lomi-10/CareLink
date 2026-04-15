@@ -1,208 +1,256 @@
 // components/helper/jobs/JobDetailsModal.tsx
+
 import React, { useState } from 'react';
 import {
-  Modal,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-  Platform,
-  Image
+  Modal, View, Text, StyleSheet, TouchableOpacity,
+  ScrollView, SafeAreaView, Platform, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ParentProfileModal } from './ParentProfileModal'; 
+import { theme } from '@/constants/theme';
+import { ParentProfileModal } from './ParentProfileModal';
+import API_URL from '@/constants/api';
 
 interface JobDetailsModalProps {
   visible: boolean;
   onClose: () => void;
   onApply: () => void;
-  job: any; 
+  job: any;
 }
+
+const isTrue = (val: any) => val === 1 || val === '1' || val === true;
+
+function Section({ icon, title, children }: { icon: React.ComponentProps<typeof Ionicons>['name']; title: string; children: React.ReactNode }) {
+  return (
+    <View style={s.section}>
+      <View style={s.sectionHeader}>
+        <View style={s.sectionIconWrap}>
+          <Ionicons name={icon} size={14} color={theme.color.helper} />
+        </View>
+        <Text style={s.sectionTitle}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+function DetailRow({ icon, label, value }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; value: string }) {
+  return (
+    <View style={s.detailRow}>
+      <View style={s.detailIconWrap}>
+        <Ionicons name={icon} size={14} color={theme.color.helper} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.detailLabel}>{label}</Text>
+        <Text style={s.detailValue}>{value || '—'}</Text>
+      </View>
+    </View>
+  );
+}
+
+function PerkTag({ icon, label, color = theme.color.warning }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; color?: string }) {
+  return (
+    <View style={[pk.tag, { borderColor: color + '33' }]}>
+      <Ionicons name={icon} size={13} color={color} />
+      <Text style={[pk.text, { color }]}>{label}</Text>
+    </View>
+  );
+}
+
+const pk = StyleSheet.create({
+  tag:  { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: theme.color.surface, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
+  text: { fontSize: 12, fontWeight: '600' },
+});
 
 export function JobDetailsModal({ visible, onClose, onApply, job }: JobDetailsModalProps) {
   const [showParentProfile, setShowParentProfile] = useState(false);
 
   if (!job) return null;
 
-  const displayCategory = job.custom_category || job.category_name || (job.categories && job.categories[0]) || 'General';
-  const isTrue = (val: any) => val === 1 || val === '1' || val === true;
+  const displayCategory = job.custom_category || job.category_name
+    || (job.categories && job.categories[0]) || 'General';
 
-  const BASE_API_URL = 'http://localhost/carelink_api';
   const getProfileUrl = (filename: string | null | undefined) => {
     if (!filename) return null;
     if (filename.includes('http')) return filename;
-    return `${BASE_API_URL}/uploads/profiles/${filename}`;
+    return `${API_URL}/uploads/profiles/${filename}`;
   };
 
-  // NEW: Safely extract skills whether it's an array or a comma-separated string
-  const displaySkills = Array.isArray(job.skills) && job.skills.length > 0 
-    ? job.skills 
-    : (typeof job.skill_names === 'string' && job.skill_names.trim() !== ''
-        ? job.skill_names.split(',').map((s: string) => s.trim()) 
-        : []);
+  const displaySkills: string[] = Array.isArray(job.skills) && job.skills.length > 0
+    ? job.skills
+    : (typeof job.skill_names === 'string' && job.skill_names.trim()
+      ? job.skill_names.split(',').map((s: string) => s.trim())
+      : []);
+
+  const profileUri = getProfileUrl(job.parent_profile_image);
 
   return (
     <>
-      <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-        <View style={styles.overlay}>
-          <View style={[styles.modalContainer, styles.responsiveModal]}>
-            
-            <View style={styles.header}>
-              <View style={styles.headerTitleContainer}>
-                <Text style={styles.modalTitle} numberOfLines={2}>{job.title}</Text>
-                <View style={styles.badgeRow}>
-                  <View style={[styles.categoryPill, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                    <Ionicons name="shield-checkmark" size={14} color="#059669" />
-                    <Text style={[styles.categoryText, { color: '#059669' }]}>PESO Verified</Text>
+      <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+        <View style={s.overlay}>
+          <View style={[s.card, Platform.OS === 'web' && { width: '82%' }]}>
+
+            {/* ── Header ── */}
+            <View style={s.header}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={s.title} numberOfLines={2}>{job.title}</Text>
+                <View style={s.badgeRow}>
+                  <View style={s.pesoBadge}>
+                    <Ionicons name="shield-checkmark" size={12} color={theme.color.helper} />
+                    <Text style={s.pesoBadgeText}>PESO Verified</Text>
                   </View>
-                  {displayCategory && (
-                    <View style={styles.categoryPill}>
-                      <Text style={styles.categoryText}>{displayCategory}</Text>
-                    </View>
-                  )}
+                  <View style={s.catPill}>
+                    <Text style={s.catText}>{displayCategory}</Text>
+                  </View>
                 </View>
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+              <TouchableOpacity onPress={onClose} style={s.closeBtn}>
+                <Ionicons name="close" size={22} color={theme.color.muted} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-              
-              {/* --- CLICKABLE EMPLOYER MINI PROFILE --- */}
-              <TouchableOpacity style={styles.employerSection} onPress={() => setShowParentProfile(true)} activeOpacity={0.7}>
-                {job.parent_profile_image ? (
-                  <Image source={{ uri: getProfileUrl(job.parent_profile_image) as string }} style={styles.avatarPlaceholder} />
+            <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+
+              {/* ── Employer card ── */}
+              <TouchableOpacity
+                style={s.employerCard}
+                onPress={() => setShowParentProfile(true)}
+                activeOpacity={0.8}
+              >
+                {profileUri ? (
+                  <Image source={{ uri: profileUri }} style={s.employerAvatar} />
                 ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Ionicons name="person" size={24} color="#007AFF" />
+                  <View style={[s.employerAvatar, s.employerAvatarFallback]}>
+                    <Ionicons name="person" size={22} color={theme.color.parent} />
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.employerName}>{job.parent_name || 'Verified Employer'}</Text>
-                  <Text style={styles.locationText}>
-                    <Ionicons name="location" size={12} color="#6B7280" /> {job.parent_municipality || job.municipality}, {job.parent_province || job.province}
-                    {job.distance ? ` • ${job.distance} km away` : ''}
+                  <Text style={s.employerName}>{job.parent_name || 'Verified Employer'}</Text>
+                  <Text style={s.employerLoc}>
+                    {[job.parent_municipality || job.municipality, job.parent_province || job.province].filter(Boolean).join(', ')}
+                    {job.distance ? `  ·  ~${job.distance} km` : ''}
                   </Text>
                 </View>
-                <View style={styles.viewProfileArrow}>
-                  <Text style={styles.viewProfileText}>View Profile</Text>
-                  <Ionicons name="chevron-forward" size={16} color="#1D4ED8" />
+                <View style={s.viewProfileBtn}>
+                  <Text style={s.viewProfileBtnText}>Profile</Text>
+                  <Ionicons name="chevron-forward" size={14} color={theme.color.parent} />
                 </View>
               </TouchableOpacity>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Role & Schedule</Text>
-                <View style={styles.detailsList}>
-                  <View style={styles.detailItem}>
-                    <Ionicons name="calendar-outline" size={18} color="#4B5563" />
-                    <View>
-                      <Text style={styles.detailLabel}>Employment Type</Text>
-                      <Text style={styles.detailValue}>{job.employment_type}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.detailItem}>
-                    <Ionicons name="time-outline" size={18} color="#4B5563" />
-                    <View>
-                      <Text style={styles.detailLabel}>Work Schedule</Text>
-                      <Text style={styles.detailValue}>{job.work_schedule}</Text>
-                    </View>
-                  </View>
-                  {job.work_hours && (
-                    <View style={styles.detailItem}>
-                      <Ionicons name="alarm-outline" size={18} color="#4B5563" />
-                      <View>
-                        <Text style={styles.detailLabel}>Working Hours</Text>
-                        <Text style={styles.detailValue}>{job.work_hours}</Text>
+              {/* Role & Schedule */}
+              <Section icon="calendar-outline" title="Role & Schedule">
+                <DetailRow icon="briefcase-outline" label="Employment Type" value={job.employment_type} />
+                <DetailRow icon="time-outline"      label="Work Schedule"   value={job.work_schedule} />
+                {job.work_hours && <DetailRow icon="alarm-outline" label="Working Hours" value={job.work_hours} />}
+                {job.start_date && <DetailRow icon="calendar-outline" label="Start Date" value={job.start_date} />}
+              </Section>
+
+              {/* Description */}
+              <Section icon="document-text-outline" title="Job Description">
+                <Text style={s.bodyText}>{job.description || 'No description provided.'}</Text>
+              </Section>
+
+              {/* Skills */}
+              {displaySkills.length > 0 && (
+                <Section icon="star-outline" title="Required Skills">
+                  <View style={s.tagsRow}>
+                    {displaySkills.map((skill: string, i: number) => (
+                      <View key={i} style={s.skillTag}>
+                        <Text style={s.skillTagText}>{skill}</Text>
                       </View>
+                    ))}
+                  </View>
+                  {job.custom_skills ? (
+                    <View style={[s.infoBox, { marginTop: 10 }]}>
+                      <Text style={s.bodyText}>{job.custom_skills}</Text>
                     </View>
-                  )}
+                  ) : null}
+                </Section>
+              )}
+
+              {/* Candidate Requirements */}
+              <Section icon="person-outline" title="Requirements">
+                <View style={s.reqRow}>
+                  <View style={s.reqIconBox}><Ionicons name="person-outline" size={15} color={theme.color.helper} /></View>
+                  <View>
+                    <Text style={s.reqLabel}>Age</Text>
+                    <Text style={s.reqValue}>
+                      {job.min_age && job.max_age ? `${job.min_age}–${job.max_age} yrs` : 'Any age'}
+                    </Text>
+                  </View>
                 </View>
-              </View>
+                <View style={s.reqRow}>
+                  <View style={s.reqIconBox}><Ionicons name="star-outline" size={15} color={theme.color.helper} /></View>
+                  <View>
+                    <Text style={s.reqLabel}>Experience</Text>
+                    <Text style={s.reqValue}>
+                      {job.min_experience_years ? `At least ${job.min_experience_years} yr(s)` : 'No minimum'}
+                    </Text>
+                  </View>
+                </View>
+                {isTrue(job.require_police_clearance) && (
+                  <View style={s.verifiedReq}>
+                    <Ionicons name="shield-checkmark" size={15} color={theme.color.success} />
+                    <Text style={s.verifiedReqText}>Police Clearance Required</Text>
+                  </View>
+                )}
+                {isTrue(job.prefer_tesda_nc2) && (
+                  <View style={[s.verifiedReq, { backgroundColor: theme.color.infoSoft }]}>
+                    <Ionicons name="school" size={15} color={theme.color.info} />
+                    <Text style={[s.verifiedReqText, { color: theme.color.info }]}>TESDA NC II Preferred</Text>
+                  </View>
+                )}
+              </Section>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Job Description</Text>
-                <Text style={styles.bodyText}>
-                  {job.description || "No specific description provided for this job."}
-                </Text>
-              </View>
+              {/* Compensation */}
+              <Section icon="cash-outline" title="Compensation & Benefits">
+                <View style={s.salaryBox}>
+                  <Text style={s.salaryLabel}>Offered Salary</Text>
+                  <Text style={s.salaryAmount}>₱{Number(job.salary_offered).toLocaleString()}</Text>
+                  <Text style={s.salaryPer}>per {job.salary_period === 'Monthly' ? 'Month' : 'Day'}</Text>
+                </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Required Skills & Preferences</Text>
-                <View style={styles.skillsContainer}>
-                  {/* NEW: Using displaySkills logic */}
-                  {displaySkills.length > 0 ? (
-                    <View style={styles.skillGroup}>
-                      <Text style={styles.subLabel}>Key Skills:</Text>
-                      <View style={styles.skillBadgeRow}>
-                        {displaySkills.map((skill: string, i: number) => (
-                          <View key={i} style={styles.skillBadge}>
-                            <Text style={styles.skillBadgeText}>{skill}</Text>
-                          </View>
-                        ))}
-                      </View>
+                <View style={s.perksRow}>
+                  {isTrue(job.provides_meals)          && <PerkTag icon="restaurant"       label="Free Meals" />}
+                  {isTrue(job.provides_accommodation)   && <PerkTag icon="home"             label="Accommodation" />}
+                  {isTrue(job.provides_sss)             && <PerkTag icon="checkmark-circle" label="SSS" color={theme.color.success} />}
+                  {isTrue(job.provides_philhealth)      && <PerkTag icon="checkmark-circle" label="PhilHealth" color={theme.color.success} />}
+                  {isTrue(job.provides_pagibig)         && <PerkTag icon="checkmark-circle" label="Pag-IBIG" color={theme.color.success} />}
+                  {Number(job.vacation_days) > 0        && <PerkTag icon="airplane"         label={`${job.vacation_days} Vacation Days`} color={theme.color.info} />}
+                  {Number(job.sick_days) > 0            && <PerkTag icon="medkit"           label={`${job.sick_days} Sick Leaves`} color={theme.color.danger} />}
+                </View>
+
+                {job.benefits ? (
+                  <View style={s.infoBox}>
+                    <Text style={s.subLabel}>Other Benefits</Text>
+                    <Text style={s.bodyText}>{job.benefits}</Text>
+                  </View>
+                ) : null}
+              </Section>
+
+              {/* Contract */}
+              {(job.contract_duration || job.probation_period) && (
+                <Section icon="document-outline" title="Contract Terms">
+                  <View style={s.contractGrid}>
+                    <View style={s.contractTile}>
+                      <Text style={s.contractLabel}>Duration</Text>
+                      <Text style={s.contractValue}>{job.contract_duration || 'Not specified'}</Text>
                     </View>
-                  ) : (
-                    <Text style={styles.bodyText}>No specific skills required.</Text>
-                  )}
-                </View>
-              </View>
-
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Candidate Requirements</Text>
-                <View style={styles.listContainer}>
-                  <View style={styles.requirementRow}>
-                    <View style={styles.reqIconBox}><Ionicons name="person-outline" size={18} color="#1D4ED8" /></View>
-                    <View>
-                      <Text style={styles.reqLabel}>Age Bracket</Text>
-                      <Text style={styles.reqValue}>
-                        {job.min_age && job.max_age ? `${job.min_age} - ${job.max_age} years old` : 'Any age'}
-                      </Text>
+                    <View style={s.contractTile}>
+                      <Text style={s.contractLabel}>Probation</Text>
+                      <Text style={s.contractValue}>{job.probation_period || 'None'}</Text>
                     </View>
                   </View>
-                  <View style={styles.requirementRow}>
-                    <View style={styles.reqIconBox}><Ionicons name="star-outline" size={18} color="#1D4ED8" /></View>
-                    <View>
-                      <Text style={styles.reqLabel}>Experience</Text>
-                      <Text style={styles.reqValue}>
-                        {job.min_experience_years ? `At least ${job.min_experience_years} year(s)` : 'No minimum experience'}
-                      </Text>
-                    </View>
-                  </View>
-                  {isTrue(job.require_police_clearance) && (
-                    <View style={styles.verifiedReq}>
-                      <Ionicons name="shield-checkmark" size={18} color="#059669" />
-                      <Text style={styles.verifiedReqText}>Police Clearance Required</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
+                </Section>
+              )}
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Compensation & Benefits</Text>
-                <View style={styles.salaryHighlight}>
-                  <Text style={styles.salaryLabel}>Offered Salary</Text>
-                  <Text style={styles.salaryValue}>₱{Number(job.salary_offered).toLocaleString()}</Text>
-                  <Text style={styles.salaryPeriod}>per {job.salary_period === 'Monthly' ? 'Month' : 'Day'}</Text>
-                </View>
-                <View style={styles.perksGrid}>
-                  {isTrue(job.provides_meals) && (
-                    <View style={styles.perkBadge}><Ionicons name="restaurant" size={14} color="#D97706" /><Text style={styles.perkText}>Free Meals</Text></View>
-                  )}
-                  {isTrue(job.provides_accommodation) && (
-                    <View style={styles.perkBadge}><Ionicons name="home" size={14} color="#D97706" /><Text style={styles.perkText}>Accommodation</Text></View>
-                  )}
-                </View>
-              </View>
-
+              <View style={{ height: 12 }} />
             </ScrollView>
 
-            <SafeAreaView style={styles.footer}>
-              <TouchableOpacity style={styles.applyBtn} onPress={onApply} activeOpacity={0.8}>
+            {/* ── Apply footer ── */}
+            <SafeAreaView style={s.footer}>
+              <TouchableOpacity style={s.applyBtn} onPress={onApply} activeOpacity={0.85}>
                 <Ionicons name="paper-plane" size={20} color="#fff" />
-                <Text style={styles.applyBtnText}>Apply for this Position</Text>
+                <Text style={s.applyBtnText}>Apply for this Position</Text>
               </TouchableOpacity>
             </SafeAreaView>
 
@@ -210,70 +258,93 @@ export function JobDetailsModal({ visible, onClose, onApply, job }: JobDetailsMo
         </View>
       </Modal>
 
-      <ParentProfileModal 
-        visible={showParentProfile} 
-        onClose={() => setShowParentProfile(false)} 
-        parentData={job} 
+      <ParentProfileModal
+        visible={showParentProfile}
+        onClose={() => setShowParentProfile(false)}
+        parentData={job}
       />
     </>
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 },
-  modalContainer: { width: '100%', maxWidth: 650, maxHeight: '90%', backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10 },
-  responsiveModal: { width: Platform.OS === 'web' ? '85%' : '100%' },
-  
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 24, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', backgroundColor: '#fff' },
-  headerTitleContainer: { flex: 1, paddingRight: 16 },
-  modalTitle: { fontSize: 24, fontWeight: '800', color: '#111827', marginBottom: 12, letterSpacing: -0.5 },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  categoryPill: { backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#DBEAFE' },
-  categoryText: { fontSize: 13, fontWeight: '600', color: '#1D4ED8' },
-  closeBtn: { padding: 8, backgroundColor: '#F3F4F6', borderRadius: 20 },
-  
-  scrollContent: { paddingHorizontal: 24, paddingTop: 8 },
-  
-  employerSection: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 32, backgroundColor: '#EFF6FF', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#DBEAFE' },
-  avatarPlaceholder: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  employerName: { fontSize: 17, fontWeight: '800', color: '#1E3A8A', marginBottom: 2 },
-  locationText: { fontSize: 13, color: '#3B82F6', fontWeight: '500' },
-  viewProfileArrow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
-  viewProfileText: { fontSize: 12, fontWeight: '700', color: '#1D4ED8', marginRight: 4 },
+const s = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: theme.color.overlay, justifyContent: 'center', alignItems: 'center', padding: 16 },
+  card:    { width: '100%', maxWidth: 660, maxHeight: '93%', backgroundColor: theme.color.surfaceElevated, borderRadius: 24, overflow: 'hidden', ...theme.shadow.card },
 
-  section: { marginBottom: 32 },
-  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#111827', marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: 8, letterSpacing: -0.3 },
-  bodyText: { fontSize: 15, lineHeight: 24, color: '#4B5563' },
-  
-  detailsList: { gap: 16 },
-  detailItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  detailLabel: { fontSize: 12, fontWeight: '600', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.5 },
-  detailValue: { fontSize: 15, fontWeight: '600', color: '#1F2937' },
-  
-  skillsContainer: { gap: 16 },
-  skillGroup: { gap: 8 },
-  subLabel: { fontSize: 13, fontWeight: '700', color: '#374151' },
-  skillBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  skillBadge: { backgroundColor: '#F3F4F6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-  skillBadgeText: { fontSize: 13, color: '#4B5563', fontWeight: '500' },
+  header:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 22, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  title:   { fontSize: 21, fontWeight: '800', color: theme.color.ink, marginBottom: 10, letterSpacing: -0.4 },
+  badgeRow:{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pesoBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: theme.color.helperSoft,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 6, borderWidth: 1, borderColor: theme.color.helper + '33',
+  },
+  pesoBadgeText: { fontSize: 11, fontWeight: '700', color: theme.color.helper },
+  catPill: {
+    backgroundColor: theme.color.surface,
+    paddingHorizontal: 10, paddingVertical: 3,
+    borderRadius: 6, borderWidth: 1, borderColor: theme.color.line,
+  },
+  catText: { fontSize: 11, fontWeight: '600', color: theme.color.muted },
+  closeBtn:{ padding: 6, backgroundColor: theme.color.surface, borderRadius: 16 },
 
-  requirementRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, marginBottom: 8 },
-  reqIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
-  reqLabel: { fontSize: 11, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase' },
-  reqValue: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
-  verifiedReq: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#ECFDF5', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#D1FAE5', marginBottom: 8 },
-  verifiedReqText: { fontSize: 14, fontWeight: '700', color: '#059669' },
+  scroll:  { paddingHorizontal: 22, paddingTop: 8 },
 
-  salaryHighlight: { backgroundColor: '#1D4ED8', padding: 20, borderRadius: 16, alignItems: 'center', marginBottom: 20 },
-  salaryLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
-  salaryValue: { color: '#fff', fontSize: 28, fontWeight: '800' },
-  salaryPeriod: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '500' },
-  perksGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  perkBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFBEB', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#FEF3C7' },
-  perkText: { fontSize: 13, fontWeight: '600', color: '#92400E' },
-  
-  footer: { padding: 20, borderTopWidth: 1, borderTopColor: '#F3F4F6', backgroundColor: '#fff' },
-  applyBtn: { backgroundColor: '#1D4ED8', paddingVertical: 16, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10, shadowColor: '#1D4ED8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
+  employerCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: theme.color.parentSoft,
+    padding: 14, borderRadius: 14, marginBottom: 24,
+    borderWidth: 1, borderColor: theme.color.parent + '22',
+  },
+  employerAvatar: { width: 46, height: 46, borderRadius: 23 },
+  employerAvatarFallback: { backgroundColor: theme.color.surfaceElevated, alignItems: 'center', justifyContent: 'center' },
+  employerName: { fontSize: 15, fontWeight: '800', color: theme.color.parent, marginBottom: 2 },
+  employerLoc:  { fontSize: 12, color: theme.color.inkMuted, fontWeight: '500' },
+  viewProfileBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 2,
+    backgroundColor: theme.color.surfaceElevated,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10,
+  },
+  viewProfileBtnText: { fontSize: 11, fontWeight: '700', color: theme.color.parent },
+
+  section:      { marginBottom: 24 },
+  sectionHeader:{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  sectionIconWrap: { width: 26, height: 26, borderRadius: 7, backgroundColor: theme.color.helperSoft, alignItems: 'center', justifyContent: 'center' },
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: theme.color.ink, textTransform: 'uppercase', letterSpacing: 0.6 },
+
+  detailRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  detailIconWrap: { width: 30, height: 30, borderRadius: 8, backgroundColor: theme.color.helperSoft, alignItems: 'center', justifyContent: 'center' },
+  detailLabel:  { fontSize: 10, fontWeight: '700', color: theme.color.subtle, textTransform: 'uppercase', letterSpacing: 0.5 },
+  detailValue:  { fontSize: 13, fontWeight: '600', color: theme.color.ink },
+
+  bodyText: { fontSize: 14, lineHeight: 22, color: theme.color.muted },
+  subLabel: { fontSize: 12, fontWeight: '700', color: theme.color.inkMuted, marginBottom: 6 },
+
+  tagsRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  skillTag:  { backgroundColor: theme.color.helperSoft, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: theme.color.helper + '22' },
+  skillTagText: { fontSize: 12, fontWeight: '600', color: theme.color.helper },
+  infoBox:   { backgroundColor: theme.color.surface, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: theme.color.line },
+
+  reqRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: theme.color.surface, padding: 10, borderRadius: 10, marginBottom: 8, borderWidth: 1, borderColor: theme.color.line },
+  reqIconBox:{ width: 32, height: 32, borderRadius: 9, backgroundColor: theme.color.helperSoft, alignItems: 'center', justifyContent: 'center' },
+  reqLabel:  { fontSize: 10, fontWeight: '700', color: theme.color.subtle, textTransform: 'uppercase' },
+  reqValue:  { fontSize: 13, fontWeight: '600', color: theme.color.ink },
+  verifiedReq: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.color.successSoft, padding: 10, borderRadius: 10, marginBottom: 8, borderWidth: 1, borderColor: theme.color.success + '33' },
+  verifiedReqText: { fontSize: 13, fontWeight: '700', color: theme.color.success },
+
+  salaryBox:   { backgroundColor: theme.color.helper, padding: 20, borderRadius: 16, alignItems: 'center', marginBottom: 14 },
+  salaryLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  salaryAmount:{ color: '#fff', fontSize: 30, fontWeight: '800', marginVertical: 4 },
+  salaryPer:   { color: 'rgba(255,255,255,0.75)', fontSize: 13 },
+  perksRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+
+  contractGrid:{ flexDirection: 'row', gap: 12 },
+  contractTile:{ flex: 1, backgroundColor: theme.color.surface, padding: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: theme.color.line },
+  contractLabel:{ fontSize: 10, fontWeight: '700', color: theme.color.subtle, textTransform: 'uppercase', marginBottom: 4 },
+  contractValue:{ fontSize: 14, fontWeight: '700', color: theme.color.ink },
+
+  footer:   { padding: 18, borderTopWidth: 1, borderTopColor: theme.color.line },
+  applyBtn: { backgroundColor: theme.color.helper, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, shadowColor: theme.color.helper, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
   applyBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  listContainer: { gap: 4 },
 });

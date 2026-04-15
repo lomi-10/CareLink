@@ -39,7 +39,7 @@ export function ContractDetailsCard({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="document-text-outline" size={24} color="#007AFF" />
+        <Ionicons name="document-text-outline" size={24} color="#2563EB" />
         <Text style={styles.title}>Contract Details (Optional)</Text>
       </View>
 
@@ -71,7 +71,7 @@ export function ContractDetailsCard({
                   {option.label}
                 </Text>
                 {isSelected && (
-                  <Ionicons name="checkmark-circle" size={16} color="#007AFF" />
+                  <Ionicons name="checkmark-circle" size={16} color="#2563EB" />
                 )}
               </TouchableOpacity>
             );
@@ -107,7 +107,7 @@ export function ContractDetailsCard({
                   {option.label}
                 </Text>
                 {isSelected && (
-                  <Ionicons name="checkmark-circle" size={16} color="#007AFF" />
+                  <Ionicons name="checkmark-circle" size={16} color="#2563EB" />
                 )}
               </TouchableOpacity>
             );
@@ -117,7 +117,7 @@ export function ContractDetailsCard({
 
       {/* Info Box */}
       <View style={styles.infoBox}>
-        <Ionicons name="information-circle" size={20} color="#007AFF" />
+        <Ionicons name="information-circle" size={20} color="#2563EB" />
         <Text style={styles.infoText}>
           Contract terms help set clear expectations with your helper
         </Text>
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   },
   optionChipActive: {
     backgroundColor: '#E3F2FD',
-    borderColor: '#007AFF',
+    borderColor: '#2563EB',
   },
   optionChipDisabled: {
     opacity: 0.5,
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   optionTextActive: {
-    color: '#007AFF',
+    color: '#2563EB',
   },
   optionTextDisabled: {
     color: '#999',

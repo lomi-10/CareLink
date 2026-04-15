@@ -103,7 +103,7 @@ export function WorkScheduleCard({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="calendar-outline" size={24} color="#007AFF" />
+        <Ionicons name="calendar-outline" size={24} color="#2563EB" />
         <Text style={styles.title}>Work Schedule (Optional)</Text>
       </View>
 
@@ -125,7 +125,7 @@ export function WorkScheduleCard({
               <Text style={{ color: startDate ? '#1A1C1E' : '#999', fontSize: 15 }}>
                 {startDate || 'Select a start date'}
               </Text>
-              <Ionicons name="calendar" size={20} color={disabled ? "#999" : "#007AFF"} />
+              <Ionicons name="calendar" size={20} color={disabled ? "#999" : "#2563EB"} />
             </TouchableOpacity>
 
             {showDatePicker && (
@@ -194,7 +194,7 @@ export function WorkScheduleCard({
                   {day.substring(0, 3)}
                 </Text>
                 {isSelected && (
-                  <Ionicons name="checkmark-circle" size={14} color="#007AFF" />
+                  <Ionicons name="checkmark-circle" size={14} color="#2563EB" />
                 )}
               </TouchableOpacity>
             );
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E5EA',
   },
   iosDoneText: {
-    color: '#007AFF',
+    color: '#2563EB',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   },
   dayChipActive: {
     backgroundColor: '#E3F2FD',
-    borderColor: '#007AFF',
+    borderColor: '#2563EB',
   },
   dayChipDisabled: {
     opacity: 0.5,
@@ -311,14 +311,14 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   dayTextActive: {
-    color: '#007AFF',
+    color: '#2563EB',
   },
   dayTextDisabled: {
     color: '#999',
   },
   selectedDays: {
     fontSize: 12,
-    color: '#007AFF',
+    color: '#2563EB',
     fontWeight: '600',
     marginTop: 8,
   },

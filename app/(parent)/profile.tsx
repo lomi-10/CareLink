@@ -155,9 +155,12 @@ export default function ParentProfile() {
       {isDesktop ? (
         <>
           <View style={styles.pageHeader}>
-            <Text style={styles.pageTitle}>My Profile</Text>
+            <View>
+              <Text style={styles.pageTitle}>My Profile</Text>
+              <Text style={styles.pageSubtitle}>Manage your account and household details</Text>
+            </View>
             <TouchableOpacity style={styles.editButton} onPress={() => setIsEditModalOpen(true)}>
-              <Ionicons name="pencil" size={18} color="#fff" />
+              <Ionicons name="pencil" size={16} color="#fff" />
               <Text style={styles.editButtonText}>Edit Profile</Text>
             </TouchableOpacity>
           </View>
@@ -187,14 +190,14 @@ export default function ParentProfile() {
       />
 
       {/* Shared Info Cards */}
-      <InfoCard icon="person-outline" iconColor="#007AFF" title="Personal Information" items={personalInfoItems} />
+      <InfoCard icon="person-outline" iconColor={theme.color.parent} title="Personal Information" items={personalInfoItems} />
       
-      <InfoCard icon="home-outline" iconColor="#34C759" title="Household Information" items={householdInfoItems}>
+      <InfoCard icon="home-outline" iconColor={theme.color.success} title="Household Information" items={householdInfoItems}>
         <ChildrenList children={children} />
         <ElderlyList elderly={elderly} />
       </InfoCard>
 
-      <InfoCard icon="location-outline" iconColor={theme.color.parent} title="Address Details" items={addressItems} />
+      <InfoCard icon="location-outline" iconColor={theme.color.info} title="Address Details" items={addressItems} />
 
       <DocumentsCard
         barangayClearance={barangayClearance}
@@ -233,7 +236,7 @@ export default function ParentProfile() {
         </TouchableOpacity>
         <Text style={styles.mobileTitle}>My Profile</Text>
         <TouchableOpacity style={styles.editIconButton} onPress={() => setIsEditModalOpen(true)}>
-          <Ionicons name="pencil" size={24} color="#007AFF" />
+          <Ionicons name="pencil" size={22} color={theme.color.parent} />
         </TouchableOpacity>
       </View>
 

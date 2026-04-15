@@ -55,7 +55,7 @@ export default function DocumentManagementModal({
   const [tesdaDoc, setTesdaDoc] = useState<DocumentState>({ uri: null, name: null, type: null });
 
   // Valid ID type (PhilSys, Passport, Driver's License, etc.)
-  const [idType, setIdType] = useState('PhilSys');
+  const [idType, setIdType] = useState('PhilSys (recommended)');
   const [idTypeModalVisible, setIdTypeModalVisible] = useState(false);
 
   // Notification
@@ -157,10 +157,8 @@ export default function DocumentManagementModal({
   // ============================================================================
 
   const handleUpload = async () => {
-    // Validation
-    if (!barangayDoc.uri && !validIdDoc.uri && !policeDoc.uri && !tesdaDoc.uri) {
-      return showNotification('Please select at least one document', 'error');
-    }
+    if (!barangayDoc.uri) return showNotification('Barangay Clearance is required.', 'error');
+    if (!validIdDoc.uri)  return showNotification('Valid ID is required.', 'error');
 
     if (!userId) {
       return showNotification('User ID not found', 'error');

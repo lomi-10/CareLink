@@ -76,7 +76,7 @@ export function SkillsSelector({
                   {skill.skill_name}
                 </Text>
                 {isSelected && (
-                  <Ionicons name="checkmark-circle" size={16} color="#007AFF" />
+                  <Ionicons name="checkmark-circle" size={16} color="#2563EB" />
                 )}
               </TouchableOpacity>
             );
@@ -92,7 +92,7 @@ export function SkillsSelector({
         <Ionicons 
           name={showCustom ? "remove-circle-outline" : "add-circle-outline"} 
           size={18} 
-          color="#007AFF" 
+          color="#2563EB" 
         />
         <Text style={styles.customToggleText}>
           {showCustom ? "Hide custom skills" : "Add other specific skills"}
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   },
   skillChipActive: {
     backgroundColor: '#F0F8FF',
-    borderColor: '#007AFF',
+    borderColor: '#2563EB',
   },
   skillChipDisabled: {
     opacity: 0.5,
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     color: '#4B5563',
   },
   skillTextActive: {
-    color: '#007AFF',
+    color: '#2563EB',
   },
   skillTextDisabled: {
     color: '#9CA3AF',
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   },
   customToggleText: {
     fontSize: 14,
-    color: '#007AFF',
+    color: '#2563EB',
     fontWeight: '600',
   },
   customInputWrapper: {
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F9FF',
     borderRadius: 10,
     borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
+    borderLeftColor: '#2563EB',
   },
   selectedLabel: {
     fontSize: 12,

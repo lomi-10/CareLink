@@ -81,7 +81,7 @@ export function CategorySelector({
                 </View>
               )}
               <View style={[styles.iconContainer, selected && styles.iconContainerActive]}>
-                <Ionicons name={iconName} size={24} color={selected ? "#007AFF" : "#666"} />
+                <Ionicons name={iconName} size={24} color={selected ? "#2563EB" : "#666"} />
               </View>
               <Text style={[styles.categoryName, selected && styles.categoryNameActive]}>
                 {category.name}
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   categoryCardActive: {
-    borderColor: '#007AFF',
+    borderColor: '#2563EB',
     backgroundColor: '#F0F8FF',
   },
   categoryCardDisabled: {
@@ -176,14 +176,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   categoryNameActive: {
-    color: '#007AFF',
+    color: '#2563EB',
     fontWeight: '700',
   },
   checkBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#2563EB',
     borderRadius: 12,
     width: 20,
     height: 20,

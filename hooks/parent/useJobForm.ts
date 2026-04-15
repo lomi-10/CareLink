@@ -98,7 +98,7 @@ export function useJobForm() {
     setFormData((prev) => ({ ...prev, ...updates }));
   };
 
-  const validate = (categories: Category[]): boolean => {
+  const validate = (categories: Category[]): { isValid: boolean; firstError?: string } => {
     const newErrors: Record<string, string> = {};
     
     // 1. DYNAMICALLY find the "Others" ID from the database
@@ -107,13 +107,13 @@ export function useJobForm() {
 
     // 2. USE the dynamic ID for validation
     if (!formData.category_id) {
-      newErrors.category = 'Please select a category';
+      newErrors.category = 'Category is required — please select one';
     } else if (formData.category_id === OTHERS_CATEGORY_ID && !formData.custom_category?.trim()) {
       newErrors.category = 'Please enter a custom category name';
     }
     
     if (formData.job_ids.length === 0 && !formData.custom_job_title.trim()) {
-      newErrors.title = 'Please select at least one job or enter a custom title';
+      newErrors.title = 'Job title is required — select a role or enter a custom title';
     }
 
     // 3. SKILL VALIDATION: at least 2 predefined or 1 custom
@@ -121,26 +121,27 @@ export function useJobForm() {
     const hasCustomSkills = formData.custom_skills && formData.custom_skills.trim().length > 0;
     
     if (!hasPredefinedSkills && !hasCustomSkills) {
-      newErrors.skills = 'Please select at least 2 skills or add custom ones';
+      newErrors.skills = 'Skills are required — select at least 2 skills or add custom ones';
     }
     
     if (!formData.description.trim()) {
-      newErrors.description = 'Job description is required';
+      newErrors.description = 'Job description is required — describe the responsibilities';
     }
     
     const salary = parseFloat(formData.salary_offered);
     if (!formData.salary_offered || isNaN(salary)) {
-      newErrors.salary = 'Salary is required';
+      newErrors.salary = 'Salary is required — enter an amount';
     } else if (salary < 6000) {
-      newErrors.salary = 'Minimum salary is ₱6,000';
+      newErrors.salary = 'Salary is below minimum — must be at least ₱6,000';
     }
     
     if (!formData.municipality.trim()) {
-      newErrors.municipality = 'Municipality is required';
+      newErrors.municipality = 'Location is required — enter a municipality';
     }
     
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const errorList = Object.values(newErrors).filter(Boolean);
+    return { isValid: errorList.length === 0, firstError: errorList[0] };
   };
 
   const reset = () => {

@@ -1,159 +1,231 @@
 // components/helper/applications/ApplicationDetailsModal.tsx
-
 import React from 'react';
-import { View, Text, Modal, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '@/constants/theme';
 import type { Application } from '@/hooks/helper';
 
-interface ApplicationDetailsModalProps {
+interface Props {
   visible: boolean;
   application: Application | null;
   onWithdraw: () => void;
   onClose: () => void;
 }
 
-export default function ApplicationDetailsModal({ visible, application, onWithdraw, onClose }: ApplicationDetailsModalProps) {
+const STATUS_CONFIG: Record<string, {
+  color: string; bg: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  title: string; subtitle: string;
+}> = {
+  'Pending': {
+    color: theme.color.warning, bg: theme.color.warningSoft,
+    icon: 'time-outline',
+    title: 'Application Submitted',
+    subtitle: 'Your application is waiting to be reviewed by the employer.',
+  },
+  'Reviewed': {
+    color: theme.color.info, bg: theme.color.infoSoft,
+    icon: 'eye-outline',
+    title: 'Under Review',
+    subtitle: 'The employer has looked at your application.',
+  },
+  'Shortlisted': {
+    color: '#7C3AED', bg: '#F3E8FF',
+    icon: 'star-outline',
+    title: 'You are Shortlisted!',
+    subtitle: 'Great news — you are among the top candidates. Expect to be contacted soon.',
+  },
+  'Interview Scheduled': {
+    color: theme.color.helper, bg: theme.color.helperSoft,
+    icon: 'calendar-outline',
+    title: 'Interview Scheduled',
+    subtitle: 'Check your messages for interview details.',
+  },
+  'Accepted': {
+    color: theme.color.success, bg: theme.color.successSoft,
+    icon: 'checkmark-circle',
+    title: 'Congratulations! You are Hired!',
+    subtitle: 'The employer has accepted your application for this position.',
+  },
+  'Rejected': {
+    color: theme.color.danger, bg: theme.color.dangerSoft,
+    icon: 'close-circle-outline',
+    title: 'Application Declined',
+    subtitle: 'The employer has decided to move forward with other candidates.',
+  },
+  'Withdrawn': {
+    color: theme.color.muted, bg: theme.color.surface,
+    icon: 'arrow-undo-outline',
+    title: 'Application Withdrawn',
+    subtitle: 'You withdrew this application.',
+  },
+};
+
+function DetailRow({ icon, label, value }: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  value: string | number | null | undefined;
+}) {
+  if (!value && value !== 0) return null;
+  return (
+    <View style={s.detailRow}>
+      <View style={s.detailIconWrap}>
+        <Ionicons name={icon} size={14} color={theme.color.helper} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.detailLabel}>{label}</Text>
+        <Text style={s.detailValue}>{String(value)}</Text>
+      </View>
+    </View>
+  );
+}
+
+export default function ApplicationDetailsModal({ visible, application, onWithdraw, onClose }: Props) {
   if (!application) return null;
 
-  const getStatusConfig = () => {
-    switch (application.status) {
-      case 'Pending': return { color: '#D97706', bg: '#FEF3C7', icon: 'time' as const, title: 'Application Submitted', subtitle: 'Waiting for the employer to review your profile.' };
-      case 'Reviewed': return { color: '#2563EB', bg: '#DBEAFE', icon: 'eye' as const, title: 'Under Review', subtitle: 'The employer has viewed your application.' };
-      case 'Shortlisted': return { color: '#7C3AED', bg: '#F3E8FF', icon: 'star' as const, title: 'You are Shortlisted!', subtitle: 'You are among the top candidates. They may contact you soon.' };
-      case 'Interview Scheduled': return { color: '#059669', bg: '#D1FAE5', icon: 'calendar' as const, title: 'Interview Scheduled', subtitle: 'Check your messages for interview details.' };
-      case 'Accepted': return { color: '#059669', bg: '#D1FAE5', icon: 'checkmark-circle' as const, title: 'Congratulations!', subtitle: 'You have been hired for this position.' };
-      case 'Rejected': return { color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle' as const, title: 'Application Declined', subtitle: 'The employer has decided to move forward with other candidates.' };
-      case 'Withdrawn': return { color: '#6B7280', bg: '#F3F4F6', icon: 'arrow-undo' as const, title: 'Application Withdrawn', subtitle: 'You withdrew this application.' };
-      default: return { color: '#6B7280', bg: '#F3F4F6', icon: 'information-circle' as const, title: application.status, subtitle: '' };
-    }
+  const cfg = STATUS_CONFIG[application.status] ?? {
+    color: theme.color.muted, bg: theme.color.surface,
+    icon: 'information-circle-outline' as const,
+    title: application.status, subtitle: '',
   };
 
-  const statusConfig = getStatusConfig();
   const canWithdraw = ['Pending', 'Reviewed', 'Shortlisted'].includes(application.status);
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return 'Recently';
-    return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  };
+  const salary = Number(application.salary_offered ?? 0).toLocaleString();
+  const salaryLabel = application.salary_period ? `₱${salary} / ${application.salary_period}` : `₱${salary}`;
+  const location = application.location
+    || [application.municipality, application.province].filter(Boolean).join(', ')
+    || null;
 
   return (
-    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
-          
-          {/* --- HEADER --- */}
-          <View style={styles.header}>
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.modalTitle} numberOfLines={2}>{application.job_title}</Text>
-              <Text style={styles.employerName}>{application.parent_name}</Text>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+      <View style={s.overlay}>
+        <View style={s.card}>
+
+          {/* ── Header ── */}
+          <View style={s.header}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={s.jobTitle} numberOfLines={2}>{application.job_title}</Text>
+              <Text style={s.employerName}>{application.parent_name}</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color="#6B7280" />
+            <TouchableOpacity onPress={onClose} style={s.closeBtn} hitSlop={8}>
+              <Ionicons name="close" size={20} color={theme.color.muted} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
 
-            {/* --- STATUS BANNER --- */}
-            <View style={[styles.statusBanner, { backgroundColor: statusConfig.bg, borderColor: statusConfig.color + '40' }]}>
-              <View style={[styles.statusIconBox, { backgroundColor: statusConfig.color + '20' }]}>
-                <Ionicons name={statusConfig.icon} size={24} color={statusConfig.color} />
+            {/* ── Status banner ── */}
+            <View style={[s.banner, { backgroundColor: cfg.bg, borderColor: cfg.color + '40' }]}>
+              <View style={[s.bannerIcon, { backgroundColor: cfg.color + '20' }]}>
+                <Ionicons name={cfg.icon} size={26} color={cfg.color} />
               </View>
-              <View style={styles.statusBannerText}>
-                <Text style={[styles.statusBannerTitle, { color: statusConfig.color }]}>{statusConfig.title}</Text>
-                <Text style={[styles.statusBannerSubtitle, { color: statusConfig.color }]}>{statusConfig.subtitle}</Text>
-              </View>
-            </View>
-            
-            {/* --- QUICK INFO GRID --- */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Application Details</Text>
-              <View style={styles.detailsList}>
-                <View style={styles.detailItem}>
-                  <Ionicons name="calendar-outline" size={18} color="#1D4ED8" />
-                  <View>
-                    <Text style={styles.detailLabel}>Applied On</Text>
-                    <Text style={styles.detailValue}>{formatDate(application.applied_at)}</Text>
-                  </View>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="cash-outline" size={18} color="#1D4ED8" />
-                  <View>
-                    <Text style={styles.detailLabel}>Offered Salary</Text>
-                    <Text style={styles.detailValue}>₱{Number(application.salary_offered || 0).toLocaleString()}</Text>
-                  </View>
-                </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.bannerTitle, { color: cfg.color }]}>{cfg.title}</Text>
+                <Text style={[s.bannerSub, { color: cfg.color + 'CC' }]}>{cfg.subtitle}</Text>
               </View>
             </View>
 
-            {/* --- COVER LETTER SECTION --- */}
+            {/* ── Job details ── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>Job Details</Text>
+              <View style={s.infoCard}>
+                <DetailRow icon="cash-outline"      label="Salary Offered"    value={salaryLabel} />
+                <DetailRow icon="location-outline"  label="Location"          value={location} />
+                <DetailRow icon="briefcase-outline" label="Employment Type"   value={application.employment_type} />
+                <DetailRow icon="time-outline"      label="Work Schedule"     value={application.work_schedule} />
+              </View>
+            </View>
+
+            {/* ── Application timeline ── */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>Application Timeline</Text>
+              <View style={s.infoCard}>
+                <DetailRow icon="calendar-outline"  label="Applied On"        value={application.applied_at} />
+                {application.reviewed_at ? (
+                  <DetailRow icon="eye-outline"     label="Reviewed"          value={application.reviewed_at} />
+                ) : null}
+              </View>
+            </View>
+
+            {/* ── Cover letter ── */}
             {application.cover_letter ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Your Pitch / Cover Letter</Text>
-                <View style={styles.coverLetterBox}>
-                  <Text style={styles.coverLetterText}>{application.cover_letter}</Text>
+              <View style={s.section}>
+                <Text style={s.sectionTitle}>Your Cover Letter</Text>
+                <View style={s.letterBox}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={16} color={theme.color.helper} style={{ marginTop: 2 }} />
+                  <Text style={s.letterText}>{application.cover_letter}</Text>
                 </View>
               </View>
             ) : null}
 
-            {/* --- EMPLOYER FEEDBACK --- */}
+            {/* ── Message from employer ── */}
             {application.message_from_parent ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Message from Employer</Text>
-                <View style={styles.feedbackBox}>
-                  <Ionicons name="chatbubble-ellipses" size={20} color="#059669" />
-                  <Text style={styles.feedbackText}>{application.message_from_parent}</Text>
+              <View style={s.section}>
+                <Text style={s.sectionTitle}>Message from Employer</Text>
+                <View style={s.feedbackBox}>
+                  <Ionicons name="chatbubble-ellipses" size={18} color={theme.color.helper} />
+                  <Text style={s.feedbackText}>{application.message_from_parent}</Text>
                 </View>
               </View>
             ) : null}
 
+            <View style={{ height: 16 }} />
           </ScrollView>
 
-          {/* --- FOOTER ACTIONS --- */}
-          <View style={styles.footer}>
+          {/* ── Footer ── */}
+          <View style={s.footer}>
             {canWithdraw && (
-              <TouchableOpacity style={styles.withdrawBtn} onPress={onWithdraw}>
-                <Text style={styles.withdrawBtnText}>Withdraw Application</Text>
+              <TouchableOpacity style={s.withdrawBtn} onPress={onWithdraw}>
+                <Ionicons name="arrow-undo-outline" size={16} color={theme.color.danger} />
+                <Text style={s.withdrawText}>Withdraw</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.doneBtn} onPress={onClose}>
-              <Text style={styles.doneBtnText}>Close Details</Text>
+            <TouchableOpacity style={s.closeFullBtn} onPress={onClose}>
+              <Text style={s.closeFullBtnText}>Close</Text>
             </TouchableOpacity>
           </View>
-          
+
         </View>
       </View>
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 },
-  modalContainer: { width: '100%', maxWidth: 650, maxHeight: '90%', backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 24, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', backgroundColor: '#fff' },
-  headerTitleContainer: { flex: 1, paddingRight: 16 },
-  modalTitle: { fontSize: 24, fontWeight: '800', color: '#111827', marginBottom: 4, letterSpacing: -0.5 },
-  employerName: { fontSize: 15, fontWeight: '600', color: '#6B7280' },
-  closeBtn: { padding: 8, backgroundColor: '#F3F4F6', borderRadius: 20 },
-  scrollContent: { paddingHorizontal: 24, paddingTop: 16 },
-  statusBanner: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 32, gap: 16 },
-  statusIconBox: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  statusBannerText: { flex: 1 },
-  statusBannerTitle: { fontSize: 16, fontWeight: '800', marginBottom: 4 },
-  statusBannerSubtitle: { fontSize: 13, fontWeight: '500', lineHeight: 18 },
-  section: { marginBottom: 32 },
-  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#111827', marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: 8, letterSpacing: -0.3 },
-  detailsList: { gap: 16 },
-  detailItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  detailLabel: { fontSize: 12, fontWeight: '600', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.5 },
-  detailValue: { fontSize: 15, fontWeight: '600', color: '#1F2937' },
-  coverLetterBox: { backgroundColor: '#F9FAFB', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB' },
-  coverLetterText: { fontSize: 15, lineHeight: 24, color: '#374151', fontStyle: 'italic' },
-  feedbackBox: { flexDirection: 'row', backgroundColor: '#ECFDF5', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#A7F3D0', gap: 12 },
-  feedbackText: { flex: 1, fontSize: 15, lineHeight: 24, color: '#065F46', fontWeight: '500' },
-  footer: { flexDirection: 'row', padding: 20, borderTopWidth: 1, borderTopColor: '#F3F4F6', backgroundColor: '#fff', gap: 12 },
-  withdrawBtn: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 12, borderWidth: 1, borderColor: '#FECACA', backgroundColor: '#FEF2F2', alignItems: 'center' },
-  withdrawBtnText: { color: '#DC2626', fontSize: 15, fontWeight: '700' },
-  doneBtn: { flex: 1, backgroundColor: '#1F2937', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  doneBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+const s = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: theme.color.overlay, justifyContent: 'center', alignItems: 'center', padding: 16 },
+  card:    { width: '100%', maxWidth: 640, maxHeight: '92%', backgroundColor: theme.color.surfaceElevated, borderRadius: 24, overflow: 'hidden', ...theme.shadow.card },
+
+  header:       { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', padding: 22, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  jobTitle:     { fontSize: 21, fontWeight: '800', color: theme.color.ink, marginBottom: 4, letterSpacing: -0.4 },
+  employerName: { fontSize: 14, fontWeight: '600', color: theme.color.muted },
+  closeBtn:     { padding: 6, backgroundColor: theme.color.surface, borderRadius: 14 },
+
+  scroll: { flex: 1, paddingHorizontal: 22, paddingTop: 4 },
+
+  banner:     { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1, marginTop: 18, marginBottom: 6, gap: 14 },
+  bannerIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  bannerTitle:{ fontSize: 15, fontWeight: '800', marginBottom: 3 },
+  bannerSub:  { fontSize: 13, fontWeight: '500', lineHeight: 18 },
+
+  section:      { marginTop: 20 },
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: theme.color.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+
+  infoCard:    { backgroundColor: theme.color.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line, overflow: 'hidden' },
+  detailRow:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.color.line, gap: 10 },
+  detailIconWrap: { width: 28, height: 28, borderRadius: 7, backgroundColor: theme.color.helperSoft, alignItems: 'center', justifyContent: 'center' },
+  detailLabel: { fontSize: 11, color: theme.color.subtle, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
+  detailValue: { fontSize: 14, fontWeight: '700', color: theme.color.ink, marginTop: 1 },
+
+  letterBox:   { flexDirection: 'row', gap: 10, backgroundColor: theme.color.surface, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line },
+  letterText:  { flex: 1, fontSize: 14, lineHeight: 22, color: theme.color.inkMuted, fontStyle: 'italic' },
+
+  feedbackBox: { flexDirection: 'row', gap: 10, backgroundColor: theme.color.helperSoft, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: theme.color.helper + '30' },
+  feedbackText:{ flex: 1, fontSize: 14, lineHeight: 22, color: theme.color.ink, fontWeight: '500' },
+
+  footer:         { flexDirection: 'row', gap: 10, padding: 20, borderTopWidth: 1, borderTopColor: theme.color.line },
+  withdrawBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 13, paddingHorizontal: 18, borderRadius: 12, backgroundColor: theme.color.dangerSoft, borderWidth: 1, borderColor: theme.color.danger + '30' },
+  withdrawText:   { color: theme.color.danger, fontSize: 14, fontWeight: '700' },
+  closeFullBtn:   { flex: 1, backgroundColor: theme.color.helper, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
+  closeFullBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

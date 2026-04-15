@@ -258,7 +258,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   // ============================================================================
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return showNotification('Camera permission needed', 'error');
+    if (status !== 'granted') return showNotification('Photo library permission is required to pick a profile photo', 'error');
     
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -326,10 +326,12 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   };
 
   const handleSave = async () => {
-    if (!firstName.trim() || !lastName.trim()) return showNotification('Name is required', 'error');
+    if (!firstName.trim() || !lastName.trim()) return showNotification('First and last name are required', 'error');
+    if (!username.trim() || username.trim().length < 3) return showNotification('Username must be at least 3 characters', 'error');
     if (!contactNumber.trim()) return showNotification('Contact number is required', 'error');
     if (!birthDate) return showNotification('Birth date is required', 'error');
-    if (!province || !municipality || !barangay) return showNotification('Complete address is required', 'error');
+    if (!province || !municipality || !barangay) return showNotification('Province, municipality and barangay are required', 'error');
+    if (!bio.trim() || bio.trim().length < 15) return showNotification('Bio must be at least 15 characters', 'error');
     if (!expectedSalary || parseFloat(expectedSalary) < 6000) return showNotification('Salary must be at least ₱6,000', 'error');
     if (selectedCategoryIds.length === 0) return showNotification('Select at least one job category', 'error');
     if (selectedJobIds.length === 0) return showNotification('Select at least one job specialty', 'error');
@@ -391,7 +393,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       });
       
       const responseText = await response.text();
-      const data = JSON.parse(responseText);
+      let data: any;
+      try { data = JSON.parse(responseText); } catch { throw new Error('Server returned an invalid response. Please try again.'); }
       
       if (data.success) {
         showNotification('Profile saved successfully!', 'success');
@@ -553,7 +556,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         searchValue={languageSearch} onSearchChange={setLanguageSearch} idKey="language_id" nameKey="language_name"
       />
 
-      <NotificationModal visible={notifVisible} message={notifMessage} type={notifType} onClose={() => { setNotifVisible(false); if (notifType === 'success') onClose(); }} />
+      <NotificationModal visible={notifVisible} message={notifMessage} type={notifType} onClose={() => setNotifVisible(false)} />
     </>
   );
 }

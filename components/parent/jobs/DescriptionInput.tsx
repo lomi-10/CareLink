@@ -17,7 +17,7 @@ export function DescriptionInput({ value, onChange, error, disabled }: Descripti
     <View style={styles.container}>
       <View style={styles.header}>
         <Ionicons name="document-text-outline" size={22} color="#FF9500" />
-        <Text style={styles.title}>Job Description *</Text>
+        <Text style={styles.title}>Job Description <Text style={{ color: '#EF4444' }}>*</Text></Text>
       </View>
 
       <Text style={styles.hint}>

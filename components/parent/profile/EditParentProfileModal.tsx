@@ -109,6 +109,8 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
       const response = await fetch(`${API_URL}/parent/get_profile.php?user_id=${parsed.user_id}`);
       const data = await response.json();
       
+      if (!data.success) throw new Error(data.message || 'Failed to load profile data');
+
       if (data.success) {
         if (data.profile) {
           const p = data.profile;
@@ -194,7 +196,7 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return showNotification('Camera permission needed', 'error');
+    if (status !== 'granted') return showNotification('Photo library permission is required to pick a profile photo', 'error');
     
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -210,9 +212,9 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
   };
 
   const handleSave = async () => {
-    if (!contactNumber.trim() || !province.trim() || !municipality.trim() || !barangay.trim()) {
-      return showNotification('Please fill in all required contact and address fields.', 'error');
-    }
+    if (!contactNumber.trim()) return showNotification('Contact number is required.', 'error');
+    if (!province.trim() || !municipality.trim() || !barangay.trim()) return showNotification('Province, municipality and barangay are required.', 'error');
+    if (!bio.trim() || bio.trim().length < 15) return showNotification('Bio must be at least 15 characters.', 'error');
     
     setSaving(true);
     try {
@@ -263,7 +265,8 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
       });
 
       const responseText = await response.text();
-      const data = JSON.parse(responseText);
+      let data: any;
+      try { data = JSON.parse(responseText); } catch { throw new Error('Server returned an invalid response. Please try again.'); }
 
       if (data.success) {
         showNotification(data.message || 'Profile saved!', 'success');

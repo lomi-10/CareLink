@@ -1,6 +1,4 @@
 // app/(helper)/my_applications.tsx
-// Track job application status with mobile/desktop separation
-
 import React, { useState } from 'react';
 import {
   View,
@@ -9,69 +7,54 @@ import {
   TouchableOpacity,
   RefreshControl,
   SafeAreaView,
+  ScrollView,
+  StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-// Custom Hooks
 import { useMyApplications } from '@/hooks/helper';
 import { useAuth, useResponsive } from '@/hooks/shared';
-
-// Components
 import { Sidebar, MobileMenu } from '@/components/helper/home';
-import { 
+import {
   ApplicationCard,
   ApplicationDetailsModal,
 } from '@/components/helper/applications/';
 import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared/';
+import { theme } from '@/constants/theme';
 
-// Styles
-import { styles } from './my_applications.styles';
+const FILTER_TABS = [
+  { key: 'all',                   label: 'All',          icon: 'list-outline' as const },
+  { key: 'active',                label: 'Active',       icon: 'flash-outline' as const },
+  { key: 'Pending',               label: 'Pending',      icon: 'time-outline' as const },
+  { key: 'Shortlisted',           label: 'Shortlisted',  icon: 'star-outline' as const },
+  { key: 'Accepted',              label: 'Hired',        icon: 'checkmark-circle-outline' as const },
+  { key: 'Rejected',              label: 'Rejected',     icon: 'close-circle-outline' as const },
+];
 
 export default function MyApplications() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
-  
-  const {
-    applications,
-    stats,
-    loading,
-    statusFilter,
-    setStatusFilter,
-    refresh,
-    withdrawApplication,
-  } = useMyApplications();
 
-  // State
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { applications, stats, loading, statusFilter, setStatusFilter, refresh, withdrawApplication } = useMyApplications();
+
+  const [isMobileMenuOpen,    setIsMobileMenuOpen]    = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
-  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
-  const [withdrawModal, setWithdrawModal] = useState({ visible: false, applicationId: '' });
-  const [notification, setNotification] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
-
-  // Logout States
+  const [detailsVisible,      setDetailsVisible]      = useState(false);
+  const [withdrawModal,       setWithdrawModal]       = useState({ visible: false, applicationId: '' });
+  const [notification,        setNotification]        = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
   const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
   const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
 
-  // Logout Handlers
-  const initiateLogout = () => {
-    setIsMobileMenuOpen(false); 
-    setConfirmLogoutVisible(true); 
-  };
+  const initiateLogout = () => { setIsMobileMenuOpen(false); setConfirmLogoutVisible(true); };
+  const executeLogout  = () => { setConfirmLogoutVisible(false); setSuccessLogoutVisible(true); };
 
-  const executeLogout = () => {
-    setConfirmLogoutVisible(false);
-    setSuccessLogoutVisible(true);
-  };
+  const openDetails = (app: any) => { setSelectedApplication(app); setDetailsVisible(true); };
 
-  const handleViewDetails = (application: any) => {
-    setSelectedApplication(application);
-    setDetailsModalVisible(true);
-  };
-
-  const handleWithdraw = (applicationId: string) => {
-    setWithdrawModal({ visible: true, applicationId });
+  const handleWithdraw = (appId: string) => {
+    setDetailsVisible(false);
+    setWithdrawModal({ visible: true, applicationId: appId });
   };
 
   const confirmWithdraw = async () => {
@@ -79,98 +62,117 @@ export default function MyApplications() {
       const result = await withdrawApplication(withdrawModal.applicationId);
       if (result.success) {
         setNotification({ visible: true, message: 'Application withdrawn successfully', type: 'success' });
-        setWithdrawModal({ visible: false, applicationId: '' });
       }
     } catch (error: any) {
-      setNotification({ visible: true, message: error.message || 'Failed to withdraw application', type: 'error' });
+      setNotification({ visible: true, message: error.message || 'Failed to withdraw', type: 'error' });
+    } finally {
+      setWithdrawModal({ visible: false, applicationId: '' });
     }
   };
 
-  if (loading) {
-    return <LoadingSpinner visible={true} message="Loading applications..." />;
-  }
-
   const renderModals = () => (
     <>
-      <ConfirmationModal visible={confirmLogoutVisible} title="Log Out" message="Are you sure you want to log out of your account?" confirmText="Log Out" cancelText="Cancel" type="danger" onConfirm={executeLogout} onCancel={() => setConfirmLogoutVisible(false)} />
-      <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose={true} duration={1500} onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }} />
-      <NotificationModal visible={notification.visible} message={notification.message} type={notification.type} onClose={() => setNotification({ ...notification, visible: false })} autoClose={true} duration={1500} />
-      <ConfirmationModal visible={withdrawModal.visible} title="Withdraw Application?" message="Are you sure you want to withdraw this application? This action cannot be undone." confirmText="Withdraw" cancelText="Cancel" type="danger" onConfirm={confirmWithdraw} onCancel={() => setWithdrawModal({ visible: false, applicationId: '' })} />
-      <ApplicationDetailsModal visible={detailsModalVisible} application={selectedApplication} onWithdraw={() => { setDetailsModalVisible(false); if (selectedApplication?.application_id) { handleWithdraw(selectedApplication.application_id); } }} onClose={() => setDetailsModalVisible(false)} />
+      <ConfirmationModal visible={confirmLogoutVisible} title="Log Out" message="Are you sure you want to log out?" confirmText="Log Out" cancelText="Cancel" type="danger" onConfirm={executeLogout} onCancel={() => setConfirmLogoutVisible(false)} />
+      <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose duration={1500} onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }} />
+      <NotificationModal visible={notification.visible} message={notification.message} type={notification.type} onClose={() => setNotification(n => ({ ...n, visible: false }))} autoClose duration={2000} />
+      <ConfirmationModal visible={withdrawModal.visible} title="Withdraw Application?" message="Are you sure? This action cannot be undone." confirmText="Withdraw" cancelText="Cancel" type="danger" onConfirm={confirmWithdraw} onCancel={() => setWithdrawModal({ visible: false, applicationId: '' })} />
+      <ApplicationDetailsModal visible={detailsVisible} application={selectedApplication} onWithdraw={() => selectedApplication && handleWithdraw(selectedApplication.application_id)} onClose={() => setDetailsVisible(false)} />
     </>
   );
 
-  // ==========================================
-  // FIXED: Changed to a standard variable instead of an inner function component
-  // ==========================================
-  const applicationsContent = (
-    <View style={styles.mainContent}>
-      {/* Stats Bar */}
-      <View style={[styles.statsBar, isDesktop && styles.statsBarDesktop]}>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{stats.total}</Text>
-          <Text style={styles.statLabel}>Total</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={[styles.statValue, { color: '#FF9500' }]}>{stats.pending}</Text>
-          <Text style={styles.statLabel}>Pending</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={[styles.statValue, { color: '#007AFF' }]}>{stats.shortlisted}</Text>
-          <Text style={styles.statLabel}>Shortlisted</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={[styles.statValue, { color: '#34C759' }]}>{stats.accepted}</Text>
-          <Text style={styles.statLabel}>Accepted</Text>
-        </View>
-      </View>
+  if (loading) return <LoadingSpinner visible message="Loading applications…" />;
 
-      {/* Filter Tabs */}
-      <View style={[styles.filterContainer, isDesktop && styles.filterContainerDesktop]}>
-        {['all', 'active', 'Pending', 'Shortlisted', 'Accepted', 'Rejected'].map((filter) => (
-          <TouchableOpacity 
-            key={filter} 
-            style={[styles.filterTab, statusFilter === filter && styles.filterTabActive]} 
-            onPress={() => setStatusFilter(filter)} 
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.filterTabText, statusFilter === filter && styles.filterTabTextActive]}>
-              {filter === 'all' ? 'All' : filter === 'active' ? 'Active' : filter}
-            </Text>
-          </TouchableOpacity>
+  // ── Stats tiles ──────────────────────────────────────────────────────────────
+  const statTiles = [
+    { label: 'Total',       value: stats.total,       color: theme.color.ink,     bg: theme.color.surface,      icon: 'layers-outline' as const },
+    { label: 'Pending',     value: stats.pending,     color: theme.color.warning, bg: theme.color.warningSoft,  icon: 'time-outline' as const },
+    { label: 'Shortlisted', value: stats.shortlisted, color: '#7C3AED',           bg: '#F3E8FF',                icon: 'star-outline' as const },
+    { label: 'Hired',       value: stats.accepted,    color: theme.color.success, bg: theme.color.successSoft,  icon: 'checkmark-circle-outline' as const },
+  ];
+
+  const mainContent = (
+    <View style={s.content}>
+      {/* Stats strip */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[s.statsScroll, isDesktop && { paddingHorizontal: 32 }]}
+      >
+        {statTiles.map(t => (
+          <View key={t.label} style={[s.statTile, { backgroundColor: t.bg }]}>
+            <View style={[s.statIconCircle, { backgroundColor: t.color + '22' }]}>
+              <Ionicons name={t.icon} size={18} color={t.color} />
+            </View>
+            <Text style={[s.statValue, { color: t.color }]}>{t.value}</Text>
+            <Text style={s.statLabel}>{t.label}</Text>
+          </View>
         ))}
+      </ScrollView>
+
+      {/* Filter chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[s.filterScroll, isDesktop && { paddingHorizontal: 32 }]}
+      >
+        {FILTER_TABS.map(tab => {
+          const isActive = statusFilter === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={[s.filterChip, isActive && s.filterChipActive]}
+              onPress={() => setStatusFilter(tab.key)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name={tab.icon} size={13} color={isActive ? '#fff' : theme.color.muted} />
+              <Text style={[s.filterChipText, isActive && s.filterChipTextActive]}>{tab.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Results info */}
+      <View style={[s.resultsBar, isDesktop && { paddingHorizontal: 32 }]}>
+        <Text style={s.resultsText}>
+          <Text style={{ color: theme.color.helper, fontWeight: '800' }}>{applications.length}</Text>
+          {' '}application{applications.length !== 1 ? 's' : ''}
+          {statusFilter !== 'all' ? ` · ${FILTER_TABS.find(f => f.key === statusFilter)?.label}` : ''}
+        </Text>
       </View>
 
-      {/* Applications List */}
+      {/* List */}
       {applications.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="document-text-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>
-            {statusFilter === 'all' ? 'No applications yet' : `No ${statusFilter.toLowerCase()} applications`}
+        <View style={s.empty}>
+          <View style={s.emptyIconCircle}>
+            <Ionicons name="document-text-outline" size={38} color={theme.color.helper} />
+          </View>
+          <Text style={s.emptyTitle}>
+            {statusFilter === 'all' ? 'No applications yet' : `No ${FILTER_TABS.find(f => f.key === statusFilter)?.label?.toLowerCase()} applications`}
           </Text>
-          <Text style={styles.emptySubtext}>
-            {statusFilter === 'all' 
-              ? 'Start applying to jobs to see your applications here'
+          <Text style={s.emptySub}>
+            {statusFilter === 'all'
+              ? 'Start applying to jobs to track them here'
               : 'Try selecting a different filter'}
           </Text>
           {statusFilter === 'all' && (
-            <TouchableOpacity style={styles.browseButton} onPress={() => router.push('/(helper)/browse_jobs')}>
-              <Text style={styles.browseButtonText}>Browse Jobs</Text>
+            <TouchableOpacity style={s.browseBtn} onPress={() => router.push('/(helper)/browse_jobs')}>
+              <Ionicons name="search-outline" size={16} color="#fff" />
+              <Text style={s.browseBtnText}>Browse Jobs</Text>
             </TouchableOpacity>
           )}
         </View>
       ) : (
         <FlatList
           data={applications}
-          keyExtractor={(item) => item?.application_id || Math.random().toString()}
+          keyExtractor={item => item?.application_id ?? Math.random().toString()}
           renderItem={({ item }) => (
             <ApplicationCard
               application={item}
-              onPress={() => handleViewDetails(item)}
+              onPress={() => openDetails(item)}
               onWithdraw={() => handleWithdraw(item?.application_id)}
             />
           )}
-          contentContainerStyle={[styles.listContainer, isDesktop && styles.listContainerDesktop]}
+          contentContainerStyle={[s.listPad, isDesktop && s.listPadDesktop]}
           refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
           showsVerticalScrollIndicator={false}
         />
@@ -178,54 +180,103 @@ export default function MyApplications() {
     </View>
   );
 
-  // DESKTOP LAYOUT
+  // ── Desktop layout ──────────────────────────────────────────────────────────
   if (isDesktop) {
     return (
-      <View style={[styles.container, { flexDirection: 'row' }]}>
-        {/* FIXED: Called renderModals as a function */}
+      <View style={[s.root, { flexDirection: 'row' }]}>
         {renderModals()}
-
         <Sidebar onLogout={initiateLogout} />
-
-        <View style={styles.desktopContentWrapper}>
-          <View style={styles.desktopHeader}>
-            <Text style={styles.desktopPageTitle}>My Applications</Text>
-            <TouchableOpacity style={styles.browseJobsButton} onPress={() => router.push('/(helper)/browse_jobs')} activeOpacity={0.7}>
-              <Ionicons name="search" size={20} color="#007AFF" />
-              <Text style={styles.browseJobsButtonText}>Browse Jobs</Text>
+        <View style={s.desktopMain}>
+          <View style={s.desktopHeader}>
+            <View>
+              <Text style={s.pageTitle}>My Applications</Text>
+              <Text style={s.pageSubtitle}>Track the status of your job applications</Text>
+            </View>
+            <TouchableOpacity style={s.browseJobsBtn} onPress={() => router.push('/(helper)/browse_jobs')} activeOpacity={0.8}>
+              <Ionicons name="search-outline" size={18} color={theme.color.helper} />
+              <Text style={s.browseJobsBtnText}>Browse Jobs</Text>
             </TouchableOpacity>
           </View>
-
-          {applicationsContent}
+          {mainContent}
         </View>
       </View>
     );
   }
 
-  // MOBILE LAYOUT
+  // ── Mobile layout ───────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container}>
-      {/* FIXED: Called renderModals as a function */}
+    <SafeAreaView style={s.root}>
       {renderModals()}
-
-      {/* FIXED: Mobile Header - Hamburger on the Left */}
-      <View style={styles.mobileHeader}>
-        <TouchableOpacity style={styles.menuButton} onPress={() => setIsMobileMenuOpen(true)} activeOpacity={0.7}>
-          <Ionicons name="menu" size={28} color="#1A1C1E" />
+      <View style={s.mobileHeader}>
+        <TouchableOpacity style={s.menuBtn} onPress={() => setIsMobileMenuOpen(true)} activeOpacity={0.7}>
+          <Ionicons name="menu" size={26} color={theme.color.ink} />
         </TouchableOpacity>
-
-        <Text style={styles.mobileTitle}>My Applications</Text>
-        
-        <View style={styles.mobileHeaderActions}>
-          <TouchableOpacity style={styles.browseIconButton} onPress={() => router.push('/(helper)/browse_jobs')} activeOpacity={0.7}>
-            <Ionicons name="search" size={24} color="#007AFF" />
-          </TouchableOpacity>
+        <View style={s.mobileHeaderCenter}>
+          <Text style={s.mobileTitle}>My Applications</Text>
+          {stats.pending > 0 && (
+            <View style={s.pendingBadge}>
+              <Text style={s.pendingBadgeText}>{stats.pending}</Text>
+            </View>
+          )}
         </View>
+        <TouchableOpacity style={s.searchIconBtn} onPress={() => router.push('/(helper)/browse_jobs')} activeOpacity={0.8}>
+          <Ionicons name="search-outline" size={20} color={theme.color.helper} />
+        </TouchableOpacity>
       </View>
-
-      {applicationsContent}
-
+      {mainContent}
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
     </SafeAreaView>
   );
 }
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: theme.color.canvasHelper },
+  content: { flex: 1 },
+
+  // ── Desktop ──
+  desktopMain:   { flex: 1, backgroundColor: theme.color.canvasHelper },
+  desktopHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 32, paddingVertical: 24, backgroundColor: theme.color.surfaceElevated, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  pageTitle:     { fontSize: 26, fontWeight: '800', color: theme.color.ink, letterSpacing: -0.5 },
+  pageSubtitle:  { fontSize: 14, color: theme.color.muted, marginTop: 2 },
+  browseJobsBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: theme.color.helperSoft, borderWidth: 1, borderColor: theme.color.helper + '30' },
+  browseJobsBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.helper },
+
+  // ── Mobile header ──
+  mobileHeader:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: theme.color.surfaceElevated, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  menuBtn:            { padding: 6 },
+  mobileHeaderCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  mobileTitle:        { fontSize: 18, fontWeight: '800', color: theme.color.ink, letterSpacing: -0.3 },
+  pendingBadge:       { backgroundColor: theme.color.warning, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  pendingBadgeText:   { color: '#fff', fontSize: 11, fontWeight: '800' },
+  searchIconBtn:      { padding: 8, backgroundColor: theme.color.helperSoft, borderRadius: 10 },
+
+  // ── Stats ──
+  statsScroll: { paddingHorizontal: 16, paddingVertical: 16, gap: 10, flexDirection: 'row', alignItems: 'flex-start' },
+  statTile:    { alignItems: 'center', paddingVertical: 14, paddingHorizontal: 18, borderRadius: 16, gap: 4, minWidth: 80, alignSelf: 'flex-start' },
+  statIconCircle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  statValue:   { fontSize: 22, fontWeight: '800' },
+  statLabel:   { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, color: theme.color.muted },
+
+  // ── Filters ──
+  filterScroll:      { paddingHorizontal: 16, paddingBottom: 4, gap: 8, flexDirection: 'row', alignItems: 'center' },
+  filterChip:        { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: theme.color.surfaceElevated, borderWidth: 1, borderColor: theme.color.line },
+  filterChipActive:  { backgroundColor: theme.color.helper, borderColor: theme.color.helper },
+  filterChipText:    { fontSize: 13, fontWeight: '600', color: theme.color.muted },
+  filterChipTextActive: { color: '#fff' },
+
+  // ── Results bar ──
+  resultsBar:  { paddingHorizontal: 16, paddingVertical: 8 },
+  resultsText: { fontSize: 13, color: theme.color.muted, fontWeight: '500' },
+
+  // ── List ──
+  listPad:        { padding: 16, paddingBottom: 40 },
+  listPadDesktop: { paddingHorizontal: 32, paddingTop: 8, paddingBottom: 60 },
+
+  // ── Empty ──
+  empty:          { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  emptyIconCircle:{ width: 80, height: 80, borderRadius: 40, backgroundColor: theme.color.helperSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyTitle:     { fontSize: 18, fontWeight: '800', color: theme.color.ink, marginBottom: 8, textAlign: 'center' },
+  emptySub:       { fontSize: 14, color: theme.color.muted, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  browseBtn:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.color.helper, paddingVertical: 13, paddingHorizontal: 24, borderRadius: 14, shadowColor: theme.color.helper, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
+  browseBtnText:  { color: '#fff', fontSize: 15, fontWeight: '700' },
+});

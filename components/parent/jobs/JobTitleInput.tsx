@@ -109,7 +109,7 @@ export function JobTitleInput({
                         <Ionicons
                           name={selected ? 'checkbox' : 'square-outline'}
                           size={22}
-                          color={selected ? '#007AFF' : '#9CA3AF'}
+                          color={selected ? '#2563EB' : '#9CA3AF'}
                         />
                         <Text style={[styles.jobItemText, selected && styles.jobItemTextActive]}>
                           {job.job_title}
@@ -130,7 +130,7 @@ export function JobTitleInput({
             <Ionicons 
               name={isCustom ? "remove-circle-outline" : "add-circle-outline"} 
               size={18} 
-              color="#007AFF" 
+              color="#2563EB" 
             />
             <Text style={styles.customToggleText}>
               {isCustom ? "I'll pick from the list instead" : "Add a custom job title"}
@@ -183,9 +183,9 @@ const styles = StyleSheet.create({
   jobItemActive: { backgroundColor: '#F0F8FF' },
   jobItemContent: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   jobItemText: { fontSize: 14, color: '#374151' },
-  jobItemTextActive: { color: '#007AFF', fontWeight: '600' },
+  jobItemTextActive: { color: '#2563EB', fontWeight: '600' },
   customToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
-  customToggleText: { fontSize: 14, color: '#007AFF', fontWeight: '600' },
+  customToggleText: { fontSize: 14, color: '#2563EB', fontWeight: '600' },
   noJobsText: { fontSize: 14, color: '#6B7280', fontStyle: 'italic', marginBottom: 8 },
   customInputWrapper: { marginTop: 8, backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' },
   inputLabel: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },

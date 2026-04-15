@@ -41,13 +41,7 @@ export function useLoginForm() {
     }
 
     if (!email || !password) {
-      const newAttempts = attemptsLeft - 1;
-      setAttemptsLeft(newAttempts);
-      setEmail("");
-      setPassword("");
-
-      if (newAttempts <= 0) handleLockout();
-      else setNotification({ visible: true, message: `Please enter email and password.\n${newAttempts} attempts left.`, type: "warning" });
+      setNotification({ visible: true, message: "Please enter your email and password.", type: "warning" });
       return;
     }
 
@@ -103,16 +97,16 @@ export function useLoginForm() {
 
       } else {
         // FAILURE HANDLING
-        setEmail(""); setPassword("");
+        setPassword("");
 
         if (data.reason === "wrong_password" || !data.reason) {
           const newAttempts = attemptsLeft - 1;
           setAttemptsLeft(newAttempts);
 
           if (newAttempts <= 0) handleLockout();
-          else setNotification({ visible: true, message: `${data.message}\n${newAttempts} attempts left.`, type: "error" });
+          else setNotification({ visible: true, message: `${data.message || "Incorrect email or password."}\n${newAttempts} attempt${newAttempts !== 1 ? "s" : ""} left.`, type: "error" });
         
-        } else if(data.reason === "Account Pending") {
+        } else if (data.reason === "Account Pending") {
           // PENDING USER (not yet approved by PESO — still complete profile & docs for verification)
           const mergedUser = {
             ...data.user,
@@ -140,6 +134,9 @@ export function useLoginForm() {
             setNotification(prev => ({ ...prev, visible: false }));
             router.replace(go);
           }, 2000);
+        } else {
+          // Unhandled reason — still show the server message
+          setNotification({ visible: true, message: data.message || "Login failed. Please try again.", type: "error" });
         }
       }
     } catch (error) {

@@ -30,7 +30,7 @@ export function SalaryInputCard({
     <View style={styles.container}>
       <View style={styles.header}>
         <Ionicons name="cash-outline" size={22} color="#34C759" />
-        <Text style={styles.title}>Salary & Benefits *</Text>
+        <Text style={styles.title}>Salary & Benefits <Text style={{ color: '#EF4444' }}>*</Text></Text>
       </View>
 
       {/* Salary Amount */}

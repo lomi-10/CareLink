@@ -161,8 +161,9 @@ export function JobPostModal({
       return;
     }
 
-    if (!validate(categories)) {
-      setNotification({ visible: true, message: 'Please check the form for missing requirements.', type: 'error' });
+    const { isValid, firstError } = validate(categories);
+    if (!isValid) {
+      setNotification({ visible: true, message: firstError || 'Please fill in all required fields', type: 'error' });
       return;
     }
 
@@ -496,24 +497,24 @@ const styles = StyleSheet.create({
   modalStepIndicator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 24, paddingHorizontal: 40 },
   stepWrapper: { alignItems: 'center', gap: 6 },
   stepCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#E5E7EB' },
-  stepCircleActive: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
+  stepCircleActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
   stepLabel: { fontSize: 12, fontWeight: '600', color: '#9CA3AF' },
-  stepLabelActive: { color: '#007AFF' },
+  stepLabelActive: { color: '#2563EB' },
   stepLine: { flex: 1, height: 2, backgroundColor: '#E5E7EB', marginHorizontal: 12, marginTop: -18 },
-  stepLineActive: { backgroundColor: '#007AFF' },
+  stepLineActive: { backgroundColor: '#2563EB' },
 
   // Role Mini-Steps (1-2-3 indicator)
   selectionStepsContainer: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   miniStep: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  miniStepActive: { backgroundColor: '#DBEAFE' },
+  miniStepActive: { backgroundColor: '#EFF6FF' },
   miniStepText: { fontSize: 12, fontWeight: '700', color: '#9CA3AF' },
-  miniStepTextActive: { color: '#1D4ED8' },
+  miniStepTextActive: { color: '#2563EB' },
 
   stepContent: { animationDuration: '0.3s' },
 
   footerActions: { marginTop: 40, borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 24 },
   navButtonsRow: { flexDirection: 'row', gap: 12 },
-  nextButton: { flex: 2, backgroundColor: '#007AFF', height: 56, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  nextButton: { flex: 2, backgroundColor: '#2563EB', height: 56, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   nextButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   backButton: { flex: 1, backgroundColor: '#F3F4F6', height: 56, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   backButtonText: { color: '#4B5563', fontSize: 16, fontWeight: '600' },
