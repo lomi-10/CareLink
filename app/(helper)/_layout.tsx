@@ -1,7 +1,7 @@
 // app/(helper)/_layout.tsx
 // FIXED: Refreshes user status from API to show correct banner
 
-import { useRouter, Slot, usePathname } from "expo-router";
+import { useRouter, Slot } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
 import {
@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../constants/api";
 import { RoleScreenBackground } from "@/components/shared";
 import { theme } from "@/constants/theme";
+import { HelperWorkModeProvider } from "@/contexts/HelperWorkModeContext";
 
 export default function HelperLayout() {
   const router = useRouter();
@@ -113,7 +114,9 @@ export default function HelperLayout() {
     // Approved users - no banner, full access
     return (
       <RoleScreenBackground role="helper">
-        <Slot />
+        <HelperWorkModeProvider>
+          <Slot />
+        </HelperWorkModeProvider>
       </RoleScreenBackground>
     );
   } else if (userStatus === "suspended") {

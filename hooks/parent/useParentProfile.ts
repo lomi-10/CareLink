@@ -30,6 +30,8 @@ export interface ParentProfileData {
   };
   household: {
     household_size?: number;
+    /** house | apartment | condominium | townhouse | other */
+    household_type?: string | null;
     has_children?: boolean;
     has_elderly?: boolean;
     has_pets?: boolean;

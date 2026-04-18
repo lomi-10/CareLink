@@ -31,6 +31,7 @@ import {
 } from '@/components/parent/profile';
 import { styles } from './profile.style';
 import { theme } from '@/constants/theme';
+import { formatParentHouseholdType } from '@/constants/parentHousehold';
 
 // Common Components
 import { NotificationModal, LoadingSpinner, ConfirmationModal, ProfileCompletionCard } from '@/components/shared';
@@ -112,6 +113,7 @@ export default function ParentProfile() {
   ];
 
   const householdInfoItems = [
+    { label: 'Housing Type', value: formatParentHouseholdType(household?.household_type) },
     { label: 'Total Household Size', value: household?.household_size?.toString() || 'Not specified' },
     { label: 'Children', value: profileData.children_count?.toString() || '0' },
     { label: 'Elderly Members', value: profileData.elderly_count?.toString() || '0' },

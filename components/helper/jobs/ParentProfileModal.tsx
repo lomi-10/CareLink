@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import API_URL from '@/constants/api';
 import { theme } from '@/constants/theme';
+import { formatParentHouseholdType } from '@/constants/parentHousehold';
 
 interface ParentProfileModalProps {
   visible: boolean;
@@ -232,6 +233,7 @@ export function ParentProfileModal({ visible, onClose, parentData }: ParentProfi
                 {household && (
                   <Section icon="people-outline" title="Household Information">
                     <View style={s.infoCard}>
+                      <InfoRow icon="home-outline"      label="Housing Type"      value={formatParentHouseholdType(household.household_type)} />
                       <InfoRow icon="people-outline"  label="Household Size"  value={household.household_size} />
                       <InfoRow icon="paw-outline"     label="Has Pets"        value={isTrue(household.has_pets) ? 'Yes' : 'No'} />
                       {isTrue(household.has_pets) && household.pet_details && (

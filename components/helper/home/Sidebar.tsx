@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { useNotifications } from '@/hooks/shared';
+import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -16,16 +17,38 @@ export function Sidebar({ onLogout }: SidebarProps) {
   const router   = useRouter();
   const pathname = usePathname();
   const { unreadCount } = useNotifications('helper');
+  const { isWorkMode } = useHelperWorkMode();
 
-  const navItems = [
-    { icon: 'home'         as const, label: 'Home',            path: '/(helper)/home' },
-    { icon: 'search'       as const, label: 'Find Jobs',       path: '/(helper)/browse_jobs' },
-    { icon: 'briefcase'    as const, label: 'My Applications', path: '/(helper)/my_applications' },
-    { icon: 'notifications'as const, label: 'Notifications',   path: '/(helper)/notifications', badge: unreadCount },
-    { icon: 'chatbubbles'  as const, label: 'Messages',        path: '/(helper)/messages' },
-    { icon: 'person'       as const, label: 'Profile',         path: '/(helper)/profile' },
-    { icon: 'settings'     as const, label: 'Settings',        path: '/(helper)/settings' },
-  ];
+  const navItems = isWorkMode
+    ? [
+        { icon: 'home' as const, label: 'Home', path: '/(helper)/home' },
+        { icon: 'list' as const, label: 'Tasks', path: '/(helper)/work_tasks' },
+        { icon: 'calendar' as const, label: 'Schedule', path: '/(helper)/work_schedule' },
+        { icon: 'time' as const, label: 'History', path: '/(helper)/work_history' },
+        {
+          icon: 'notifications' as const,
+          label: 'Notifications',
+          path: '/(helper)/notifications',
+          badge: unreadCount,
+        },
+        { icon: 'chatbubbles' as const, label: 'Messages', path: '/(helper)/messages' },
+        { icon: 'person' as const, label: 'Profile', path: '/(helper)/profile' },
+        { icon: 'settings' as const, label: 'Settings', path: '/(helper)/settings' },
+      ]
+    : [
+        { icon: 'home' as const, label: 'Home', path: '/(helper)/home' },
+        { icon: 'search' as const, label: 'Find Jobs', path: '/(helper)/browse_jobs' },
+        { icon: 'briefcase' as const, label: 'My Applications', path: '/(helper)/my_applications' },
+        {
+          icon: 'notifications' as const,
+          label: 'Notifications',
+          path: '/(helper)/notifications',
+          badge: unreadCount,
+        },
+        { icon: 'chatbubbles' as const, label: 'Messages', path: '/(helper)/messages' },
+        { icon: 'person' as const, label: 'Profile', path: '/(helper)/profile' },
+        { icon: 'settings' as const, label: 'Settings', path: '/(helper)/settings' },
+      ];
 
   const isActive = (path: string) => pathname === path;
 
@@ -38,7 +61,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
         </View>
         <View>
           <Text style={styles.logoText}>CareLink</Text>
-          <Text style={styles.logoSubtext}>Helper Portal</Text>
+          <Text style={styles.logoSubtext}>{isWorkMode ? 'Work Mode' : 'Helper Portal'}</Text>
         </View>
       </View>
 

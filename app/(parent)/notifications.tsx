@@ -27,6 +27,14 @@ const TYPE_CONFIG: Record<string, { icon: React.ComponentProps<typeof Ionicons>[
   interview_scheduled:  { icon: 'calendar-outline',        color: '#7C3AED',           bg: '#F3E8FF' },
   interview_confirmed:  { icon: 'checkmark-circle-outline',color: theme.color.success, bg: theme.color.successSoft },
   interview_declined:   { icon: 'close-circle-outline',    color: theme.color.danger,  bg: theme.color.dangerSoft },
+  interview_request:    { icon: 'calendar-outline',        color: theme.color.helper,  bg: theme.color.helperSoft },
+  peso_queue_user:      { icon: 'people-outline',          color: theme.color.peso,    bg: theme.color.pesoSoft },
+  peso_queue_job:       { icon: 'briefcase-outline',       color: theme.color.peso,    bg: theme.color.pesoSoft },
+  message_received:     { icon: 'chatbubble-outline',      color: theme.color.info,    bg: theme.color.infoSoft },
+  task_completed:       { icon: 'checkmark-done-outline',  color: theme.color.success, bg: theme.color.successSoft },
+  attendance_checkin:   { icon: 'log-in-outline',            color: theme.color.success, bg: theme.color.successSoft },
+  leave_request_submitted: { icon: 'umbrella-outline',      color: theme.color.warning, bg: theme.color.warningSoft },
+  leave_request_responded: { icon: 'checkmark-circle-outline', color: theme.color.info, bg: theme.color.infoSoft },
 };
 
 function timeAgo(dateStr: string) {
@@ -172,7 +180,9 @@ export default function ParentNotificationsScreen() {
         <Text style={s.mobileHeaderTitle}>Notifications</Text>
         <View style={{ width: 42 }} />
       </View>
-      <NotifContent accent={theme.color.parent} />
+      <View style={s.mobileBody}>
+        <NotifContent accent={theme.color.parent} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -188,6 +198,7 @@ const s = StyleSheet.create({
 
   // ── Mobile
   mobileRoot:   { flex: 1 },
+  mobileBody:   { flex: 1, minHeight: 0 },
   mobileHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 8, paddingVertical: 10,

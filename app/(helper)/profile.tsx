@@ -23,10 +23,11 @@ import { theme } from "@/constants/theme";
 
 // Custom Hooks
 import { useHelperProfile } from '@/hooks/helper';
-import { useAuth, useResponsive } from '@/hooks/shared';
+import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
+import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 
 // Components
-import { Sidebar } from '@/components/helper/home/Sidebar';
+import { Sidebar, MobileMenu } from '@/components/helper/home';
 import {
   ProfileHeader,
   MobileProfileHeader,
@@ -34,8 +35,8 @@ import {
   SpecialtiesShowcase,
   DocumentsCard,
   DocumentViewer,
-  MobileMenu,
 } from '@/components/helper/profile';
+import { WorkModeTabBar } from '@/components/helper/work';
 
 // Common Components
 import {NotificationModal, LoadingSpinner, ConfirmationModal, ProfileCompletionCard} from '@/components/shared/';
@@ -99,6 +100,8 @@ export default function HelperProfile() {
     getDocument,
   } = useHelperProfile();
   const { isDesktop } = useResponsive();
+  const { unreadCount: notificationUnread } = useNotifications('helper');
+  const { isWorkMode } = useHelperWorkMode();
 
   // Modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -341,7 +344,10 @@ export default function HelperProfile() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.mobileScrollContent}
+        contentContainerStyle={[
+          styles.mobileScrollContent,
+          isWorkMode ? { paddingBottom: 88 } : null,
+        ]}
         refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
       >
         <ProfileCompletionCard
@@ -392,7 +398,9 @@ export default function HelperProfile() {
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
         handleLogout={initiateLogout}
+        notificationUnread={notificationUnread}
       />
+      {isWorkMode ? <WorkModeTabBar /> : null}
       {renderLogoutModals()}
     </SafeAreaView>
   );

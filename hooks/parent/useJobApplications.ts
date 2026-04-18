@@ -20,10 +20,24 @@ export interface JobApplication {
   helper_municipality?: string;
   helper_province?: string;
   cover_letter?: string;
-  status: 'Pending' | 'Reviewed' | 'Shortlisted' | 'Interview Scheduled' | 'Accepted' | 'Rejected' | 'Withdrawn';
+  status:
+    | 'Pending'
+    | 'Reviewed'
+    | 'Shortlisted'
+    | 'Interview Scheduled'
+    | 'Accepted'
+    | 'Rejected'
+    | 'Withdrawn'
+    | 'contract_pending'
+    | 'hired'
+    | 'auto_rejected';
   applied_at: string;
+  job_start_date?: string | null;
   reviewed_at?: string;
   parent_notes?: string;
+  employer_signed_at?: string | null;
+  helper_signed_at?: string | null;
+  contract_generated_at?: string | null;
 }
 
 export function useJobApplications(jobPostId: string) {
@@ -155,6 +169,9 @@ export function useJobApplications(jobPostId: string) {
 
   const getApplicationsByStatus = (status: string) => {
     if (status === 'all') return applications;
+    if (status === 'Rejected') {
+      return applications.filter((app) => app.status === 'Rejected' || app.status === 'auto_rejected');
+    }
     return applications.filter((app) => app.status === status);
   };
 
@@ -166,7 +183,7 @@ export function useJobApplications(jobPostId: string) {
       reviewed: apps.filter((a) => a?.status === 'Reviewed').length,
       shortlisted: apps.filter((a) => a?.status === 'Shortlisted').length,
       accepted: apps.filter((a) => a?.status === 'Accepted').length,
-      rejected: apps.filter((a) => a?.status === 'Rejected').length,
+      rejected: apps.filter((a) => a?.status === 'Rejected' || a?.status === 'auto_rejected').length,
     };
   };
 

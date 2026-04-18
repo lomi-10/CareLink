@@ -206,7 +206,7 @@ export default function JobApplications() {
     { label: 'Total',       value: applications.length,                                          color: theme.color.parent,  bg: theme.color.parentSoft,   icon: 'people-outline' as const },
     { label: 'Pending',     value: applications.filter(a => a.status === 'Pending').length,      color: theme.color.warning, bg: theme.color.warningSoft,  icon: 'time-outline' as const },
     { label: 'Shortlisted', value: applications.filter(a => a.status === 'Shortlisted').length,  color: '#7C3AED',           bg: '#F3E8FF',                icon: 'star-outline' as const },
-    { label: 'Hired',       value: applications.filter(a => a.status === 'Accepted').length,     color: theme.color.success, bg: theme.color.successSoft,  icon: 'checkmark-circle-outline' as const },
+    { label: 'Hired',       value: applications.filter(a => a.status === 'hired' || a.status === 'Accepted').length, color: theme.color.success, bg: theme.color.successSoft,  icon: 'checkmark-circle-outline' as const },
   ];
 
   const mainContent = (
@@ -315,6 +315,39 @@ export default function JobApplications() {
                 job_post_id:  selectedJobId,
               },
             } as any)}
+            onManageTasks={
+              ['hired', 'Accepted'].includes(String(item.status))
+                ? () => router.push({
+                    pathname: '/(parent)/placement_tasks',
+                    params: {
+                      application_id: String(item.application_id),
+                      helper_name: encodeURIComponent(item.helper_name ?? 'Helper'),
+                    },
+                  } as any)
+                : undefined
+            }
+            onViewAttendance={
+              ['hired', 'Accepted'].includes(String(item.status))
+                ? () => router.push({
+                    pathname: '/(parent)/placement_attendance',
+                    params: {
+                      application_id: String(item.application_id),
+                      helper_name: encodeURIComponent(item.helper_name ?? 'Helper'),
+                    },
+                  } as any)
+                : undefined
+            }
+            onViewLeaveRequests={
+              ['hired', 'Accepted'].includes(String(item.status))
+                ? () => router.push({
+                    pathname: '/(parent)/placement_leave_requests',
+                    params: {
+                      application_id: String(item.application_id),
+                      helper_name: encodeURIComponent(item.helper_name ?? 'Helper'),
+                    },
+                  } as any)
+                : undefined
+            }
           />
         )}
         contentContainerStyle={[s.listPad, isDesktop && s.listPadDesktop]}

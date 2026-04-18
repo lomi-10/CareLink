@@ -10,9 +10,15 @@ interface ApplicationCardProps {
   onReject: () => void;
   onScheduleInterview?: () => void;
   onMessage?: () => void;
+  /** Hired placement: open shared task list */
+  onManageTasks?: () => void;
+  /** Hired placement: weekly attendance */
+  onViewAttendance?: () => void;
+  /** Hired placement: leave requests */
+  onViewLeaveRequests?: () => void;
 }
 
-export function ApplicationCard({ application, onViewProfile, onShortlist, onReject, onScheduleInterview, onMessage }: ApplicationCardProps) {
+export function ApplicationCard({ application, onViewProfile, onShortlist, onReject, onScheduleInterview, onMessage, onManageTasks, onViewAttendance, onViewLeaveRequests }: ApplicationCardProps) {
   
   // Dynamic status configuration for premium badges
   const getStatusConfig = () => {
@@ -22,7 +28,10 @@ export function ApplicationCard({ application, onViewProfile, onShortlist, onRej
       case 'Shortlisted': return { color: '#7C3AED', bg: '#F3E8FF', icon: 'star', label: 'Shortlisted' };
       case 'Interview Scheduled': return { color: '#059669', bg: '#D1FAE5', icon: 'calendar', label: 'Interviewing' };
       case 'Accepted': return { color: '#059669', bg: '#D1FAE5', icon: 'checkmark-circle', label: 'Hired' };
+      case 'contract_pending': return { color: '#D97706', bg: '#FEF3C7', icon: 'document-text', label: 'Contract pending' };
+      case 'hired': return { color: '#059669', bg: '#D1FAE5', icon: 'checkmark-done', label: 'Hired' };
       case 'Rejected': return { color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle', label: 'Rejected' };
+      case 'auto_rejected': return { color: '#6B7280', bg: '#F3F4F6', icon: 'briefcase', label: 'Closed (other role)' };
       case 'Withdrawn': return { color: '#6B7280', bg: '#F3F4F6', icon: 'arrow-undo', label: 'Withdrawn' };
       default: return { color: '#6B7280', bg: '#F3F4F6', icon: 'information-circle', label: application.status };
     }
@@ -31,6 +40,9 @@ export function ApplicationCard({ application, onViewProfile, onShortlist, onRej
   const statusConfig = getStatusConfig();
   const canTakeAction = ['Pending', 'Reviewed'].includes(application.status);
   const canSchedule   = ['Shortlisted', 'Interview Scheduled'].includes(application.status);
+  const canManageTasks = ['hired', 'Accepted'].includes(application.status) && !!onManageTasks;
+  const canViewAttendance = ['hired', 'Accepted'].includes(application.status) && !!onViewAttendance;
+  const canViewLeaveRequests = ['hired', 'Accepted'].includes(application.status) && !!onViewLeaveRequests;
 
   // Format the applied date cleanly
   const formatDate = (dateStr: string) => {
@@ -136,6 +148,24 @@ export function ApplicationCard({ application, onViewProfile, onShortlist, onRej
           <TouchableOpacity style={styles.msgBtn} onPress={(e) => { e.stopPropagation(); onMessage(); }}>
             <Ionicons name="chatbubble-outline" size={15} color="#2563EB" />
             <Text style={styles.msgBtnText}>Message</Text>
+          </TouchableOpacity>
+        )}
+        {canManageTasks && (
+          <TouchableOpacity style={styles.tasksBtn} onPress={(e) => { e.stopPropagation(); onManageTasks?.(); }}>
+            <Ionicons name="checkbox-outline" size={15} color="#059669" />
+            <Text style={styles.tasksBtnText}>Tasks</Text>
+          </TouchableOpacity>
+        )}
+        {canViewAttendance && (
+          <TouchableOpacity style={styles.attendanceBtn} onPress={(e) => { e.stopPropagation(); onViewAttendance?.(); }}>
+            <Ionicons name="calendar-outline" size={15} color="#2563EB" />
+            <Text style={styles.attendanceBtnText}>Attendance</Text>
+          </TouchableOpacity>
+        )}
+        {canViewLeaveRequests && (
+          <TouchableOpacity style={styles.leaveBtn} onPress={(e) => { e.stopPropagation(); onViewLeaveRequests?.(); }}>
+            <Ionicons name="umbrella-outline" size={15} color="#D97706" />
+            <Text style={styles.leaveBtnText}>Leave</Text>
           </TouchableOpacity>
         )}
         {!canTakeAction && !canSchedule && <View style={{ flex: 1 }} />}
@@ -345,4 +375,40 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#DBEAFE',
   },
   msgBtnText: { color: '#2563EB', fontSize: 13, fontWeight: '700' },
+  tasksBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  tasksBtnText: { color: '#059669', fontSize: 13, fontWeight: '700' },
+  attendanceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  attendanceBtnText: { color: '#2563EB', fontSize: 13, fontWeight: '700' },
+  leaveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  leaveBtnText: { color: '#D97706', fontSize: 13, fontWeight: '700' },
 });

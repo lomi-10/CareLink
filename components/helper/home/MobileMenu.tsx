@@ -6,11 +6,25 @@ import React, { useEffect, useRef } from 'react';
 import { Modal, View, Text, TouchableOpacity, ScrollView, Animated, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 
 const { width } = Dimensions.get('window');
 
-export function MobileMenu({ isOpen, onClose, stats, handleLogout }: any) {
+export function MobileMenu({
+  isOpen,
+  onClose,
+  stats,
+  handleLogout,
+  notificationUnread = 0,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  stats?: { applications?: number };
+  handleLogout: () => void;
+  notificationUnread?: number;
+}) {
   const router = useRouter();
+  const { isWorkMode } = useHelperWorkMode();
   
   // This is the magic for the SIDEWAYS slide
   const slideAnim = useRef(new Animated.Value(-width)).current; 
@@ -57,12 +71,35 @@ export function MobileMenu({ isOpen, onClose, stats, handleLogout }: any) {
           </View>
 
           <ScrollView>
-            <DrawerItem icon="home" label="Home" path="/(helper)/home" />
-            <DrawerItem icon="search" label="Find Jobs" path="/(helper)/browse_jobs" />
-            <DrawerItem icon="people" label="My Applications" path="/(helper)/my_applications" badge={stats?.applications} />
-            <DrawerItem icon="chatbubbles" label="Messages" path="/(helper)/messages" />
-            <DrawerItem icon="person" label="Profile" path="/(helper)/profile" />
-            
+            {isWorkMode ? (
+              <>
+                <Text style={styles.sectionHint}>Use the bar below for Home, tasks &amp; messages.</Text>
+                <DrawerItem
+                  icon="notifications"
+                  label="Notifications"
+                  path="/(helper)/notifications"
+                  badge={notificationUnread}
+                />
+                <DrawerItem icon="person" label="Profile & documents" path="/(helper)/profile" />
+                <DrawerItem icon="color-palette-outline" label="Appearance & settings" path="/(helper)/settings" />
+              </>
+            ) : (
+              <>
+                <DrawerItem icon="home" label="Home" path="/(helper)/home" />
+                <DrawerItem icon="search" label="Find Jobs" path="/(helper)/browse_jobs" />
+                <DrawerItem icon="people" label="My Applications" path="/(helper)/my_applications" badge={stats?.applications} />
+                <DrawerItem icon="chatbubbles" label="Messages" path="/(helper)/messages" />
+                <DrawerItem
+                  icon="notifications"
+                  label="Notifications"
+                  path="/(helper)/notifications"
+                  badge={notificationUnread}
+                />
+                <DrawerItem icon="person" label="Profile" path="/(helper)/profile" />
+                <DrawerItem icon="color-palette-outline" label="Appearance & settings" path="/(helper)/settings" />
+              </>
+            )}
+
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
               <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
               <Text style={styles.logoutText}>Logout</Text>
@@ -83,6 +120,13 @@ const styles = StyleSheet.create({
   drawerItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, marginBottom: 4 },
   drawerItemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   drawerItemText: { fontSize: 16, fontWeight: "500", color: "#333" },
+  sectionHint: {
+    fontSize: 13,
+    color: "#64748B",
+    lineHeight: 18,
+    marginBottom: 16,
+    paddingHorizontal: 2,
+  },
   badge: { backgroundColor: "#FF3B30", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   badgeText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   logoutButton: { flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 20, borderRadius: 10, backgroundColor: "#FFF5F5", gap: 10, marginTop: 40 },

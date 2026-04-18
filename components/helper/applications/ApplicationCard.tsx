@@ -17,14 +17,20 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: React.Com
   'Shortlisted':        { color: '#7C3AED',            bg: '#F3E8FF',                icon: 'star-outline',          label: 'Shortlisted' },
   'Interview Scheduled':{ color: theme.color.helper,   bg: theme.color.helperSoft,   icon: 'calendar-outline',      label: 'Interview' },
   'Accepted':           { color: theme.color.success,  bg: theme.color.successSoft,  icon: 'checkmark-circle',      label: 'Hired!' },
+  'contract_pending':   { color: theme.color.warning,  bg: theme.color.warningSoft,  icon: 'document-text-outline', label: 'Contract' },
+  'hired':              { color: theme.color.success,  bg: theme.color.successSoft,  icon: 'checkmark-done-outline', label: 'Hired' },
   'Rejected':           { color: theme.color.danger,   bg: theme.color.dangerSoft,   icon: 'close-circle-outline',  label: 'Not Selected' },
+  'auto_rejected':      { color: theme.color.muted,    bg: theme.color.surface,      icon: 'briefcase-outline',     label: 'Closed (other role)' },
   'Withdrawn':          { color: theme.color.muted,    bg: theme.color.surface,      icon: 'arrow-undo-outline',    label: 'Withdrawn' },
 };
 
 const LEFT_ACCENT: Record<string, string> = {
   'Accepted':    theme.color.success,
+  'hired':       theme.color.success,
+  'contract_pending': theme.color.warning,
   'Shortlisted': '#7C3AED',
   'Rejected':    theme.color.danger,
+  'auto_rejected': theme.color.subtle,
   'Withdrawn':   theme.color.subtle,
 };
 

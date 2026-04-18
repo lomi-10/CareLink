@@ -1,0 +1,81 @@
+# CareLink — domestic helper recruitment (Philippines)
+
+## What this repo is
+Capstone-style product: **helpers** and **parents** connect for domestic work; **PESO** staff verify accounts and jobs; optional **admin**. Client is **React Native + Expo Router** (web + iOS/Android). Backend is **plain PHP** under `carelink_api/`, not Laravel.
+
+## Tech stack (actual)
+- **App:** Expo SDK ~54, React 19, React Native 0.81, **Expo Router** (`app/`), TypeScript.
+- **HTTP:** `fetch()` + `API_URL` from `constants/api.ts` (not Axios). Session via **`@react-native-async-storage/async-storage`** (`user_data` JSON), not Sanctum.
+- **Styling:** **`StyleSheet` + `constants/theme`** and shared components (e.g. `RoleScreenBackground`). Do **not** assume NativeWind/Tailwind — they are not in this project’s dependencies.
+- **State:** No Zustand / TanStack Query in `package.json`; use React hooks and existing patterns in `hooks/shared/`.
+- **Backend:** PHP files in `carelink_api/` with `dbcon.php`, JSON in/out. Apache/Laragon serves **`http://localhost/carelink_api`** (web) or LAN IP (mobile).
+- **DB:** MySQL (Laragon locally). Schema reference: **`current.sql`** at repo root when you need real table/column names.
+
+## Roles & routing
+- **`app/(helper)/`** — helper portal (home, jobs, applications, messages, notifications, profile…).
+- **`app/(parent)/`** — parent portal.
+- **`app/(PESO)/`** — PESO layout with sidebar + `Slot` for screens (verification, notifications, etc.).
+- **`user_type` in DB:** `parent` | `helper` | `peso` | `admin` (use these names in API/UI).
+
+## API conventions
+- Endpoints live under `carelink_api/<area>/...` (e.g. `helper/`, `parent/`, `peso/`, `messages/`, `shared/`).
+- Typical pattern: `GET ?user_id=…` or JSON **POST** body; CORS headers on PHP files.
+- **`carelink_api/shared/create_notification.php`** — notifications; requires **`notifications`** table in MySQL.
+- When changing schema, keep **`current.sql`** in sync when practical so the team dump stays accurate.
+
+## Platform notes
+- **Web vs native:** use `Platform.OS === 'web'` where behavior differs (e.g. image upload `FormData` / blobs on web vs `uri` on native). Both layouts exist for messaging and portals.
+- **`constants/api.ts`:** fix `COMPUTER_IP` / `webApiUrl` for your machine when testing mobile or another host.
+
+## Code expectations for agents
+- **Match existing code** in the file you edit (imports, StyleSheet vs patterns, hook names).
+- **Scope:** change only what the task needs; no drive-by refactors or unrelated files.
+- **Types:** prefer proper TypeScript; avoid unnecessary `any`.
+- Prefer **existing hooks** (`hooks/shared/` — e.g. `useMessages`, `useNotifications`) over duplicating API logic.
+
+## Product tone
+Professional, clear UI; accessible wording; PESO/regulatory context (minimum salary, verification queues) where relevant.
+
+---
+
+## CareLink wiki (Notion-style reference)
+
+### Free / low-cost services used
+- **Video calls:** [Jitsi Meet](https://meet.jit.si/) (open room URLs posted in chat; no CareLink-hosted SFU).
+- **Maps / geospatial:** React Native Maps or web maps with free tile providers where applicable (dev: confirm API keys / usage limits).
+- **Hosting:** Laragon (local), PHP + MySQL; no paid BaaS for core API in this repo.
+- **Push notifications:** Not fully wired; in-app notifications via `notifications` table + polling (`useNotifications`).
+
+### Database schema (high level)
+- **`users`** — auth, `user_type` (parent/helper/peso/admin), status, profile flags.
+- **`helper_profiles` / `parent_profiles`** — extended profile + verification_status.
+- **`job_posts`**, **`job_applications`**, **`interview_schedules`** — hiring funnel (apply → interview → hire).
+- **`messages`** — chat (`message_type`: text | image | video_call), optional `job_post_id`.
+- **`notifications`** — inbox per `user_id` (`type`, `title`, `message`, `ref_type`/`ref_id`).
+- **`user_documents`**, PESO verification flows — see `current.sql` for full columns.
+
+### Modules & main flows
+1. **Auth** — login/register PHP → `user_data` in AsyncStorage → Expo Router groups by role.
+2. **Jobs** — parent posts (`parent/post_job.php`); helpers browse/apply; PESO may verify posts.
+3. **Messaging** — `messages/*.php`, `useChat` / `useConversations`; images in `uploads/messages/` (URL built in `get_messages.php`).
+4. **Interviews** — parent: `InterviewModal` → `interviews/schedule.php` (replaces prior row per `application_id`, notifies parent+helper, inserts chat line). Helper can propose `interviews/request_from_chat.php`.
+5. **Hire** — `parent/hire_helper.php` (placement + notifications). **Reject** — `parent/update_application_status.php`.
+6. **Notifications** — `shared/create_notification.php` + `helper|parent|peso/get_notifications.php`, `shared/mark_read.php`.
+
+### Current product “cycle” (happy path)
+Helper completes profile → PESO verifies → parent posts job → helper applies → chat / schedule interview → parent hires → placement record.
+
+### Code guides (for contributors)
+- Add API: new PHP under `carelink_api/`, reuse `create_notification.php` where users need alerts.
+- Chat images: store path `uploads/messages/...`; **always** return absolute `http(s)://host/...` from `get_messages.php` (files live beside `carelink_api/`, not inside it).
+- Mobile drawers: `MobileMenu` components list routes; keep **Notifications** in sync with `useNotifications` badge.
+- Logout: `useAuth().handleLogout` clears storage and `router.replace('/')` — avoid `setTimeout` around logout (modal stacking issues).
+
+### Future adjustments (suggested, not implemented)
+- **Database:** migrate from MySQL (Laragon) to **PostgreSQL** (or managed RDS/Cloud SQL) with a formal migration tool (Flyway, Prisma migrate, etc.).
+- **Backend:** optional rewrite to **Laravel**, **Node (Nest/Fastify)**, or **serverless** with a single OpenAPI contract; keep mobile clients on `fetch` or generate a typed client.
+- **Real-time chat:** WebSocket or Ably/Pusher instead of polling `get_messages.php`.
+- **Video:** embed Jitsi with JWT rooms or Agora/Twilio for production-grade rooms (TURN, moderation).
+- **Media:** S3/Cloudinary for chat images with signed URLs; virus scan on upload.
+- **Push:** FCM + APNs via Expo notifications.
+- **Search:** Postgres full-text or Meilisearch/Algolia for jobs/helpers.

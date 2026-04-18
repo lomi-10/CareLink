@@ -19,14 +19,17 @@ import {
   StatCard, MobileStatCard, QuickAction, SectionHeader,
   MobileMenu, RecommendationsSection,
 } from '@/components/helper/home';
+import { WorkModeDashboard, WorkModeTabBar } from '@/components/helper/work';
+import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 
 export default function HelperHome() {
   const router = useRouter();
 
   const { userData, loading: authLoading, handleLogout, getFullName } = useAuth();
   const { stats, loading: statsLoading, refresh } = useHelperStats();
-  const { isDesktop, isMobile }  = useResponsive();
+  const { isDesktop } = useResponsive();
   const { unreadCount } = useNotifications('helper');
+  const { ready: workReady, isWorkMode, activeHire, refresh: refreshWork } = useHelperWorkMode();
 
   const [isMobileMenuOpen,    setIsMobileMenuOpen]    = useState(false);
   const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
@@ -35,7 +38,10 @@ export default function HelperHome() {
   const initiateLogout = () => { setIsMobileMenuOpen(false); setConfirmLogoutVisible(true); };
   const executeLogout  = () => { setConfirmLogoutVisible(false); setSuccessLogoutVisible(true); };
 
-  const loading = authLoading || statsLoading;
+  const loading = authLoading || statsLoading || !workReady;
+
+  const showWorkDash = isWorkMode && activeHire && userData;
+  const helperIdNum = userData ? Number(userData.user_id) : 0;
 
   if (loading) {
     return (
@@ -76,13 +82,23 @@ export default function HelperHome() {
         <ScrollView
           style={layoutStyles.mainContent}
           contentContainerStyle={[layoutStyles.scrollContent, { maxWidth: 900, alignSelf: 'center', width: '100%' }]}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={false}
+              onRefresh={() => {
+                refresh();
+                void refreshWork();
+              }}
+            />
+          }
         >
           {/* Notification bar for desktop */}
           <View style={s.desktopTopBar}>
             <View>
-              <Text style={s.desktopPageTitle}>Dashboard</Text>
-              <Text style={s.desktopPageSub}>Helper Portal — Domestic Services</Text>
+              <Text style={s.desktopPageTitle}>{showWorkDash ? 'Work dashboard' : 'Dashboard'}</Text>
+              <Text style={s.desktopPageSub}>
+                {showWorkDash ? 'Your active placement' : 'Helper Portal — Domestic Services'}
+              </Text>
             </View>
             <TouchableOpacity
               style={[s.desktopNotifBtn, unreadCount > 0 && s.desktopNotifBtnActive]}
@@ -101,31 +117,40 @@ export default function HelperHome() {
             </TouchableOpacity>
           </View>
 
-          <GreetingCard userName={getFullName()} />
+          {showWorkDash ? (
+            <WorkModeDashboard
+              helperId={helperIdNum}
+              userFirstName={userData.first_name}
+              activeHire={activeHire}
+              onRefreshWorkContext={refreshWork}
+            />
+          ) : (
+            <>
+              <GreetingCard userName={getFullName()} />
 
-          {/* Stats */}
-          <SectionHeader title="Your Overview" />
-          <View style={layoutStyles.statsGrid}>
-            <StatCard icon="briefcase" iconColor={theme.color.helper} iconBg={theme.color.helperSoft}
-              title="Applications" value={stats.applications} onPress={() => router.push('/(helper)/my_applications')} />
-            <StatCard icon="bookmark" iconColor={theme.color.info} iconBg={theme.color.infoSoft}
-              title="Saved Jobs" value={stats.saved_jobs} onPress={() => router.push('/(helper)/saved_jobs')} />
-            <StatCard icon="eye" iconColor={theme.color.success} iconBg={theme.color.successSoft}
-              title="Profile Views" value={stats.profile_views} />
-          </View>
+              <SectionHeader title="Your Overview" />
+              <View style={layoutStyles.statsGrid}>
+                <StatCard icon="briefcase" iconColor={theme.color.helper} iconBg={theme.color.helperSoft}
+                  title="Applications" value={stats.applications} onPress={() => router.push('/(helper)/my_applications')} />
+                <StatCard icon="bookmark" iconColor={theme.color.info} iconBg={theme.color.infoSoft}
+                  title="Saved Jobs" value={stats.saved_jobs} onPress={() => router.push('/(helper)/saved_jobs')} />
+                <StatCard icon="eye" iconColor={theme.color.success} iconBg={theme.color.successSoft}
+                  title="Profile Views" value={stats.profile_views} />
+              </View>
 
-          {/* Quick Actions */}
-          <SectionHeader title="Quick Actions" />
-          <View style={layoutStyles.quickActionsGrid}>
-            <QuickActionDesktop icon="search" title="Find Jobs" desc="Browse PESO-verified openings"
-              color={theme.color.info} onPress={() => router.push('/(helper)/browse_jobs')} />
-            <QuickActionDesktop icon="person" title="My Profile" desc="Update your info & docs"
-              color={theme.color.helper} onPress={() => router.push('/(helper)/profile')} />
-            <QuickActionDesktop icon="document-text" title="Applications" desc="Track your applications"
-              color={theme.color.success} onPress={() => router.push('/(helper)/my_applications')} />
-          </View>
+              <SectionHeader title="Quick Actions" />
+              <View style={layoutStyles.quickActionsGrid}>
+                <QuickActionDesktop icon="search" title="Find Jobs" desc="Browse PESO-verified openings"
+                  color={theme.color.info} onPress={() => router.push('/(helper)/browse_jobs')} />
+                <QuickActionDesktop icon="person" title="My Profile" desc="Update your info & docs"
+                  color={theme.color.helper} onPress={() => router.push('/(helper)/profile')} />
+                <QuickActionDesktop icon="document-text" title="Applications" desc="Track your applications"
+                  color={theme.color.success} onPress={() => router.push('/(helper)/my_applications')} />
+              </View>
 
-          <RecommendationsSection />
+              <RecommendationsSection />
+            </>
+          )}
         </ScrollView>
         {renderModals()}
       </View>
@@ -138,52 +163,73 @@ export default function HelperHome() {
       <MobileHeader
         onMenuPress={() => setIsMobileMenuOpen(true)}
         accentColor={theme.color.helper}
-        subtitle="Helper Portal"
+        subtitle={showWorkDash ? 'Work Mode' : 'Helper Portal'}
         notificationCount={unreadCount}
         onNotificationPress={() => router.push('/(helper)/notifications')}
       />
       <ScrollView
-        contentContainerStyle={[layoutStyles.mobileScrollContent, { paddingBottom: 60 }]}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
+        contentContainerStyle={[
+          layoutStyles.mobileScrollContent,
+          { paddingBottom: showWorkDash ? 88 : 60 },
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={() => {
+              refresh();
+              void refreshWork();
+            }}
+          />
+        }
       >
-        <GreetingCard userName={getFullName()} />
+        {showWorkDash && userData ? (
+          <WorkModeDashboard
+            helperId={helperIdNum}
+            userFirstName={userData.first_name}
+            activeHire={activeHire}
+            onRefreshWorkContext={refreshWork}
+          />
+        ) : (
+          <>
+            <GreetingCard userName={getFullName()} />
 
-        {/* Stats row */}
-        <View style={layoutStyles.mobileStatsRow}>
-          <MobileStatCard icon="briefcase" color={theme.color.helper} value={stats.applications}
-            label="Applied" onPress={() => router.push('/(helper)/my_applications')} />
-          <MobileStatCard icon="bookmark" color={theme.color.info} value={stats.saved_jobs}
-            label="Saved" onPress={() => router.push('/(helper)/saved_jobs')} />
-          <MobileStatCard icon="eye" color={theme.color.success} value={stats.profile_views} label="Views" />
-        </View>
+            <View style={layoutStyles.mobileStatsRow}>
+              <MobileStatCard icon="briefcase" color={theme.color.helper} value={stats.applications}
+                label="Applied" onPress={() => router.push('/(helper)/my_applications')} />
+              <MobileStatCard icon="bookmark" color={theme.color.info} value={stats.saved_jobs}
+                label="Saved" onPress={() => router.push('/(helper)/saved_jobs')} />
+              <MobileStatCard icon="eye" color={theme.color.success} value={stats.profile_views} label="Views" />
+            </View>
 
-        {/* Quick Actions */}
-        <SectionHeader title="Quick Actions" />
-        <View style={layoutStyles.quickActionsGrid}>
-          <QuickAction icon="search" label="Find Jobs" color={theme.color.info}
-            onPress={() => router.push('/(helper)/browse_jobs')} />
-          <QuickAction icon="person" label="My Profile" color={theme.color.helper}
-            onPress={() => router.push('/(helper)/profile')} />
-          <QuickAction icon="document-text" label="Applications" color={theme.color.success}
-            onPress={() => router.push('/(helper)/my_applications')} />
-          <QuickAction icon="document" label="Documents" color={theme.color.peso}
-            onPress={() => router.push('/(helper)/profile')} />
-        </View>
+            <SectionHeader title="Quick Actions" />
+            <View style={layoutStyles.quickActionsGrid}>
+              <QuickAction icon="search" label="Find Jobs" color={theme.color.info}
+                onPress={() => router.push('/(helper)/browse_jobs')} />
+              <QuickAction icon="person" label="My Profile" color={theme.color.helper}
+                onPress={() => router.push('/(helper)/profile')} />
+              <QuickAction icon="document-text" label="Applications" color={theme.color.success}
+                onPress={() => router.push('/(helper)/my_applications')} />
+              <QuickAction icon="document" label="Documents" color={theme.color.peso}
+                onPress={() => router.push('/(helper)/profile')} />
+            </View>
 
-        {/* Recruitment banner */}
-        <View style={s.recruitBanner}>
-          <View style={s.recruitBannerLeft}>
-            <Text style={s.recruitBannerTitle}>Ready to get hired?</Text>
-            <Text style={s.recruitBannerSub}>All jobs are PESO-verified and safe.</Text>
-          </View>
-          <TouchableOpacity
-            style={[s.recruitBannerBtn, { backgroundColor: theme.color.helper }]}
-            onPress={() => router.push('/(helper)/browse_jobs')}
-          >
-            <Text style={s.recruitBannerBtnText}>Browse</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={s.recruitBanner}>
+              <View style={s.recruitBannerLeft}>
+                <Text style={s.recruitBannerTitle}>Ready to get hired?</Text>
+                <Text style={s.recruitBannerSub}>All jobs are PESO-verified and safe.</Text>
+              </View>
+              <TouchableOpacity
+                style={[s.recruitBannerBtn, { backgroundColor: theme.color.helper }]}
+                onPress={() => router.push('/(helper)/browse_jobs')}
+              >
+                <Text style={s.recruitBannerBtnText}>Browse</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </ScrollView>
+
+      {showWorkDash ? <WorkModeTabBar /> : null}
 
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} stats={stats} handleLogout={initiateLogout} />
       {renderModals()}

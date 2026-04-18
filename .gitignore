@@ -3,6 +3,9 @@
 # dependencies
 node_modules/
 
+# PHP (CareLink API — Dompdf via Composer; keep composer.lock if you add it)
+carelink_api/vendor/
+
 # Expo
 .expo/
 dist/

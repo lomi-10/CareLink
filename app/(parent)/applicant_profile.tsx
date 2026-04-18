@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +20,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Components
 import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared';
 import API_URL from '@/constants/api';
+import { theme } from '@/constants/theme';
+import {
+  HireJobPickerModal,
+  HireContractTermsModal,
+  toYmdInput,
+  type HireJobOptionRow,
+} from '@/components/parent/hire';
 
 interface ApplicantDetails {
   application_id: string;
@@ -40,6 +49,7 @@ interface ApplicantDetails {
   status: string;
   applied_at: string;
   parent_notes?: string;
+  job_start_date?: string | null;
 }
 
 export default function ApplicantProfile() {
@@ -66,6 +76,21 @@ export default function ApplicantProfile() {
 
   const [hireConfirmOpen, setHireConfirmOpen] = useState(false);
   const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
+  const [hirePickVisible, setHirePickVisible] = useState(false);
+  const [hirePickLoading, setHirePickLoading] = useState(false);
+  const [hirePickHelperName, setHirePickHelperName] = useState('');
+  const [hirePickApps, setHirePickApps] = useState<HireJobOptionRow[]>([]);
+  const [hirePickSelectedId, setHirePickSelectedId] = useState<number | null>(null);
+  const [hireTarget, setHireTarget] = useState<{
+    application_id: string;
+    job_post_id: string;
+    job_title?: string;
+    job_start_date?: string | null;
+  } | null>(null);
+  const [hireTermsVisible, setHireTermsVisible] = useState(false);
+  const [hireContractStartDate, setHireContractStartDate] = useState('');
+  const [hireContractEndDate, setHireContractEndDate] = useState('');
+  const [hireContractNotes, setHireContractNotes] = useState('');
   const afterNotificationClose = useRef<(() => void) | null>(null);
 
   const dismissNotification = () => {
@@ -108,33 +133,138 @@ export default function ApplicantProfile() {
     }
   };
 
+  const openHireFlow = async () => {
+    setHireTarget(null);
+    setHirePickLoading(true);
+    try {
+      const userData = await AsyncStorage.getItem('user_data');
+      if (!userData) return;
+      const user = JSON.parse(userData);
+      const res = await fetch(
+        `${API_URL}/parent/get_helper_hire_options.php?parent_id=${user.user_id}&helper_id=${helperId}`,
+      );
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || 'Could not load hire options');
+      if (!data.needs_selection) {
+        setHireTarget(null);
+        setHireContractStartDate(toYmdInput(applicant?.job_start_date));
+        setHireContractEndDate('');
+        setHireContractNotes('');
+        setHireTermsVisible(true);
+        return;
+      }
+      const apps = (data.applications ?? []).map((a: any) => ({
+        application_id: Number(a.application_id),
+        job_post_id: Number(a.job_post_id),
+        job_title: String(a.job_title ?? ''),
+        status: String(a.status ?? ''),
+        applied_at: String(a.applied_at ?? ''),
+        job_start_date: a.job_start_date ?? null,
+      }));
+      setHirePickHelperName(String(data.helper_name ?? applicant?.helper_name ?? 'This helper'));
+      setHirePickApps(apps);
+      const curId = Number(applicationId);
+      const pre = apps.find(a => a.application_id === curId) ?? apps[0] ?? null;
+      setHirePickSelectedId(pre?.application_id ?? null);
+      setHirePickVisible(true);
+    } catch (error: any) {
+      setNotification({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: error.message || 'Could not start hire',
+      });
+    } finally {
+      setHirePickLoading(false);
+    }
+  };
+
+  const confirmHireJobPick = () => {
+    const row = hirePickApps.find(a => a.application_id === hirePickSelectedId);
+    if (!row) return;
+    setHireTarget({
+      application_id: String(row.application_id),
+      job_post_id: String(row.job_post_id),
+      job_title: row.job_title,
+      job_start_date: row.job_start_date ?? null,
+    });
+    setHireContractStartDate(toYmdInput(row.job_start_date));
+    setHireContractEndDate('');
+    setHireContractNotes('');
+    setHirePickVisible(false);
+    setHireTermsVisible(true);
+  };
+
+  const confirmHireTerms = () => {
+    const end = hireContractEndDate.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+      setNotification({
+        visible: true,
+        type: 'warning',
+        title: 'Contract end date',
+        message: 'Enter the contract end date as YYYY-MM-DD (required).',
+      });
+      return;
+    }
+    const start = hireContractStartDate.trim();
+    if (start !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(start)) {
+      setNotification({
+        visible: true,
+        type: 'warning',
+        title: 'Start date',
+        message: 'Employment start must be YYYY-MM-DD, or leave blank to use the job post date.',
+      });
+      return;
+    }
+    if (start !== '' && end < start) {
+      setNotification({
+        visible: true,
+        type: 'warning',
+        title: 'Dates',
+        message: 'Contract end must be on or after the employment start date.',
+      });
+      return;
+    }
+    setHireTermsVisible(false);
+    setHireConfirmOpen(true);
+  };
+
   const runHire = async () => {
     setHireConfirmOpen(false);
     try {
       const userData = await AsyncStorage.getItem('user_data');
       if (!userData) return;
       const user = JSON.parse(userData);
+      const appId = hireTarget?.application_id ?? applicationId;
+      const jpId = hireTarget?.job_post_id ?? jobId;
 
       const response = await fetch(`${API_URL}/parent/hire_helper.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          application_id: applicationId,
-          job_post_id: jobId,
+          application_id: appId,
+          job_post_id: jpId,
           parent_id: user.user_id,
           helper_id: helperId,
+          contract_end_date: hireContractEndDate.trim(),
+          contract_start_date: hireContractStartDate.trim() || undefined,
+          contract_terms_notes: hireContractNotes.trim() || undefined,
         }),
       });
 
       const data = await response.json();
 
       if (data.success) {
+        setHireTarget(null);
+        setHireContractEndDate('');
+        setHireContractStartDate('');
+        setHireContractNotes('');
         afterNotificationClose.current = () => router.push('/(parent)/jobs');
         setNotification({
           visible: true,
           type: 'success',
           title: 'Success',
-          message: `You have hired ${applicant?.helper_name}. The job has been marked as filled.`,
+          message: `Contract started for ${applicant?.helper_name}. Review and sign in Messages when ready.`,
         });
       } else {
         throw new Error(data.message);
@@ -283,15 +413,45 @@ export default function ApplicantProfile() {
         duration={2200}
       />
 
+      <HireContractTermsModal
+        visible={hireTermsVisible}
+        jobTitle={hireTarget?.job_title ?? 'this position'}
+        contractStartDate={hireContractStartDate}
+        contractEndDate={hireContractEndDate}
+        contractNotes={hireContractNotes}
+        onChangeStart={setHireContractStartDate}
+        onChangeEnd={setHireContractEndDate}
+        onChangeNotes={setHireContractNotes}
+        onCancel={() => { setHireTermsVisible(false); setHireTarget(null); }}
+        onContinue={confirmHireTerms}
+      />
+
+      <HireJobPickerModal
+        visible={hirePickVisible}
+        helperName={hirePickHelperName}
+        accentColor={theme.color.parent}
+        applications={hirePickApps}
+        selectedId={hirePickSelectedId}
+        onSelect={setHirePickSelectedId}
+        onCancel={() => setHirePickVisible(false)}
+        onContinue={confirmHireJobPick}
+      />
+
       <ConfirmationModal
         visible={hireConfirmOpen}
-        title="Hire helper"
-        message={`Hire ${applicant?.helper_name}? This will mark the job as filled and notify the helper.`}
-        confirmText="Hire"
+        title="Start employment contract?"
+        message={`Create a draft contract for "${hireTarget?.job_title ?? 'this position'}" with ${applicant.helper_name}, ending ${hireContractEndDate.trim() || '(set date)'}. The hire is not final until both of you review and confirm.`}
+        confirmText="Continue"
         cancelText="Cancel"
         type="success"
         onConfirm={runHire}
-        onCancel={() => setHireConfirmOpen(false)}
+        onCancel={() => {
+          setHireConfirmOpen(false);
+          setHireTarget(null);
+          setHireContractEndDate('');
+          setHireContractStartDate('');
+          setHireContractNotes('');
+        }}
       />
 
       <ConfirmationModal
@@ -466,7 +626,12 @@ export default function ApplicantProfile() {
       </ScrollView>
 
       {/* Action Buttons */}
-      {applicant.status !== 'Accepted' && applicant.status !== 'Rejected' && (
+      {applicant.status !== 'Accepted'
+        && applicant.status !== 'Rejected'
+        && applicant.status !== 'Withdrawn'
+        && applicant.status !== 'contract_pending'
+        && applicant.status !== 'hired'
+        && applicant.status !== 'auto_rejected' && (
         <View style={styles.actionBar}>
           <TouchableOpacity
             style={styles.rejectButton}
@@ -490,11 +655,18 @@ export default function ApplicantProfile() {
 
           <TouchableOpacity
             style={styles.hireButton}
-            onPress={() => setHireConfirmOpen(true)}
+            onPress={() => { void openHireFlow(); }}
             activeOpacity={0.7}
+            disabled={hirePickLoading}
           >
-            <Ionicons name="checkmark-circle" size={20} color="#fff" />
-            <Text style={styles.hireButtonText}>Hire</Text>
+            {hirePickLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                <Text style={styles.hireButtonText}>Hire</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       )}

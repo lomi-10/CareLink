@@ -141,6 +141,32 @@ export const styles = StyleSheet.create({
     color: '#FF3B30',
     fontWeight: '700',
   },
+  birthDateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: '#DEE2E6',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    backgroundColor: '#fff',
+    marginBottom: 4,
+  },
+  birthDateBtnText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1A1C1E',
+    fontWeight: '600',
+  },
+  birthDateBtnPlaceholder: {
+    color: '#868E96',
+    fontWeight: '500',
+  },
+  /** Web birth `<input type="date">` — spacing matches `LabeledInput` container */
+  birthWebWrap: {
+    marginBottom: 20,
+  },
   infoAlert: {
     flexDirection: 'row',
     alignItems: 'center',

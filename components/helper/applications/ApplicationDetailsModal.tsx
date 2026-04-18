@@ -50,11 +50,29 @@ const STATUS_CONFIG: Record<string, {
     title: 'Congratulations! You are Hired!',
     subtitle: 'The employer has accepted your application for this position.',
   },
+  'contract_pending': {
+    color: theme.color.warning, bg: theme.color.warningSoft,
+    icon: 'document-text-outline',
+    title: 'Contract pending',
+    subtitle: 'Review the employment contract in Messages and confirm when you agree.',
+  },
+  'hired': {
+    color: theme.color.success, bg: theme.color.successSoft,
+    icon: 'checkmark-done-outline',
+    title: 'Hired — contract confirmed',
+    subtitle: 'You and the employer have signed. This position is confirmed.',
+  },
   'Rejected': {
     color: theme.color.danger, bg: theme.color.dangerSoft,
     icon: 'close-circle-outline',
     title: 'Application Declined',
     subtitle: 'The employer has decided to move forward with other candidates.',
+  },
+  'auto_rejected': {
+    color: theme.color.muted, bg: theme.color.surface,
+    icon: 'briefcase-outline',
+    title: 'Application closed',
+    subtitle: 'This application was closed because the employer hired you for another of their job posts.',
   },
   'Withdrawn': {
     color: theme.color.muted, bg: theme.color.surface,

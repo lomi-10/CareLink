@@ -1,7 +1,7 @@
  // app/(helper)/saved_jobs.tsx
 // Saved Jobs Screen - View and manage saved job postings
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -28,12 +28,19 @@ import {
 } from '@/components/helper/jobs/';
 
 import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared/';
+import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 
 export default function SavedJobs() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
-  
+  const { ready, isWorkMode } = useHelperWorkMode();
+
+  useEffect(() => {
+    if (!ready) return;
+    if (isWorkMode) router.replace('/(helper)/home');
+  }, [ready, isWorkMode, router]);
+
   const {
     savedJobs,
     loading,
@@ -130,6 +137,10 @@ export default function SavedJobs() {
       type: 'success',
     });
   };
+
+  if (ready && isWorkMode) {
+    return <LoadingSpinner visible message="Opening your work dashboard…" />;
+  }
 
   if (loading) {
     return <LoadingSpinner visible={true} message="Loading saved jobs..." />;

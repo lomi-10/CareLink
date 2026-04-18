@@ -11,6 +11,8 @@ import { theme } from '@/constants/theme';
 import { useNotifications } from '@/hooks/shared';
 import { useResponsive } from '@/hooks/shared';
 import { Sidebar } from '@/components/helper/home';
+import { WorkModeTabBar } from '@/components/helper/work';
+import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { useAuth } from '@/hooks/shared';
 import type { Notification } from '@/hooks/shared';
@@ -30,6 +32,14 @@ const TYPE_CONFIG: Record<string, { icon: React.ComponentProps<typeof Ionicons>[
   interview_scheduled:  { icon: 'calendar-outline',        color: '#7C3AED',           bg: '#F3E8FF' },
   interview_confirmed:  { icon: 'checkmark-circle-outline',color: theme.color.success, bg: theme.color.successSoft },
   interview_declined:   { icon: 'close-circle-outline',    color: theme.color.danger,  bg: theme.color.dangerSoft },
+  interview_request:    { icon: 'calendar-outline',        color: theme.color.parent,  bg: theme.color.parentSoft },
+  peso_queue_user:      { icon: 'people-outline',          color: theme.color.peso,    bg: theme.color.pesoSoft },
+  peso_queue_job:       { icon: 'briefcase-outline',       color: theme.color.peso,    bg: theme.color.pesoSoft },
+  message_received:     { icon: 'chatbubble-outline',      color: theme.color.info,    bg: theme.color.infoSoft },
+  task_completed:       { icon: 'checkmark-done-outline',  color: theme.color.success, bg: theme.color.successSoft },
+  attendance_checkin:   { icon: 'log-in-outline',            color: theme.color.success, bg: theme.color.successSoft },
+  leave_request_submitted: { icon: 'umbrella-outline',      color: theme.color.warning, bg: theme.color.warningSoft },
+  leave_request_responded: { icon: 'checkmark-circle-outline', color: theme.color.info, bg: theme.color.infoSoft },
 };
 
 function timeAgo(dateStr: string) {
@@ -64,8 +74,7 @@ function NotifItem({ item, onPress }: { item: Notification; onPress: () => void 
   );
 }
 
-function NotifContent({ accent }: { accent: string }) {
-  const router = useRouter();
+function NotifContent({ accent, listBottomExtra = 0 }: { accent: string; listBottomExtra?: number }) {
   const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } = useNotifications('helper');
 
   return (
@@ -111,7 +120,10 @@ function NotifContent({ accent }: { accent: string }) {
           )}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={accent} />}
           ItemSeparatorComponent={() => <View style={s.sep} />}
-          contentContainerStyle={s.listContent}
+          contentContainerStyle={[
+            s.listContent,
+            listBottomExtra > 0 ? { paddingBottom: 20 + listBottomExtra } : null,
+          ]}
         />
       )}
     </View>
@@ -122,6 +134,7 @@ export default function HelperNotificationsScreen() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
+  const { isWorkMode } = useHelperWorkMode();
 
   const [confirmLogout, setConfirmLogout] = React.useState(false);
   const [successLogout, setSuccessLogout] = React.useState(false);
@@ -176,7 +189,13 @@ export default function HelperNotificationsScreen() {
         <Text style={s.mobileHeaderTitle}>Notifications</Text>
         <View style={{ width: 42 }} />
       </View>
-      <NotifContent accent={theme.color.helper} />
+      <View style={s.mobileBody}>
+        <NotifContent
+          accent={theme.color.helper}
+          listBottomExtra={isWorkMode ? 72 : 0}
+        />
+      </View>
+      {isWorkMode ? <WorkModeTabBar /> : null}
     </SafeAreaView>
   );
 }
@@ -192,6 +211,7 @@ const s = StyleSheet.create({
 
   // ── Mobile
   mobileRoot:   { flex: 1 },
+  mobileBody:   { flex: 1, minHeight: 0 },
   mobileHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 8, paddingVertical: 10,

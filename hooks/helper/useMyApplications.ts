@@ -14,7 +14,17 @@ export interface Application {
   
   // Application Details
   cover_letter: string;
-  status: 'Pending' | 'Reviewed' | 'Shortlisted' | 'Interview Scheduled' | 'Accepted' | 'Rejected' | 'Withdrawn';
+  status:
+    | 'Pending'
+    | 'Reviewed'
+    | 'Shortlisted'
+    | 'Interview Scheduled'
+    | 'Accepted'
+    | 'Rejected'
+    | 'Withdrawn'
+    | 'contract_pending'
+    | 'hired'
+    | 'auto_rejected';
   parent_notes?: string;
   message_from_parent?: string; // Added to fix TS error
   
@@ -22,6 +32,9 @@ export interface Application {
   applied_at: string;
   reviewed_at?: string;
   updated_at?: string;
+  employer_signed_at?: string | null;
+  helper_signed_at?: string | null;
+  contract_generated_at?: string | null;
   
   // Job Details
   job_title: string;
@@ -57,6 +70,8 @@ export interface ApplicationStats {
   accepted: number;
   rejected: number;
   withdrawn: number;
+  contract_pending: number;
+  hired: number;
 }
 
 export function useMyApplications() {
@@ -123,6 +138,10 @@ export function useMyApplications() {
           ['Pending', 'Reviewed', 'Shortlisted', 'Interview Scheduled'].includes(app.status)
         )
       );
+    } else if (statusFilter === 'Rejected') {
+      setFilteredApplications(
+        applications.filter((app) => app.status === 'Rejected' || app.status === 'auto_rejected'),
+      );
     } else {
       setFilteredApplications(
         applications.filter((app) => app.status === statusFilter)
@@ -139,8 +158,11 @@ export function useMyApplications() {
       shortlisted: applications.filter((app) => app.status === 'Shortlisted').length,
       interview_scheduled: applications.filter((app) => app.status === 'Interview Scheduled').length,
       accepted: applications.filter((app) => app.status === 'Accepted').length,
-      rejected: applications.filter((app) => app.status === 'Rejected').length,
+      rejected: applications.filter((app) => app.status === 'Rejected' || app.status === 'auto_rejected').length,
+      auto_rejected: applications.filter((app) => app.status === 'auto_rejected').length,
       withdrawn: applications.filter((app) => app.status === 'Withdrawn').length,
+      contract_pending: applications.filter((app) => app.status === 'contract_pending').length,
+      hired: applications.filter((app) => app.status === 'hired').length,
     };
   };
 

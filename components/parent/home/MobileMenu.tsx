@@ -9,7 +9,19 @@ import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
-export function MobileMenu({ isOpen, onClose, stats, handleLogout }: any) {
+export function MobileMenu({
+  isOpen,
+  onClose,
+  stats,
+  handleLogout,
+  notificationUnread = 0,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  stats?: { applications?: number };
+  handleLogout: () => void;
+  notificationUnread?: number;
+}) {
   const router = useRouter();
   
   // This is the magic for the SIDEWAYS slide
@@ -62,6 +74,12 @@ export function MobileMenu({ isOpen, onClose, stats, handleLogout }: any) {
             <DrawerItem icon="briefcase" label="My Job Posts" path="/(parent)/jobs" />
             <DrawerItem icon="people" label="Applications" path="/(parent)/applications" />
             <DrawerItem icon="chatbubbles" label="Messages" path="/(parent)/messages" />
+            <DrawerItem
+              icon="notifications"
+              label="Notifications"
+              path="/(parent)/notifications"
+              badge={notificationUnread}
+            />
             <DrawerItem icon="person" label="Profile" path="/(parent)/profile" />
             <DrawerItem icon="settings" label="Settings" path="/(parent)/settings" />
             

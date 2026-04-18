@@ -2,7 +2,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -28,11 +28,18 @@ import {
 } from '@/components/helper/jobs/';
 import { ConfirmationModal, LoadingSpinner, NotificationModal } from '@/components/shared/';
 import { theme } from '@/constants/theme';
+import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 
 export default function BrowseJobs() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
+  const { ready, isWorkMode } = useHelperWorkMode();
+
+  useEffect(() => {
+    if (!ready) return;
+    if (isWorkMode) router.replace('/(helper)/home');
+  }, [ready, isWorkMode, router]);
 
   const {
     jobs, filters, loading, updateFilter, resetFilters, refresh,
@@ -71,6 +78,10 @@ export default function BrowseJobs() {
     setNotification({ visible: true, message: 'Application submitted successfully!', type: 'success' });
     refresh();
   };
+
+  if (ready && isWorkMode) {
+    return <LoadingSpinner visible message="Opening your work dashboard…" />;
+  }
 
   if (loading && jobs.length === 0) {
     return <LoadingSpinner visible message="Finding jobs for you…" />;

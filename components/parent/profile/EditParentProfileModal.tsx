@@ -20,6 +20,7 @@ import API_URL from '@/constants/api';
 import { FormModalLayout, NotificationModal, LocationSearchInput, LocationResult } from '@/components/shared';
 import LabeledInput from '@/components/shared/LabeledInput';
 import { theme } from '@/constants/theme';
+import { PARENT_HOUSEHOLD_TYPE_OPTIONS } from '@/constants/parentHousehold';
 
 interface EditProfileModalProps {
   visible: boolean;
@@ -63,6 +64,7 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
   
   // 2. Household fields
   const [householdSize, setHouseholdSize] = useState('');
+  const [householdType, setHouseholdType] = useState<string>('');
   const [hasPets, setHasPets] = useState(false); 
   const [petDetails, setPetDetails] = useState('');
   
@@ -131,6 +133,7 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
         if (data.household) {
           const h = data.household;
           setHouseholdSize(h.household_size ? String(h.household_size) : '');
+          setHouseholdType(typeof h.household_type === 'string' ? h.household_type : '');
           setHasChildren(h.has_children === true || h.has_children === 1);
           setHasElderly(h.has_elderly === true || h.has_elderly === 1);
           setHasPets(h.has_pets === true || h.has_pets === 1);
@@ -220,7 +223,8 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
     if (!contactNumber.trim()) return showNotification('Contact number is required.', 'error');
     if (!province.trim() || !municipality.trim() || !barangay.trim()) return showNotification('Province, municipality and barangay are required.', 'error');
     if (!bio.trim() || bio.trim().length < 15) return showNotification('Bio must be at least 15 characters.', 'error');
-    
+    if (!householdType.trim()) return showNotification('Please select your housing type (house, apartment, etc.).', 'error');
+
     setSaving(true);
     try {
       const formData = new FormData();
@@ -234,7 +238,8 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
       if (latitude  !== null) formData.append('latitude',  String(latitude));
       if (longitude !== null) formData.append('longitude', String(longitude));
       formData.append('household_size', householdSize || '0');
-      
+      formData.append('household_type', householdType.trim());
+
       formData.append('has_children', hasChildren ? '1' : '0');
       formData.append('has_elderly', hasElderly ? '1' : '0');
       formData.append('has_pets', hasPets ? '1' : '0');
@@ -301,6 +306,20 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
           style={[styles.chip, currentValue === g && styles.chipActive]}
         >
           <Text style={[styles.chipText, currentValue === g && styles.chipTextActive]}>{g}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const renderHouseholdTypeChips = () => (
+    <View style={[styles.chipRow, { flexWrap: 'wrap' }]}>
+      {PARENT_HOUSEHOLD_TYPE_OPTIONS.map((opt) => (
+        <TouchableOpacity
+          key={opt.value}
+          onPress={() => setHouseholdType(opt.value)}
+          style={[styles.chip, householdType === opt.value && styles.chipActive]}
+        >
+          <Text style={[styles.chipText, householdType === opt.value && styles.chipTextActive]}>{opt.label}</Text>
         </TouchableOpacity>
       ))}
     </View>
@@ -392,6 +411,9 @@ export default function EditProfileModal({ visible, onClose, onSaveSuccess }: Ed
                 {/* SECTION 3: Household Composition */}
                 <View style={styles.card}>
                   <Text style={styles.cardTitle}>Household Details</Text>
+                  <Text style={styles.inputLabel}>Housing type <Text style={styles.reqStar}>*</Text></Text>
+                  <Text style={styles.fieldHint}>Where you live helps helpers understand the work environment.</Text>
+                  {renderHouseholdTypeChips()}
                   <LabeledInput label="Total Household Size" value={householdSize} onChangeText={setHouseholdSize} keyboardType="numeric" placeholder="e.g., 4" />
 
                   {/* Pets Toggle */}
@@ -572,6 +594,7 @@ const styles = StyleSheet.create({
   addMemberText: { color: '#007AFF', fontWeight: '600', fontSize: 15 },
 
   inputLabel: { fontSize: 13, fontWeight: '600', color: '#666', marginBottom: 8, marginTop: 4 },
+  fieldHint: { fontSize: 12, color: '#8E8E93', marginBottom: 10, marginTop: -4, lineHeight: 18 },
   reqStar: { color: '#FF3B30', fontWeight: '700' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   chip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#F2F2F7', borderWidth: 1, borderColor: '#E5E5EA' },

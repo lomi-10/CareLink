@@ -19,9 +19,10 @@ export interface Notification {
 const ROLE_ENDPOINT: Record<string, string> = {
   helper: 'helper/get_notifications.php',
   parent: 'parent/get_notifications.php',
+  peso:   'peso/get_notifications.php',
 };
 
-export function useNotifications(role: 'helper' | 'parent') {
+export function useNotifications(role: 'helper' | 'parent' | 'peso') {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount,   setUnreadCount]   = useState(0);
   const [loading,       setLoading]       = useState(true);

@@ -6,6 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,7 @@ import {
 import NotificationModal from "../../components/peso/NotificationModal";
 import API_URL from "../../constants/api";
 import { theme } from "@/constants/theme";
+import { formatParentHouseholdType } from "@/constants/parentHousehold";
 
 const DOC_ICONS: Record<string, React.ComponentProps<typeof Ionicons>["name"]> = {
   "Valid ID":          "card-outline",
@@ -133,9 +135,12 @@ export default function ViewUserProfile() {
       setLoading(true);
       setLoadError(null);
       setUserData(null);
-      if (!userIdParam || !userTypeParam) { setLoadError("Missing user id or type."); return; }
+      if (!userIdParam) { setLoadError("Missing user id."); return; }
+      const typeQ = userTypeParam
+        ? `&user_type=${encodeURIComponent(String(userTypeParam))}`
+        : "";
       const res  = await fetch(
-        `${API_URL}/peso/get_user_details.php?user_id=${encodeURIComponent(String(userIdParam))}&user_type=${encodeURIComponent(String(userTypeParam))}`
+        `${API_URL}/peso/get_user_details.php?user_id=${encodeURIComponent(String(userIdParam))}${typeQ}`
       );
       const text = await res.text();
       const data = JSON.parse(text);
@@ -492,7 +497,30 @@ export default function ViewUserProfile() {
           <InfoRow label="Municipality" value={profile?.municipality || "—"} />
           <InfoRow label="Barangay"     value={profile?.barangay     || "—"} />
           <InfoRow label="Full Address" value={profile?.address      || "—"} />
-          <InfoRow label="Landmark"     value={profile?.landmark     || "—"} last />
+          <InfoRow label="Landmark"     value={profile?.landmark     || "—"} />
+          {profile?.latitude && profile?.longitude ? (
+            <View style={styles.locationRow}>
+              <View style={styles.locationCoords}>
+                <Ionicons name="navigate-circle-outline" size={16} color={theme.color.peso} />
+                <Text style={styles.locationText}>
+                  GPS: {Number(profile.latitude).toFixed(5)}, {Number(profile.longitude).toFixed(5)}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.mapBtn}
+                onPress={() => {
+                  const url = `https://www.openstreetmap.org/?mlat=${profile.latitude}&mlon=${profile.longitude}#map=16/${profile.latitude}/${profile.longitude}`;
+                  Linking.openURL(url);
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="map-outline" size={14} color="#fff" />
+                <Text style={styles.mapBtnText}>View on Map</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <InfoRow label="GPS Location" value="Not set — user has not used location search" last />
+          )}
         </SectionCard>
 
         {/* ── WORK INFORMATION (helpers) ── */}
@@ -564,6 +592,7 @@ export default function ViewUserProfile() {
         {/* ── HOUSEHOLD (parents) ── */}
         {!isHelper && (
           <SectionCard title="Household Information" icon="home-outline">
+            <InfoRow label="Housing Type" value={parentHousehold?.household_type ? formatParentHouseholdType(parentHousehold.household_type) : "—"} />
             <InfoRow label="Household Size" value={String(parentHousehold?.household_size ?? "—")} />
             <InfoRow label="Has Children"   value={parentHousehold ? (parentHousehold.has_children ? "Yes" : "No") : "—"} />
             <InfoRow label="Has Elderly"    value={parentHousehold ? (parentHousehold.has_elderly  ? "Yes" : "No") : "—"} />
@@ -1315,4 +1344,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   confirmRejectBtnText: { fontSize: 15, fontWeight: "800", color: "#fff" },
+
+  // Location row
+  locationRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderTopWidth: 1,
+    borderTopColor: theme.color.line,
+    marginTop: 6,
+  },
+  locationCoords: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    flex: 1,
+  },
+  locationText: {
+    fontSize: 12,
+    color: theme.color.muted,
+    fontFamily: "monospace",
+  },
+  mapBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 4,
+    backgroundColor: theme.color.peso,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: theme.radius.sm,
+  },
+  mapBtnText: { fontSize: 12, fontWeight: "700" as const, color: "#fff" },
 });

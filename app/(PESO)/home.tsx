@@ -214,6 +214,17 @@ export default function PESODashboard() {
               <Text style={styles.actionTitle}>View Reports</Text>
               <Text style={styles.actionSubtitle}>Analytics & stats</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => router.push("/(peso)/signed_contracts")}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="document-text" size={24} color="#2E7D32" />
+              </View>
+              <Text style={styles.actionTitle}>Signed contracts</Text>
+              <Text style={styles.actionSubtitle}>Confirmed hires & PDFs</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Recent Activity Placeholder */}

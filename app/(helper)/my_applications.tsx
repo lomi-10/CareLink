@@ -1,5 +1,5 @@
 // app/(helper)/my_applications.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   FlatList,
@@ -22,6 +22,7 @@ import {
 } from '@/components/helper/applications/';
 import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared/';
 import { theme } from '@/constants/theme';
+import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 
 const FILTER_TABS = [
   { key: 'all',                   label: 'All',          icon: 'list-outline' as const },
@@ -36,6 +37,12 @@ export default function MyApplications() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
+  const { ready, isWorkMode } = useHelperWorkMode();
+
+  useEffect(() => {
+    if (!ready) return;
+    if (isWorkMode) router.replace('/(helper)/home');
+  }, [ready, isWorkMode, router]);
 
   const { applications, stats, loading, statusFilter, setStatusFilter, refresh, withdrawApplication } = useMyApplications();
 
@@ -96,6 +103,10 @@ export default function MyApplications() {
       />
     </>
   );
+
+  if (ready && isWorkMode) {
+    return <LoadingSpinner visible message="Opening your work dashboard…" />;
+  }
 
   if (loading) return <LoadingSpinner visible message="Loading applications…" />;
 
