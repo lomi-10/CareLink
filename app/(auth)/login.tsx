@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import { NotificationModal } from "@/components/shared/NotificationModal";
 import { theme } from "@/constants/theme";
 import { useLoginForm } from "@/hooks/auth/useLoginForm";
@@ -50,6 +51,9 @@ export default function LoginScreen() {
           style={styles.container}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
+          <View style={{ alignItems: "center", marginBottom: 8 }}>
+            <CareLinkLogoMark size={72} />
+          </View>
           <Text style={styles.kicker}>CareLink</Text>
           <Text style={styles.title}>Welcome back</Text>
           <Text style={styles.subtitle}>

@@ -14,6 +14,7 @@ import {
     View,
     ActivityIndicator,
 } from "react-native";
+import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import API_URL from "../../constants/api";
 
 export default function AdminDashboard() {
@@ -103,9 +104,7 @@ export default function AdminDashboard() {
         {/* SIDEBAR */}
         <View style={[styles.sidebar, isWideScreen ? styles.sidebarWide : styles.sidebarMobile]}>
           <View style={styles.sidebarHeader}>
-            <View style={[styles.logoCircle, { backgroundColor: "#5856D6" }]}>
-              <Ionicons name="settings" size={28} color="#fff" />
-            </View>
+            <CareLinkLogoMark size={36} containerStyle={{ marginRight: 10 }} />
             <View>
               <Text style={styles.logoText}>CareLink</Text>
               <Text style={styles.logoSubtext}>Super Admin Portal</Text>
@@ -259,15 +258,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 30,
     paddingHorizontal: 10,
-  },
-  logoCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: "#004080",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
   },
   logoText: {
     fontSize: 22,

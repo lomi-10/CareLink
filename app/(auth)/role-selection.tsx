@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 
+import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import { theme } from "@/constants/theme";
 
 export default function RoleSelectionScreen() {
@@ -67,6 +68,10 @@ export default function RoleSelectionScreen() {
             <TouchableOpacity style={styles.backButton} onPress={() => router.replace("/")}>
               <Ionicons name="arrow-back" size={22} color={theme.color.ink} />
             </TouchableOpacity>
+
+            <View style={{ alignItems: "center", marginBottom: 12 }}>
+              <CareLinkLogoMark size={64} />
+            </View>
 
             <Text style={styles.kicker}>Get started</Text>
             <Text style={styles.title}>Choose your role</Text>

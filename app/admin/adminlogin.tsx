@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import API_URL from "../../constants/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -189,9 +190,8 @@ export default function AdminLoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.card}>
-          {/* Admin Header Icon */}
           <View style={styles.headerIcon}>
-            <Ionicons name="shield-checkmark" size={60} color="#004080" />
+            <CareLinkLogoMark size={88} />
           </View>
           
           <Text style={styles.title}>Admin Portal</Text>

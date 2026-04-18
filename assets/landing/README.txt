@@ -1,28 +1,28 @@
 CareLink — landing page assets
 ==============================
 
-Place custom images here, then reference them from:
-  components/landing/LandingScreen.tsx
+Web (Expo)
+----------
+The full marketing page lives at **public/landing.html** and is shown in an iframe from
+`components/landing/LandingScreen.tsx` when `Platform.OS === "web"`.
 
-Suggested files
----------------
+- **Logo:** App-wide mark is **assets/images/carelink_logo.png** (also copied to **public/carelink-logo.png**
+  for the static landing page). Replace both files when you update the brand asset.
+- **Static files:** Anything in **public/** is served at the site root (e.g. `/landing.html`).
 
-1) hero.png (optional top banner)
-   - Recommended size: 1920 x 720 px (or 1600 x 600) at 72–144 dpi for web.
-   - For mobile-first previews, 1200 x 900 px also works; the layout uses a fixed-height block — adjust styles.heroPlaceholder height if needed.
-   - Format: PNG or JPG (photos), PNG with transparency for overlays.
-   - Safe area: keep faces and text out of the outer 8% (cropping on small phones).
+Native (iOS / Android)
+----------------------
+The same `LandingScreen` component shows the built-in React Native fallback (not the HTML file).
 
-2) logo-mark.png (optional, if you want a mark next to the word "CareLink")
+Optional local images (RN fallback / future use)
+-------------------------------------------------
+Place files here and `require()` from `LandingScreen.tsx` if you extend the native layout.
+
+1) hero.png (optional)
+   - Recommended: 1920 x 720 px (or 1600 x 600) at 72–144 dpi for web.
+   - Format: PNG or JPG; PNG with transparency for overlays.
+
+2) logo-mark.png (optional)
    - Square: 512 x 512 px, transparent PNG.
-
-After adding hero.png, in LandingScreen.tsx you can replace the dashed placeholder <View> with:
-
-  import { Image } from "react-native";
-  <Image
-    source={require("../../assets/landing/hero.png")}
-    style={{ width: "100%", height: 220, borderRadius: 16, marginBottom: 20 }}
-    resizeMode="cover"
-  />
 
 Metro only bundles files that exist at build time, so the file must be present before require().

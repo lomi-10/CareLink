@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 
+import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import { NotificationModal } from "@/components/shared/NotificationModal";
 import { theme } from "@/constants/theme";
 import { useSignupForm } from "@/hooks/auth/useSignupForm";
@@ -68,6 +69,10 @@ export default function SignUpScreen() {
               <Pressable style={styles.closeButton} onPress={goBack} hitSlop={12}>
                 <Text style={styles.closeText}>✕</Text>
               </Pressable>
+
+              <View style={{ alignItems: "center", marginBottom: 12 }}>
+                <CareLinkLogoMark size={56} />
+              </View>
 
               <Text style={styles.kicker}>Create account</Text>
               <Text style={styles.title}>

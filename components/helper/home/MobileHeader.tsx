@@ -3,6 +3,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { CareLinkLogoMark } from '@/components/branding/CareLinkLogoMark';
 import { theme } from '@/constants/theme';
 
 interface MobileHeaderProps {
@@ -28,8 +29,11 @@ export function MobileHeader({
       </TouchableOpacity>
 
       <View style={styles.titleBlock}>
-        <Text style={[styles.title, { color: accentColor }]}>CareLink</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        <CareLinkLogoMark size={28} containerStyle={styles.headerLogo} />
+        <View style={styles.titleTextCol}>
+          <Text style={[styles.title, { color: accentColor }]}>CareLink</Text>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        </View>
       </View>
 
       <TouchableOpacity
@@ -67,6 +71,14 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   titleBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerLogo: {
+    flexShrink: 0,
+  },
+  titleTextCol: {
     alignItems: 'center',
   },
   title: {

@@ -15,6 +15,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import { theme } from "@/constants/theme";
 import { RoleScreenBackground } from "@/components/shared";
 
@@ -87,9 +88,12 @@ export default function PESOLayout() {
 
       {!isWideScreen && (
         <View style={styles.mobileTopBar}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.mobileLogo}>CareLink</Text>
-            <Text style={styles.mobileSub}>PESO Portal</Text>
+          <View style={styles.mobileBrand}>
+            <CareLinkLogoMark size={36} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.mobileLogo}>CareLink</Text>
+              <Text style={styles.mobileSub}>PESO Portal</Text>
+            </View>
           </View>
           <TouchableOpacity
             onPress={() => setMobileMenuOpen(true)}
@@ -153,9 +157,7 @@ export default function PESOLayout() {
           
           {/* Header */}
           <View style={styles.sidebarHeader}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="shield-checkmark-sharp" size={28} color="#fff" />
-            </View>
+            <CareLinkLogoMark size={40} containerStyle={{ marginRight: 12 }} />
             {!sidebarCollapsed && (
               <View>
                 <Text style={styles.logoText}>CareLink</Text>
@@ -284,6 +286,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E5E5EA",
   },
+  mobileBrand: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginRight: 8,
+  },
   mobileLogo: { fontSize: 18, fontWeight: "800", color: "#1A1C1E" },
   mobileSub: { fontSize: 11, color: "#64748B", fontWeight: "600" },
   mobileMenuBtn: { padding: 8 },
@@ -334,15 +343,6 @@ const styles = StyleSheet.create({
     alignItems: "center", 
     marginBottom: 30, 
     paddingHorizontal: 10 
-  },
-  logoCircle: { 
-    width: 40, 
-    height: 40, 
-    borderRadius: 10, 
-    backgroundColor: "#FF9500",
-    alignItems: "center", 
-    justifyContent: "center", 
-    marginRight: 12,
   },
   logoText: { 
     fontSize: 20, 

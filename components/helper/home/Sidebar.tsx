@@ -5,6 +5,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
+import { CareLinkLogoMark } from '@/components/branding/CareLinkLogoMark';
 import { theme } from '@/constants/theme';
 import { useNotifications } from '@/hooks/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
@@ -56,9 +57,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
     <View style={styles.container}>
       {/* Logo */}
       <View style={styles.header}>
-        <View style={styles.logoCircle}>
-          <Ionicons name="briefcase" size={24} color="#fff" />
-        </View>
+        <CareLinkLogoMark size={44} />
         <View>
           <Text style={styles.logoText}>CareLink</Text>
           <Text style={styles.logoSubtext}>{isWorkMode ? 'Work Mode' : 'Helper Portal'}</Text>
@@ -125,14 +124,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 28,
     gap: 12,
-  },
-  logoCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: theme.color.helper,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   logoText:    { fontSize: 18, fontWeight: '800', color: theme.color.ink },
   logoSubtext: { fontSize: 11, color: theme.color.muted, fontWeight: '600', marginTop: 1 },

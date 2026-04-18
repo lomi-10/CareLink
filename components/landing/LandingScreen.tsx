@@ -1,25 +1,48 @@
 /**
- * Public marketing landing (Phase A entry). Optional hero image: see assets/landing/README.txt
+ * Public marketing landing (Phase A entry).
+ * Web: full HTML/CSS page from /public/landing.html (see assets/landing/README.txt).
+ * Native: lightweight React Native fallback (same CTAs).
  */
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import React from "react";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import { theme } from "@/constants/theme";
 
-const { parent, helper, parentSoft, helperSoft, ink, muted, subtle, surface, surfaceElevated, line } =
+const { parent, helper, parentSoft, helperSoft, ink, muted, surface, surfaceElevated, line } =
   theme.color;
 
 export function LandingScreen() {
   const router = useRouter();
   const isWeb = Platform.OS === "web";
 
+  if (isWeb) {
+    return (
+      <View style={styles.webShell}>
+        {React.createElement("iframe", {
+          src: "/landing.html",
+          title: "CareLink",
+          style: {
+            border: "none" as const,
+            width: "100%",
+            height: "100vh",
+            display: "block",
+          },
+        })}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={[styles.nav, isWeb && styles.navWeb]}>
-          <Text style={styles.logo}>CareLink</Text>
+          <View style={styles.navBrand}>
+            <CareLinkLogoMark size={36} />
+            <Text style={styles.logo}>CareLink</Text>
+          </View>
           <View style={styles.navRight}>
             <Link href="/login" asChild>
               <TouchableOpacity style={styles.navGhost}>
@@ -44,9 +67,9 @@ export function LandingScreen() {
 
         <View style={[styles.hero, isWeb && styles.heroWeb]}>
           <View style={styles.heroPlaceholder}>
-            <Ionicons name="home" size={48} color={subtle} />
+            <CareLinkLogoMark size={88} />
             <Text style={styles.heroPlaceholderText}>
-              Drop your hero image here and wire it in — see assets/landing/README.txt
+              Verified household help, aligned with PESO.
             </Text>
           </View>
           <View style={styles.heroOverlay}>
@@ -124,6 +147,7 @@ function Step({ n, title, body }: { n: number; title: string; body: string }) {
 }
 
 const styles = StyleSheet.create({
+  webShell: { flex: 1, backgroundColor: "#0F172A" },
   root: { flex: 1, backgroundColor: surface },
   scroll: { paddingBottom: 48 },
   nav: {
@@ -137,6 +161,7 @@ const styles = StyleSheet.create({
     borderBottomColor: line,
   },
   navWeb: { paddingHorizontal: 48, maxWidth: 1200, alignSelf: "center", width: "100%" },
+  navBrand: { flexDirection: "row", alignItems: "center", gap: 10 },
   logo: { fontSize: 22, fontWeight: "800", color: parent, letterSpacing: -0.5 },
   navRight: { flexDirection: "row", alignItems: "center", gap: 12 },
   navGhost: { paddingVertical: 8, paddingHorizontal: 12 },
