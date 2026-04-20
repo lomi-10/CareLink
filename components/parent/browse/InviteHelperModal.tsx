@@ -83,7 +83,7 @@ export function InviteHelperModal({ visible, helper, jobs, onClose, onSuccess }:
       if (!data.success) throw new Error(data.message || 'Failed to send invitation');
       setSentJobId(selectedJobId);
       setSent(true);
-      onSuccess?.(helper.user_id, helper.full_name, selectedJobId);
+      onSuccess?.(Number(helper.user_id), helper.full_name, selectedJobId);
     } catch (e: any) {
       setError(e.message || 'Something went wrong. Please try again.');
     } finally {
@@ -214,24 +214,31 @@ export function InviteHelperModal({ visible, helper, jobs, onClose, onSuccess }:
   );
 }
 
-const isWeb = Platform.OS === 'web';
-
 const s = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: isWeb ? 'center' : 'flex-end',
-    alignItems: isWeb ? 'center' : 'stretch',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Platform.OS === 'web' ? 24 : 16,
   },
   sheet: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: isWeb ? 16 : 24,
-    borderTopRightRadius: isWeb ? 16 : 24,
-    borderBottomLeftRadius: isWeb ? 16 : 0,
-    borderBottomRightRadius: isWeb ? 16 : 0,
+    borderRadius: 16,
     maxHeight: '85%',
-    width: isWeb ? 480 : '100%',
+    width: '100%',
+    maxWidth: 480,
     overflow: 'hidden',
+    ...Platform.select({
+      web: { boxShadow: '0 10px 40px rgba(0,0,0,0.2)' },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+        elevation: 12,
+      },
+    }),
   },
 
   // Header

@@ -69,6 +69,7 @@ export interface ApplicationStats {
   interview_scheduled: number;
   accepted: number;
   rejected: number;
+  auto_rejected: number;
   withdrawn: number;
   contract_pending: number;
   hired: number;

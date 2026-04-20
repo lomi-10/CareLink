@@ -1,7 +1,7 @@
 // app/(parent)/browse_helpers.tsx
 // Browse Verified Helpers - Modularized & Clean
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -16,10 +16,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 // Custom Hooks
 import { useBrowseHelpers, useParentJobs } from '@/hooks/parent';
+import { useParentActivePlacements } from '@/hooks/parent/useParentActivePlacements';
+import { computeHelperJobMatch, pickPrimaryOpenJob } from '@/lib/parentHelperMatch';
 import { useAuth, useJobReferences, useResponsive } from '@/hooks/shared';
 
 // Components
-import { Sidebar, MobileMenu } from '@/components/parent/home';
+import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
 import { 
   FilterBar, 
   HelperCard, 
@@ -45,12 +47,28 @@ export default function BrowseHelpers() {
     updateFilter,
     resetFilters,
     refresh,
-    totalCount,
-    filteredCount,
   } = useBrowseHelpers();
 
   const { categories } = useJobReferences();
   const { jobs } = useParentJobs();
+  const { placements } = useParentActivePlacements();
+
+  const hiredHelperIds = useMemo(
+    () => new Set(placements.map((p) => String(p.helper_id))),
+    [placements]
+  );
+
+  const referenceJob = useMemo(() => pickPrimaryOpenJob(jobs), [jobs]);
+
+  const rankedHelpers = useMemo(() => {
+    const notHired = helpers.filter((h) => !hiredHelperIds.has(String(h.user_id)));
+    if (!referenceJob) return notHired;
+    return [...notHired].sort((a, b) => {
+      const ma = computeHelperJobMatch(a, referenceJob).score;
+      const mb = computeHelperJobMatch(b, referenceJob).score;
+      return mb - ma;
+    });
+  }, [helpers, hiredHelperIds, referenceJob]);
 
   // States EXACTLY matching profile.tsx & applications.tsx
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -127,7 +145,14 @@ export default function BrowseHelpers() {
       <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose={true} duration={1500} onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }} />
       
       <FilterModal visible={filterModalVisible} filters={filters} categories={categories} onApply={handleApplyFilters} onReset={handleResetFilters} onClose={() => setFilterModalVisible(false)} />
-      <HelperProfileModal visible={profileModalVisible} helper={selectedHelper} onInvite={handleInviteFromProfile} onClose={() => setProfileModalVisible(false)} />
+      <HelperProfileModal
+        visible={profileModalVisible}
+        helper={selectedHelper}
+        referenceJob={referenceJob}
+        match={selectedHelper && referenceJob ? computeHelperJobMatch(selectedHelper, referenceJob) : null}
+        onInvite={handleInviteFromProfile}
+        onClose={() => setProfileModalVisible(false)}
+      />
       <InviteHelperModal
         visible={inviteModalVisible}
         helper={selectedHelper}
@@ -162,13 +187,14 @@ export default function BrowseHelpers() {
       {/* Results Count */}
       <View style={styles.resultsBar}>
         <Text style={styles.resultsText}>
-          {filteredCount} verified {filteredCount === 1 ? 'helper' : 'helpers'} available
-          {filteredCount !== totalCount && ` (filtered from ${totalCount})`}
+          {rankedHelpers.length} verified {rankedHelpers.length === 1 ? 'helper' : 'helpers'} available
+          {referenceJob ? ` · Match insights use “${referenceJob.title || referenceJob.custom_job_title || 'your open job'}”` : ''}
+          {hiredHelperIds.size > 0 ? ` · ${hiredHelperIds.size} hired hidden` : ''}
         </Text>
       </View>
 
       {/* Helpers Grid */}
-      {helpers.length === 0 ? (
+      {rankedHelpers.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="people-outline" size={80} color="#ccc" />
           <Text style={styles.emptyText}>No helpers found</Text>
@@ -183,13 +209,16 @@ export default function BrowseHelpers() {
         </View>
       ) : (
         <FlatList
-          data={helpers}
+          data={rankedHelpers}
           keyExtractor={(item) => item.profile_id}
-          renderItem={({ item }) =>
-            isDesktop ? (
+          renderItem={({ item }) => {
+            const match = computeHelperJobMatch(item, referenceJob);
+            return isDesktop ? (
               <View style={styles.desktopCardWrapper}>
                 <HelperCard
                   helper={item}
+                  matchScore={referenceJob ? match.score : undefined}
+                  matchReasons={referenceJob ? match.reasons : undefined}
                   onPress={() => handleViewProfile(item)}
                   onInvite={() => handleInviteHelper(item)}
                 />
@@ -198,11 +227,12 @@ export default function BrowseHelpers() {
               <View style={styles.mobileCardWrapper}>
                 <CompactHelperCard
                   helper={item}
+                  matchScore={referenceJob ? match.score : undefined}
                   onPress={() => handleViewProfile(item)}
                 />
               </View>
-            )
-          }
+            );
+          }}
           contentContainerStyle={styles.listContainer}
           numColumns={isDesktop ? 3 : 2}
           key={isDesktop ? 'desktop' : 'mobile'}
@@ -260,6 +290,7 @@ export default function BrowseHelpers() {
         onClose={() => setIsMobileMenuOpen(false)} 
         handleLogout={initiateLogout} 
       />
+      <ParentTabBar />
     </SafeAreaView>
   );
 }

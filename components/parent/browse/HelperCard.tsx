@@ -11,9 +11,12 @@ interface HelperCardProps {
   helper: HelperProfile;
   onPress: () => void;
   onInvite?: () => void;
+  /** 0–100 when an open job is used for ranking */
+  matchScore?: number;
+  matchReasons?: string[];
 }
 
-export function HelperCard({ helper, onPress, onInvite }: HelperCardProps) {
+export function HelperCard({ helper, onPress, onInvite, matchScore, matchReasons }: HelperCardProps) {
   const getVerificationBadge = () => {
     switch (helper.verification_status) {
       case 'Verified':
@@ -60,6 +63,20 @@ export function HelperCard({ helper, onPress, onInvite }: HelperCardProps) {
         <Text style={styles.name} numberOfLines={1}>
           {helper.full_name}
         </Text>
+
+        {matchScore != null && matchScore > 0 && (
+          <View style={styles.matchRow}>
+            <View style={styles.matchBadge}>
+              <Ionicons name="analytics" size={12} color={theme.color.parent} />
+              <Text style={styles.matchBadgeText}>Match {matchScore}%</Text>
+            </View>
+            {matchReasons?.[0] ? (
+              <Text style={styles.matchHint} numberOfLines={2}>
+                {matchReasons[0]}
+              </Text>
+            ) : null}
+          </View>
+        )}
 
         {/* Categories */}
         <View style={styles.categoryRow}>
@@ -194,6 +211,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1A1C1E',
   },
+  matchRow: { gap: 4 },
+  matchBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    backgroundColor: theme.color.parentSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  matchBadgeText: { fontSize: 11, fontWeight: '800', color: theme.color.parent },
+  matchHint: { fontSize: 11, color: '#666', lineHeight: 15 },
   categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',

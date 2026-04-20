@@ -1,192 +1,56 @@
-import { StyleSheet, Platform } from "react-native";
+// app/(helper)/my_applications.styles.ts
+import { StyleSheet } from 'react-native';
+
+import { theme } from '@/constants/theme';
 
 export const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  mainContent: {
-    flex: 1,
-  },
-  
-  // Desktop Styles
-  desktopContentWrapper: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  desktopHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 32,
-    paddingVertical: 24,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  desktopPageTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.5,
-  },
-  browseJobsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#EFF6FF',
-  },
-  browseJobsButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1D4ED8',
-  },
-  
-  // Mobile Styles
-  mobileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  mobileTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.5,
-  },
-  mobileHeaderActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  browseIconButton: {
-    padding: 8,
-    backgroundColor: '#EFF6FF',
-    borderRadius: 12,
-  },
-  menuButton: {
-    padding: 8,
-  },
-  
-  // Stats Bar (Redesigned to floating cards)
-  statsBar: {
-    flexDirection: 'row',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  statsBarDesktop: {
-    paddingHorizontal: 32,
-    gap: 16,
-  },
-  statBox: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8 },
-      android: { elevation: 2 },
-      web: { boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }
-    }),
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  
-  // Filter Tabs
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  filterContainerDesktop: {
-    paddingHorizontal: 32,
-  },
-  filterTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  filterTabActive: {
-    backgroundColor: '#1D4ED8',
-    borderColor: '#1D4ED8',
-  },
-  filterTabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  filterTabTextActive: {
-    color: '#fff',
-  },
-  
-  // List
-  listContainer: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  listContainerDesktop: {
-    paddingHorizontal: 32,
-    paddingTop: 8,
-    paddingBottom: 60,
-  },
-  
-  // Empty State
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  browseButton: {
-    backgroundColor: '#1D4ED8',
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    borderRadius: 14,
-  },
-  browseButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  root: { flex: 1, backgroundColor: theme.color.canvasHelper },
+  content: { flex: 1 },
+
+  // ── Desktop ──
+  desktopMain:   { flex: 1, backgroundColor: theme.color.canvasHelper },
+  desktopHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 32, paddingVertical: 24, backgroundColor: theme.color.surfaceElevated, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  pageTitle:     { fontSize: 26, fontWeight: '800', color: theme.color.ink, letterSpacing: -0.5 },
+  pageSubtitle:  { fontSize: 14, color: theme.color.muted, marginTop: 2 },
+  browseJobsBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: theme.color.helperSoft, borderWidth: 1, borderColor: theme.color.helper + '30' },
+  browseJobsBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.helper },
+
+  // ── Mobile header ──
+  mobileHeader:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: theme.color.surfaceElevated, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  menuBtn:            { padding: 6 },
+  mobileHeaderCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  mobileTitle:        { fontSize: 18, fontWeight: '800', color: theme.color.ink, letterSpacing: -0.3 },
+  pendingBadge:       { backgroundColor: theme.color.warning, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  pendingBadgeText:   { color: '#fff', fontSize: 11, fontWeight: '800' },
+  searchIconBtn:      { padding: 8, backgroundColor: theme.color.helperSoft, borderRadius: 10 },
+
+  // ── Stats ──
+  statsScroll: { paddingHorizontal: 16, paddingVertical: 16, gap: 10, flexDirection: 'row', alignItems: 'flex-start' },
+  statTile:    { alignItems: 'center', paddingVertical: 14, paddingHorizontal: 18, borderRadius: 16, gap: 4, minWidth: 80, alignSelf: 'flex-start' },
+  statIconCircle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  statValue:   { fontSize: 22, fontWeight: '800' },
+  statLabel:   { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, color: theme.color.muted },
+
+  // ── Filters ──
+  filterScroll:      { paddingHorizontal: 16, paddingBottom: 4, gap: 8, flexDirection: 'row', alignItems: 'center' },
+  filterChip:        { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: theme.color.surfaceElevated, borderWidth: 1, borderColor: theme.color.line },
+  filterChipActive:  { backgroundColor: theme.color.helper, borderColor: theme.color.helper },
+  filterChipText:    { fontSize: 13, fontWeight: '600', color: theme.color.muted },
+  filterChipTextActive: { color: '#fff' },
+
+  // ── Results bar ──
+  resultsBar:  { paddingHorizontal: 16, paddingVertical: 8 },
+  resultsText: { fontSize: 13, color: theme.color.muted, fontWeight: '500' },
+
+  // ── List ──
+  listPad:        { padding: 16, paddingBottom: 40 },
+  listPadDesktop: { paddingHorizontal: 32, paddingTop: 8, paddingBottom: 60 },
+
+  // ── Empty ──
+  empty:          { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  emptyIconCircle:{ width: 80, height: 80, borderRadius: 40, backgroundColor: theme.color.helperSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyTitle:     { fontSize: 18, fontWeight: '800', color: theme.color.ink, marginBottom: 8, textAlign: 'center' },
+  emptySub:       { fontSize: 14, color: theme.color.muted, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  browseBtn:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.color.helper, paddingVertical: 13, paddingHorizontal: 24, borderRadius: 14, shadowColor: theme.color.helper, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
+  browseBtnText:  { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

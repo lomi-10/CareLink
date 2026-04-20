@@ -78,4 +78,20 @@ export const theme = {
   },
 } as const;
 
+/** Light/dark palette for template components (`collapsible`, `useThemeColor`) */
+export const Colors = {
+  light: {
+    text: "#11181C",
+    background: "#fff",
+    icon: "#687076",
+    tint: theme.color.parent,
+  },
+  dark: {
+    text: "#ECEDEE",
+    background: "#151718",
+    icon: "#9BA1A6",
+    tint: theme.color.helper,
+  },
+} as const;
+
 export type ThemeColor = typeof theme.color;

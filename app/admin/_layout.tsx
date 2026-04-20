@@ -1,7 +1,9 @@
 import { Stack } from 'expo-router';
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { RoleScreenBackground } from '@/components/shared';
+
+import { styles } from '@/constants/adminLayout.styles';
 
 export default function AdminLayout() {
   return (
@@ -17,7 +19,3 @@ export default function AdminLayout() {
     </RoleScreenBackground>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-});

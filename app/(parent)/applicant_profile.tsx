@@ -164,7 +164,7 @@ export default function ApplicantProfile() {
       setHirePickHelperName(String(data.helper_name ?? applicant?.helper_name ?? 'This helper'));
       setHirePickApps(apps);
       const curId = Number(applicationId);
-      const pre = apps.find(a => a.application_id === curId) ?? apps[0] ?? null;
+      const pre = apps.find((a: { application_id: number }) => a.application_id === curId) ?? apps[0] ?? null;
       setHirePickSelectedId(pre?.application_id ?? null);
       setHirePickVisible(true);
     } catch (error: any) {

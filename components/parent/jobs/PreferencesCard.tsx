@@ -162,7 +162,7 @@ export function PreferencesCard({
                     styles.optionItemActive,
                 ]}
                 onPress={() => {
-                  onLanguageChange(language.language_id);
+                  onLanguageChange(String(language.language_id));
                   setShowLanguages(false);
                 }}
               >

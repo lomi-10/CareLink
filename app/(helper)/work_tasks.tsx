@@ -4,14 +4,16 @@ import {
   Text,
   SectionList,
   TouchableOpacity,
-  StyleSheet,
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Checkbox from 'expo-checkbox';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth, useResponsive } from '@/hooks/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { WorkModeShell } from '@/components/helper/work';
@@ -21,6 +23,10 @@ import {
   completeApplicationTask,
   type ApplicationTask,
 } from '@/lib/applicationTasksApi';
+import { fetchAttendanceToday, type AttendanceToday } from '@/lib/attendanceApi';
+import { uploadImageToCloudinary } from '@/lib/cloudinaryUpload';
+
+import { styles } from './work_tasks.styles';
 
 type Section = { title: string; data: ApplicationTask[] };
 
@@ -33,6 +39,10 @@ export default function WorkTasksScreen() {
   const [tasks, setTasks] = useState<ApplicationTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [todayAtt, setTodayAtt] = useState<AttendanceToday | null>(null);
+  const [confirmTask, setConfirmTask] = useState<ApplicationTask | null>(null);
+  const [pickedUri, setPickedUri] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const helperId = userData ? Number(userData.user_id) : 0;
 
@@ -43,18 +53,27 @@ export default function WorkTasksScreen() {
     }
   }, [ready, isWorkMode, activeHire, authLoading, router]);
 
+  const loadAttendance = useCallback(async () => {
+    if (!activeHire || !helperId) return;
+    const res = await fetchAttendanceToday(activeHire.application_id, helperId);
+    if (res.success && res.data) setTodayAtt(res.data);
+  }, [activeHire, helperId]);
+
   const load = useCallback(async () => {
     if (!activeHire || !helperId) return;
     setLoading(true);
     try {
-      const res = await fetchApplicationTasks(activeHire.application_id, helperId, 'helper');
-      if (res.success && res.data) setTasks(res.data);
+      const [taskRes] = await Promise.all([
+        fetchApplicationTasks(activeHire.application_id, helperId, 'helper', 'today'),
+        loadAttendance(),
+      ]);
+      if (taskRes.success && taskRes.data) setTasks(taskRes.data);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [helperId, activeHire]);
+  }, [helperId, activeHire, loadAttendance]);
 
   useEffect(() => {
     if (isWorkMode && activeHire && helperId) void load();
@@ -69,19 +88,80 @@ export default function WorkTasksScreen() {
     return out;
   }, [tasks]);
 
-  const markDone = async (t: ApplicationTask) => {
+  const mustCheckIn =
+    todayAtt && !todayAtt.is_rest_day && !todayAtt.checked_in;
+
+  const pickImage = async (mode: 'camera' | 'library') => {
+    const perm =
+      mode === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission needed', 'Allow photo access to attach a picture.');
+      return;
+    }
+    const result =
+      mode === 'camera'
+        ? await ImagePicker.launchCameraAsync({ quality: 0.85, allowsEditing: true })
+        : await ImagePicker.launchImageLibraryAsync({ quality: 0.85, allowsEditing: true, mediaTypes: 'images' });
+    if (!result.canceled && result.assets[0]?.uri) {
+      setPickedUri(result.assets[0].uri);
+    }
+  };
+
+  const runComplete = async (t: ApplicationTask, photoUrl: string | null) => {
     if (t.status !== 'pending' || !helperId) return;
     setBusyId(t.id);
     try {
-      const res = await completeApplicationTask(t.id, helperId);
+      const res = await completeApplicationTask(t.id, helperId, photoUrl);
       if (!res.success) {
         Alert.alert('Tasks', res.message || 'Could not update');
         return;
       }
+      setConfirmTask(null);
+      setPickedUri(null);
       await load();
     } finally {
       setBusyId(null);
     }
+  };
+
+  const submitComplete = async () => {
+    if (!confirmTask || !helperId) return;
+    if (mustCheckIn) {
+      Alert.alert(
+        'Check in first',
+        'Your employer requires you to check in for today before you can mark tasks done (except on rest days).',
+      );
+      return;
+    }
+    let url: string | null = null;
+    if (pickedUri) {
+      setUploadingPhoto(true);
+      try {
+        url = await uploadImageToCloudinary(pickedUri);
+        if (!url) {
+          Alert.alert(
+            'Upload failed',
+            'Could not upload the photo. Set EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME and EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET, or try again.',
+          );
+          return;
+        }
+      } finally {
+        setUploadingPhoto(false);
+      }
+    }
+    if (confirmTask.requires_photo && !url) {
+      Alert.alert('Photo required', 'This task requires a completion photo.');
+      return;
+    }
+    await runComplete(confirmTask, url);
+  };
+
+  const onCheckboxPress = (item: ApplicationTask, wantDone: boolean) => {
+    if (!wantDone || item.status !== 'pending') return;
+    setPickedUri(null);
+    setConfirmTask(item);
   };
 
   if (!ready || authLoading || !isWorkMode || !activeHire) {
@@ -92,6 +172,82 @@ export default function WorkTasksScreen() {
     );
   }
 
+  const instructionHeader = (
+    <View style={styles.instructionCard}>
+      <Ionicons name="information-circle-outline" size={22} color={theme.color.helper} />
+      <View style={{ flex: 1, marginLeft: 10 }}>
+        <Text style={styles.instructionTitle}>How placement tasks work</Text>
+        <Text style={styles.instructionBody}>
+          Your employer adds tasks for this job. Check off items when you finish them — we may ask for a photo as
+          proof. Completed items move below. You must check in for today (on your Work home screen) before marking tasks
+          complete, unless today is a scheduled rest day.
+        </Text>
+        {mustCheckIn ? (
+          <TouchableOpacity style={styles.checkInCta} onPress={() => router.push('/(helper)/home' as never)} activeOpacity={0.85}>
+            <Ionicons name="log-in-outline" size={18} color="#fff" />
+            <Text style={styles.checkInCtaText}>Go to check-in</Text>
+          </TouchableOpacity>
+        ) : todayAtt?.is_rest_day ? (
+          <Text style={styles.restHint}>Today is a rest day — check-in is not required to complete tasks.</Text>
+        ) : null}
+      </View>
+    </View>
+  );
+
+  const confirmModal = (
+    <Modal visible={!!confirmTask} transparent animationType="fade" onRequestClose={() => setConfirmTask(null)}>
+      <View style={styles.modalOverlay}>
+        <ScrollView contentContainerStyle={styles.modalCenter} keyboardShouldPersistTaps="handled">
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Mark task complete?</Text>
+            {confirmTask ? (
+              <>
+                <Text style={styles.modalTaskTitle}>{confirmTask.title}</Text>
+                {confirmTask.requires_photo ? (
+                  <View style={styles.reqPill}>
+                    <Ionicons name="camera-outline" size={16} color={theme.color.warning} />
+                    <Text style={styles.reqPillText}>Photo required</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.modalHint}>Photo optional — add one if helpful for your employer.</Text>
+                )}
+                <View style={styles.photoRow}>
+                  <TouchableOpacity style={styles.photoBtn} onPress={() => void pickImage('camera')}>
+                    <Ionicons name="camera" size={20} color={theme.color.helper} />
+                    <Text style={styles.photoBtnText}>Camera</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.photoBtn} onPress={() => void pickImage('library')}>
+                    <Ionicons name="images-outline" size={20} color={theme.color.helper} />
+                    <Text style={styles.photoBtnText}>Library</Text>
+                  </TouchableOpacity>
+                </View>
+                {pickedUri ? (
+                  <Text style={styles.pickedLabel}>Photo selected — ready to upload when you confirm.</Text>
+                ) : null}
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.modalCancel} onPress={() => setConfirmTask(null)}>
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalSave, (uploadingPhoto || busyId === confirmTask.id) && { opacity: 0.6 }]}
+                    disabled={uploadingPhoto || busyId === confirmTask.id}
+                    onPress={() => void submitComplete()}
+                  >
+                    {uploadingPhoto || busyId === confirmTask.id ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.modalSaveText}>Complete</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : null}
+          </View>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+
   return (
     <WorkModeShell desktopTitle="Tasks" desktopSubtitle="Placement checklist">
       <View style={{ flex: 1 }}>
@@ -100,6 +256,7 @@ export default function WorkTasksScreen() {
           keyExtractor={(i) => String(i.id)}
           stickySectionHeadersEnabled={false}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
+          ListHeaderComponent={instructionHeader}
           contentContainerStyle={[
             styles.listContent,
             !isDesktop && { paddingBottom: 24 },
@@ -107,7 +264,7 @@ export default function WorkTasksScreen() {
           ]}
           ListEmptyComponent={
             loading ? null : (
-              <Text style={styles.empty}>No tasks yet. Your employer can add tasks for this placement.</Text>
+              <Text style={styles.empty}>No tasks for today yet. Your employer can add tasks for this placement.</Text>
             )
           }
           renderSectionHeader={({ section: { title } }) => (
@@ -121,10 +278,10 @@ export default function WorkTasksScreen() {
                 <Checkbox
                   value={item.status === 'done'}
                   onValueChange={(v) => {
-                    if (v && isPending) void markDone(item);
+                    if (v && isPending) onCheckboxPress(item, true);
                   }}
                   color={item.status === 'done' ? theme.color.success : theme.color.muted}
-                  disabled={!isPending || busyId === item.id}
+                  disabled={!isPending || busyId === item.id || !!mustCheckIn}
                 />
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={[styles.title, isDoneSection && styles.titleDone]}>{item.title}</Text>
@@ -139,8 +296,14 @@ export default function WorkTasksScreen() {
                     ) : (
                       <Text style={styles.meta}>No due date</Text>
                     )}
+                    {item.requires_photo ? <Text style={styles.metaWarn}> · Photo required</Text> : null}
                     {item.is_recurring ? <Text style={styles.meta}> · Recurring</Text> : null}
                   </View>
+                  {item.status === 'done' && item.photo_url ? (
+                    <Text style={styles.photoLink} numberOfLines={1}>
+                      Photo on file
+                    </Text>
+                  ) : null}
                 </View>
                 {busyId === item.id ? <ActivityIndicator color={theme.color.helper} /> : null}
               </View>
@@ -148,38 +311,7 @@ export default function WorkTasksScreen() {
           }}
         />
       </View>
+      {confirmModal}
     </WorkModeShell>
   );
 }
-
-const styles = StyleSheet.create({
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  listContent: { paddingBottom: 16, gap: 8 },
-  empty: { textAlign: 'center', color: theme.color.muted, marginTop: 48, fontSize: 15, paddingHorizontal: 24 },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: theme.color.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: theme.color.surfaceElevated,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    marginBottom: 8,
-  },
-  rowDone: { opacity: 0.55 },
-  title: { fontSize: 16, fontWeight: '700', color: theme.color.ink },
-  titleDone: { textDecorationLine: 'line-through', color: theme.color.muted },
-  desc: { fontSize: 14, color: theme.color.inkMuted, marginTop: 4, lineHeight: 20 },
-  descDone: { color: theme.color.muted },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },
-  meta: { fontSize: 12, color: theme.color.muted },
-});

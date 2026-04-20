@@ -60,7 +60,7 @@ export const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 12,
-    paddingBottom: 40,
+    paddingBottom: 88,
   },
   columnWrapper: {
     justifyContent: 'space-between',

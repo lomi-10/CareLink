@@ -1,0 +1,50 @@
+import { StyleSheet } from 'react-native';
+
+export const styles = StyleSheet.create({
+  safe: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backBtn: { padding: 4 },
+  headerTitle: { fontSize: 18, fontWeight: '800' },
+  scroll: { paddingHorizontal: 20, paddingBottom: 32 },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  sectionSub: { fontSize: 14, lineHeight: 20, marginBottom: 16, opacity: 0.9 },
+  options: { gap: 10 },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 14,
+    borderRadius: 14,
+  },
+  optionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionTitle: { fontSize: 16, fontWeight: '700' },
+  optionHint: { fontSize: 12, marginTop: 2, lineHeight: 16 },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  linkText: { flex: 1, fontSize: 16, fontWeight: '600' },
+});

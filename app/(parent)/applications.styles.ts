@@ -1,217 +1,107 @@
 // app/(parent)/applications.styles.ts
-import { StyleSheet, Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
+
+import { theme } from '@/constants/theme';
 
 export const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  mainContent: {
-    flex: 1,
-  },
-  scrollContent: {
-    flex: 1,
-  },
-  mobileScrollContent: {
-    flex: 1,
-  },
-  
-  // Mobile Header
-  mobileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  mobileTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.5,
-  },
-  menuButton: {
-    padding: 8,
-  },
+  root:    { flex: 1, backgroundColor: theme.color.canvasParent },
+  content: { flex: 1 },
 
-  // Desktop Header
-  pageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 32,
-    paddingVertical: 24,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.5,
-  },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#1D4ED8',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  // ── Desktop ──
+  desktopMain:   { flex: 1 },
+  desktopHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 32, paddingVertical: 24, backgroundColor: theme.color.surfaceElevated, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  pageTitle:     { fontSize: 26, fontWeight: '800', color: theme.color.ink, letterSpacing: -0.5 },
+  pageSubtitle:  { fontSize: 14, color: theme.color.muted, marginTop: 2 },
+  viewJobsBtn:   { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.color.parent, paddingHorizontal: 16, paddingVertical: 11, borderRadius: 12, shadowColor: theme.color.parent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 3 },
+  viewJobsBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
-  // Dropdown Selectors
-  selectorsWrapper: {
-    padding: 16,
-    paddingTop: 24,
-    gap: 16,
-  },
-  dropdownContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+  // ── Mobile header ──
+  mobileHeader:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: theme.color.surfaceElevated, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  menuBtn:            { padding: 6 },
+  mobileHeaderCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  mobileTitle:        { fontSize: 18, fontWeight: '800', color: theme.color.ink },
+  pendingBadge:       { backgroundColor: theme.color.warning, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  pendingBadgeText:   { color: '#fff', fontSize: 11, fontWeight: '800' },
+  jobsIconBtn:        { padding: 8, backgroundColor: theme.color.parentSoft, borderRadius: 10 },
+
+  // ── Selector ──
+  selectorSection: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 4, gap: 12 },
+  dropCard:  { backgroundColor: theme.color.surfaceElevated, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.color.line, ...theme.shadow.nav },
+  dropLabel: { fontSize: 11, fontWeight: '800', color: theme.color.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+  dropHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.color.surface, borderWidth: 1, borderColor: theme.color.line, padding: 13, borderRadius: 10 },
+  dropHeadActive:   { borderColor: theme.color.parent, backgroundColor: theme.color.parentSoft },
+  dropHeadDisabled: { opacity: 0.5 },
+  dropHeadText:     { flex: 1, fontSize: 15, fontWeight: '600', color: theme.color.ink },
+  dropHeadSub:      { fontSize: 12, color: theme.color.muted, marginTop: 2, fontWeight: '500' },
+  dropList:  { marginTop: 8, backgroundColor: theme.color.surfaceElevated, borderRadius: 12, borderWidth: 1, borderColor: theme.color.line, overflow: 'hidden' },
+  dropItem:  { padding: 14, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  dropItemActive: { backgroundColor: theme.color.parentSoft },
+  dropItemText:   { fontSize: 14, fontWeight: '600', color: theme.color.inkMuted },
+  dropItemTextActive: { color: theme.color.parent, fontWeight: '700' },
+  dropItemSub:    { fontSize: 12, color: theme.color.subtle, marginTop: 2 },
+
+  // ── Stats ──
+  statsScroll:    { paddingHorizontal: 16, paddingVertical: 14, gap: 10, flexDirection: 'row', alignItems: 'flex-start' },
+  statTile:       { alignItems: 'center', paddingVertical: 14, paddingHorizontal: 18, borderRadius: 16, gap: 4, minWidth: 80, alignSelf: 'flex-start' },
+  statIconCircle: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  statValue:      { fontSize: 20, fontWeight: '800' },
+  statLabel:      { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, color: theme.color.muted },
+
+  // ── All jobs toggle ──
+  allJobBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: theme.color.line, backgroundColor: theme.color.surface },
+  allJobBtnActive:  { backgroundColor: theme.color.parent, borderColor: theme.color.parent },
+  allJobBtnText:    { fontSize: 13, fontWeight: '700', color: theme.color.muted },
+
+  // ── Filters ──
+  filterScroll:         { paddingHorizontal: 16, paddingBottom: 4, gap: 8, flexDirection: 'row', alignItems: 'center' },
+  filterChip:           { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: theme.color.surfaceElevated, borderWidth: 1, borderColor: theme.color.line },
+  filterChipActive:     { backgroundColor: theme.color.parent, borderColor: theme.color.parent },
+  filterChipText:       { fontSize: 13, fontWeight: '600', color: theme.color.muted },
+  filterChipTextActive: { color: '#fff' },
+
+  // ── List ──
+  listPad:        { padding: 16, paddingBottom: 40 },
+  listPadDesktop: { paddingHorizontal: 32, paddingBottom: 60 },
+
+  // ── Empty ──
+  empty:          { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, marginTop: 20 },
+  emptyIconCircle:{ width: 80, height: 80, borderRadius: 40, backgroundColor: theme.color.parentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyTitle:     { fontSize: 18, fontWeight: '800', color: theme.color.ink, marginBottom: 8, textAlign: 'center' },
+  emptySub:       { fontSize: 14, color: theme.color.muted, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  postJobBtn:     { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.color.parent, paddingVertical: 13, paddingHorizontal: 24, borderRadius: 14 },
+  postJobBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  groupModalOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: theme.color.overlay,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8 },
-      android: { elevation: 2 },
-      web: { boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }
+      web: { justifyContent: 'center', padding: 20 },
+      default: { justifyContent: 'flex-end' },
     }),
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#4B5563',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  groupModalSheet: {
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+    backgroundColor: theme.color.surfaceElevated,
+    maxHeight: '88%',
+    ...theme.shadow.card,
+    ...Platform.select({
+      web: { borderRadius: 16 },
+      default: { borderTopLeftRadius: 16, borderTopRightRadius: 16 },
+    }),
   },
-  dropdownHeader: {
+  groupModalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 16,
-    borderRadius: 12,
-  },
-  dropdownHeaderActive: {
-    borderColor: '#3B82F6',
-    backgroundColor: '#EFF6FF',
-  },
-  dropdownHeaderDisabled: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#E5E7EB',
-    opacity: 0.6,
-  },
-  dropdownSelectedTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  dropdownSelectedSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  dropdownListContainer: {
-    marginTop: 8,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    maxHeight: 200,
-    overflow: 'hidden',
-  },
-  dropdownListScroll: {
-    maxHeight: 200,
-  },
-  dropdownItem: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  dropdownItemActive: {
-    backgroundColor: '#EFF6FF',
-  },
-  dropdownItemTitle: {
-    fontSize: 15,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  dropdownItemTitleActive: {
-    color: '#1D4ED8',
-    fontWeight: '700',
-  },
-
-  // Filter Tabs
-  filterContainer: {
     paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  filterContent: {
-    gap: 8,
-    paddingRight: 32,
-  },
-  filterTab: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  filterTabActive: {
-    backgroundColor: '#1D4ED8',
-    borderColor: '#1D4ED8',
-  },
-  filterTabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  filterTabTextActive: {
-    color: '#fff',
-  },
-
-  // Lists & Empty States
-  listContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  createProfileBtn: {
-    backgroundColor: '#1D4ED8',
     paddingVertical: 14,
-    paddingHorizontal: 28,
-    borderRadius: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.color.line,
   },
-  createProfileText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  groupModalTitle: { fontSize: 18, fontWeight: '800', color: theme.color.ink },
+  groupModalSubtitle: { fontSize: 13, color: theme.color.muted, marginTop: 4 },
+  groupModalScroll: { padding: 16, paddingBottom: 28 },
 });

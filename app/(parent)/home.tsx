@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   View, ScrollView, RefreshControl, ActivityIndicator,
-  SafeAreaView, Text, TouchableOpacity, StyleSheet,
+  SafeAreaView, Text, TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,7 +14,7 @@ import { useParentStats } from '@/hooks/parent';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 
 import { NotificationModal, ConfirmationModal } from '@/components/shared';
-import { Sidebar, MobileMenu, GreetingCard } from '@/components/parent/home';
+import { Sidebar, MobileMenu, GreetingCard, ActiveHelpersSection, ParentTabBar } from '@/components/parent/home';
 import {
   MobileHeader, StatCard, MobileStatCard,
   QuickAction, SectionHeader,
@@ -77,13 +77,13 @@ export default function ParentHome() {
           refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
         >
           {/* Desktop top bar */}
-          <View style={s.desktopTopBar}>
+          <View style={layoutStyles.desktopTopBar}>
             <View>
-              <Text style={s.desktopPageTitle}>Dashboard</Text>
-              <Text style={s.desktopPageSub}>Parent Portal — Home & Family Care</Text>
+              <Text style={layoutStyles.desktopPageTitle}>Dashboard</Text>
+              <Text style={layoutStyles.desktopPageSub}>Parent Portal — Home & Family Care</Text>
             </View>
             <TouchableOpacity
-              style={[s.desktopNotifBtn, unreadCount > 0 && s.desktopNotifBtnActive]}
+              style={[layoutStyles.desktopNotifBtn, unreadCount > 0 && layoutStyles.desktopNotifBtnActive]}
               onPress={() => router.push('/(parent)/notifications')}
             >
               <Ionicons
@@ -92,14 +92,16 @@ export default function ParentHome() {
                 color={unreadCount > 0 ? theme.color.parent : theme.color.muted}
               />
               {unreadCount > 0 && (
-                <View style={[s.notifBadge, { backgroundColor: theme.color.parent }]}>
-                  <Text style={s.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                <View style={[layoutStyles.notifBadge, { backgroundColor: theme.color.parent }]}>
+                  <Text style={layoutStyles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
                 </View>
               )}
             </TouchableOpacity>
           </View>
 
           <GreetingCard userName={getFullName()} />
+
+          <ActiveHelpersSection />
 
           {/* Stats */}
           <SectionHeader title="Your Overview" />
@@ -111,7 +113,8 @@ export default function ParentHome() {
             <StatCard icon="chatbubbles" iconColor={theme.color.info} iconBg={theme.color.infoSoft}
               title="Messages" value={stats.messages} onPress={() => router.push('/(parent)/messages')} />
             <StatCard icon="checkmark-circle" iconColor="#7C3AED" iconBg="#F3E8FF"
-              title="Hired Helpers" value={stats.hired_helpers} />
+              title="Hired Helpers" value={stats.hired_helpers}
+              onPress={() => router.push('/(parent)/active_helpers')} />
           </View>
 
           {/* Quick Actions */}
@@ -142,19 +145,31 @@ export default function ParentHome() {
         onNotificationPress={() => router.push('/(parent)/notifications')}
       />
       <ScrollView
-        contentContainerStyle={[layoutStyles.mobileScrollContent, { paddingBottom: 60 }]}
+        contentContainerStyle={[layoutStyles.mobileScrollContent, { paddingBottom: 88 }]}
         refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
       >
         <GreetingCard userName={getFullName()} />
 
+        <ActiveHelpersSection compactCards />
+
         {/* Stats */}
         <View style={layoutStyles.mobileStatsRow}>
-          <MobileStatCard icon="briefcase" color={theme.color.parent} value={stats.posted_jobs}
-            label="Jobs" onPress={() => router.push('/(parent)/jobs')} />
-          <MobileStatCard icon="people" color={theme.color.success} value={stats.active_applications}
-            label="Applicants" onPress={() => router.push('/(parent)/applications')} />
-          <MobileStatCard icon="chatbubbles" color={theme.color.info} value={stats.messages}
-            label="Messages" onPress={() => router.push('/(parent)/messages')} />
+          <View style={layoutStyles.mobileStatCell}>
+            <MobileStatCard icon="briefcase" color={theme.color.parent} value={stats.posted_jobs}
+              label="Jobs" onPress={() => router.push('/(parent)/jobs')} />
+          </View>
+          <View style={layoutStyles.mobileStatCell}>
+            <MobileStatCard icon="people" color={theme.color.success} value={stats.active_applications}
+              label="Applicants" onPress={() => router.push('/(parent)/applications')} />
+          </View>
+          <View style={layoutStyles.mobileStatCell}>
+            <MobileStatCard icon="chatbubbles" color={theme.color.info} value={stats.messages}
+              label="Messages" onPress={() => router.push('/(parent)/messages')} />
+          </View>
+          <View style={layoutStyles.mobileStatCell}>
+            <MobileStatCard icon="checkmark-circle" color="#7C3AED" value={stats.hired_helpers}
+              label="Hired" onPress={() => router.push('/(parent)/active_helpers')} />
+          </View>
         </View>
 
         {/* Quick Actions */}
@@ -171,21 +186,22 @@ export default function ParentHome() {
         </View>
 
         {/* Hire banner */}
-        <View style={s.hireBanner}>
-          <View style={s.hireBannerLeft}>
-            <Text style={s.hireBannerTitle}>Need help at home?</Text>
-            <Text style={s.hireBannerSub}>Post a job and find trusted helpers today.</Text>
+        <View style={layoutStyles.hireBanner}>
+          <View style={layoutStyles.hireBannerLeft}>
+            <Text style={layoutStyles.hireBannerTitle}>Need help at home?</Text>
+            <Text style={layoutStyles.hireBannerSub}>Post a job and find trusted helpers today.</Text>
           </View>
           <TouchableOpacity
-            style={[s.hireBannerBtn, { backgroundColor: theme.color.parent }]}
+            style={[layoutStyles.hireBannerBtn, { backgroundColor: theme.color.parent }]}
             onPress={() => router.push('/(parent)/jobs')}
           >
-            <Text style={s.hireBannerBtnText}>Post Job</Text>
+            <Text style={layoutStyles.hireBannerBtnText}>Post Job</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} stats={stats} handleLogout={initiateLogout} />
+      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
+      <ParentTabBar />
       {renderModals()}
     </SafeAreaView>
   );
@@ -196,7 +212,7 @@ function QuickActionDesktop({ icon, title, desc, color, onPress }: {
   title: string; desc: string; color: string; onPress: () => void;
 }) {
   return (
-    <TouchableOpacity style={[s.qaDesktop, layoutStyles.quickActionDesktopCard]} onPress={onPress} activeOpacity={0.88}>
+    <TouchableOpacity style={[layoutStyles.qaDesktop, layoutStyles.quickActionDesktopCard]} onPress={onPress} activeOpacity={0.88}>
       <View style={[layoutStyles.quickActionDesktopIcon, { backgroundColor: color + '18' }]}>
         <Ionicons name={icon} size={32} color={color} />
       </View>
@@ -206,44 +222,3 @@ function QuickActionDesktop({ icon, title, desc, color, onPress }: {
   );
 }
 
-const s = StyleSheet.create({
-  desktopTopBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  desktopPageTitle: { fontSize: 26, fontWeight: '900', color: theme.color.ink, letterSpacing: -0.5 },
-  desktopPageSub:   { fontSize: 13, color: theme.color.muted, marginTop: 3 },
-
-  desktopNotifBtn: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: theme.color.surface,
-    alignItems: 'center', justifyContent: 'center',
-    position: 'relative',
-    borderWidth: 1, borderColor: theme.color.line,
-  },
-  desktopNotifBtnActive: {
-    backgroundColor: theme.color.parentSoft,
-    borderColor: theme.color.parent + '40',
-  },
-  notifBadge: {
-    position: 'absolute', top: 6, right: 6,
-    borderRadius: 8, minWidth: 16, height: 16,
-    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
-  },
-  notifBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
-
-  qaDesktop: { flex: 1 },
-
-  hireBanner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: theme.color.parentSoft,
-    borderRadius: 14, padding: 16,
-    marginTop: 8,
-    borderWidth: 1, borderColor: theme.color.parent + '30',
-  },
-  hireBannerLeft:   { flex: 1 },
-  hireBannerTitle:  { fontSize: 14, fontWeight: '800', color: theme.color.parent, marginBottom: 3 },
-  hireBannerSub:    { fontSize: 12, color: theme.color.inkMuted },
-  hireBannerBtn:    { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 10 },
-  hireBannerBtnText:{ color: '#fff', fontSize: 13, fontWeight: '800' },
-});

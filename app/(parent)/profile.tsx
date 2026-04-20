@@ -19,7 +19,7 @@ import { useParentProfile } from '@/hooks/parent';
 import { useAuth, useResponsive } from '@/hooks/shared';
 
 // Components
-import { Sidebar, MobileMenu } from '@/components/parent/home';
+import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
 import { InfoCard } from '@/components/helper/profile'; 
 import { 
   ChildrenList, 
@@ -245,6 +245,7 @@ export default function ParentProfile() {
       {profileContent}
 
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
+      <ParentTabBar />
     </SafeAreaView>
   );
 }

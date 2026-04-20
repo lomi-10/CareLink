@@ -1,11 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 
 import { LandingScreen } from "@/components/landing/LandingScreen";
 import API_URL from "@/constants/api";
 import { isProfileCompleted } from "@/hooks/auth/authProfile";
+
+import { styles } from "./index.styles";
 
 type Phase = "init" | "land" | "routed";
 
@@ -95,7 +97,3 @@ function routeLoggedInUser(router: ReturnType<typeof useRouter>, user: Record<st
   }
   router.replace("/login");
 }
-
-const styles = StyleSheet.create({
-  boot: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F8FAFC" },
-});

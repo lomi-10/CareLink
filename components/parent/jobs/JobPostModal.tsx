@@ -473,7 +473,15 @@ export function JobPostModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.6)', justifyContent: 'flex-end', alignItems: 'center' },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    ...Platform.select({
+      web: { justifyContent: 'center', padding: 16 },
+      default: { justifyContent: 'flex-end' },
+    }),
+  },
   modalContainer: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, width: '100%', height: '95%', overflow: 'hidden' },
   modalContainerDesktop: { width: '85%', maxWidth: 900, height: '90%', borderRadius: 24, marginBottom: 20 },
   header: { 

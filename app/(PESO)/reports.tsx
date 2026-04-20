@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,6 +11,7 @@ import {
   View,
 } from "react-native";
 import API_URL from "@/constants/api";
+import { pesoHireReportsUrl } from "@/constants/applications";
 import { theme } from "@/constants/theme";
 
 type ReportRow = {
@@ -45,6 +47,51 @@ type ReportRow = {
   job_owner_name?: string | null;
   job_owner_email?: string | null;
 };
+
+type HireReportRow = {
+  application_id: number;
+  job_post_id: number;
+  job_title: string;
+  parent_id: number;
+  parent_name: string;
+  parent_email?: string | null;
+  helper_id: number;
+  helper_name: string;
+  helper_email?: string | null;
+  application_status: string;
+  employer_signed_at: string | null;
+  helper_signed_at: string | null;
+  contract_generated_at: string | null;
+  template_version?: string | null;
+  fully_signed: boolean;
+  pdf_url: string | null;
+};
+
+function lastActivityMs(r: HireReportRow): number {
+  const candidates = [r.employer_signed_at, r.helper_signed_at, r.contract_generated_at]
+    .filter(Boolean)
+    .map((s) => new Date(s as string).getTime());
+  return candidates.length ? Math.max(...candidates) : 0;
+}
+
+function formatWhen(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatLastActivity(r: HireReportRow): string {
+  const ms = lastActivityMs(r);
+  if (!ms) return "—";
+  return formatWhen(new Date(ms).toISOString());
+}
 
 const ACTION_LABEL: Record<string, string> = {
   VERIFY_USER_APPROVE:    "Account Approved",
@@ -92,12 +139,30 @@ const COLS = [
   { key: "verifier", label: "Verified By",   w: 200 },
 ];
 
+const HIRE_COLS = [
+  { key: "activity", label: "Last activity", w: 152 },
+  { key: "job", label: "Job", w: 200 },
+  { key: "parent", label: "Employer (parent)", w: 210 },
+  { key: "helper", label: "Helper", w: 210 },
+  { key: "status", label: "Record", w: 100 },
+  { key: "signatures", label: "Signatures", w: 220 },
+  { key: "contract", label: "Contract", w: 108 },
+];
+
 export default function Reports() {
+  const [reportSection, setReportSection] = useState<"verification" | "hires">("verification");
+
   const [loading, setLoading]         = useState(true);
   const [rows, setRows]               = useState<ReportRow[]>([]);
   const [query, setQuery]             = useState("");
   const [filterAction, setFilterAction] = useState<"All" | "User" | "Document" | "Job">("All");
   const [filterRole, setFilterRole]   = useState<"All" | "helper" | "parent">("All");
+
+  const [hireLoading, setHireLoading] = useState(false);
+  const [hireRows, setHireRows]       = useState<HireReportRow[]>([]);
+  const [hireQuery, setHireQuery]     = useState("");
+  const [hireSort, setHireSort]       = useState<"recent" | "oldest" | "parent" | "helper" | "job">("recent");
+  const [hireSigFilter, setHireSigFilter] = useState<"all" | "signed" | "pending">("all");
 
   const fetchReports = async () => {
     try {
@@ -114,6 +179,24 @@ export default function Reports() {
   };
 
   useEffect(() => { fetchReports(); }, []);
+
+  const fetchHires = useCallback(async () => {
+    try {
+      setHireLoading(true);
+      const res = await fetch(pesoHireReportsUrl());
+      const data = await res.json();
+      setHireRows(data.success && Array.isArray(data.hires) ? data.hires : []);
+    } catch {
+      setHireRows([]);
+    } finally {
+      setHireLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (reportSection !== "hires") return;
+    void fetchHires();
+  }, [reportSection, fetchHires]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -147,8 +230,45 @@ export default function Reports() {
     });
   }, [rows, query, filterAction, filterRole]);
 
+  const filteredHires = useMemo(() => {
+    const q = hireQuery.trim().toLowerCase();
+    let list = hireRows.filter((r) => {
+      if (hireSigFilter === "signed" && !r.fully_signed) return false;
+      if (hireSigFilter === "pending" && r.fully_signed) return false;
+      if (!q) return true;
+      return (
+        (r.parent_name || "").toLowerCase().includes(q) ||
+        (r.helper_name || "").toLowerCase().includes(q) ||
+        (r.job_title || "").toLowerCase().includes(q) ||
+        (r.parent_email || "").toLowerCase().includes(q) ||
+        (r.helper_email || "").toLowerCase().includes(q)
+      );
+    });
+    const copy = [...list];
+    copy.sort((a, b) => {
+      switch (hireSort) {
+        case "recent":
+          return lastActivityMs(b) - lastActivityMs(a);
+        case "oldest":
+          return lastActivityMs(a) - lastActivityMs(b);
+        case "parent":
+          return (a.parent_name || "").localeCompare(b.parent_name || "", undefined, { sensitivity: "base" });
+        case "helper":
+          return (a.helper_name || "").localeCompare(b.helper_name || "", undefined, { sensitivity: "base" });
+        case "job":
+          return (a.job_title || "").localeCompare(b.job_title || "", undefined, { sensitivity: "base" });
+        default:
+          return 0;
+      }
+    });
+    return copy;
+  }, [hireRows, hireQuery, hireSort, hireSigFilter]);
+
   const totalApproved = filtered.filter((r) => r.action.endsWith("APPROVE")).length;
   const totalRejected = filtered.filter((r) => r.action.endsWith("REJECT")).length;
+
+  const hireFullySigned = hireRows.filter((r) => r.fully_signed).length;
+  const hirePendingSig = hireRows.filter((r) => !r.fully_signed).length;
 
   return (
     <View style={styles.container}>
@@ -156,16 +276,61 @@ export default function Reports() {
       {/* ── HEADER ── */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.pageTitle}>Verification Reports</Text>
+          <Text style={styles.pageTitle}>Reports</Text>
           <Text style={styles.pageSubtitle}>
-            {loading ? "Loading…" : `${filtered.length} record${filtered.length !== 1 ? "s" : ""}`}
+            {reportSection === "verification"
+              ? loading
+                ? "Loading…"
+                : `${filtered.length} verification record${filtered.length !== 1 ? "s" : ""}`
+              : hireLoading
+                ? "Loading…"
+                : `${filteredHires.length} hire${filteredHires.length !== 1 ? "s" : ""} shown`}
           </Text>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={fetchReports} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.refreshBtn}
+          onPress={reportSection === "verification" ? fetchReports : fetchHires}
+          activeOpacity={0.8}
+        >
           <Ionicons name="refresh" size={16} color={theme.color.peso} />
           <Text style={styles.refreshText}>Refresh</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ── REPORT SECTION (admin-style) ── */}
+      <View style={styles.segmentWrap}>
+        <TouchableOpacity
+          style={[styles.segmentBtn, reportSection === "verification" && styles.segmentBtnActive]}
+          onPress={() => setReportSection("verification")}
+          activeOpacity={0.85}
+        >
+          <Ionicons
+            name="shield-checkmark-outline"
+            size={18}
+            color={reportSection === "verification" ? "#fff" : theme.color.muted}
+          />
+          <Text style={[styles.segmentBtnText, reportSection === "verification" && styles.segmentBtnTextActive]}>
+            Verification audit
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.segmentBtn, reportSection === "hires" && styles.segmentBtnActive]}
+          onPress={() => setReportSection("hires")}
+          activeOpacity={0.85}
+        >
+          <Ionicons
+            name="people-outline"
+            size={18}
+            color={reportSection === "hires" ? "#fff" : theme.color.muted}
+          />
+          <Text style={[styles.segmentBtnText, reportSection === "hires" && styles.segmentBtnTextActive]}>
+            Hires & contracts
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {reportSection === "verification" && (
+        <>
 
       {/* ── SUMMARY CHIPS ── */}
       {!loading && rows.length > 0 && (
@@ -356,12 +521,259 @@ export default function Reports() {
           </View>
         </ScrollView>
       )}
+        </>
+      )}
+
+      {reportSection === "hires" && (
+        <>
+          {!hireLoading && hireRows.length > 0 && (
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryCard}>
+                <Ionicons name="people" size={20} color={theme.color.parent} />
+                <Text style={styles.summaryNum}>{hireRows.length}</Text>
+                <Text style={styles.summaryLabel}>Active hires</Text>
+              </View>
+              <View style={styles.summaryCard}>
+                <Ionicons name="checkmark-done" size={20} color={theme.color.success} />
+                <Text style={styles.summaryNum}>{hireFullySigned}</Text>
+                <Text style={styles.summaryLabel}>Fully signed</Text>
+              </View>
+              <View style={styles.summaryCard}>
+                <Ionicons name="hourglass-outline" size={20} color={theme.color.warning} />
+                <Text style={styles.summaryNum}>{hirePendingSig}</Text>
+                <Text style={styles.summaryLabel}>Awaiting signatures</Text>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.toolbar}>
+            <View style={styles.searchBar}>
+              <Ionicons name="search" size={16} color={theme.color.muted} />
+              <TextInput
+                value={hireQuery}
+                onChangeText={setHireQuery}
+                placeholder="Search employer, helper, job, email…"
+                placeholderTextColor={theme.color.subtle}
+                style={styles.searchInput}
+              />
+              {!!hireQuery && (
+                <TouchableOpacity onPress={() => setHireQuery("")} hitSlop={10}>
+                  <Ionicons name="close-circle" size={16} color={theme.color.subtle} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.filterRow}>
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterLabel}>Sort</Text>
+                <View style={[styles.chipRow, styles.chipRowWrap]}>
+                  {([
+                    ["recent", "Recent"],
+                    ["oldest", "Oldest"],
+                    ["parent", "Employer A–Z"],
+                    ["helper", "Helper A–Z"],
+                    ["job", "Job A–Z"],
+                  ] as const).map(([k, label]) => (
+                    <TouchableOpacity
+                      key={k}
+                      style={[styles.chip, hireSort === k && styles.chipActive]}
+                      onPress={() => setHireSort(k)}
+                    >
+                      <Text style={[styles.chipText, hireSort === k && styles.chipTextActive]}>{label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={[styles.filterGroup, { marginLeft: 24 }]}>
+                <Text style={styles.filterLabel}>Contract</Text>
+                <View style={styles.chipRow}>
+                  {([
+                    ["all", "All"],
+                    ["signed", "Fully signed"],
+                    ["pending", "Awaiting"],
+                  ] as const).map(([k, label]) => (
+                    <TouchableOpacity
+                      key={k}
+                      style={[styles.chip, hireSigFilter === k && styles.chipActive]}
+                      onPress={() => setHireSigFilter(k)}
+                    >
+                      <Text style={[styles.chipText, hireSigFilter === k && styles.chipTextActive]}>{label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {hireLoading ? (
+            <View style={styles.center}>
+              <ActivityIndicator size="large" color={theme.color.peso} />
+              <Text style={styles.centerText}>Loading hire records…</Text>
+            </View>
+          ) : filteredHires.length === 0 ? (
+            <View style={styles.center}>
+              <Ionicons name="briefcase-outline" size={56} color={theme.color.subtle} />
+              <Text style={styles.emptyTitle}>No hire records match</Text>
+              <Text style={styles.emptyBody}>
+                Adjust search or filters, or confirm placements are marked hired in the system.
+              </Text>
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator
+              contentContainerStyle={styles.tableOuter}
+            >
+              <View style={[styles.table, styles.hireTableMin]}>
+                <View style={[styles.tr, styles.theadRow]}>
+                  {HIRE_COLS.map((c) => (
+                    <Text key={c.key} style={[styles.thCell, { width: c.w }]}>
+                      {c.label}
+                    </Text>
+                  ))}
+                </View>
+                <ScrollView>
+                  {filteredHires.map((r, idx) => {
+                    const isEven = idx % 2 === 0;
+                    return (
+                      <View
+                        key={String(r.application_id)}
+                        style={[styles.tr, styles.tbodyRow, isEven && styles.trEven]}
+                      >
+                        <View style={[styles.tdCell, { width: HIRE_COLS[0].w }]}>
+                          <Text style={styles.tdDate}>{formatLastActivity(r)}</Text>
+                        </View>
+                        <View style={[styles.tdCell, { width: HIRE_COLS[1].w }]}>
+                          <Text style={styles.tdPrimary} numberOfLines={2}>
+                            {r.job_title}
+                          </Text>
+                        </View>
+                        <View style={[styles.tdCell, { width: HIRE_COLS[2].w }]}>
+                          <Text style={styles.tdPrimary} numberOfLines={1}>
+                            {r.parent_name}
+                          </Text>
+                          <Text style={styles.tdSecondary} numberOfLines={1}>
+                            {r.parent_email ?? ""}
+                          </Text>
+                        </View>
+                        <View style={[styles.tdCell, { width: HIRE_COLS[3].w }]}>
+                          <Text style={styles.tdPrimary} numberOfLines={1}>
+                            {r.helper_name}
+                          </Text>
+                          <Text style={styles.tdSecondary} numberOfLines={1}>
+                            {r.helper_email ?? ""}
+                          </Text>
+                        </View>
+                        <View style={[styles.tdCell, { width: HIRE_COLS[4].w }]}>
+                          <View style={[styles.rolePill, styles.hireStatusPill]}>
+                            <Text style={styles.hireStatusText} numberOfLines={2}>
+                              {r.application_status}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={[styles.tdCell, { width: HIRE_COLS[5].w }]}>
+                          <Text style={styles.tdSecondary}>
+                            Employer: {formatWhen(r.employer_signed_at)}
+                          </Text>
+                          <Text style={[styles.tdSecondary, { marginTop: 4 }]}>
+                            Helper: {formatWhen(r.helper_signed_at)}
+                          </Text>
+                          {r.fully_signed ? (
+                            <View style={[styles.detailChip, { backgroundColor: theme.color.successSoft, marginTop: 6 }]}>
+                              <Text style={[styles.detailChipText, { color: theme.color.success }]}>
+                                Fully signed
+                              </Text>
+                            </View>
+                          ) : (
+                            <View style={[styles.detailChip, { backgroundColor: theme.color.warningSoft, marginTop: 6 }]}>
+                              <Text style={[styles.detailChipText, { color: theme.color.warning }]}>
+                                Awaiting signatures
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <View style={[styles.tdCell, { width: HIRE_COLS[6].w }]}>
+                          {r.pdf_url ? (
+                            <TouchableOpacity
+                              style={styles.pdfBtn}
+                              onPress={() => Linking.openURL(r.pdf_url!)}
+                            >
+                              <Ionicons name="document-text-outline" size={16} color="#fff" />
+                              <Text style={styles.pdfBtnText}>PDF</Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <Text style={styles.tdSecondary}>—</Text>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </ScrollView>
+          )}
+        </>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
+
+  segmentWrap: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  segmentBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: theme.color.surfaceElevated,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+  },
+  segmentBtnActive: {
+    backgroundColor: theme.color.peso,
+    borderColor: theme.color.peso,
+    ...theme.shadow.nav,
+  },
+  segmentBtnText: { fontSize: 14, fontWeight: "800", color: theme.color.muted },
+  segmentBtnTextActive: { color: "#fff" },
+
+  hireTableMin: { minWidth: 1220 },
+  chipRowWrap: { flexWrap: "wrap" },
+  hireStatusPill: {
+    backgroundColor: theme.color.surface,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    maxWidth: "100%",
+  },
+  hireStatusText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: theme.color.ink,
+    textTransform: "capitalize",
+  },
+  pdfBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: theme.color.peso,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  pdfBtnText: { color: "#fff", fontWeight: "800", fontSize: 12 },
 
   header: {
     flexDirection: "row",

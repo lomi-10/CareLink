@@ -15,31 +15,72 @@ export type ActiveHire = {
   parent_id: number;
   job_title: string;
   employer_name: string;
+  placement_status?: 'active' | 'termination_pending';
+  termination_last_day?: string | null;
+  termination_notice_date?: string | null;
+};
+
+export type EmploymentEndedInfo = {
+  application_id: number;
+  job_post_id: number;
+  parent_id: number;
+  job_title: string;
+  employer_name: string;
+  employment_ended_on: string | null;
 };
 
 type HelperWorkModeContextValue = {
   ready: boolean;
   isWorkMode: boolean;
   activeHire: ActiveHire | null;
+  employmentEnded: EmploymentEndedInfo | null;
   refresh: () => Promise<void>;
 };
 
 const HelperWorkModeContext = createContext<HelperWorkModeContextValue | undefined>(undefined);
 
-async function loadWorkContext(): Promise<{ isWorkMode: boolean; activeHire: ActiveHire | null }> {
+type LoadResult = {
+  isWorkMode: boolean;
+  activeHire: ActiveHire | null;
+  employmentEnded: EmploymentEndedInfo | null;
+};
+
+async function loadWorkContext(): Promise<LoadResult> {
   const raw = await AsyncStorage.getItem('user_data');
-  if (!raw) return { isWorkMode: false, activeHire: null };
+  if (!raw) return { isWorkMode: false, activeHire: null, employmentEnded: null };
   const user = JSON.parse(raw) as { user_type?: string; user_id?: string | number };
-  if (user.user_type !== 'helper') return { isWorkMode: false, activeHire: null };
+  if (user.user_type !== 'helper') return { isWorkMode: false, activeHire: null, employmentEnded: null };
   const helperId = Number(user.user_id);
-  if (!helperId) return { isWorkMode: false, activeHire: null };
+  if (!helperId) return { isWorkMode: false, activeHire: null, employmentEnded: null };
 
   const res = await fetch(`${API_URL}/helper/get_work_context.php?helper_id=${helperId}`);
   const data = await res.json();
-  if (!data.success) return { isWorkMode: false, activeHire: null };
+  if (!data.success) return { isWorkMode: false, activeHire: null, employmentEnded: null };
+
+  const employmentEnded = (data.employment_ended as EmploymentEndedInfo | null | undefined) ?? null;
+
+  if (!data.active_hire) {
+    return {
+      isWorkMode: false,
+      activeHire: null,
+      employmentEnded,
+    };
+  }
+
+  const placement_status =
+    data.placement_status === 'termination_pending' ? 'termination_pending' : 'active';
+
+  const activeHire: ActiveHire = {
+    ...(data.active_hire as ActiveHire),
+    placement_status,
+    termination_last_day: data.termination_last_day ?? null,
+    termination_notice_date: data.termination_notice_date ?? null,
+  };
+
   return {
     isWorkMode: !!data.is_work_mode,
-    activeHire: (data.active_hire ?? null) as ActiveHire | null,
+    activeHire,
+    employmentEnded,
   };
 }
 
@@ -47,12 +88,14 @@ export function HelperWorkModeProvider({ children }: { children: React.ReactNode
   const [ready, setReady] = useState(false);
   const [isWorkMode, setIsWorkMode] = useState(false);
   const [activeHire, setActiveHire] = useState<ActiveHire | null>(null);
+  const [employmentEnded, setEmploymentEnded] = useState<EmploymentEndedInfo | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const next = await loadWorkContext();
       setIsWorkMode(next.isWorkMode);
       setActiveHire(next.activeHire);
+      setEmploymentEnded(next.employmentEnded);
     } catch (e) {
       console.error('Work context refresh:', e);
     }
@@ -66,11 +109,13 @@ export function HelperWorkModeProvider({ children }: { children: React.ReactNode
         if (!alive) return;
         setIsWorkMode(next.isWorkMode);
         setActiveHire(next.activeHire);
+        setEmploymentEnded(next.employmentEnded);
       } catch (e) {
         console.error('Work context:', e);
         if (alive) {
           setIsWorkMode(false);
           setActiveHire(null);
+          setEmploymentEnded(null);
         }
       } finally {
         if (alive) setReady(true);
@@ -82,8 +127,8 @@ export function HelperWorkModeProvider({ children }: { children: React.ReactNode
   }, []);
 
   const value = useMemo(
-    () => ({ ready, isWorkMode, activeHire, refresh }),
-    [ready, isWorkMode, activeHire, refresh],
+    () => ({ ready, isWorkMode, activeHire, employmentEnded, refresh }),
+    [ready, isWorkMode, activeHire, employmentEnded, refresh],
   );
 
   return (
@@ -98,6 +143,7 @@ export function useHelperWorkMode(): HelperWorkModeContextValue {
     ready: true,
     isWorkMode: false,
     activeHire: null,
+    employmentEnded: null,
     refresh: async () => {},
   };
 }

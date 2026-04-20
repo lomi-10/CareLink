@@ -5,7 +5,6 @@ import {
   ImageBackground,
   Platform,
   SafeAreaView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -13,6 +12,8 @@ import {
 
 import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import { theme } from "@/constants/theme";
+
+import { styles } from "./role-selection.styles";
 
 export default function RoleSelectionScreen() {
   const router = useRouter();
@@ -110,83 +111,3 @@ export default function RoleSelectionScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.color.surface },
-  background: { flex: 1, width: "100%", height: "100%" },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(248, 250, 252, 0.92)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: theme.space.lg,
-  },
-  sheet: {
-    width: "100%",
-    maxWidth: 520,
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: theme.radius.xl,
-    padding: theme.space.xxl,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    ...theme.shadow.card,
-  },
-  backButton: {
-    position: "absolute",
-    top: theme.space.lg,
-    left: theme.space.lg,
-    zIndex: 10,
-    padding: theme.space.sm,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.color.surface,
-  },
-  kicker: {
-    fontSize: theme.font.caption,
-    fontWeight: "700",
-    color: theme.color.peso,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginBottom: theme.space.sm,
-    marginTop: theme.space.xl,
-    textAlign: "center",
-  },
-  title: {
-    fontSize: theme.font.title,
-    fontWeight: "800",
-    color: theme.color.ink,
-    marginBottom: theme.space.sm,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: theme.font.small,
-    color: theme.color.muted,
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: theme.space.xxl,
-    paddingHorizontal: theme.space.sm,
-  },
-  cardsContainer: { gap: theme.space.md, marginBottom: theme.space.xl },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: theme.radius.lg,
-    padding: theme.space.lg,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    borderLeftWidth: 5,
-    ...theme.shadow.nav,
-  },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: theme.radius.md,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: theme.space.md,
-  },
-  cardContent: { flex: 1 },
-  cardTitle: { fontSize: theme.font.subtitle, fontWeight: "800", color: theme.color.ink, marginBottom: 4 },
-  cardDescription: { fontSize: theme.font.small, color: theme.color.muted, lineHeight: 20 },
-  footerText: { textAlign: "center", color: theme.color.muted, fontSize: theme.font.small },
-  link: { color: theme.color.parent, fontWeight: "700" },
-});

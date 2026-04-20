@@ -64,7 +64,8 @@ export function useLoginForm() {
           
           setTimeout(() => {
             setNotification(prev => ({ ...prev, visible: false }));
-            router.push("/admin/adminlogin");
+            // Route exists; expo typed routes may lag behind file-based routes
+            router.push("/admin/adminlogin" as never);
           }, 2000);
           return;
         }
@@ -92,7 +93,7 @@ export function useLoginForm() {
 
         setTimeout(() => {
           setNotification(prev => ({ ...prev, visible: false }));
-          router.replace(go);
+          router.replace(go as never);
         }, 1500);
 
       } else {
@@ -132,7 +133,7 @@ export function useLoginForm() {
 
           setTimeout(() => {
             setNotification(prev => ({ ...prev, visible: false }));
-            router.replace(go);
+            router.replace(go as never);
           }, 2000);
         } else {
           // Unhandled reason — still show the server message

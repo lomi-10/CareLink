@@ -346,12 +346,16 @@ export default function ViewUserProfile() {
   const roleAccent = isHelper ? theme.color.helper : theme.color.parent;
   const roleAccentSoft = isHelper ? theme.color.helperSoft : theme.color.parentSoft;
 
-  const vsCfg = {
-    Pending:    { bg: theme.color.warning, icon: "time"               as const },
-    Verified:   { bg: theme.color.success, icon: "shield-checkmark"   as const },
-    Rejected:   { bg: theme.color.danger,  icon: "close-circle"       as const },
-    Unverified: { bg: theme.color.muted,   icon: "ellipse-outline"    as const },
-  }[vs] ?? { bg: theme.color.muted, icon: "ellipse-outline" as const };
+  const STATUS_VISUAL: Record<
+    string,
+    { bg: string; icon: React.ComponentProps<typeof Ionicons>['name'] }
+  > = {
+    Pending: { bg: theme.color.warning, icon: 'time' },
+    Verified: { bg: theme.color.success, icon: 'shield-checkmark' },
+    Rejected: { bg: theme.color.danger, icon: 'close-circle' },
+    Unverified: { bg: theme.color.muted, icon: 'ellipse-outline' },
+  };
+  const vsCfg = STATUS_VISUAL[vs] ?? { bg: theme.color.muted, icon: 'ellipse-outline' as const };
 
   return (
     <View style={styles.container}>

@@ -12,13 +12,14 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { theme } from '@/constants/theme';
-import { applicationContractPdfUrl } from '@/constants/applications';
+import { applicationContractPdfUrl, applicationTerminationRecordUrl } from '@/constants/applications';
 import type { ActiveHire } from '@/contexts/HelperWorkModeContext';
 import { fetchWeekAttendance, postAttendance, ymdLocal, type WeekDayAttendance } from '@/lib/helperWorkApi';
 import { fetchApplicationTasks, type ApplicationTask } from '@/lib/applicationTasksApi';
 import { fetchAttendanceToday, formatAttendanceTime, type AttendanceToday } from '@/lib/attendanceApi';
 import { attendanceDotBackground } from '@/lib/attendanceUi';
 import { SectionHeader } from '@/components/helper/home/SectionHeader';
+import { ConfirmationModal, EndEmploymentModal } from '@/components/shared';
 
 type Props = {
   helperId: number;
@@ -41,6 +42,12 @@ export function WorkModeDashboard({
   const [todayCheckedIn, setTodayCheckedIn] = useState(false);
   const [todayCheckedOut, setTodayCheckedOut] = useState(false);
   const [tasks, setTasks] = useState<ApplicationTask[]>([]);
+  const [endModal, setEndModal] = useState(false);
+  const [checkoutWarnVisible, setCheckoutWarnVisible] = useState(false);
+  const [checkoutWarnMessage, setCheckoutWarnMessage] = useState('');
+
+  const placementTerminationPending = activeHire.placement_status === 'termination_pending';
+  const lastDay = activeHire.termination_last_day;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -109,6 +116,15 @@ export function WorkModeDashboard({
     }
   };
 
+  const openTerminationRecord = async () => {
+    const url = applicationTerminationRecordUrl(activeHire.application_id, helperId, 'helper');
+    try {
+      await WebBrowser.openBrowserAsync(url);
+    } catch {
+      Alert.alert('Record', 'Could not open the termination record.');
+    }
+  };
+
   const onCheckIn = async () => {
     setActionBusy(true);
     try {
@@ -124,7 +140,34 @@ export function WorkModeDashboard({
     }
   };
 
-  const onCheckOut = async () => {
+  const buildCheckoutWarnings = (): string | null => {
+    const parts: string[] = [];
+    const incomplete = tasks.filter((t) => t.status !== 'done');
+    if (incomplete.length > 0) {
+      parts.push(
+        `${incomplete.length} task(s) are not marked done yet (pending or skipped).`,
+      );
+    }
+    const endAt = todayDetail?.expected_shift_end_at;
+    if (endAt) {
+      try {
+        const endMs = new Date(endAt.replace(' ', 'T')).getTime();
+        if (!Number.isNaN(endMs) && Date.now() < endMs) {
+          const t = new Date(endMs).toLocaleTimeString(undefined, {
+            hour: 'numeric',
+            minute: '2-digit',
+          });
+          parts.push(`Your scheduled shift end is ${t}. You are checking out early.`);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    if (parts.length === 0) return null;
+    return parts.join('\n\n');
+  };
+
+  const runCheckOut = async () => {
     setActionBusy(true);
     try {
       const res = await postAttendance(helperId, activeHire.application_id, 'check_out');
@@ -137,6 +180,16 @@ export function WorkModeDashboard({
     } finally {
       setActionBusy(false);
     }
+  };
+
+  const onCheckOut = () => {
+    const warn = buildCheckoutWarnings();
+    if (warn) {
+      setCheckoutWarnMessage(warn);
+      setCheckoutWarnVisible(true);
+      return;
+    }
+    void runCheckOut();
   };
 
   const greeting = userFirstName ? `Hi, ${userFirstName}` : 'Hi';
@@ -156,6 +209,19 @@ export function WorkModeDashboard({
           {activeHire.job_title || 'Active role'}
         </Text>
       </View>
+
+      {placementTerminationPending ? (
+        <View style={styles.noticeBanner}>
+          <Ionicons name="hourglass-outline" size={22} color={theme.color.warning} />
+          <Text style={styles.noticeBannerText}>
+            Notice period in progress
+            {lastDay
+              ? ` · last working day ${new Date(lastDay.replace(/-/g, '/')).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+              : ''}
+            . Work features stay available until then.
+          </Text>
+        </View>
+      ) : null}
 
       {loading ? (
         <ActivityIndicator color={theme.color.helper} style={{ marginVertical: 24 }} />
@@ -271,7 +337,48 @@ export function WorkModeDashboard({
           <Text style={styles.shortcutText}>View contract</Text>
           <Ionicons name="chevron-forward" size={18} color={theme.color.muted} />
         </TouchableOpacity>
+        {!placementTerminationPending ? (
+          <TouchableOpacity style={styles.shortcut} onPress={() => setEndModal(true)} activeOpacity={0.88}>
+            <Ionicons name="hand-left-outline" size={22} color={theme.color.danger} />
+            <Text style={styles.shortcutText}>End employment</Text>
+            <Ionicons name="chevron-forward" size={18} color={theme.color.muted} />
+          </TouchableOpacity>
+        ) : null}
+        {placementTerminationPending ? (
+          <TouchableOpacity style={styles.shortcut} onPress={() => void openTerminationRecord()} activeOpacity={0.88}>
+            <Ionicons name="download-outline" size={22} color={theme.color.helper} />
+            <Text style={styles.shortcutText}>Termination record</Text>
+            <Ionicons name="chevron-forward" size={18} color={theme.color.muted} />
+          </TouchableOpacity>
+        ) : null}
       </View>
+
+      <EndEmploymentModal
+        visible={endModal}
+        onClose={() => setEndModal(false)}
+        applicationId={activeHire.application_id}
+        userId={helperId}
+        userType="helper"
+        counterpartyName={activeHire.employer_name || 'employer'}
+        onSuccess={() => {
+          void onRefreshWorkContext();
+          void load();
+        }}
+      />
+
+      <ConfirmationModal
+        visible={checkoutWarnVisible}
+        title="Check out anyway?"
+        message={checkoutWarnMessage}
+        type="warning"
+        confirmText="Check out"
+        cancelText="Stay checked in"
+        onCancel={() => setCheckoutWarnVisible(false)}
+        onConfirm={() => {
+          setCheckoutWarnVisible(false);
+          void runCheckOut();
+        }}
+      />
 
       <TouchableOpacity
         style={styles.refreshHint}
@@ -294,6 +401,18 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 26, fontWeight: '900', color: theme.color.ink, letterSpacing: -0.5 },
   employerLine: { fontSize: 15, color: theme.color.muted, marginTop: 6 },
   jobTitle: { fontSize: 18, fontWeight: '800', color: theme.color.helper, marginTop: 4 },
+  noticeBanner: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    backgroundColor: theme.color.warningSoft,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+  },
+  noticeBannerText: { flex: 1, fontSize: 14, fontWeight: '600', color: theme.color.ink, lineHeight: 20 },
 
   weekRow: {
     flexDirection: 'row',

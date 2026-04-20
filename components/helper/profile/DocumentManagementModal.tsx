@@ -581,14 +581,23 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    ...Platform.select({
+      web: { justifyContent: 'center', padding: 20 },
+      default: { justifyContent: 'flex-end' },
+    }),
   },
   idTypeModal: {
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
     backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
     padding: 20,
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    ...Platform.select({
+      web: { borderRadius: 16, maxHeight: '85%' as const },
+      default: { borderTopLeftRadius: 16, borderTopRightRadius: 16 },
+    }),
   },
   idTypeModalTitle: {
     fontSize: 16,

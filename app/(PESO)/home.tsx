@@ -102,7 +102,7 @@ export default function PESODashboard() {
 
             <TouchableOpacity 
               style={[styles.statCard, styles.statCardAction]}
-              onPress={() => router.push("/(peso)/user_verification")}
+              onPress={() => router.push("/(peso)/user_verification" as never)}
             >
               <View style={styles.statHeader}>
                 <View style={[styles.statIconBg, { backgroundColor: '#FFF4E5' }]}>
@@ -137,7 +137,7 @@ export default function PESODashboard() {
           <View style={styles.statsGrid}>
             <TouchableOpacity 
               style={[styles.statCard, styles.statCardAction]}
-              onPress={() => router.push("/(peso)/job_verification")}
+              onPress={() => router.push("/(peso)/job_verification" as never)}
             >
               <View style={styles.statHeader}>
                 <View style={[styles.statIconBg, { backgroundColor: '#E0F2FE' }]}>
@@ -172,7 +172,7 @@ export default function PESODashboard() {
           <View style={styles.actionsGrid}>
             <TouchableOpacity 
               style={styles.actionCard}
-              onPress={() => router.push("/(peso)/user_verification")}
+              onPress={() => router.push("/(peso)/user_verification" as never)}
             >
               <View style={[styles.actionIcon, { backgroundColor: '#FFF4E5' }]}>
                 <Ionicons name="people" size={24} color="#FF9500" />
@@ -184,7 +184,7 @@ export default function PESODashboard() {
             {/* NEW: Quick Action for Job Verification */}
             <TouchableOpacity 
               style={styles.actionCard}
-              onPress={() => router.push("/(peso)/job_verification")}
+              onPress={() => router.push("/(peso)/job_verification" as never)}
             >
               <View style={[styles.actionIcon, { backgroundColor: '#E0F2FE' }]}>
                 <Ionicons name="briefcase" size={24} color="#0284C7" />
@@ -195,7 +195,7 @@ export default function PESODashboard() {
 
             <TouchableOpacity 
               style={styles.actionCard}
-              onPress={() => router.push("/(peso)/create_peso_user")}
+              onPress={() => router.push("/(peso)/create_peso_user" as never)}
             >
               <View style={[styles.actionIcon, { backgroundColor: '#E8F5E9' }]}>
                 <Ionicons name="person-add" size={24} color="#34C759" />
@@ -206,7 +206,7 @@ export default function PESODashboard() {
 
             <TouchableOpacity 
               style={styles.actionCard}
-              onPress={() => router.push("/(peso)/reports")}
+              onPress={() => router.push("/(peso)/reports" as never)}
             >
               <View style={[styles.actionIcon, { backgroundColor: '#F3E5F5' }]}>
                 <Ionicons name="bar-chart" size={24} color="#9C27B0" />
@@ -217,7 +217,7 @@ export default function PESODashboard() {
 
             <TouchableOpacity
               style={styles.actionCard}
-              onPress={() => router.push("/(peso)/signed_contracts")}
+              onPress={() => router.push("/(peso)/signed_contracts" as never)}
             >
               <View style={[styles.actionIcon, { backgroundColor: '#E8F5E9' }]}>
                 <Ionicons name="document-text" size={24} color="#2E7D32" />

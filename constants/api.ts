@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 
 // --- THIS IS THE ONLY LINE YOU EVER NEED TO CHANGE ---
 // 1. Find your computer's IP address (run "ipconfig" in cmd)
-const COMPUTER_IP = '191.168.89.119'; // <-- Double-check this is still your IP!
+const COMPUTER_IP = '192.168.1.105'; // <-- Double-check this is still your IP!
 // ----------------------------------------------------
 
 // This is the URL for the website (using Laragon's auto-generated URL)

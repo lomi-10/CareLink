@@ -2,6 +2,7 @@
 // Barrel exports for job posting components
 
 export { ApplicationCard } from './ApplicationCard';
+export { ApplicantGroupCard } from './ApplicantGroupCard';
 export { CategorySelector } from './CategorySelector';
 export { DescriptionInput } from './DescriptionInput';
 export { JobCard } from './JobCard';

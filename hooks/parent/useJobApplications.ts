@@ -30,7 +30,8 @@ export interface JobApplication {
     | 'Withdrawn'
     | 'contract_pending'
     | 'hired'
-    | 'auto_rejected';
+    | 'auto_rejected'
+    | 'Pending Termination';
   applied_at: string;
   job_start_date?: string | null;
   reviewed_at?: string;
@@ -172,6 +173,10 @@ export function useJobApplications(jobPostId: string) {
     if (status === 'Rejected') {
       return applications.filter((app) => app.status === 'Rejected' || app.status === 'auto_rejected');
     }
+    // UI label "Hired" uses key Accepted; API may return hired or Accepted after contract
+    if (status === 'Accepted') {
+      return applications.filter((app) => app.status === 'Accepted' || app.status === 'hired');
+    }
     return applications.filter((app) => app.status === status);
   };
 
@@ -182,7 +187,7 @@ export function useJobApplications(jobPostId: string) {
       pending: apps.filter((a) => a?.status === 'Pending').length,
       reviewed: apps.filter((a) => a?.status === 'Reviewed').length,
       shortlisted: apps.filter((a) => a?.status === 'Shortlisted').length,
-      accepted: apps.filter((a) => a?.status === 'Accepted').length,
+      accepted: apps.filter((a) => a?.status === 'Accepted' || a?.status === 'hired').length,
       rejected: apps.filter((a) => a?.status === 'Rejected' || a?.status === 'auto_rejected').length,
     };
   };

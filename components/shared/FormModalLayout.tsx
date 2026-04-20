@@ -86,6 +86,7 @@ export function FormModalLayout({
             isWeb && {
               width: "100%",
               maxWidth,
+              alignSelf: "center",
               maxHeight: "92%" as const,
               borderRadius: theme.radius.xl,
               overflow: "hidden",

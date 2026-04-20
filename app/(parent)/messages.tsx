@@ -13,7 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { useConversations, useChat, Conversation, Message } from '@/hooks/shared';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
-import { Sidebar, MobileMenu } from '@/components/parent/home';
+import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
 import { LoadingSpinner, ConfirmationModal, NotificationModal } from '@/components/shared/';
 import { ChatCallOptionsModal } from '@/components/shared/ChatCallOptionsModal';
 import { InterviewModal } from '@/components/shared/InterviewModal';
@@ -993,7 +993,7 @@ export default function ParentMessages() {
       </View>
 
       {loadingConvs ? (
-        <LoadingSpinner />
+        <LoadingSpinner visible />
       ) : filteredConvs.length === 0 ? (
         <View style={s.emptyWrap}>
           <Ionicons name="chatbubbles-outline" size={52} color={theme.color.subtle} />
@@ -1013,7 +1013,7 @@ export default function ParentMessages() {
               active={activePartner?.partner_id === item.partner_id}
             />
           )}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: 88 }}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -1052,6 +1052,8 @@ export default function ParentMessages() {
             />
           </SafeAreaView>
         )}
+
+        {!activePartner ? <ParentTabBar /> : null}
 
         <MobileMenu
           isOpen={isMobileMenuOpen}

@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 interface ApplicationCardProps {
   application: any; // Type from useJobApplications
+  /** When grouping by helper, show which job post this application is for */
+  jobTitle?: string;
   onViewProfile: () => void;
   onShortlist: () => void;
   onReject: () => void;
@@ -18,7 +20,18 @@ interface ApplicationCardProps {
   onViewLeaveRequests?: () => void;
 }
 
-export function ApplicationCard({ application, onViewProfile, onShortlist, onReject, onScheduleInterview, onMessage, onManageTasks, onViewAttendance, onViewLeaveRequests }: ApplicationCardProps) {
+export function ApplicationCard({
+  application,
+  jobTitle,
+  onViewProfile,
+  onShortlist,
+  onReject,
+  onScheduleInterview,
+  onMessage,
+  onManageTasks,
+  onViewAttendance,
+  onViewLeaveRequests,
+}: ApplicationCardProps) {
   
   // Dynamic status configuration for premium badges
   const getStatusConfig = () => {
@@ -32,6 +45,7 @@ export function ApplicationCard({ application, onViewProfile, onShortlist, onRej
       case 'hired': return { color: '#059669', bg: '#D1FAE5', icon: 'checkmark-done', label: 'Hired' };
       case 'Rejected': return { color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle', label: 'Rejected' };
       case 'auto_rejected': return { color: '#6B7280', bg: '#F3F4F6', icon: 'briefcase', label: 'Closed (other role)' };
+      case 'Pending Termination': return { color: '#B45309', bg: '#FEF3C7', icon: 'document-text', label: 'Ending contract' };
       case 'Withdrawn': return { color: '#6B7280', bg: '#F3F4F6', icon: 'arrow-undo', label: 'Withdrawn' };
       default: return { color: '#6B7280', bg: '#F3F4F6', icon: 'information-circle', label: application.status };
     }
@@ -73,6 +87,11 @@ export function ApplicationCard({ application, onViewProfile, onShortlist, onRej
           
           <View style={styles.nameContainer}>
             <Text style={styles.helperName} numberOfLines={1}>{application.helper_name || 'Unknown Helper'}</Text>
+            {jobTitle ? (
+              <Text style={styles.jobTitleLine} numberOfLines={2}>
+                Applied for: <Text style={styles.jobTitleBold}>{jobTitle}</Text>
+              </Text>
+            ) : null}
             <View style={styles.metaRow}>
               {application.helper_age && (
                 <Text style={styles.metaText}>{application.helper_age} yrs • {application.helper_gender || 'Any'}</Text>
@@ -240,6 +259,13 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     letterSpacing: -0.3,
   },
+  jobTitleLine: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  jobTitleBold: { fontWeight: '700', color: '#374151' },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',

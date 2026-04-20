@@ -134,6 +134,7 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 400,
+    alignSelf: 'center',
     alignItems: 'center',
     ...Platform.select({
       web: {

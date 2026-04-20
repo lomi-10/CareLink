@@ -21,9 +21,11 @@ export interface JobPost {
   barangay?: string;
   municipality?: string;
   province?: string;
-  status: 'Open' | 'Filled' | 'Closed' | 'Expired';
+  status: 'Open' | 'Filled' | 'Closed' | 'Expired' | 'Pending' | 'Rejected';
   posted_at: string;
   expires_at: string;
+  /** From API when present */
+  start_date?: string | null;
   filled_at?: string;
   application_count: number;
   new_application_count: number;

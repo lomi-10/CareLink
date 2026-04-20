@@ -1,8 +1,15 @@
 // components/peso/JobVerificationModal.tsx
 import React, { useEffect, useState } from 'react';
 import {
-  Modal, View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, ActivityIndicator, TextInput,
+  Modal,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  TextInput,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -527,8 +534,27 @@ const s = StyleSheet.create({
   closeFullBtn: { backgroundColor: theme.color.ink, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   closeFullBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
-  rejectOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  rejectSheet:   { backgroundColor: theme.color.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
+  rejectOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    ...Platform.select({
+      web: { justifyContent: 'center', padding: 20 },
+      default: { justifyContent: 'flex-end' },
+    }),
+  },
+  rejectSheet: {
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+    backgroundColor: theme.color.surface,
+    padding: 24,
+    paddingBottom: 36,
+    ...Platform.select({
+      web: { borderRadius: 24, maxHeight: '90%' as const },
+      default: { borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+    }),
+  },
   rejectSheetTitle: { fontSize: 20, fontWeight: '800', color: theme.color.ink, marginBottom: 6 },
   rejectSheetSub:{ fontSize: 13, color: theme.color.muted, marginBottom: 16 },
   rejectInput:  { backgroundColor: theme.color.canvasPeso, borderRadius: 12, padding: 14, fontSize: 14, color: theme.color.ink, minHeight: 100, borderWidth: 1, borderColor: theme.color.line, marginBottom: 16 },

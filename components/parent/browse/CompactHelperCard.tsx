@@ -5,13 +5,15 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { HelperProfile } from '@/hooks/parent';
+import { theme } from '@/constants/theme';
 
 interface CompactHelperCardProps {
   helper: HelperProfile;
   onPress: () => void;
+  matchScore?: number;
 }
 
-export function CompactHelperCard({ helper, onPress }: CompactHelperCardProps) {
+export function CompactHelperCard({ helper, onPress, matchScore }: CompactHelperCardProps) {
   const getVerificationBadge = () => {
     switch (helper.verification_status) {
       case 'Verified':
@@ -55,6 +57,12 @@ export function CompactHelperCard({ helper, onPress }: CompactHelperCardProps) {
         <Text style={styles.name} numberOfLines={1}>
           {helper.first_name}
         </Text>
+
+        {matchScore != null && matchScore > 0 && (
+          <View style={styles.matchPill}>
+            <Text style={styles.matchText}>{matchScore}% match</Text>
+          </View>
+        )}
 
         {/* Primary Category Only */}
         {helper.categories[0] && (
@@ -153,6 +161,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1A1C1E',
   },
+  matchPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.color.parentSoft,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 2,
+  },
+  matchText: { fontSize: 9, fontWeight: '800', color: theme.color.parent },
   category: {
     fontSize: 11,
     fontWeight: '600',

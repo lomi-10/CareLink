@@ -12,13 +12,11 @@ const { width } = Dimensions.get('window');
 export function MobileMenu({
   isOpen,
   onClose,
-  stats,
   handleLogout,
   notificationUnread = 0,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  stats?: { applications?: number };
   handleLogout: () => void;
   notificationUnread?: number;
 }) {
@@ -69,11 +67,10 @@ export function MobileMenu({
           </View>
 
           <ScrollView>
-            <DrawerItem icon="home" label="Home" path="/(parent)/home" />
-            <DrawerItem icon="search" label="Find Helpers" path="/(parent)/browse_helpers" />
-            <DrawerItem icon="briefcase" label="My Job Posts" path="/(parent)/jobs" />
-            <DrawerItem icon="people" label="Applications" path="/(parent)/applications" />
-            <DrawerItem icon="chatbubbles" label="Messages" path="/(parent)/messages" />
+            <Text style={styles.sectionHint}>
+              Use the bar below for Home, Find, Jobs, Applicants, and Messages.
+            </Text>
+            <DrawerItem icon="heart" label="Active Helpers" path="/(parent)/active_helpers" />
             <DrawerItem
               icon="notifications"
               label="Notifications"
@@ -100,6 +97,13 @@ const styles = StyleSheet.create({
   drawer: { width: '80%', maxWidth: 320, backgroundColor: '#fff', height: '100%', padding: 24, position: 'absolute', left: 0, top: 0, bottom: 0 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
   headerText: { fontSize: 20, fontWeight: 'bold' },
+  sectionHint: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    marginBottom: 16,
+    paddingHorizontal: 2,
+  },
   drawerItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, marginBottom: 4 },
   drawerItemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   drawerItemText: { fontSize: 16, fontWeight: "500", color: "#333" },

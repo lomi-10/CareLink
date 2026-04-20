@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { HelperProfile } from '@/hooks/parent';
+import type { JobPost } from '@/hooks/parent/useParentJobs';
+import type { HelperJobMatch } from '@/lib/parentHelperMatch';
 
 interface HelperProfileModalProps {
   visible: boolean;
@@ -22,6 +24,9 @@ interface HelperProfileModalProps {
   onInvite?: () => void;
   onSave?: () => void;
   onClose: () => void;
+  /** Open job used for match copy (optional) */
+  referenceJob?: JobPost | null;
+  match?: HelperJobMatch | null;
 }
 
 export function HelperProfileModal({
@@ -30,6 +35,8 @@ export function HelperProfileModal({
   onInvite,
   onSave,
   onClose,
+  referenceJob,
+  match,
 }: HelperProfileModalProps) {
   // NEW STATE: Tracks which document is currently being viewed
   const [docToView, setDocToView] = useState<{title: string, url: string} | null>(null);
@@ -147,6 +154,30 @@ export function HelperProfileModal({
                   )}
                 </View>
               </View>
+
+              {referenceJob && match && match.score > 0 && (
+                <View style={styles.matchCard}>
+                  <View style={styles.matchCardHead}>
+                    <Ionicons name="analytics-outline" size={20} color="#1D4ED8" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.matchCardTitle}>Match for your open role</Text>
+                      <Text style={styles.matchCardJob} numberOfLines={2}>
+                        {referenceJob.title || referenceJob.custom_job_title || 'Open job'}
+                      </Text>
+                    </View>
+                    <Text style={styles.matchScoreBig}>{match.score}%</Text>
+                  </View>
+                  <Text style={styles.matchCardSub}>
+                    Based on category fit, experience, distance, ratings, and verification — not a guarantee of hire.
+                  </Text>
+                  {match.reasons.map((line, idx) => (
+                    <View key={idx} style={styles.matchReasonRow}>
+                      <Ionicons name="checkmark-circle" size={16} color="#059669" />
+                      <Text style={styles.matchReasonText}>{line}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
 
               {/* CONTACT INFO */}
               {(h.email || h.phone || h.helper_email || h.helper_phone) && (
@@ -335,7 +366,8 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 560,
+    alignSelf: 'center',
     backgroundColor: '#fff',
     borderRadius: 24,
     overflow: 'hidden',
@@ -420,6 +452,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  matchCard: {
+    marginHorizontal: 24,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  matchCardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
+  matchCardTitle: { fontSize: 13, fontWeight: '800', color: '#0C4A6E' },
+  matchCardJob: { fontSize: 12, color: '#0369A1', marginTop: 2 },
+  matchScoreBig: { fontSize: 22, fontWeight: '900', color: '#1D4ED8' },
+  matchCardSub: { fontSize: 11, color: '#64748B', marginBottom: 10, lineHeight: 16 },
+  matchReasonRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
+  matchReasonText: { flex: 1, fontSize: 13, color: '#334155', lineHeight: 18 },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',

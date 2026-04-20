@@ -22,7 +22,7 @@ import { useAuth, useJobReferences, useResponsive } from '@/hooks/shared';
 import { useUserVerification } from '@/hooks/peso';
 
 // Components
-import { MobileMenu, Sidebar } from '@/components/parent/home'; // NEW: Added for consistent layout
+import { MobileMenu, Sidebar, ParentTabBar } from '@/components/parent/home'; // NEW: Added for consistent layout
 import {
   AgeRangeSelector,
   BenefitsCard,
@@ -302,6 +302,7 @@ export default function PostJob() {
         onClose={() => setIsMobileMenuOpen(false)} 
         handleLogout={initiateLogout} 
       />
+      <ParentTabBar />
     </SafeAreaView>
   );
 }

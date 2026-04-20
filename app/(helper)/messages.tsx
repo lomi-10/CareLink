@@ -672,7 +672,7 @@ export default function HelperMessages() {
       </View>
 
       {loadingConvs ? (
-        <LoadingSpinner />
+        <LoadingSpinner visible />
       ) : filteredConvs.length === 0 ? (
         <View style={s.emptyWrap}>
           <Ionicons name="chatbubbles-outline" size={52} color={theme.color.subtle} />

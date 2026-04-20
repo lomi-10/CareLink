@@ -8,6 +8,11 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +23,7 @@ import { theme } from '@/constants/theme';
 import {
   fetchLeaveRequests,
   respondToLeaveRequest,
+  labelForLeaveReasonCode,
   type LeaveRequestRow,
 } from '@/lib/leaveRequestsApi';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
@@ -40,6 +46,10 @@ export default function PlacementLeaveRequestsScreen() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [successLogout, setSuccessLogout] = useState(false);
+
+  const [declineOpen, setDeclineOpen] = useState(false);
+  const [declineId, setDeclineId] = useState<number | null>(null);
+  const [declineNote, setDeclineNote] = useState('');
 
   const load = useCallback(async () => {
     if (!applicationId || !parentId) return;
@@ -64,14 +74,37 @@ export default function PlacementLeaveRequestsScreen() {
     return { pending: p, history: h };
   }, [rows]);
 
-  const onRespond = async (id: number, status: 'approved' | 'declined') => {
+  const onApprove = async (id: number) => {
     setBusyId(id);
     try {
-      const res = await respondToLeaveRequest(id, parentId, status);
+      const res = await respondToLeaveRequest(id, parentId, 'approved');
       if (!res.success) {
         Alert.alert('Leave request', res.message || 'Could not update');
         return;
       }
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const openDecline = (id: number) => {
+    setDeclineId(id);
+    setDeclineNote('');
+    setDeclineOpen(true);
+  };
+
+  const submitDecline = async () => {
+    if (declineId == null) return;
+    setBusyId(declineId);
+    try {
+      const res = await respondToLeaveRequest(declineId, parentId, 'declined', declineNote.trim() || null);
+      if (!res.success) {
+        Alert.alert('Leave request', res.message || 'Could not update');
+        return;
+      }
+      setDeclineOpen(false);
+      setDeclineId(null);
       await load();
     } finally {
       setBusyId(null);
@@ -93,6 +126,10 @@ export default function PlacementLeaveRequestsScreen() {
   const renderCard = (r: LeaveRequestRow, showActions: boolean) => {
     const name = r.helper_name || defaultHelperName;
     const busy = busyId === r.id;
+    const reasonLabel = labelForLeaveReasonCode(r.reason_code);
+    const noteParts = [r.helper_note?.trim(), r.reason?.trim()].filter(Boolean);
+    const detailText = noteParts.length > 0 ? noteParts.join(' · ') : null;
+
     return (
       <View key={r.id} style={styles.card}>
         <View style={styles.cardTop}>
@@ -102,15 +139,22 @@ export default function PlacementLeaveRequestsScreen() {
           </View>
         </View>
         <Text style={styles.cardHelper}>{name}</Text>
-        {r.reason ? <Text style={styles.cardReason}>{r.reason}</Text> : <Text style={styles.cardNoReason}>No reason given</Text>}
+        <Text style={styles.cardReasonLabel}>{reasonLabel}</Text>
+        {detailText ? <Text style={styles.cardReason}>{detailText}</Text> : null}
+        {r.status === 'approved' && r.paid_leave !== null && r.paid_leave !== undefined ? (
+          <Text style={styles.paidTag}>{r.paid_leave === 1 ? 'Paid leave' : 'Unpaid leave'}</Text>
+        ) : null}
+        {r.status === 'declined' && r.response_note ? (
+          <Text style={styles.responseNote}>Employer note: {r.response_note}</Text>
+        ) : null}
         {showActions ? (
           <View style={styles.actions}>
             <TouchableOpacity
               style={[styles.btn, styles.declineBtn]}
-              onPress={() => onRespond(r.id, 'declined')}
+              onPress={() => openDecline(r.id)}
               disabled={busy}
             >
-              {busy ? (
+              {busy && busyId === r.id ? (
                 <ActivityIndicator color={theme.color.danger} size="small" />
               ) : (
                 <Text style={styles.declineText}>Decline</Text>
@@ -118,10 +162,10 @@ export default function PlacementLeaveRequestsScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.btn, styles.approveBtn]}
-              onPress={() => onRespond(r.id, 'approved')}
+              onPress={() => void onApprove(r.id)}
               disabled={busy}
             >
-              {busy ? (
+              {busy && busyId === r.id ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <Text style={styles.approveText}>Approve</Text>
@@ -161,6 +205,45 @@ export default function PlacementLeaveRequestsScreen() {
     </ScrollView>
   );
 
+  const declineModal = (
+    <Modal visible={declineOpen} animationType="slide" transparent onRequestClose={() => setDeclineOpen(false)}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.declineOverlay}
+      >
+        <Pressable style={StyleSheet.absoluteFill} onPress={() => setDeclineOpen(false)} />
+        <View style={styles.declineCard}>
+          <Text style={styles.declineTitle}>Decline request</Text>
+          <Text style={styles.declineHint}>Optional note to the helper</Text>
+          <TextInput
+            style={styles.declineInput}
+            value={declineNote}
+            onChangeText={setDeclineNote}
+            placeholder="Reason for declining"
+            placeholderTextColor={theme.color.subtle}
+            multiline
+          />
+          <View style={styles.declineActions}>
+            <TouchableOpacity style={styles.declineCancel} onPress={() => setDeclineOpen(false)}>
+              <Text style={styles.declineCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.declineSubmit, busyId === declineId && { opacity: 0.7 }]}
+              onPress={() => void submitDecline()}
+              disabled={busyId === declineId}
+            >
+              {busyId === declineId ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.declineSubmitText}>Decline</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+
   const modals = (
     <>
       <ConfirmationModal
@@ -187,6 +270,7 @@ export default function PlacementLeaveRequestsScreen() {
           handleLogout();
         }}
       />
+      {declineModal}
     </>
   );
 
@@ -297,9 +381,16 @@ const styles = StyleSheet.create({
   cardDate: { fontSize: 16, fontWeight: '800', color: theme.color.ink },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   badgeText: { fontSize: 12, fontWeight: '800', textTransform: 'capitalize' },
-  cardHelper: { fontSize: 14, fontWeight: '700', color: theme.color.parent, marginBottom: 6 },
+  cardHelper: { fontSize: 14, fontWeight: '700', color: theme.color.parent, marginBottom: 4 },
+  cardReasonLabel: { fontSize: 13, fontWeight: '800', color: theme.color.ink, marginBottom: 4 },
   cardReason: { fontSize: 14, color: theme.color.ink, lineHeight: 20 },
-  cardNoReason: { fontSize: 14, color: theme.color.muted, fontStyle: 'italic' },
+  paidTag: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '800',
+    color: theme.color.muted,
+  },
+  responseNote: { fontSize: 13, color: theme.color.muted, marginTop: 8, fontStyle: 'italic' },
   actions: { flexDirection: 'row', gap: 10, marginTop: 14 },
   btn: {
     flex: 1,
@@ -317,4 +408,51 @@ const styles = StyleSheet.create({
   approveBtn: { backgroundColor: theme.color.parent },
   approveText: { fontSize: 15, fontWeight: '800', color: '#fff' },
   respondedMeta: { fontSize: 12, color: theme.color.muted, marginTop: 10, fontWeight: '600' },
+  declineOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: theme.color.overlay,
+    ...Platform.select({
+      web: { justifyContent: 'center', padding: 20 },
+      default: { justifyContent: 'flex-end' },
+    }),
+  },
+  declineCard: {
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+    backgroundColor: theme.color.surfaceElevated,
+    padding: 22,
+    paddingBottom: 36,
+    ...theme.shadow.card,
+    ...Platform.select({
+      web: { borderRadius: 20, maxHeight: '90%' as const },
+      default: { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+    }),
+  },
+  declineTitle: { fontSize: 18, fontWeight: '900', color: theme.color.ink, marginBottom: 8 },
+  declineHint: { fontSize: 13, color: theme.color.muted, marginBottom: 10 },
+  declineInput: {
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 88,
+    fontSize: 15,
+    color: theme.color.ink,
+    textAlignVertical: 'top',
+    marginBottom: 16,
+  },
+  declineActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+  declineCancel: { paddingVertical: 12, paddingHorizontal: 16 },
+  declineCancelText: { fontWeight: '800', color: theme.color.muted },
+  declineSubmit: {
+    backgroundColor: theme.color.danger,
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    borderRadius: 12,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  declineSubmitText: { color: '#fff', fontWeight: '800', fontSize: 16 },
 });

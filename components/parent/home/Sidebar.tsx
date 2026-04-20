@@ -23,6 +23,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
     { icon: 'search'       as const, label: 'Find Helpers',  path: '/(parent)/browse_helpers' },
     { icon: 'briefcase'    as const, label: 'My Job Posts',  path: '/(parent)/jobs' },
     { icon: 'people'       as const, label: 'Applications',  path: '/(parent)/applications' },
+    { icon: 'heart'        as const, label: 'Active Helpers', path: '/(parent)/active_helpers' },
     { icon: 'notifications'as const, label: 'Notifications', path: '/(parent)/notifications', badge: unreadCount },
     { icon: 'chatbubbles'  as const, label: 'Messages',      path: '/(parent)/messages' },
     { icon: 'person'       as const, label: 'Profile',       path: '/(parent)/profile' },

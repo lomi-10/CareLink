@@ -12,24 +12,36 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Switch,
+  ScrollView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import Checkbox from 'expo-checkbox';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { useAuth, useResponsive } from '@/hooks/shared';
 import { Sidebar } from '@/components/parent/home';
 import { theme } from '@/constants/theme';
 import {
   fetchApplicationTasks,
   createApplicationTask,
+  updateApplicationTask,
   deleteApplicationTask,
   type ApplicationTask,
 } from '@/lib/applicationTasksApi';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 
 type Section = { title: string; data: ApplicationTask[] };
+
+function parseRecurDays(s: string): string[] | null {
+  const parts = s
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+  return parts.length ? parts : null;
+}
 
 export default function PlacementTasksScreen() {
   const router = useRouter();
@@ -50,7 +62,15 @@ export default function PlacementTasksScreen() {
   const [titleIn, setTitleIn] = useState('');
   const [descIn, setDescIn] = useState('');
   const [dueIn, setDueIn] = useState('');
+  const [addReqPhoto, setAddReqPhoto] = useState(false);
+  const [addRecurring, setAddRecurring] = useState(false);
+  const [recurDaysIn, setRecurDaysIn] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTask, setEditTask] = useState<ApplicationTask | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editDue, setEditDue] = useState('');
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [successLogout, setSuccessLogout] = useState(false);
 
@@ -58,7 +78,7 @@ export default function PlacementTasksScreen() {
     if (!applicationId || !parentId) return;
     setLoading(true);
     try {
-      const res = await fetchApplicationTasks(applicationId, parentId, 'parent');
+      const res = await fetchApplicationTasks(applicationId, parentId, 'parent', 'all');
       if (res.success && res.data) setTasks(res.data);
     } catch (e) {
       console.error(e);
@@ -80,6 +100,15 @@ export default function PlacementTasksScreen() {
     return out;
   }, [tasks]);
 
+  const resetAdd = () => {
+    setTitleIn('');
+    setDescIn('');
+    setDueIn('');
+    setAddReqPhoto(false);
+    setAddRecurring(false);
+    setRecurDaysIn('');
+  };
+
   const submitAdd = async () => {
     const t = titleIn.trim();
     if (!t || !applicationId || !parentId) return;
@@ -89,16 +118,46 @@ export default function PlacementTasksScreen() {
         title: t,
         description: descIn.trim() || undefined,
         due_date: dueIn.trim() || null,
-        is_recurring: false,
+        requires_photo: addReqPhoto,
+        is_recurring: addRecurring,
+        recur_days: parseRecurDays(recurDaysIn),
       });
       if (!res.success) {
         Alert.alert('Tasks', res.message || 'Could not create');
         return;
       }
       setAddOpen(false);
-      setTitleIn('');
-      setDescIn('');
-      setDueIn('');
+      resetAdd();
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEdit = (task: ApplicationTask) => {
+    setEditTask(task);
+    setEditTitle(task.title);
+    setEditDesc(task.description ?? '');
+    setEditDue(task.due_date ?? '');
+    setEditOpen(true);
+  };
+
+  const submitEdit = async () => {
+    const t = editTitle.trim();
+    if (!t || !editTask || !parentId) return;
+    setSaving(true);
+    try {
+      const res = await updateApplicationTask(editTask.id, parentId, {
+        title: t,
+        description: editDesc.trim() || null,
+        due_date: editDue.trim() || null,
+      });
+      if (!res.success) {
+        Alert.alert('Tasks', res.message || 'Could not save');
+        return;
+      }
+      setEditOpen(false);
+      setEditTask(null);
       await load();
     } finally {
       setSaving(false);
@@ -130,12 +189,27 @@ export default function PlacementTasksScreen() {
     </TouchableOpacity>
   );
 
+  const instruction = (
+    <View style={styles.instructionCard}>
+      <Ionicons name="information-circle-outline" size={22} color={theme.color.parent} />
+      <View style={{ flex: 1, marginLeft: 10 }}>
+        <Text style={styles.instructionTitle}>Managing placement tasks</Text>
+        <Text style={styles.instructionBody}>
+          Add tasks your helper should complete during this hire. You can require a photo proof, set a due date, and
+          note recurring weekdays. Your helper checks items off after check-in (except on rest days). Swipe open tasks
+          left to delete. Tap a row to edit. Completed tasks stay visible with any submitted photos.
+        </Text>
+      </View>
+    </View>
+  );
+
   const list = (
     <SectionList
       sections={sections}
       keyExtractor={(i) => String(i.id)}
       stickySectionHeadersEnabled={false}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
+      ListHeaderComponent={instruction}
       contentContainerStyle={[
         styles.listPad,
         sections.length === 0 && !loading ? { flexGrow: 1 } : null,
@@ -144,7 +218,7 @@ export default function PlacementTasksScreen() {
         loading ? (
           <ActivityIndicator color={theme.color.parent} style={{ marginTop: 40 }} />
         ) : (
-          <Text style={styles.empty}>No tasks yet. Tap “Add Task” to assign work.</Text>
+          <Text style={styles.empty}>No tasks yet. Tap “Add task” to assign work.</Text>
         )
       }
       renderSectionHeader={({ section: { title } }) => (
@@ -152,8 +226,8 @@ export default function PlacementTasksScreen() {
       )}
       renderItem={({ item, section }) => {
         const isDone = section.title === 'Completed';
-        const row = (
-          <View style={[styles.row, isDone && styles.rowDone]}>
+        const rowContent = (
+          <>
             <Checkbox value={item.status === 'done'} disabled color={theme.color.success} />
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={[styles.rowTitle, isDone && styles.rowTitleDone]}>{item.title}</Text>
@@ -164,15 +238,29 @@ export default function PlacementTasksScreen() {
               ) : null}
               <View style={styles.metaRow}>
                 {item.due_date ? <Text style={styles.meta}>Due {item.due_date}</Text> : null}
+                {item.requires_photo ? <Text style={styles.metaWarn}> · Photo required</Text> : null}
                 {item.is_recurring ? <Text style={styles.meta}> · Recurring</Text> : null}
               </View>
+              {isDone && item.photo_url ? (
+                <Image source={{ uri: item.photo_url }} style={styles.thumb} contentFit="cover" />
+              ) : null}
             </View>
-          </View>
+          </>
         );
-        if (isDone) return row;
+
+        if (isDone) {
+          return <View style={[styles.row, styles.rowDone]}>{rowContent}</View>;
+        }
+
         return (
           <Swipeable renderRightActions={() => renderRight(item)} overshootRight={false}>
-            {row}
+            <TouchableOpacity
+              style={styles.row}
+              activeOpacity={0.85}
+              onPress={() => openEdit(item)}
+            >
+              {rowContent}
+            </TouchableOpacity>
           </Swipeable>
         );
       }}
@@ -180,7 +268,7 @@ export default function PlacementTasksScreen() {
   );
 
   const headerBlock = (
-    <View style={styles.pageHead}>
+    <View style={[styles.pageHead, !isDesktop && styles.pageHeadMobile]}>
       <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
         <Ionicons name="chevron-back" size={24} color={theme.color.parent} />
       </TouchableOpacity>
@@ -188,11 +276,59 @@ export default function PlacementTasksScreen() {
         <Text style={styles.pageTitle}>Placement tasks</Text>
         <Text style={styles.pageSub}>{helperName}</Text>
       </View>
-      <TouchableOpacity style={styles.addBtn} onPress={() => setAddOpen(true)}>
-        <Ionicons name="add" size={22} color="#fff" />
-        <Text style={styles.addBtnText}>Add</Text>
-      </TouchableOpacity>
+      {isDesktop ? (
+        <TouchableOpacity style={styles.addBtn} onPress={() => setAddOpen(true)}>
+          <Ionicons name="add" size={22} color="#fff" />
+          <Text style={styles.addBtnText}>Add</Text>
+        </TouchableOpacity>
+      ) : (
+        <View style={{ width: 44 }} />
+      )}
     </View>
+  );
+
+  const addFields = (
+    <>
+      <TextInput
+        style={styles.input}
+        placeholder="Title *"
+        value={titleIn}
+        onChangeText={setTitleIn}
+        placeholderTextColor={theme.color.subtle}
+      />
+      <TextInput
+        style={[styles.input, styles.inputMultiline]}
+        placeholder="Description (optional)"
+        value={descIn}
+        onChangeText={setDescIn}
+        multiline
+        placeholderTextColor={theme.color.subtle}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Due date YYYY-MM-DD (optional)"
+        value={dueIn}
+        onChangeText={setDueIn}
+        placeholderTextColor={theme.color.subtle}
+      />
+      <View style={styles.switchRow}>
+        <Text style={styles.switchLabel}>Require photo when done</Text>
+        <Switch value={addReqPhoto} onValueChange={setAddReqPhoto} trackColor={{ true: theme.color.parent }} />
+      </View>
+      <View style={styles.switchRow}>
+        <Text style={styles.switchLabel}>Recurring</Text>
+        <Switch value={addRecurring} onValueChange={setAddRecurring} trackColor={{ true: theme.color.parent }} />
+      </View>
+      {addRecurring ? (
+        <TextInput
+          style={styles.input}
+          placeholder="Weekdays e.g. Monday, Wednesday, Friday"
+          value={recurDaysIn}
+          onChangeText={setRecurDaysIn}
+          placeholderTextColor={theme.color.subtle}
+        />
+      ) : null}
+    </>
   );
 
   const addModal = (
@@ -201,104 +337,99 @@ export default function PlacementTasksScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.modalOverlay}
       >
-        <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>New task</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Title *"
-            value={titleIn}
-            onChangeText={setTitleIn}
-            placeholderTextColor={theme.color.subtle}
-          />
-          <TextInput
-            style={[styles.input, styles.inputMultiline]}
-            placeholder="Description (optional)"
-            value={descIn}
-            onChangeText={setDescIn}
-            multiline
-            placeholderTextColor={theme.color.subtle}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Due date YYYY-MM-DD (optional)"
-            value={dueIn}
-            onChangeText={setDueIn}
-            placeholderTextColor={theme.color.subtle}
-          />
-          <View style={styles.modalActions}>
-            <TouchableOpacity style={styles.modalCancel} onPress={() => setAddOpen(false)}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modalSave, !titleIn.trim() && { opacity: 0.5 }]}
-              disabled={!titleIn.trim() || saving}
-              onPress={() => void submitAdd()}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.modalSaveText}>Save</Text>
-              )}
-            </TouchableOpacity>
+        <ScrollView contentContainerStyle={styles.modalScroll}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>New task</Text>
+            {addFields}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => {
+                  setAddOpen(false);
+                  resetAdd();
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSave, !titleIn.trim() && { opacity: 0.5 }]}
+                disabled={!titleIn.trim() || saving}
+                onPress={() => void submitAdd()}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalSaveText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
   );
 
-  if (!applicationId) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <Text style={styles.empty}>Missing application.</Text>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.linkBack}>Go back</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
+  const editModal = (
+    <Modal visible={editOpen} animationType="slide" transparent onRequestClose={() => setEditOpen(false)}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.modalOverlay}
+      >
+        <ScrollView contentContainerStyle={styles.modalScroll}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Edit task</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Title *"
+              value={editTitle}
+              onChangeText={setEditTitle}
+              placeholderTextColor={theme.color.subtle}
+            />
+            <TextInput
+              style={[styles.input, styles.inputMultiline]}
+              placeholder="Description (optional)"
+              value={editDesc}
+              onChangeText={setEditDesc}
+              multiline
+              placeholderTextColor={theme.color.subtle}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Due date YYYY-MM-DD (optional)"
+              value={editDue}
+              onChangeText={setEditDue}
+              placeholderTextColor={theme.color.subtle}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setEditOpen(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSave, !editTitle.trim() && { opacity: 0.5 }]}
+                disabled={!editTitle.trim() || saving}
+                onPress={() => void submitEdit()}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalSaveText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
 
-  if (isDesktop) {
-    return (
-      <View style={styles.desktopRoot}>
-        <Sidebar onLogout={() => setConfirmLogout(true)} />
-        <View style={styles.desktopMain}>
-          {headerBlock}
-          {list}
-        </View>
-        {addModal}
-        <ConfirmationModal
-          visible={confirmLogout}
-          title="Log Out"
-          message="Are you sure you want to log out?"
-          confirmText="Log Out"
-          cancelText="Cancel"
-          type="danger"
-          onConfirm={() => {
-            setConfirmLogout(false);
-            setSuccessLogout(true);
-          }}
-          onCancel={() => setConfirmLogout(false)}
-        />
-        <NotificationModal
-          visible={successLogout}
-          message="Logged Out Successfully!"
-          type="success"
-          autoClose
-          duration={1500}
-          onClose={() => {
-            setSuccessLogout(false);
-            handleLogout();
-          }}
-        />
-      </View>
-    );
-  }
+  const fab = !isDesktop ? (
+    <TouchableOpacity style={styles.fab} onPress={() => setAddOpen(true)} activeOpacity={0.9}>
+      <Ionicons name="add" size={30} color="#fff" />
+    </TouchableOpacity>
+  ) : null;
 
-  return (
-    <SafeAreaView style={styles.mobileRoot} edges={['top']}>
-      {headerBlock}
-      <View style={{ flex: 1, minHeight: 0 }}>{list}</View>
-      {addModal}
+  const logoutModals = (
+    <>
       <ConfirmationModal
         visible={confirmLogout}
         title="Log Out"
@@ -323,6 +454,43 @@ export default function PlacementTasksScreen() {
           handleLogout();
         }}
       />
+    </>
+  );
+
+  if (!applicationId) {
+    return (
+      <SafeAreaView style={styles.center}>
+        <Text style={styles.empty}>Missing application.</Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.linkBack}>Go back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  if (isDesktop) {
+    return (
+      <View style={styles.desktopRoot}>
+        <Sidebar onLogout={() => setConfirmLogout(true)} />
+        <View style={styles.desktopMain}>
+          {headerBlock}
+          {list}
+        </View>
+        {addModal}
+        {editModal}
+        {logoutModals}
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.mobileRoot} edges={['top']}>
+      {headerBlock}
+      <View style={{ flex: 1, minHeight: 0 }}>{list}</View>
+      {fab}
+      {addModal}
+      {editModal}
+      {logoutModals}
     </SafeAreaView>
   );
 }
@@ -339,6 +507,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
+  pageHeadMobile: { paddingHorizontal: 16 },
   backBtn: { padding: 4 },
   pageTitle: { fontSize: 22, fontWeight: '900', color: theme.color.ink },
   pageSub: { fontSize: 14, color: theme.color.muted, marginTop: 2 },
@@ -352,7 +521,36 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   addBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  listPad: { paddingBottom: 32 },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 28,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: theme.color.parent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    zIndex: 20,
+  },
+  instructionCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: theme.color.parentSoft,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+  },
+  instructionTitle: { fontSize: 14, fontWeight: '800', color: theme.color.ink, marginBottom: 6 },
+  instructionBody: { fontSize: 13, color: theme.color.inkMuted, lineHeight: 20 },
+  listPad: { paddingBottom: 120, paddingHorizontal: 16 },
   sectionTitle: {
     fontSize: 12,
     fontWeight: '800',
@@ -376,8 +574,10 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 16, fontWeight: '700', color: theme.color.ink },
   rowTitleDone: { textDecorationLine: 'line-through', color: theme.color.muted },
   rowDesc: { fontSize: 14, color: theme.color.inkMuted, marginTop: 4, lineHeight: 20 },
-  metaRow: { flexDirection: 'row', marginTop: 6 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },
   meta: { fontSize: 12, color: theme.color.muted },
+  metaWarn: { fontSize: 12, color: theme.color.warning, fontWeight: '700' },
+  thumb: { width: 120, height: 120, borderRadius: 10, marginTop: 10, backgroundColor: theme.color.surface },
   empty: { textAlign: 'center', color: theme.color.muted, marginTop: 32, paddingHorizontal: 24 },
   swipeDel: {
     backgroundColor: theme.color.danger,
@@ -392,14 +592,32 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: theme.color.overlay,
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    ...Platform.select({
+      web: { justifyContent: 'center', padding: 20 },
+      default: { justifyContent: 'flex-end' },
+    }),
+  },
+  modalScroll: {
+    width: '100%',
+    alignItems: 'center',
+    ...Platform.select({
+      web: { flexGrow: 1, justifyContent: 'center', minHeight: '100%' as const },
+      default: { flexGrow: 1, justifyContent: 'flex-end' },
+    }),
   },
   modalCard: {
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
     backgroundColor: theme.color.surfaceElevated,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
     padding: 24,
     paddingBottom: 36,
+    ...theme.shadow.card,
+    ...Platform.select({
+      web: { borderRadius: 20, maxHeight: '90%' as const },
+      default: { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+    }),
   },
   modalTitle: { fontSize: 18, fontWeight: '900', color: theme.color.ink, marginBottom: 16 },
   input: {
@@ -412,6 +630,14 @@ const styles = StyleSheet.create({
     color: theme.color.ink,
   },
   inputMultiline: { minHeight: 88, textAlignVertical: 'top' },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingVertical: 4,
+  },
+  switchLabel: { fontSize: 15, fontWeight: '600', color: theme.color.ink, flex: 1, marginRight: 12 },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 8 },
   modalCancel: { paddingVertical: 12, paddingHorizontal: 16 },
   modalCancelText: { color: theme.color.muted, fontWeight: '700' },
