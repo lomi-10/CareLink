@@ -15,6 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../constants/api";
 import { RoleScreenBackground } from "@/components/shared";
+import { ParentThemeProvider } from "@/contexts/ParentThemeContext";
 import { styles } from "@/constants/parentLayout.styles";
 
 export default function ParentLayout() {
@@ -79,36 +80,40 @@ export default function ParentLayout() {
   // Show different content based on status
   if (userStatus === "pending") {
     return (
-      <RoleScreenBackground role="parent">
-      <View style={styles.container}>
-        <View style={styles.pendingBanner}>
-          <Ionicons name="time-outline" size={20} color="#007AFF" />
-          <View style={styles.bannerText}>
-            <Text style={styles.bannerTitle}>Account pending verification</Text>
-            <Text style={styles.bannerSubtitle}>
-              Complete your profile, upload documents, and wait for PESO to approve your account.
-            </Text>
+      <ParentThemeProvider>
+        <RoleScreenBackground role="parent">
+          <View style={styles.container}>
+            <View style={styles.pendingBanner}>
+              <Ionicons name="time-outline" size={20} color="#007AFF" />
+              <View style={styles.bannerText}>
+                <Text style={styles.bannerTitle}>Account pending verification</Text>
+                <Text style={styles.bannerSubtitle}>
+                  Complete your profile, upload documents, and wait for PESO to approve your account.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.bannerCta}
+                onPress={() => router.push("/(parent)/profile" as never)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.bannerCtaText}>Complete profile</Text>
+                <Ionicons name="chevron-forward" size={16} color="#1D4ED8" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.content}>
+              <Slot />
+            </View>
           </View>
-          <TouchableOpacity
-            style={styles.bannerCta}
-            onPress={() => router.push("/(parent)/profile" as never)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.bannerCtaText}>Complete profile</Text>
-            <Ionicons name="chevron-forward" size={16} color="#1D4ED8" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.content}>
-          <Slot />
-        </View>
-      </View>
-      </RoleScreenBackground>
+        </RoleScreenBackground>
+      </ParentThemeProvider>
     );
   } else if (userStatus === "approved") {
     return (
-      <RoleScreenBackground role="parent">
-        <Slot />
-      </RoleScreenBackground>
+      <ParentThemeProvider>
+        <RoleScreenBackground role="parent">
+          <Slot />
+        </RoleScreenBackground>
+      </ParentThemeProvider>
     );
   } else if (userStatus === "suspended") {
     return <SuspendedScreen />;

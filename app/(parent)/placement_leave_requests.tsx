@@ -343,9 +343,9 @@ function badgeTextStyle(status: string) {
 }
 
 const styles = StyleSheet.create({
-  desktopRoot: { flex: 1, flexDirection: 'row', backgroundColor: theme.color.canvasParent },
+  desktopRoot: { flex: 1, flexDirection: 'row', backgroundColor: 'transparent' },
   desktopMain: { flex: 1, padding: 24 },
-  mobileRoot: { flex: 1, backgroundColor: theme.color.canvasParent },
+  mobileRoot: { flex: 1, backgroundColor: 'transparent' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   linkBack: { marginTop: 12, color: theme.color.parent, fontWeight: '700' },
   empty: { textAlign: 'center', color: theme.color.muted },

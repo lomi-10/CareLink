@@ -14,9 +14,11 @@ import {
   type ColorSchemePreference,
 } from '@/contexts/ColorSchemePreferenceContext';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
+import { useHelperTheme } from '@/contexts/HelperThemeContext';
 import { useResponsive } from '@/hooks/shared';
 import { WorkModeTabBar } from '@/components/helper/work';
-import { theme } from '@/constants/theme';
+import { HelperTabBar } from '@/components/helper/home';
+import { PARENT_THEME_OPTIONS, type ParentThemeId } from '@/constants/parentThemePalettes';
 
 import { styles } from './settings.styles';
 
@@ -36,8 +38,12 @@ export default function HelperSettingsScreen() {
   const navTheme = useTheme();
   const { preference, setPreference } = useColorSchemePreference();
   const { isDesktop } = useResponsive();
-  const { isWorkMode } = useHelperWorkMode();
-  const showWorkTabs = !isDesktop && isWorkMode;
+  const { isWorkMode, activeHire } = useHelperWorkMode();
+  const { themeId, setThemeId, color: c } = useHelperTheme();
+  const accent = c.helper;
+
+  const showWorkTabs = !isDesktop && isWorkMode && !!activeHire;
+  const showBottomBar = !isDesktop;
 
   return (
     <SafeAreaView style={[styles.safe, { flex: 1, backgroundColor: navTheme.colors.background }]}>
@@ -50,12 +56,51 @@ export default function HelperSettingsScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, showWorkTabs && { paddingBottom: 88 }]}
+        contentContainerStyle={[
+          styles.scroll,
+          showBottomBar && { paddingBottom: 88 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.sectionLabel, { color: theme.color.muted }]}>Appearance</Text>
+        <Text style={[styles.sectionLabel, { color: c.muted }]}>Color theme</Text>
         <Text style={[styles.sectionSub, { color: navTheme.colors.text }]}>
-          Choose how CareLink looks on this device. Tabs and screens update immediately.
+          Backgrounds, cards, and accent colors in the helper portal. Saved on this device.
+        </Text>
+        <View style={styles.themeRow}>
+          {PARENT_THEME_OPTIONS.map((opt) => {
+            const selected = themeId === opt.id;
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                onPress={() => void setThemeId(opt.id as ParentThemeId)}
+                activeOpacity={0.88}
+                style={[
+                  styles.themeCard,
+                  {
+                    backgroundColor: selected ? c.helperSoft : c.surface,
+                    borderColor: selected ? accent : c.line,
+                  },
+                ]}
+              >
+                <Text style={[styles.themeCardLabel, { color: c.ink }]} numberOfLines={1}>
+                  {opt.label}
+                </Text>
+                <Text style={[styles.themeCardHint, { color: c.muted }]} numberOfLines={3}>
+                  {opt.hint}
+                </Text>
+                {selected ? (
+                  <View style={{ position: 'absolute', top: 8, right: 8 }}>
+                    <Ionicons name="checkmark-circle" size={20} color={accent} />
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: c.muted, marginTop: 28 }]}>Light &amp; dark</Text>
+        <Text style={[styles.sectionSub, { color: navTheme.colors.text }]}>
+          Choose how CareLink follows your device. Tabs and screens update immediately.
         </Text>
 
         <View style={styles.options}>
@@ -68,22 +113,22 @@ export default function HelperSettingsScreen() {
                   styles.optionRow,
                   {
                     backgroundColor: navTheme.colors.card,
-                    borderColor: selected ? theme.color.helper : navTheme.colors.border,
+                    borderColor: selected ? accent : navTheme.colors.border,
                     borderWidth: selected ? 2 : 1,
                   },
                 ]}
                 onPress={() => void setPreference(opt.value)}
                 activeOpacity={0.85}
               >
-                <View style={[styles.optionIcon, { backgroundColor: theme.color.helperSoft }]}>
-                  <Ionicons name={opt.icon} size={22} color={theme.color.helper} />
+                <View style={[styles.optionIcon, { backgroundColor: c.helperSoft }]}>
+                  <Ionicons name={opt.icon} size={22} color={accent} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.optionTitle, { color: navTheme.colors.text }]}>{opt.label}</Text>
-                  <Text style={[styles.optionHint, { color: theme.color.muted }]}>{opt.hint}</Text>
+                  <Text style={[styles.optionHint, { color: c.muted }]}>{opt.hint}</Text>
                 </View>
                 {selected ? (
-                  <Ionicons name="checkmark-circle" size={24} color={theme.color.helper} />
+                  <Ionicons name="checkmark-circle" size={24} color={accent} />
                 ) : (
                   <View style={{ width: 24 }} />
                 )}
@@ -92,18 +137,18 @@ export default function HelperSettingsScreen() {
           })}
         </View>
 
-        <Text style={[styles.sectionLabel, { color: theme.color.muted, marginTop: 28 }]}>Account</Text>
+        <Text style={[styles.sectionLabel, { color: c.muted, marginTop: 28 }]}>Account</Text>
         <TouchableOpacity
           style={[styles.linkRow, { backgroundColor: navTheme.colors.card, borderColor: navTheme.colors.border }]}
           onPress={() => router.push('/(helper)/profile')}
           activeOpacity={0.88}
         >
-          <Ionicons name="person-outline" size={22} color={theme.color.helper} />
+          <Ionicons name="person-outline" size={22} color={accent} />
           <Text style={[styles.linkText, { color: navTheme.colors.text }]}>Profile & documents</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.color.muted} />
+          <Ionicons name="chevron-forward" size={20} color={c.muted} />
         </TouchableOpacity>
       </ScrollView>
-      {showWorkTabs ? <WorkModeTabBar /> : null}
+      {showBottomBar && (showWorkTabs ? <WorkModeTabBar /> : <HelperTabBar />)}
     </SafeAreaView>
   );
 }

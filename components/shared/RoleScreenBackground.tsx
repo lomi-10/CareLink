@@ -1,6 +1,8 @@
 import React from "react";
 import { View, StyleSheet, useWindowDimensions, Platform } from "react-native";
 import { theme } from "@/constants/theme";
+import { useHelperTheme } from "@/contexts/HelperThemeContext";
+import { useParentTheme } from "@/contexts/ParentThemeContext";
 
 export type ScreenRole = "helper" | "parent" | "peso" | "admin";
 
@@ -36,10 +38,23 @@ type Props = {
  */
 export function RoleScreenBackground({ role, children }: Props) {
   const { width, height } = useWindowDimensions();
+  const { color: parentColor } = useParentTheme();
+  const { color: helperColor } = useHelperTheme();
   const isWide = width >= 768;
-  const canvas = CANVAS[role];
-  const b1 = BLOB_A[role];
-  const b2 = BLOB_B[role];
+  const canvas =
+    role === "parent" ? parentColor.canvasParent : role === "helper" ? helperColor.canvasHelper : CANVAS[role];
+  const b1 =
+    role === "parent"
+      ? parentColor.parentSoft
+      : role === "helper"
+        ? helperColor.helperSoft
+        : BLOB_A[role];
+  const b2 =
+    role === "parent"
+      ? parentColor.infoSoft
+      : role === "helper"
+        ? helperColor.successSoft
+        : BLOB_B[role];
 
   const topBlob = {
     top: isWide ? -height * 0.06 : -height * 0.04,

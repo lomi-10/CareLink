@@ -43,7 +43,7 @@ export const styles = StyleSheet.create({
   resultsText: { fontSize: 13, color: theme.color.muted, fontWeight: '500' },
 
   // ── List ──
-  listPad:        { padding: 16, paddingBottom: 40 },
+  listPad:        { padding: 16, paddingBottom: 88 },
   listPadDesktop: { paddingHorizontal: 32, paddingTop: 8, paddingBottom: 60 },
 
   // ── Empty ──

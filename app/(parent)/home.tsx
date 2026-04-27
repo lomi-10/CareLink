@@ -1,5 +1,5 @@
 // app/(parent)/home.tsx
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View, ScrollView, RefreshControl, ActivityIndicator,
   SafeAreaView, Text, TouchableOpacity,
@@ -7,8 +7,8 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { theme } from '@/constants/theme';
-import { styles as layoutStyles } from './home.styles';
+import { createParentHomeStyles } from './home.styles';
+import { useParentTheme } from '@/contexts/ParentThemeContext';
 
 import { useParentStats } from '@/hooks/parent';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
@@ -22,6 +22,8 @@ import {
 
 export default function ParentHome() {
   const router = useRouter();
+  const { color: c } = useParentTheme();
+  const layoutStyles = useMemo(() => createParentHomeStyles(c), [c]);
 
   const { handleLogout, getFullName } = useAuth();
   const { stats, loading: statsLoading, refresh } = useParentStats();
@@ -35,10 +37,23 @@ export default function ParentHome() {
   const initiateLogout = () => { setIsMobileMenuOpen(false); setConfirmLogoutVisible(true); };
   const executeLogout  = () => { setConfirmLogoutVisible(false); setSuccessLogoutVisible(true); };
 
+  const QuickActionDesktop = ({ icon, title, desc, color, onPress }: {
+    icon: React.ComponentProps<typeof Ionicons>['name'];
+    title: string; desc: string; color: string; onPress: () => void;
+  }) => (
+    <TouchableOpacity style={[layoutStyles.qaDesktop, layoutStyles.quickActionDesktopCard]} onPress={onPress} activeOpacity={0.88}>
+      <View style={[layoutStyles.quickActionDesktopIcon, { backgroundColor: color + '18' }]}>
+        <Ionicons name={icon} size={32} color={color} />
+      </View>
+      <Text style={layoutStyles.quickActionDesktopTitle}>{title}</Text>
+      <Text style={layoutStyles.quickActionDesktopDesc}>{desc}</Text>
+    </TouchableOpacity>
+  );
+
   if (statsLoading) {
     return (
       <View style={layoutStyles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.color.parent} />
+        <ActivityIndicator size="large" color={c.parent} />
       </View>
     );
   }
@@ -89,10 +104,10 @@ export default function ParentHome() {
               <Ionicons
                 name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
                 size={20}
-                color={unreadCount > 0 ? theme.color.parent : theme.color.muted}
+                color={unreadCount > 0 ? c.parent : c.muted}
               />
               {unreadCount > 0 && (
-                <View style={[layoutStyles.notifBadge, { backgroundColor: theme.color.parent }]}>
+                <View style={[layoutStyles.notifBadge, { backgroundColor: c.parent }]}>
                   <Text style={layoutStyles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
                 </View>
               )}
@@ -106,11 +121,11 @@ export default function ParentHome() {
           {/* Stats */}
           <SectionHeader title="Your Overview" />
           <View style={layoutStyles.statsGrid}>
-            <StatCard icon="briefcase" iconColor={theme.color.parent} iconBg={theme.color.parentSoft}
+            <StatCard icon="briefcase" iconColor={c.parent} iconBg={c.parentSoft}
               title="Posted Jobs" value={stats.posted_jobs} onPress={() => router.push('/(parent)/jobs')} />
-            <StatCard icon="people" iconColor={theme.color.success} iconBg={theme.color.successSoft}
+            <StatCard icon="people" iconColor={c.success} iconBg={c.successSoft}
               title="Applications" value={stats.active_applications} onPress={() => router.push('/(parent)/applications')} />
-            <StatCard icon="chatbubbles" iconColor={theme.color.info} iconBg={theme.color.infoSoft}
+            <StatCard icon="chatbubbles" iconColor={c.info} iconBg={c.infoSoft}
               title="Messages" value={stats.messages} onPress={() => router.push('/(parent)/messages')} />
             <StatCard icon="checkmark-circle" iconColor="#7C3AED" iconBg="#F3E8FF"
               title="Hired Helpers" value={stats.hired_helpers}
@@ -121,11 +136,11 @@ export default function ParentHome() {
           <SectionHeader title="Quick Actions" />
           <View style={layoutStyles.quickActionsDesktop}>
             <QuickActionDesktop icon="add-circle" title="Post a Job" desc="Find the perfect helper for your home"
-              color={theme.color.parent} onPress={() => router.push('/(parent)/jobs')} />
+              color={c.parent} onPress={() => router.push('/(parent)/jobs')} />
             <QuickActionDesktop icon="search" title="Browse Helpers" desc="View PESO-verified helpers"
-              color={theme.color.success} onPress={() => router.push('/(parent)/browse_helpers')} />
+              color={c.success} onPress={() => router.push('/(parent)/browse_helpers')} />
             <QuickActionDesktop icon="people" title="Applications" desc="Review & manage applicants"
-              color={theme.color.info} onPress={() => router.push('/(parent)/applications')} />
+              color={c.info} onPress={() => router.push('/(parent)/applications')} />
           </View>
 
         </ScrollView>
@@ -139,7 +154,7 @@ export default function ParentHome() {
     <SafeAreaView style={layoutStyles.container}>
       <MobileHeader
         onMenuPress={() => setIsMobileMenuOpen(true)}
-        accentColor={theme.color.parent}
+        accentColor={c.parent}
         subtitle="Parent Portal"
         notificationCount={unreadCount}
         onNotificationPress={() => router.push('/(parent)/notifications')}
@@ -155,15 +170,15 @@ export default function ParentHome() {
         {/* Stats */}
         <View style={layoutStyles.mobileStatsRow}>
           <View style={layoutStyles.mobileStatCell}>
-            <MobileStatCard icon="briefcase" color={theme.color.parent} value={stats.posted_jobs}
+            <MobileStatCard icon="briefcase" color={c.parent} value={stats.posted_jobs}
               label="Jobs" onPress={() => router.push('/(parent)/jobs')} />
           </View>
           <View style={layoutStyles.mobileStatCell}>
-            <MobileStatCard icon="people" color={theme.color.success} value={stats.active_applications}
+            <MobileStatCard icon="people" color={c.success} value={stats.active_applications}
               label="Applicants" onPress={() => router.push('/(parent)/applications')} />
           </View>
           <View style={layoutStyles.mobileStatCell}>
-            <MobileStatCard icon="chatbubbles" color={theme.color.info} value={stats.messages}
+            <MobileStatCard icon="chatbubbles" color={c.info} value={stats.messages}
               label="Messages" onPress={() => router.push('/(parent)/messages')} />
           </View>
           <View style={layoutStyles.mobileStatCell}>
@@ -175,11 +190,11 @@ export default function ParentHome() {
         {/* Quick Actions */}
         <SectionHeader title="Quick Actions" />
         <View style={layoutStyles.quickActionsGrid}>
-          <QuickAction icon="add-circle" label="Post Job" color={theme.color.parent}
+          <QuickAction icon="add-circle" label="Post Job" color={c.parent}
             onPress={() => router.push('/(parent)/jobs')} />
-          <QuickAction icon="search" label="Find Helpers" color={theme.color.success}
+          <QuickAction icon="search" label="Find Helpers" color={c.success}
             onPress={() => router.push('/(parent)/browse_helpers')} />
-          <QuickAction icon="chatbubbles" label="Messages" color={theme.color.info}
+          <QuickAction icon="chatbubbles" label="Messages" color={c.info}
             onPress={() => router.push('/(parent)/messages')} />
           <QuickAction icon="person" label="My Profile" color="#7C3AED"
             onPress={() => router.push('/(parent)/profile')} />
@@ -192,7 +207,7 @@ export default function ParentHome() {
             <Text style={layoutStyles.hireBannerSub}>Post a job and find trusted helpers today.</Text>
           </View>
           <TouchableOpacity
-            style={[layoutStyles.hireBannerBtn, { backgroundColor: theme.color.parent }]}
+            style={[layoutStyles.hireBannerBtn, { backgroundColor: c.parent }]}
             onPress={() => router.push('/(parent)/jobs')}
           >
             <Text style={layoutStyles.hireBannerBtnText}>Post Job</Text>
@@ -206,19 +221,3 @@ export default function ParentHome() {
     </SafeAreaView>
   );
 }
-
-function QuickActionDesktop({ icon, title, desc, color, onPress }: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  title: string; desc: string; color: string; onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity style={[layoutStyles.qaDesktop, layoutStyles.quickActionDesktopCard]} onPress={onPress} activeOpacity={0.88}>
-      <View style={[layoutStyles.quickActionDesktopIcon, { backgroundColor: color + '18' }]}>
-        <Ionicons name={icon} size={32} color={color} />
-      </View>
-      <Text style={layoutStyles.quickActionDesktopTitle}>{title}</Text>
-      <Text style={layoutStyles.quickActionDesktopDesc}>{desc}</Text>
-    </TouchableOpacity>
-  );
-}
-

@@ -3,11 +3,14 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import React from 'react';
+import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   ColorSchemePreferenceProvider,
   useColorSchemePreference,
 } from '@/contexts/ColorSchemePreferenceContext';
+import { CareBotProvider } from '@/contexts/CareBotContext';
+import { CareBotFab } from '@/components/shared/CareBotFab';
 
 export const unstable_settings = {
   // Fix 1: Change initial route to 'index' (your landing page)
@@ -57,9 +60,14 @@ function RootLayoutInner() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ColorSchemePreferenceProvider>
-        <RootLayoutInner />
-      </ColorSchemePreferenceProvider>
+      <ActionSheetProvider>
+        <ColorSchemePreferenceProvider>
+          <CareBotProvider>
+            <RootLayoutInner />
+            <CareBotFab />
+          </CareBotProvider>
+        </ColorSchemePreferenceProvider>
+      </ActionSheetProvider>
     </GestureHandlerRootView>
   );
 }

@@ -27,7 +27,7 @@ import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 
 // Components
-import { Sidebar, MobileMenu } from '@/components/helper/home';
+import { Sidebar, MobileMenu, HelperTabBar } from '@/components/helper/home';
 import {
   ProfileHeader,
   MobileProfileHeader,
@@ -101,7 +101,7 @@ export default function HelperProfile() {
   } = useHelperProfile();
   const { isDesktop } = useResponsive();
   const { unreadCount: notificationUnread } = useNotifications('helper');
-  const { isWorkMode } = useHelperWorkMode();
+  const { isWorkMode, activeHire } = useHelperWorkMode();
 
   // Modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -346,7 +346,7 @@ export default function HelperProfile() {
       <ScrollView
         contentContainerStyle={[
           styles.mobileScrollContent,
-          isWorkMode ? { paddingBottom: 88 } : null,
+          { paddingBottom: 88 },
         ]}
         refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
       >
@@ -400,7 +400,7 @@ export default function HelperProfile() {
         handleLogout={initiateLogout}
         notificationUnread={notificationUnread}
       />
-      {isWorkMode ? <WorkModeTabBar /> : null}
+      {isWorkMode && activeHire ? <WorkModeTabBar /> : <HelperTabBar />}
       {renderLogoutModals()}
     </SafeAreaView>
   );

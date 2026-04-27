@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useMyApplications } from '@/hooks/helper';
 import { useAuth, useResponsive } from '@/hooks/shared';
-import { Sidebar, MobileMenu } from '@/components/helper/home';
+import { Sidebar, MobileMenu, HelperTabBar } from '@/components/helper/home';
 import {
   ApplicationCard,
   ApplicationDetailsModal,
@@ -252,6 +252,7 @@ export default function MyApplications() {
         </TouchableOpacity>
       </View>
       {mainContent}
+      <HelperTabBar />
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
     </SafeAreaView>
   );

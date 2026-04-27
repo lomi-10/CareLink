@@ -16,7 +16,7 @@ import {
 import { useBrowseJobs, type JobFilters } from '@/hooks/helper';
 import { useAuth, useJobReferences, useResponsive } from '@/hooks/shared';
 
-import { MobileMenu, Sidebar } from '@/components/helper/home';
+import { MobileMenu, Sidebar, HelperTabBar } from '@/components/helper/home';
 
 import { styles as s } from './browse_jobs.styles';
 import {
@@ -286,6 +286,8 @@ export default function BrowseJobs() {
       </View>
 
       {browseContent}
+
+      <HelperTabBar />
 
       <MobileMenu
         isOpen={isMobileMenuOpen}

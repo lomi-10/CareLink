@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import API_URL from "../../constants/api";
 import { RoleScreenBackground } from "@/components/shared";
 import { theme } from "@/constants/theme";
+import { HelperThemeProvider } from "@/contexts/HelperThemeContext";
 import { HelperWorkModeProvider } from "@/contexts/HelperWorkModeContext";
 
 export default function HelperLayout() {
@@ -84,40 +85,44 @@ export default function HelperLayout() {
   // Show different content based on status
   if (userStatus === "pending") {
     return (
-      <RoleScreenBackground role="helper">
-      <View style={styles.container}>
-        {/* Pending Status Banner */}
-        <View style={styles.pendingBanner}>
-          <Ionicons name="time-outline" size={20} color={theme.color.warning} />
-          <View style={styles.bannerText}>
-            <Text style={styles.bannerTitle}>Account pending verification</Text>
-            <Text style={styles.bannerSubtitle}>
-              Complete your profile, upload documents, and wait for PESO to approve your account.
-            </Text>
+      <HelperThemeProvider>
+        <RoleScreenBackground role="helper">
+          <View style={styles.container}>
+            {/* Pending Status Banner */}
+            <View style={styles.pendingBanner}>
+              <Ionicons name="time-outline" size={20} color={theme.color.warning} />
+              <View style={styles.bannerText}>
+                <Text style={styles.bannerTitle}>Account pending verification</Text>
+                <Text style={styles.bannerSubtitle}>
+                  Complete your profile, upload documents, and wait for PESO to approve your account.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.bannerCta}
+                onPress={() => router.push("/(helper)/profile")}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.bannerCtaText}>Complete profile</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.color.warning} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.content}>
+              <Slot />
+            </View>
           </View>
-          <TouchableOpacity
-            style={styles.bannerCta}
-            onPress={() => router.push("/(helper)/profile")}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.bannerCtaText}>Complete profile</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.color.warning} />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.content}>
-          <Slot />
-        </View>
-      </View>
-      </RoleScreenBackground>
+        </RoleScreenBackground>
+      </HelperThemeProvider>
     );
   } else if (userStatus === "approved") {
     // Approved users - no banner, full access
     return (
-      <RoleScreenBackground role="helper">
-        <HelperWorkModeProvider>
-          <Slot />
-        </HelperWorkModeProvider>
-      </RoleScreenBackground>
+      <HelperThemeProvider>
+        <RoleScreenBackground role="helper">
+          <HelperWorkModeProvider>
+            <Slot />
+          </HelperWorkModeProvider>
+        </RoleScreenBackground>
+      </HelperThemeProvider>
     );
   } else if (userStatus === "suspended") {
     return <SuspendedScreen />;

@@ -3,8 +3,8 @@ import { StyleSheet } from 'react-native';
 import { theme } from '@/constants/theme';
 
 export const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: theme.color.surface },
-  rootRow: { flex: 1, flexDirection: 'row', backgroundColor: theme.color.surface },
+  root: { flex: 1, backgroundColor: 'transparent' },
+  rootRow: { flex: 1, flexDirection: 'row', backgroundColor: 'transparent' },
   main: { flex: 1, maxWidth: 720, alignSelf: 'center', width: '100%' },
   desktopHead: {
     paddingHorizontal: 24,

@@ -9,4 +9,5 @@ export { MobileStatCard } from './MobileStatCard';
 export { QuickAction } from './QuickAction';
 export { SectionHeader } from './SectionHeader';
 export { MobileMenu } from './MobileMenu';
+export { HelperTabBar } from './HelperTabBar';
 export { RecommendationsSection } from './RecommendationsSection';

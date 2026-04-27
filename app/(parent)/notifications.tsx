@@ -175,7 +175,7 @@ export default function ParentNotificationsScreen() {
 
   // ── MOBILE ───────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[s.mobileRoot, { backgroundColor: theme.color.canvasParent }]} edges={['top']}>
+    <SafeAreaView style={s.mobileRoot} edges={['top']}>
       <View style={s.mobileHeader}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={12}>
           <Ionicons name="chevron-back" size={26} color={theme.color.parent} />

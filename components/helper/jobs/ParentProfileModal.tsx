@@ -397,7 +397,7 @@ const s = StyleSheet.create({
   scroll: { flex: 1 },
 
   // ── hero ──
-  hero: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 24, borderBottomWidth: 1, borderBottomColor: theme.color.line, backgroundColor: theme.color.canvasParent },
+  hero: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 24, borderBottomWidth: 1, borderBottomColor: theme.color.line, backgroundColor: 'transparent' },
   avatar:        { width: 100, height: 100, borderRadius: 50, borderWidth: 4, borderColor: theme.color.surfaceElevated, marginBottom: 14 },
   avatarFallback:{ backgroundColor: theme.color.parentSoft, alignItems: 'center', justifyContent: 'center' },
   avatarInitials:{ fontSize: 34, fontWeight: '800', color: theme.color.parent },

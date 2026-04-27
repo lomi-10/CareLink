@@ -19,7 +19,7 @@ import { useSavedJobs } from '@/hooks/helper';
 import { useAuth, useResponsive } from '@/hooks/shared';
 
 // Components
-import { Sidebar, MobileMenu } from '@/components/helper/home';
+import { Sidebar, MobileMenu, HelperTabBar } from '@/components/helper/home';
 import { 
   JobCard,
   CompactJobCard,
@@ -433,6 +433,8 @@ export default function SavedJobs() {
       </View>
 
       <MainContent />
+
+      <HelperTabBar />
 
       {/* Mobile Menu */}
       <MobileMenu 

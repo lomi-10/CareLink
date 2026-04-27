@@ -3,25 +3,38 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '@/constants/theme';
+import type { ThemeColor } from '@/constants/theme';
+import { useParentTheme } from '@/contexts/ParentThemeContext';
 
 type StatusType = 'Open' | 'Filled' | 'Closed' | 'Expired' | 'Pending' | 'Rejected' | string;
+type IonName = React.ComponentProps<typeof Ionicons>['name'];
+
+function statusAppearance(t: ThemeColor, status: string): { bg: string; text: string; icon: IonName } {
+  switch (status) {
+    case 'Open':
+      return { bg: t.successSoft, text: t.success, icon: 'radio-button-on' };
+    case 'Filled':
+      return { bg: t.parentSoft, text: t.parent, icon: 'checkmark-circle' };
+    case 'Closed':
+      return { bg: t.warningSoft, text: t.warning, icon: 'stop-circle' };
+    case 'Expired':
+      return { bg: t.dangerSoft, text: t.danger, icon: 'time' };
+    case 'Pending':
+      return { bg: t.warningSoft, text: t.warning, icon: 'hourglass' };
+    case 'Rejected':
+      return { bg: t.dangerSoft, text: t.danger, icon: 'close-circle' };
+    default:
+      return { bg: t.surface, text: t.muted, icon: 'ellipse' };
+  }
+}
 
 interface JobStatusBadgeProps {
   status: StatusType;
 }
 
-const STATUS_MAP: Record<string, { bg: string; text: string; icon: React.ComponentProps<typeof Ionicons>['name'] }> = {
-  Open:     { bg: theme.color.successSoft, text: theme.color.success, icon: 'radio-button-on'   },
-  Filled:   { bg: theme.color.parentSoft,  text: theme.color.parent,  icon: 'checkmark-circle'  },
-  Closed:   { bg: theme.color.warningSoft, text: theme.color.warning, icon: 'stop-circle'       },
-  Expired:  { bg: theme.color.dangerSoft,  text: theme.color.danger,  icon: 'time'              },
-  Pending:  { bg: theme.color.warningSoft, text: theme.color.warning, icon: 'hourglass'         },
-  Rejected: { bg: theme.color.dangerSoft,  text: theme.color.danger,  icon: 'close-circle'      },
-};
-
 export function JobStatusBadge({ status }: JobStatusBadgeProps) {
-  const cfg = STATUS_MAP[status] ?? { bg: theme.color.surface, text: theme.color.muted, icon: 'ellipse' as const };
+  const { color: t } = useParentTheme();
+  const cfg = statusAppearance(t, status);
   return (
     <View style={[styles.badge, { backgroundColor: cfg.bg }]}>
       <Ionicons name={cfg.icon} size={11} color={cfg.text} />

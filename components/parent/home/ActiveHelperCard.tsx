@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 
+import type { ThemeColor } from '@/constants/theme';
 import { theme } from '@/constants/theme';
+import { useParentTheme } from '@/contexts/ParentThemeContext';
 import type { ActivePlacement } from '@/hooks/parent/useParentActivePlacements';
 import {
   fetchAttendanceToday,
@@ -40,6 +42,103 @@ type Props = {
   onPlacementChanged?: () => void;
 };
 
+function createActiveHelperCardStyles(t: ThemeColor) {
+  return StyleSheet.create({
+  card: {
+    backgroundColor: t.surfaceElevated,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: t.line,
+    marginBottom: 14,
+    ...theme.shadow.card,
+  },
+  cardCompact: { padding: 12 },
+  topRow: { flexDirection: 'row', gap: 12 },
+  avatarWrap: {},
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: t.surface,
+  },
+  avatarPh: { alignItems: 'center', justifyContent: 'center' },
+  headText: { flex: 1, minWidth: 0 },
+  name: { fontSize: 17, fontWeight: '800', color: t.ink },
+  jobTitle: { fontSize: 14, fontWeight: '600', color: t.parent, marginTop: 2 },
+  meta: { fontSize: 12, color: t.muted, marginTop: 4 },
+  statusBox: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: t.parentSoft,
+    borderRadius: 10,
+  },
+  termBanner: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'flex-start',
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: t.warningSoft,
+    borderWidth: 1,
+    borderColor: t.line,
+  },
+  termBannerText: { flex: 1, fontSize: 13, fontWeight: '600', color: t.ink, lineHeight: 18 },
+  statusLabel: { fontSize: 11, fontWeight: '700', color: t.muted, marginBottom: 4 },
+  statusOk: { fontSize: 14, fontWeight: '600', color: t.success },
+  statusWarn: { fontSize: 14, fontWeight: '600', color: t.warning },
+  statusInfo: { fontSize: 14, fontWeight: '600', color: t.info },
+  statusMuted: { fontSize: 13, color: t.muted },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
+  dayCol: { alignItems: 'center', flex: 1 },
+  dayLbl: { fontSize: 10, color: t.muted, marginBottom: 4 },
+  dayDot: { width: 10, height: 10, borderRadius: 5 },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: t.surface,
+    borderWidth: 1,
+    borderColor: t.line,
+  },
+  chipText: { fontSize: 12, fontWeight: '700', color: t.ink },
+  payRow: { marginTop: 12 },
+  payBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: t.surface,
+    borderWidth: 1,
+    borderColor: t.line,
+  },
+  payBtnDone: {
+    backgroundColor: t.successSoft,
+    borderColor: t.success + '44',
+  },
+  payBtnText: { fontSize: 14, fontWeight: '700', color: t.ink },
+  payBtnTextDone: { color: t.success },
+  });
+}
+
 function formatStartDate(d?: string | null) {
   if (!d) return '—';
   try {
@@ -52,6 +151,8 @@ function formatStartDate(d?: string | null) {
 }
 
 export function ActiveHelperCard({ placement, parentId, compact, onPlacementChanged }: Props) {
+  const { color: t } = useParentTheme();
+  const styles = useMemo(() => createActiveHelperCardStyles(t), [t]);
   const router = useRouter();
   const appId = Number(placement.application_id);
   const helperId = Number(placement.helper_id);
@@ -174,7 +275,7 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
             <Image source={{ uri: placement.helper_photo }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.avatarPh]}>
-              <Ionicons name="person" size={28} color={theme.color.subtle} />
+              <Ionicons name="person" size={28} color={t.subtle} />
             </View>
           )}
         </View>
@@ -199,7 +300,7 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
 
       {terminationPending ? (
         <View style={styles.termBanner}>
-          <Ionicons name="hourglass-outline" size={20} color={theme.color.warning} />
+          <Ionicons name="hourglass-outline" size={20} color={t.warning} />
           <Text style={styles.termBannerText}>
             Ending employment — your helper can continue using work tools through their last working day.
           </Text>
@@ -209,7 +310,7 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
       {!compact && (
         <View style={styles.weekRow}>
           {loading && weekDays.length === 0 ? (
-            <ActivityIndicator size="small" color={theme.color.parent} />
+            <ActivityIndicator size="small" color={t.parent} />
           ) : (
             weekDays.map((d) => (
               <View key={d.date} style={styles.dayCol}>
@@ -228,36 +329,36 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
 
       <View style={styles.actions}>
         <TouchableOpacity style={styles.chip} onPress={() => go('/(parent)/placement_tasks')}>
-          <Ionicons name="list-outline" size={16} color={theme.color.parent} />
+          <Ionicons name="list-outline" size={16} color={t.parent} />
           <Text style={styles.chipText}>Tasks</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.chip}
           onPress={() => go('/(parent)/placement_attendance')}
         >
-          <Ionicons name="calendar-outline" size={16} color={theme.color.parent} />
+          <Ionicons name="calendar-outline" size={16} color={t.parent} />
           <Text style={styles.chipText}>Attendance</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.chip}
           onPress={() => go('/(parent)/placement_leave_requests')}
         >
-          <Ionicons name="calendar-number-outline" size={16} color={theme.color.parent} />
+          <Ionicons name="calendar-number-outline" size={16} color={t.parent} />
           <Text style={styles.chipText}>Leave</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.chip} onPress={() => void openContract()}>
-          <Ionicons name="document-text-outline" size={16} color={theme.color.parent} />
+          <Ionicons name="document-text-outline" size={16} color={t.parent} />
           <Text style={styles.chipText}>Contract</Text>
         </TouchableOpacity>
         {canInitiateTermination ? (
           <TouchableOpacity style={styles.chip} onPress={() => setEndModal(true)}>
-            <Ionicons name="hand-left-outline" size={16} color={theme.color.danger} />
+            <Ionicons name="hand-left-outline" size={16} color={t.danger} />
             <Text style={styles.chipText}>End employment</Text>
           </TouchableOpacity>
         ) : null}
         {terminationPending ? (
           <TouchableOpacity style={styles.chip} onPress={() => void openTerminationRecord()}>
-            <Ionicons name="download-outline" size={16} color={theme.color.parent} />
+            <Ionicons name="download-outline" size={16} color={t.parent} />
             <Text style={styles.chipText}>Termination record</Text>
           </TouchableOpacity>
         ) : null}
@@ -285,7 +386,7 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
           <Ionicons
             name={salaryMarked ? 'checkmark-circle' : 'cash-outline'}
             size={18}
-            color={salaryMarked ? theme.color.success : theme.color.ink}
+            color={salaryMarked ? t.success : t.ink}
           />
           <Text style={[styles.payBtnText, salaryMarked && styles.payBtnTextDone]}>
             {salaryMarked ? `Paid (${period})` : `Mark salary paid (${period})`}
@@ -295,98 +396,3 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    marginBottom: 14,
-    ...theme.shadow.card,
-  },
-  cardCompact: { padding: 12 },
-  topRow: { flexDirection: 'row', gap: 12 },
-  avatarWrap: {},
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: theme.color.surface,
-  },
-  avatarPh: { alignItems: 'center', justifyContent: 'center' },
-  headText: { flex: 1, minWidth: 0 },
-  name: { fontSize: 17, fontWeight: '800', color: theme.color.ink },
-  jobTitle: { fontSize: 14, fontWeight: '600', color: theme.color.parent, marginTop: 2 },
-  meta: { fontSize: 12, color: theme.color.muted, marginTop: 4 },
-  statusBox: {
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: theme.color.parentSoft,
-    borderRadius: 10,
-  },
-  termBanner: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'flex-start',
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 10,
-    backgroundColor: theme.color.warningSoft,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-  },
-  termBannerText: { flex: 1, fontSize: 13, fontWeight: '600', color: theme.color.ink, lineHeight: 18 },
-  statusLabel: { fontSize: 11, fontWeight: '700', color: theme.color.muted, marginBottom: 4 },
-  statusOk: { fontSize: 14, fontWeight: '600', color: theme.color.success },
-  statusWarn: { fontSize: 14, fontWeight: '600', color: theme.color.warning },
-  statusInfo: { fontSize: 14, fontWeight: '600', color: theme.color.info },
-  statusMuted: { fontSize: 13, color: theme.color.muted },
-  weekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    paddingHorizontal: 4,
-  },
-  dayCol: { alignItems: 'center', flex: 1 },
-  dayLbl: { fontSize: 10, color: theme.color.muted, marginBottom: 4 },
-  dayDot: { width: 10, height: 10, borderRadius: 5 },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 14,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: theme.color.surface,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-  },
-  chipText: { fontSize: 12, fontWeight: '700', color: theme.color.ink },
-  payRow: { marginTop: 12 },
-  payBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: theme.color.surface,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-  },
-  payBtnDone: {
-    backgroundColor: theme.color.successSoft,
-    borderColor: theme.color.success + '44',
-  },
-  payBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.ink },
-  payBtnTextDone: { color: theme.color.success },
-});

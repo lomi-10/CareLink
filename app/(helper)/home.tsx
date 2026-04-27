@@ -17,7 +17,7 @@ import { NotificationModal, ConfirmationModal } from '@/components/shared';
 import {
   Sidebar, MobileHeader, GreetingCard,
   StatCard, MobileStatCard, QuickAction, SectionHeader,
-  MobileMenu, RecommendationsSection,
+  MobileMenu, RecommendationsSection, HelperTabBar,
 } from '@/components/helper/home';
 import { WorkModeDashboard, WorkModeTabBar } from '@/components/helper/work';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
@@ -203,7 +203,7 @@ export default function HelperHome() {
       <ScrollView
         contentContainerStyle={[
           layoutStyles.mobileScrollContent,
-          { paddingBottom: showWorkDash ? 88 : 60 },
+          { paddingBottom: showWorkDash ? 88 : 88 },
         ]}
         refreshControl={
           <RefreshControl
@@ -289,7 +289,7 @@ export default function HelperHome() {
         )}
       </ScrollView>
 
-      {showWorkDash ? <WorkModeTabBar /> : null}
+      {showWorkDash ? <WorkModeTabBar /> : <HelperTabBar />}
 
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} stats={stats} handleLogout={initiateLogout} />
       {renderModals()}

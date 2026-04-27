@@ -111,12 +111,9 @@ export default function AIChatbot() {
           user={ME_USER}
           isTyping={isTyping}
           placeholder="Ask about Kasambahay Law, hiring, or CareLink…"
-          isSendButtonAlwaysVisible
+          alwaysShowSend
           messagesContainerStyle={styles.messagesContainer}
           textInputStyle={styles.textInput}
-          keyboardAvoidingViewProps={{
-            keyboardVerticalOffset: Platform.OS === 'ios' ? 64 : 0,
-          }}
         />
       </View>
     </>

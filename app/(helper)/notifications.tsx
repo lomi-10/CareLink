@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/constants/theme';
 import { useNotifications } from '@/hooks/shared';
 import { useResponsive } from '@/hooks/shared';
-import { Sidebar } from '@/components/helper/home';
+import { Sidebar, HelperTabBar } from '@/components/helper/home';
 import { WorkModeTabBar } from '@/components/helper/work';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
@@ -137,7 +137,7 @@ export default function HelperNotificationsScreen() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
-  const { isWorkMode } = useHelperWorkMode();
+  const { isWorkMode, activeHire } = useHelperWorkMode();
 
   const [confirmLogout, setConfirmLogout] = React.useState(false);
   const [successLogout, setSuccessLogout] = React.useState(false);
@@ -195,10 +195,10 @@ export default function HelperNotificationsScreen() {
       <View style={s.mobileBody}>
         <NotifContent
           accent={theme.color.helper}
-          listBottomExtra={isWorkMode ? 72 : 0}
+          listBottomExtra={72}
         />
       </View>
-      {isWorkMode ? <WorkModeTabBar /> : null}
+      {isWorkMode && activeHire ? <WorkModeTabBar /> : <HelperTabBar />}
     </SafeAreaView>
   );
 }

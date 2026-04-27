@@ -25,19 +25,9 @@ import { JobCard, JobPostModal } from '@/components/parent/jobs';
 import { JobDetailsModal } from '@/components/parent/jobs/JobDetailsModal';
 import { PendingBanner } from '@/components/parent/verification/PendingBanner';
 import API_URL from '@/constants/api';
-import { theme } from '@/constants/theme';
+import { useParentTheme } from '@/contexts/ParentThemeContext';
 
-import { styles as s } from './jobs.styles';
-
-// ─── Filter config ─────────────────────────────────────────────────────────────
-const FILTERS = [
-  { key: 'all',     label: 'All',     icon: 'apps'                as const, color: theme.color.inkMuted },
-  { key: 'open',    label: 'Open',    icon: 'radio-button-on'     as const, color: theme.color.success  },
-  { key: 'pending', label: 'Pending', icon: 'hourglass'           as const, color: theme.color.warning  },
-  { key: 'filled',  label: 'Filled',  icon: 'checkmark-circle'    as const, color: theme.color.parent   },
-  { key: 'closed',  label: 'Closed',  icon: 'stop-circle'         as const, color: theme.color.muted    },
-  { key: 'expired', label: 'Expired', icon: 'time'                as const, color: theme.color.danger   },
-];
+import { createParentJobsStyles } from './jobs.styles';
 
 export default function MyJobs() {
   const router = useRouter();
@@ -59,7 +49,33 @@ export default function MyJobs() {
   const [confirmLogoutVisible, setConfirmLogout] = useState(false);
   const [successLogoutVisible, setSuccessLogout] = useState(false);
 
+  const { color: c } = useParentTheme();
+  const s = useMemo(() => createParentJobsStyles(c), [c]);
+  const FILTERS = useMemo(
+    () => [
+      { key: 'all',     label: 'All',     icon: 'apps'                as const, color: c.inkMuted },
+      { key: 'open',    label: 'Open',    icon: 'radio-button-on'     as const, color: c.success  },
+      { key: 'pending', label: 'Pending', icon: 'hourglass'           as const, color: c.warning  },
+      { key: 'filled',  label: 'Filled',  icon: 'checkmark-circle'    as const, color: c.parent   },
+      { key: 'closed',  label: 'Closed',  icon: 'stop-circle'         as const, color: c.muted    },
+      { key: 'expired', label: 'Expired', icon: 'time'                as const, color: c.danger   },
+    ],
+    [c],
+  );
+
   const pendingCount = useMemo(() => jobs.filter(j => j.status === 'Pending').length, [jobs]);
+
+  const statsData = useMemo(
+    () => [
+      { icon: 'briefcase'        as const, label: 'Total',     value: stats.total,            color: c.parent,   bg: c.parentSoft  },
+      { icon: 'radio-button-on'  as const, label: 'Open',      value: stats.open,             color: c.success,  bg: c.successSoft },
+      { icon: 'hourglass'        as const, label: 'Pending',   value: pendingCount,           color: c.warning,  bg: c.warningSoft },
+      { icon: 'checkmark-circle' as const, label: 'Filled',    value: stats.filled,           color: c.info,     bg: c.infoSoft    },
+      { icon: 'close-circle'     as const, label: 'Closed',    value: stats.closed,           color: c.muted,    bg: c.surface     },
+      { icon: 'people'           as const, label: 'Applicants',value: stats.totalApplications,color: c.parent,   bg: c.parentSoft  },
+    ],
+    [c, stats, pendingCount],
+  );
 
   const filteredJobs = useMemo(() => jobs.filter(job => {
     const matchFilter  = activeFilter === 'all' || job.status.toLowerCase() === activeFilter;
@@ -121,7 +137,6 @@ export default function MyJobs() {
 
   if (loading) return <LoadingSpinner visible message="Loading jobs…" />;
 
-  // ── Shared modals ─────────────────────────────────────────────────────────
   const renderModals = () => (
     <>
       <ConfirmationModal visible={confirmLogoutVisible} title="Log Out" message="Are you sure you want to log out?" confirmText="Log Out" cancelText="Cancel" type="danger" onConfirm={executeLogout} onCancel={() => setConfirmLogout(false)} />
@@ -132,16 +147,6 @@ export default function MyJobs() {
       <JobDetailsModal visible={!!viewingJob} job={viewingJob} onClose={() => setViewingJob(null)} />
     </>
   );
-
-  // ── Stats strip ───────────────────────────────────────────────────────────
-  const statsData = [
-    { icon: 'briefcase'        as const, label: 'Total',     value: stats.total,            color: theme.color.parent,   bg: theme.color.parentSoft  },
-    { icon: 'radio-button-on'  as const, label: 'Open',      value: stats.open,             color: theme.color.success,  bg: theme.color.successSoft },
-    { icon: 'hourglass'        as const, label: 'Pending',   value: pendingCount,           color: theme.color.warning,  bg: theme.color.warningSoft },
-    { icon: 'checkmark-circle' as const, label: 'Filled',    value: stats.filled,           color: theme.color.info,     bg: theme.color.infoSoft    },
-    { icon: 'close-circle'     as const, label: 'Closed',    value: stats.closed,           color: theme.color.muted,    bg: theme.color.surface     },
-    { icon: 'people'           as const, label: 'Applicants',value: stats.totalApplications,color: theme.color.parent,   bg: theme.color.parentSoft  },
-  ];
 
   // ── Job board content ─────────────────────────────────────────────────────
   const boardContent = (
@@ -169,17 +174,17 @@ export default function MyJobs() {
       <View style={s.toolbar}>
         {/* Search */}
         <View style={s.searchBar}>
-          <Ionicons name="search-outline" size={18} color={theme.color.muted} />
+          <Ionicons name="search-outline" size={18} color={c.muted} />
           <TextInput
             style={s.searchInput}
             placeholder="Search jobs…"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor={theme.color.subtle}
+            placeholderTextColor={c.subtle}
           />
           {!!searchQuery && (
             <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={8}>
-              <Ionicons name="close-circle" size={17} color={theme.color.subtle} />
+              <Ionicons name="close-circle" size={17} color={c.subtle} />
             </TouchableOpacity>
           )}
         </View>
@@ -213,7 +218,7 @@ export default function MyJobs() {
       {filteredJobs.length > 0 && (
         <View style={s.resultsBar}>
           <Text style={s.resultsText}>
-            Showing <Text style={{ fontWeight: '700', color: theme.color.parent }}>{filteredJobs.length}</Text> job{filteredJobs.length !== 1 ? 's' : ''}
+            Showing <Text style={{ fontWeight: '700', color: c.parent }}>{filteredJobs.length}</Text> job{filteredJobs.length !== 1 ? 's' : ''}
             {activeFilter !== 'all' ? ` · ${activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)}` : ''}
           </Text>
         </View>
@@ -223,7 +228,7 @@ export default function MyJobs() {
       {filteredJobs.length === 0 ? (
         <View style={s.empty}>
           <View style={s.emptyIcon}>
-            <Ionicons name="briefcase-outline" size={44} color={theme.color.parent} />
+            <Ionicons name="briefcase-outline" size={44} color={c.parent} />
           </View>
           <Text style={s.emptyTitle}>
             {activeFilter === 'all' ? 'No jobs posted yet' : `No ${activeFilter} jobs found`}
@@ -261,7 +266,7 @@ export default function MyJobs() {
           )}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} tintColor={theme.color.parent} />}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} tintColor={c.parent} />}
         />
       )}
     </View>
@@ -305,7 +310,7 @@ export default function MyJobs() {
       {/* Mobile header */}
       <View style={s.mobileHeader}>
         <TouchableOpacity style={s.menuBtn} onPress={() => setMobileMenu(true)}>
-          <Ionicons name="menu" size={26} color={theme.color.ink} />
+          <Ionicons name="menu" size={26} color={c.ink} />
         </TouchableOpacity>
 
         <View style={s.mobileTitleWrap}>

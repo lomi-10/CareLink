@@ -28,7 +28,6 @@ import {
 } from '@/components/parent/hire';
 
 const ACCENT = theme.color.parent;
-const CANVAS = theme.color.canvasParent;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1023,7 +1022,7 @@ export default function ParentMessages() {
   // ── Mobile layout ──────────────────────────────────────────────────────────
   if (!isDesktop) {
     return (
-      <View style={{ flex: 1, backgroundColor: CANVAS }}>
+      <View style={{ flex: 1, backgroundColor: 'transparent' }}>
         {!activePartner ? (
           <SafeAreaView style={{ flex: 1 }}>
             <View style={s.mobileHeader}>
@@ -1152,7 +1151,7 @@ export default function ParentMessages() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  desktopWrap:      { flex: 1, flexDirection: 'row', backgroundColor: CANVAS },
+  desktopWrap:      { flex: 1, flexDirection: 'row', backgroundColor: 'transparent' },
   desktopMain:      { flex: 1, flexDirection: 'row', overflow: 'hidden' },
 
   convPanel:        { width: 300, backgroundColor: '#fff', borderRightWidth: 1, borderRightColor: '#EAECEF' },

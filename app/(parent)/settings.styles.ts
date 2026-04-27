@@ -1,26 +1,44 @@
 import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 20, paddingTop: 60 },
+  desktopRoot: { flex: 1, flexDirection: 'row', backgroundColor: 'transparent' },
+  desktopMain: { flex: 1, maxHeight: '100%' as unknown as number },
+  desktopScroll: { padding: 20, paddingBottom: 40, maxWidth: 800, width: '100%', alignSelf: 'center' },
+  desktopTopBar: { marginBottom: 20 },
+  desktopPageTitle: { fontSize: 24, fontWeight: '800', letterSpacing: -0.3 },
+  desktopPageSub: { fontSize: 14, marginTop: 4 },
 
-  header: {
+  mobileRoot: { flex: 1, backgroundColor: 'transparent' },
+  mobileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  backButton: {
-    padding: 5,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-  },
+  backBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  mobileHeaderTitle: { fontSize: 18, fontWeight: '700', flex: 1, textAlign: 'center' },
+  mobileBody: { flex: 1, paddingHorizontal: 16, paddingBottom: 88 },
 
-  section: { flex: 1, marginBottom: 30 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#333' },
-  logItem: { backgroundColor: 'white', padding: 15, borderRadius: 8, marginBottom: 8, borderLeftWidth: 4, borderLeftColor: '#007AFF' },
-  logAction: { fontWeight: 'bold', fontSize: 14, color: '#333' },
-  logTime: { color: '#666', fontSize: 12, marginTop: 4 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  sectionHint: { fontSize: 13, marginBottom: 12, lineHeight: 18 },
+
+  themeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  themeCard: {
+    width: '48%',
+    minWidth: 150,
+    flexGrow: 1,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  themeCardLabel: { fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  themeCardHint: { fontSize: 12, lineHeight: 16 },
+
+  logItem: { padding: 14, borderRadius: 10, marginBottom: 8, borderWidth: 1 },
+  logAction: { fontWeight: '600', fontSize: 14 },
+  logTime: { fontSize: 12, marginTop: 4 },
+  emptyText: { fontSize: 14, textAlign: 'center', marginTop: 8 },
+  center: { paddingVertical: 24, alignItems: 'center' },
 });

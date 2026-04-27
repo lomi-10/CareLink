@@ -3,14 +3,15 @@ import { StyleSheet } from 'react-native';
 import { theme } from '@/constants/theme';
 
 export const styles = StyleSheet.create({
-  desktopRoot:  { flex: 1, flexDirection: 'row', backgroundColor: theme.color.canvasParent },
+  /** transparent: canvas comes from `RoleScreenBackground`; StyleSheet must not snapshot old `theme.color`. */
+  desktopRoot:  { flex: 1, flexDirection: 'row', backgroundColor: 'transparent' },
   desktopMain:  { flex: 1 },
   desktopScroll:{ padding: 32, paddingBottom: 60, maxWidth: 860, alignSelf: 'center', width: '100%' },
   desktopTopBar:{ marginBottom: 24 },
   desktopPageTitle: { fontSize: 26, fontWeight: '900', color: theme.color.ink, letterSpacing: -0.5 },
   desktopPageSub:   { fontSize: 13, color: theme.color.muted, marginTop: 3 },
 
-  mobileRoot:   { flex: 1 },
+  mobileRoot:   { flex: 1, backgroundColor: 'transparent' },
   mobileBody:   { flex: 1, minHeight: 0 },
   mobileHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

@@ -1,13 +1,57 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { theme } from '@/constants/theme';
+import type { ThemeColor } from '@/constants/theme';
+import { useParentTheme } from '@/contexts/ParentThemeContext';
 import { SectionHeader } from '@/components/helper/home';
 import { useAuth } from '@/hooks/shared';
 import { useParentActivePlacements } from '@/hooks/parent/useParentActivePlacements';
 import { ActiveHelperCard } from './ActiveHelperCard';
+
+function createActiveHelpersSectionStyles(c: ThemeColor) {
+  return StyleSheet.create({
+    wrap: { marginBottom: 8 },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingRight: 4,
+    },
+    seeAll: { fontSize: 14, fontWeight: '700', color: c.parent },
+    hint: {
+      fontSize: 13,
+      color: c.muted,
+      lineHeight: 20,
+      marginBottom: 14,
+      marginTop: -4,
+    },
+    hintBold: { fontWeight: '700', color: c.ink },
+    empty: {
+      alignItems: 'center',
+      paddingVertical: 24,
+      paddingHorizontal: 16,
+      backgroundColor: c.surface,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: c.line,
+      marginBottom: 8,
+    },
+    emptyTitle: { fontSize: 15, fontWeight: '700', color: c.ink, marginTop: 10 },
+    emptySub: { fontSize: 13, color: c.muted, textAlign: 'center', marginTop: 6 },
+    moreBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 12,
+      marginBottom: 8,
+    },
+    moreBtnText: { fontSize: 14, fontWeight: '700', color: c.parent },
+  });
+}
 
 type Props = {
   /** When true, cards omit the mini weekly strip (e.g. narrow mobile). */
@@ -16,6 +60,8 @@ type Props = {
 
 export function ActiveHelpersSection({ compactCards }: Props) {
   const router = useRouter();
+  const { color: c } = useParentTheme();
+  const styles = useMemo(() => createActiveHelpersSectionStyles(c), [c]);
   const { userData } = useAuth();
   const parentId = userData ? Number(userData.user_id) : 0;
   const { placements, loading, refresh } = useParentActivePlacements();
@@ -40,10 +86,10 @@ export function ActiveHelpersSection({ compactCards }: Props) {
       </Text>
 
       {loading ? (
-        <ActivityIndicator color={theme.color.parent} style={{ marginVertical: 20 }} />
+        <ActivityIndicator color={c.parent} style={{ marginVertical: 20 }} />
       ) : placements.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="people-outline" size={36} color={theme.color.subtle} />
+          <Ionicons name="people-outline" size={36} color={c.subtle} />
           <Text style={styles.emptyTitle}>No active helpers yet</Text>
           <Text style={styles.emptySub}>
             When you hire someone, their profile and daily tools will appear here.
@@ -66,50 +112,9 @@ export function ActiveHelpersSection({ compactCards }: Props) {
           <Text style={styles.moreBtnText}>
             View all {placements.length} active helpers
           </Text>
-          <Ionicons name="chevron-forward" size={18} color={theme.color.parent} />
+          <Ionicons name="chevron-forward" size={18} color={c.parent} />
         </TouchableOpacity>
       ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { marginBottom: 8 },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingRight: 4,
-  },
-  seeAll: { fontSize: 14, fontWeight: '700', color: theme.color.parent },
-  hint: {
-    fontSize: 13,
-    color: theme.color.muted,
-    lineHeight: 20,
-    marginBottom: 14,
-    marginTop: -4,
-  },
-  hintBold: { fontWeight: '700', color: theme.color.ink },
-  empty: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    backgroundColor: theme.color.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: theme.color.line,
-    marginBottom: 8,
-  },
-  emptyTitle: { fontSize: 15, fontWeight: '700', color: theme.color.ink, marginTop: 10 },
-  emptySub: { fontSize: 13, color: theme.color.muted, textAlign: 'center', marginTop: 6 },
-  moreBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    marginBottom: 8,
-  },
-  moreBtnText: { fontSize: 14, fontWeight: '700', color: theme.color.parent },
-});

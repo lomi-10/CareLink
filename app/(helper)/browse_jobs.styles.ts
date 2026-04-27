@@ -70,7 +70,7 @@ export const styles = StyleSheet.create({
   clearFiltersBtnText: { fontSize: 12, fontWeight: '700', color: theme.color.helper },
 
   // ── list ──
-  listMobile:  { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 48 },
+  listMobile:  { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 88 },
   listDesktop: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 60 },
   mobileCardWrap:  { marginBottom: 0 },
   desktopCardWrap: { flex: 1, maxWidth: '33.333%', paddingHorizontal: 8, marginBottom: 8 },

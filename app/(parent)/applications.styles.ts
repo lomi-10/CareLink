@@ -4,7 +4,7 @@ import { Platform, StyleSheet } from 'react-native';
 import { theme } from '@/constants/theme';
 
 export const styles = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: theme.color.canvasParent },
+  root:    { flex: 1, backgroundColor: 'transparent' },
   content: { flex: 1 },
 
   // ── Desktop ──

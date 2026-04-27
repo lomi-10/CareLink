@@ -14,7 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { useConversations, useChat, Conversation, Message } from '@/hooks/shared';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
-import { Sidebar, MobileMenu } from '@/components/helper/home';
+import { Sidebar, MobileMenu, HelperTabBar } from '@/components/helper/home';
 import { WorkModeTabBar } from '@/components/helper/work';
 import { LoadingSpinner, ConfirmationModal, NotificationModal } from '@/components/shared/';
 import API_URL from '@/constants/api';
@@ -600,7 +600,7 @@ export default function HelperMessages() {
   const { isDesktop }    = useResponsive();
   const { handleLogout } = useAuth();
   const { unreadCount: notifUnread } = useNotifications('helper');
-  const { isWorkMode } = useHelperWorkMode();
+  const { isWorkMode, activeHire } = useHelperWorkMode();
   const params = useLocalSearchParams<{ partner_id?: string; partner_name?: string; job_post_id?: string }>();
 
   const { conversations, loading: loadingConvs, refresh } = useConversations();
@@ -692,7 +692,7 @@ export default function HelperMessages() {
               active={activePartner?.partner_id === item.partner_id}
             />
           )}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: !activePartner ? 88 : 24 }}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -715,7 +715,7 @@ export default function HelperMessages() {
               </View>
               {ConvList}
             </View>
-            {isWorkMode ? <WorkModeTabBar /> : null}
+            {isWorkMode && activeHire ? <WorkModeTabBar /> : <HelperTabBar />}
           </SafeAreaView>
         ) : (
           <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FA' }}>

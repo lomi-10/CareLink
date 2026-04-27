@@ -47,4 +47,15 @@ export const styles = StyleSheet.create({
     marginTop: 8,
   },
   linkText: { flex: 1, fontSize: 16, fontWeight: '600' },
+  themeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+  themeCard: {
+    width: '48%',
+    minWidth: 150,
+    flexGrow: 1,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  themeCardLabel: { fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  themeCardHint: { fontSize: 12, lineHeight: 16 },
 });
