@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,8 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
-import { theme } from '@/constants/theme';
+import type { ThemeColor } from '@/constants/theme';
+import { useHelperTheme } from '@/contexts/HelperThemeContext';
 import { applicationContractPdfUrl, applicationTerminationRecordUrl } from '@/constants/applications';
 import type { ActiveHire } from '@/contexts/HelperWorkModeContext';
 import { fetchWeekAttendance, postAttendance, ymdLocal, type WeekDayAttendance } from '@/lib/helperWorkApi';
@@ -35,6 +36,8 @@ export function WorkModeDashboard({
   onRefreshWorkContext,
 }: Props) {
   const router = useRouter();
+  const { color: c } = useHelperTheme();
+  const styles = useMemo(() => createWorkModeDashboardStyles(c), [c]);
   const [loading, setLoading] = useState(true);
   const [actionBusy, setActionBusy] = useState(false);
   const [weekDays, setWeekDays] = useState<WeekDayAttendance[]>([]);
@@ -212,7 +215,7 @@ export function WorkModeDashboard({
 
       {placementTerminationPending ? (
         <View style={styles.noticeBanner}>
-          <Ionicons name="hourglass-outline" size={22} color={theme.color.warning} />
+          <Ionicons name="hourglass-outline" size={22} color={c.warning} />
           <Text style={styles.noticeBannerText}>
             Notice period in progress
             {lastDay
@@ -224,7 +227,7 @@ export function WorkModeDashboard({
       ) : null}
 
       {loading ? (
-        <ActivityIndicator color={theme.color.helper} style={{ marginVertical: 24 }} />
+        <ActivityIndicator color={c.helper} style={{ marginVertical: 24 }} />
       ) : (
         <>
           <View style={styles.weekRow}>
@@ -307,7 +310,7 @@ export function WorkModeDashboard({
               <Ionicons
                 name={t.status === 'done' ? 'checkmark-circle' : 'ellipse-outline'}
                 size={20}
-                color={t.status === 'done' ? theme.color.success : theme.color.muted}
+                color={t.status === 'done' ? c.success : c.muted}
               />
               <Text
                 style={[styles.taskTitle, t.status === 'done' && styles.taskTitleDone]}
@@ -328,27 +331,27 @@ export function WorkModeDashboard({
       <SectionHeader title="Shortcuts" />
       <View style={styles.shortcuts}>
         <TouchableOpacity style={styles.shortcut} onPress={openMessages} activeOpacity={0.88}>
-          <Ionicons name="chatbubbles-outline" size={22} color={theme.color.helper} />
+          <Ionicons name="chatbubbles-outline" size={22} color={c.helper} />
           <Text style={styles.shortcutText}>Messages</Text>
-          <Ionicons name="chevron-forward" size={18} color={theme.color.muted} />
+          <Ionicons name="chevron-forward" size={18} color={c.muted} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.shortcut} onPress={openContract} activeOpacity={0.88}>
-          <Ionicons name="document-text-outline" size={22} color={theme.color.helper} />
+          <Ionicons name="document-text-outline" size={22} color={c.helper} />
           <Text style={styles.shortcutText}>View contract</Text>
-          <Ionicons name="chevron-forward" size={18} color={theme.color.muted} />
+          <Ionicons name="chevron-forward" size={18} color={c.muted} />
         </TouchableOpacity>
         {!placementTerminationPending ? (
           <TouchableOpacity style={styles.shortcut} onPress={() => setEndModal(true)} activeOpacity={0.88}>
-            <Ionicons name="hand-left-outline" size={22} color={theme.color.danger} />
+            <Ionicons name="hand-left-outline" size={22} color={c.danger} />
             <Text style={styles.shortcutText}>End employment</Text>
-            <Ionicons name="chevron-forward" size={18} color={theme.color.muted} />
+            <Ionicons name="chevron-forward" size={18} color={c.muted} />
           </TouchableOpacity>
         ) : null}
         {placementTerminationPending ? (
           <TouchableOpacity style={styles.shortcut} onPress={() => void openTerminationRecord()} activeOpacity={0.88}>
-            <Ionicons name="download-outline" size={22} color={theme.color.helper} />
+            <Ionicons name="download-outline" size={22} color={c.helper} />
             <Text style={styles.shortcutText}>Termination record</Text>
-            <Ionicons name="chevron-forward" size={18} color={theme.color.muted} />
+            <Ionicons name="chevron-forward" size={18} color={c.muted} />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -387,32 +390,33 @@ export function WorkModeDashboard({
           void load();
         }}
       >
-        <Ionicons name="refresh-outline" size={16} color={theme.color.muted} />
+        <Ionicons name="refresh-outline" size={16} color={c.muted} />
         <Text style={styles.refreshHintText}>Refresh</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+function createWorkModeDashboardStyles(c: ThemeColor) {
+  return StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 32 },
   hero: { marginBottom: 20 },
-  greeting: { fontSize: 26, fontWeight: '900', color: theme.color.ink, letterSpacing: -0.5 },
-  employerLine: { fontSize: 15, color: theme.color.muted, marginTop: 6 },
-  jobTitle: { fontSize: 18, fontWeight: '800', color: theme.color.helper, marginTop: 4 },
+  greeting: { fontSize: 26, fontWeight: '900', color: c.ink, letterSpacing: -0.5 },
+  employerLine: { fontSize: 15, color: c.muted, marginTop: 6 },
+  jobTitle: { fontSize: 18, fontWeight: '800', color: c.helper, marginTop: 4 },
   noticeBanner: {
     flexDirection: 'row',
     gap: 10,
     alignItems: 'flex-start',
-    backgroundColor: theme.color.warningSoft,
+    backgroundColor: c.warningSoft,
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: theme.color.line,
+    borderColor: c.line,
   },
-  noticeBannerText: { flex: 1, fontSize: 14, fontWeight: '600', color: theme.color.ink, lineHeight: 20 },
+  noticeBannerText: { flex: 1, fontSize: 14, fontWeight: '600', color: c.ink, lineHeight: 20 },
 
   weekRow: {
     flexDirection: 'row',
@@ -421,17 +425,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   dayCol: { alignItems: 'center', gap: 6 },
-  dayLbl: { fontSize: 11, fontWeight: '700', color: theme.color.muted },
+  dayLbl: { fontSize: 11, fontWeight: '700', color: c.muted },
   dayDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: theme.color.line,
+    backgroundColor: c.line,
   },
 
   restHint: {
     fontSize: 14,
-    color: theme.color.muted,
+    color: c.muted,
     textAlign: 'center',
     marginBottom: 10,
     fontWeight: '600',
@@ -439,7 +443,7 @@ const styles = StyleSheet.create({
   checkedInSub: {
     fontSize: 15,
     fontWeight: '700',
-    color: theme.color.ink,
+    color: c.ink,
     textAlign: 'center',
     marginTop: -12,
     marginBottom: 24,
@@ -450,39 +454,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: theme.color.helper,
+    backgroundColor: c.helper,
     paddingVertical: 18,
     borderRadius: 16,
     marginBottom: 24,
   },
-  mainCtaIn: { backgroundColor: theme.color.success },
-  mainCtaOut: { backgroundColor: theme.color.danger },
-  mainCtaDone: { backgroundColor: theme.color.muted },
-  mainCtaRest: { backgroundColor: theme.color.muted },
+  mainCtaIn: { backgroundColor: c.success },
+  mainCtaOut: { backgroundColor: c.danger },
+  mainCtaDone: { backgroundColor: c.muted },
+  mainCtaRest: { backgroundColor: c.muted },
   mainCtaText: { color: '#fff', fontSize: 18, fontWeight: '800' },
 
   taskList: { gap: 10 },
   taskRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  taskTitle: { flex: 1, fontSize: 15, color: theme.color.ink, fontWeight: '600' },
-  taskTitleDone: { textDecorationLine: 'line-through', color: theme.color.muted },
-  emptyTasks: { fontSize: 14, color: theme.color.muted, marginBottom: 8 },
+  taskTitle: { flex: 1, fontSize: 15, color: c.ink, fontWeight: '600' },
+  taskTitleDone: { textDecorationLine: 'line-through', color: c.muted },
+  emptyTasks: { fontSize: 14, color: c.muted, marginBottom: 8 },
 
   shortcuts: { gap: 10 },
   shortcut: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: theme.color.surfaceElevated,
+    backgroundColor: c.surfaceElevated,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: theme.color.line,
+    borderColor: c.line,
   },
-  shortcutText: { flex: 1, fontSize: 15, fontWeight: '700', color: theme.color.ink },
+  shortcutText: { flex: 1, fontSize: 15, fontWeight: '700', color: c.ink },
   link: {
     fontSize: 14,
     fontWeight: '700',
-    color: theme.color.helper,
+    color: c.helper,
     marginTop: 10,
     marginBottom: 8,
   },
@@ -493,5 +497,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 20,
   },
-  refreshHintText: { fontSize: 13, color: theme.color.muted, fontWeight: '600' },
+  refreshHintText: { fontSize: 13, color: c.muted, fontWeight: '600' },
 });
+}

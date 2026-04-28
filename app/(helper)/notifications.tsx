@@ -1,88 +1,124 @@
 // app/(helper)/notifications.tsx
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
-  View, Text, TouchableOpacity,
-  FlatList, RefreshControl, ActivityIndicator, ScrollView,
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  RefreshControl,
+  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '@/constants/theme';
+import type { ThemeColor } from '@/constants/theme';
 import { useNotifications } from '@/hooks/shared';
 import { useResponsive } from '@/hooks/shared';
 import { Sidebar, HelperTabBar } from '@/components/helper/home';
 import { WorkModeTabBar } from '@/components/helper/work';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
+import { useHelperTheme } from '@/contexts/HelperThemeContext';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { useAuth } from '@/hooks/shared';
 import type { Notification } from '@/hooks/shared';
 
-import { styles as s } from './notifications.styles';
+import { createHelperNotificationsStyles } from './notifications.styles';
 
-const TYPE_CONFIG: Record<string, { icon: React.ComponentProps<typeof Ionicons>['name']; color: string; bg: string }> = {
-  application_received: { icon: 'person-add-outline',      color: theme.color.parent,  bg: theme.color.parentSoft },
-  status_changed:       { icon: 'refresh-circle-outline',  color: theme.color.info,    bg: theme.color.infoSoft },
-  account_verified:     { icon: 'shield-checkmark',        color: theme.color.success, bg: theme.color.successSoft },
-  account_rejected:     { icon: 'close-circle-outline',    color: theme.color.danger,  bg: theme.color.dangerSoft },
-  document_verified:    { icon: 'document-text',           color: theme.color.success, bg: theme.color.successSoft },
-  document_rejected:    { icon: 'document-text-outline',   color: theme.color.danger,  bg: theme.color.dangerSoft },
-  job_verified:         { icon: 'briefcase',               color: theme.color.helper,  bg: theme.color.helperSoft },
-  job_rejected:         { icon: 'briefcase-outline',       color: theme.color.danger,  bg: theme.color.dangerSoft },
-  job_invite:           { icon: 'mail-open-outline',       color: theme.color.parent,  bg: theme.color.parentSoft },
-  new_message:          { icon: 'chatbubble-outline',      color: theme.color.info,    bg: theme.color.infoSoft },
-  profile_update:       { icon: 'person-circle-outline',   color: theme.color.helper,  bg: theme.color.helperSoft },
-  interview_scheduled:  { icon: 'calendar-outline',        color: '#7C3AED',           bg: '#F3E8FF' },
-  interview_confirmed:  { icon: 'checkmark-circle-outline',color: theme.color.success, bg: theme.color.successSoft },
-  interview_declined:   { icon: 'close-circle-outline',    color: theme.color.danger,  bg: theme.color.dangerSoft },
-  interview_request:    { icon: 'calendar-outline',        color: theme.color.parent,  bg: theme.color.parentSoft },
-  peso_queue_user:      { icon: 'people-outline',          color: theme.color.peso,    bg: theme.color.pesoSoft },
-  peso_queue_job:       { icon: 'briefcase-outline',       color: theme.color.peso,    bg: theme.color.pesoSoft },
-  message_received:     { icon: 'chatbubble-outline',      color: theme.color.info,    bg: theme.color.infoSoft },
-  task_completed:       { icon: 'checkmark-done-outline',  color: theme.color.success, bg: theme.color.successSoft },
-  attendance_checkin:   { icon: 'log-in-outline',            color: theme.color.success, bg: theme.color.successSoft },
-  leave_request_submitted: { icon: 'umbrella-outline',      color: theme.color.warning, bg: theme.color.warningSoft },
-  leave_request_responded: { icon: 'checkmark-circle-outline', color: theme.color.info, bg: theme.color.infoSoft },
-  contract_terminated: { icon: 'document-text-outline', color: theme.color.danger, bg: theme.color.danger + '22' },
-};
+function buildNotificationTypeConfig(c: ThemeColor) {
+  const config: Record<string, { icon: React.ComponentProps<typeof Ionicons>['name']; color: string; bg: string }> = {
+    application_received: { icon: 'person-add-outline', color: c.parent, bg: c.parentSoft },
+    status_changed: { icon: 'refresh-circle-outline', color: c.info, bg: c.infoSoft },
+    account_verified: { icon: 'shield-checkmark', color: c.success, bg: c.successSoft },
+    account_rejected: { icon: 'close-circle-outline', color: c.danger, bg: c.dangerSoft },
+    document_verified: { icon: 'document-text', color: c.success, bg: c.successSoft },
+    document_rejected: { icon: 'document-text-outline', color: c.danger, bg: c.dangerSoft },
+    job_verified: { icon: 'briefcase', color: c.helper, bg: c.helperSoft },
+    job_rejected: { icon: 'briefcase-outline', color: c.danger, bg: c.dangerSoft },
+    job_invite: { icon: 'mail-open-outline', color: c.parent, bg: c.parentSoft },
+    new_message: { icon: 'chatbubble-outline', color: c.info, bg: c.infoSoft },
+    profile_update: { icon: 'person-circle-outline', color: c.helper, bg: c.helperSoft },
+    interview_scheduled: { icon: 'calendar-outline', color: c.parent, bg: c.parentSoft },
+    interview_confirmed: { icon: 'checkmark-circle-outline', color: c.success, bg: c.successSoft },
+    interview_declined: { icon: 'close-circle-outline', color: c.danger, bg: c.dangerSoft },
+    interview_request: { icon: 'calendar-outline', color: c.parent, bg: c.parentSoft },
+    peso_queue_user: { icon: 'people-outline', color: c.peso, bg: c.pesoSoft },
+    peso_queue_job: { icon: 'briefcase-outline', color: c.peso, bg: c.pesoSoft },
+    message_received: { icon: 'chatbubble-outline', color: c.info, bg: c.infoSoft },
+    task_completed: { icon: 'checkmark-done-outline', color: c.success, bg: c.successSoft },
+    attendance_checkin: { icon: 'log-in-outline', color: c.success, bg: c.successSoft },
+    leave_request_submitted: { icon: 'umbrella-outline', color: c.warning, bg: c.warningSoft },
+    leave_request_responded: { icon: 'checkmark-circle-outline', color: c.info, bg: c.infoSoft },
+    contract_terminated: { icon: 'document-text-outline', color: c.danger, bg: c.danger + '22' },
+  };
+  return config;
+}
 
 function timeAgo(dateStr: string) {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60)    return 'Just now';
-  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  if (diff < 604800)return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
   return new Date(dateStr).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 }
 
-function NotifItem({ item, onPress }: { item: Notification; onPress: () => void }) {
-  const cfg = TYPE_CONFIG[item.type] ?? { icon: 'notifications-outline' as const, color: theme.color.muted, bg: theme.color.surface };
+type NotifStyles = ReturnType<typeof createHelperNotificationsStyles>;
+
+function NotifItem({
+  item,
+  onPress,
+  s,
+  typeCfg,
+  accent,
+  c,
+}: {
+  item: Notification;
+  onPress: () => void;
+  s: NotifStyles;
+  typeCfg: ReturnType<typeof buildNotificationTypeConfig>;
+  accent: string;
+  c: ThemeColor;
+}) {
+  const cfg = typeCfg[item.type] ?? { icon: 'notifications-outline' as const, color: c.muted, bg: c.surface };
   return (
-    <TouchableOpacity
-      style={[s.item, !item.is_read && s.itemUnread]}
-      onPress={onPress}
-      activeOpacity={0.85}
-    >
+    <TouchableOpacity style={[s.item, !item.is_read && s.itemUnread]} onPress={onPress} activeOpacity={0.85}>
       <View style={[s.iconWrap, { backgroundColor: cfg.bg }]}>
         <Ionicons name={cfg.icon} size={20} color={cfg.color} />
       </View>
       <View style={s.itemBody}>
         <View style={s.itemTopRow}>
-          <Text style={[s.itemTitle, !item.is_read && s.itemTitleUnread]} numberOfLines={1}>{item.title}</Text>
+          <Text style={[s.itemTitle, !item.is_read && s.itemTitleUnread]} numberOfLines={1}>
+            {item.title}
+          </Text>
           <Text style={s.itemTime}>{timeAgo(item.created_at)}</Text>
         </View>
-        <Text style={s.itemMsg} numberOfLines={2}>{item.message}</Text>
+        <Text style={s.itemMsg} numberOfLines={2}>
+          {item.message}
+        </Text>
       </View>
-      {!item.is_read && <View style={[s.unreadDot, { backgroundColor: theme.color.helper }]} />}
+      {!item.is_read && <View style={[s.unreadDot, { backgroundColor: accent }]} />}
     </TouchableOpacity>
   );
 }
 
-function NotifContent({ accent, listBottomExtra = 0 }: { accent: string; listBottomExtra?: number }) {
+function NotifContent({
+  accent,
+  listBottomExtra = 0,
+  s,
+  c,
+  typeCfg,
+}: {
+  accent: string;
+  listBottomExtra?: number;
+  s: NotifStyles;
+  c: ThemeColor;
+  typeCfg: ReturnType<typeof buildNotificationTypeConfig>;
+}) {
   const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } = useNotifications('helper');
 
   return (
     <View style={s.panel}>
-      {/* Panel header */}
       <View style={s.panelHeader}>
         <View style={s.panelHeaderLeft}>
           <Text style={s.panelTitle}>Notifications</Text>
@@ -105,7 +141,7 @@ function NotifContent({ accent, listBottomExtra = 0 }: { accent: string; listBot
         </View>
       ) : notifications.length === 0 ? (
         <View style={s.empty}>
-          <View style={[s.emptyCircle, { backgroundColor: theme.color.helperSoft }]}>
+          <View style={[s.emptyCircle, { backgroundColor: c.helperSoft }]}>
             <Ionicons name="notifications-off-outline" size={36} color={accent} />
           </View>
           <Text style={s.emptyTitle}>All caught up!</Text>
@@ -114,19 +150,22 @@ function NotifContent({ accent, listBottomExtra = 0 }: { accent: string; listBot
       ) : (
         <FlatList
           data={notifications}
-          keyExtractor={item => String(item.notification_id)}
+          keyExtractor={(item) => String(item.notification_id)}
           renderItem={({ item }) => (
             <NotifItem
               item={item}
-              onPress={() => { if (!item.is_read) markOneRead(item.notification_id); }}
+              s={s}
+              c={c}
+              typeCfg={typeCfg}
+              accent={accent}
+              onPress={() => {
+                if (!item.is_read) markOneRead(item.notification_id);
+              }}
             />
           )}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={accent} />}
           ItemSeparatorComponent={() => <View style={s.sep} />}
-          contentContainerStyle={[
-            s.listContent,
-            listBottomExtra > 0 ? { paddingBottom: 20 + listBottomExtra } : null,
-          ]}
+          contentContainerStyle={[s.listContent, listBottomExtra > 0 ? { paddingBottom: 20 + listBottomExtra } : null]}
         />
       )}
     </View>
@@ -138,6 +177,11 @@ export default function HelperNotificationsScreen() {
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
   const { isWorkMode, activeHire } = useHelperWorkMode();
+  const { color: c } = useHelperTheme();
+  const accent = c.helper;
+
+  const s = useMemo(() => createHelperNotificationsStyles(c), [c]);
+  const typeCfg = useMemo(() => buildNotificationTypeConfig(c), [c]);
 
   const [confirmLogout, setConfirmLogout] = React.useState(false);
   const [successLogout, setSuccessLogout] = React.useState(false);
@@ -151,7 +195,10 @@ export default function HelperNotificationsScreen() {
         confirmText="Log Out"
         cancelText="Cancel"
         type="danger"
-        onConfirm={() => { setConfirmLogout(false); setSuccessLogout(true); }}
+        onConfirm={() => {
+          setConfirmLogout(false);
+          setSuccessLogout(true);
+        }}
         onCancel={() => setConfirmLogout(false)}
       />
       <NotificationModal
@@ -160,12 +207,14 @@ export default function HelperNotificationsScreen() {
         type="success"
         autoClose
         duration={1500}
-        onClose={() => { setSuccessLogout(false); handleLogout(); }}
+        onClose={() => {
+          setSuccessLogout(false);
+          handleLogout();
+        }}
       />
     </>
   );
 
-  // ── DESKTOP ──────────────────────────────────────────────────────────────────
   if (isDesktop) {
     return (
       <View style={s.desktopRoot}>
@@ -173,32 +222,29 @@ export default function HelperNotificationsScreen() {
         <ScrollView style={s.desktopMain} contentContainerStyle={s.desktopScroll}>
           <View style={s.desktopTopBar}>
             <Text style={s.desktopPageTitle}>Notifications</Text>
-            <Text style={s.desktopPageSub}>Helper Portal</Text>
+            <Text style={s.desktopPageSub}>Stay on top of applications and interviews</Text>
           </View>
-          <NotifContent accent={theme.color.helper} />
+          <NotifContent accent={accent} s={s} c={c} typeCfg={typeCfg} />
         </ScrollView>
         {renderModals()}
       </View>
     );
   }
 
-  // ── MOBILE ───────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[s.mobileRoot, { backgroundColor: theme.color.canvasHelper }]} edges={['top']}>
+    <SafeAreaView style={[s.mobileRoot, { backgroundColor: c.canvasHelper }]} edges={['top']}>
       <View style={s.mobileHeader}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={12}>
-          <Ionicons name="chevron-back" size={26} color={theme.color.helper} />
+          <Ionicons name="chevron-back" size={26} color={accent} />
         </TouchableOpacity>
         <Text style={s.mobileHeaderTitle}>Notifications</Text>
         <View style={{ width: 42 }} />
       </View>
       <View style={s.mobileBody}>
-        <NotifContent
-          accent={theme.color.helper}
-          listBottomExtra={72}
-        />
+        <NotifContent accent={accent} s={s} c={c} typeCfg={typeCfg} listBottomExtra={72} />
       </View>
       {isWorkMode && activeHire ? <WorkModeTabBar /> : <HelperTabBar />}
+      {renderModals()}
     </SafeAreaView>
   );
 }

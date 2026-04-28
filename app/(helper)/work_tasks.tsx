@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth, useResponsive } from '@/hooks/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { WorkModeShell } from '@/components/helper/work';
-import { theme } from '@/constants/theme';
+import { useHelperTheme } from '@/contexts/HelperThemeContext';
 import {
   fetchApplicationTasks,
   completeApplicationTask,
@@ -26,12 +26,14 @@ import {
 import { fetchAttendanceToday, type AttendanceToday } from '@/lib/attendanceApi';
 import { uploadImageToCloudinary } from '@/lib/cloudinaryUpload';
 
-import { styles } from './work_tasks.styles';
+import { createHelperWorkTasksStyles } from './work_tasks.styles';
 
 type Section = { title: string; data: ApplicationTask[] };
 
 export default function WorkTasksScreen() {
   const router = useRouter();
+  const { color: c } = useHelperTheme();
+  const styles = useMemo(() => createHelperWorkTasksStyles(c), [c]);
   const { isDesktop } = useResponsive();
   const { userData, loading: authLoading } = useAuth();
   const { ready, isWorkMode, activeHire } = useHelperWorkMode();
@@ -167,14 +169,14 @@ export default function WorkTasksScreen() {
   if (!ready || authLoading || !isWorkMode || !activeHire) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.color.helper} />
+        <ActivityIndicator size="large" color={c.helper} />
       </View>
     );
   }
 
   const instructionHeader = (
     <View style={styles.instructionCard}>
-      <Ionicons name="information-circle-outline" size={22} color={theme.color.helper} />
+      <Ionicons name="information-circle-outline" size={22} color={c.helper} />
       <View style={{ flex: 1, marginLeft: 10 }}>
         <Text style={styles.instructionTitle}>How placement tasks work</Text>
         <Text style={styles.instructionBody}>
@@ -205,7 +207,7 @@ export default function WorkTasksScreen() {
                 <Text style={styles.modalTaskTitle}>{confirmTask.title}</Text>
                 {confirmTask.requires_photo ? (
                   <View style={styles.reqPill}>
-                    <Ionicons name="camera-outline" size={16} color={theme.color.warning} />
+                    <Ionicons name="camera-outline" size={16} color={c.warning} />
                     <Text style={styles.reqPillText}>Photo required</Text>
                   </View>
                 ) : (
@@ -213,11 +215,11 @@ export default function WorkTasksScreen() {
                 )}
                 <View style={styles.photoRow}>
                   <TouchableOpacity style={styles.photoBtn} onPress={() => void pickImage('camera')}>
-                    <Ionicons name="camera" size={20} color={theme.color.helper} />
+                    <Ionicons name="camera" size={20} color={c.helper} />
                     <Text style={styles.photoBtnText}>Camera</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.photoBtn} onPress={() => void pickImage('library')}>
-                    <Ionicons name="images-outline" size={20} color={theme.color.helper} />
+                    <Ionicons name="images-outline" size={20} color={c.helper} />
                     <Text style={styles.photoBtnText}>Library</Text>
                   </TouchableOpacity>
                 </View>
@@ -280,7 +282,7 @@ export default function WorkTasksScreen() {
                   onValueChange={(v) => {
                     if (v && isPending) onCheckboxPress(item, true);
                   }}
-                  color={item.status === 'done' ? theme.color.success : theme.color.muted}
+                  color={item.status === 'done' ? c.success : c.muted}
                   disabled={!isPending || busyId === item.id || !!mustCheckIn}
                 />
                 <View style={{ flex: 1, marginLeft: 12 }}>
@@ -305,7 +307,7 @@ export default function WorkTasksScreen() {
                     </Text>
                   ) : null}
                 </View>
-                {busyId === item.id ? <ActivityIndicator color={theme.color.helper} /> : null}
+                {busyId === item.id ? <ActivityIndicator color={c.helper} /> : null}
               </View>
             );
           }}

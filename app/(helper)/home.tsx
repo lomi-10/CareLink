@@ -1,5 +1,5 @@
 // app/(helper)/home.tsx
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View, ScrollView, RefreshControl, ActivityIndicator,
   SafeAreaView, Text, TouchableOpacity,
@@ -7,8 +7,8 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { theme } from '@/constants/theme';
-import { styles as layoutStyles } from './home.styles';
+import { createHelperHomeStyles } from './home.styles';
+import { useHelperTheme } from '@/contexts/HelperThemeContext';
 
 import { useHelperStats } from '@/hooks/helper';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
@@ -24,6 +24,8 @@ import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 
 export default function HelperHome() {
   const router = useRouter();
+  const { color: c } = useHelperTheme();
+  const layoutStyles = useMemo(() => createHelperHomeStyles(c), [c]);
 
   const { userData, loading: authLoading, handleLogout, getFullName } = useAuth();
   const { stats, loading: statsLoading, refresh } = useHelperStats();
@@ -46,13 +48,31 @@ export default function HelperHome() {
 
   const loading = authLoading || statsLoading || !workReady;
 
+  function QuickActionDesktopInner({ icon, title, desc, color, onPress }: {
+    icon: React.ComponentProps<typeof Ionicons>['name'];
+    title: string;
+    desc: string;
+    color: string;
+    onPress: () => void;
+  }) {
+    return (
+      <TouchableOpacity style={layoutStyles.qaDesktop} onPress={onPress} activeOpacity={0.88}>
+        <View style={[layoutStyles.qaDesktopIcon, { backgroundColor: color + '18' }]}>
+          <Ionicons name={icon} size={28} color={color} />
+        </View>
+        <Text style={layoutStyles.qaDesktopTitle}>{title}</Text>
+        <Text style={layoutStyles.qaDesktopDesc}>{desc}</Text>
+      </TouchableOpacity>
+    );
+  }
+
   const showWorkDash = isWorkMode && activeHire && userData;
   const helperIdNum = userData ? Number(userData.user_id) : 0;
 
   if (loading) {
     return (
       <View style={layoutStyles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.color.helper} />
+        <ActivityIndicator size="large" color={c.helper} />
       </View>
     );
   }
@@ -113,10 +133,10 @@ export default function HelperHome() {
               <Ionicons
                 name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
                 size={20}
-                color={unreadCount > 0 ? theme.color.helper : theme.color.muted}
+                color={unreadCount > 0 ? c.helper : c.muted}
               />
               {unreadCount > 0 && (
-                <View style={[layoutStyles.notifBadge, { backgroundColor: theme.color.helper }]}>
+                <View style={[layoutStyles.notifBadge, { backgroundColor: c.helper }]}>
                   <Text style={layoutStyles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
                 </View>
               )}
@@ -140,15 +160,15 @@ export default function HelperHome() {
                     marginBottom: 16,
                     padding: 14,
                     borderRadius: 14,
-                    backgroundColor: theme.color.surfaceElevated,
+                    backgroundColor: c.surfaceElevated,
                     borderWidth: 1,
-                    borderColor: theme.color.line,
+                    borderColor: c.line,
                   }}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: '800', color: theme.color.ink, marginBottom: 4 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: c.ink, marginBottom: 4 }}>
                     Employment ended
                   </Text>
-                  <Text style={{ fontSize: 14, color: theme.color.muted, lineHeight: 20 }}>
+                  <Text style={{ fontSize: 14, color: c.muted, lineHeight: 20 }}>
                     Your placement
                     {employmentEnded.job_title ? ` (${employmentEnded.job_title})` : ''} with{' '}
                     {employmentEnded.employer_name || 'your employer'} ended on{' '}
@@ -163,22 +183,22 @@ export default function HelperHome() {
 
               <SectionHeader title="Your Overview" />
               <View style={layoutStyles.statsGrid}>
-                <StatCard icon="briefcase" iconColor={theme.color.helper} iconBg={theme.color.helperSoft}
+                <StatCard icon="briefcase" iconColor={c.helper} iconBg={c.helperSoft}
                   title="Applications" value={stats.applications} onPress={() => router.push('/(helper)/my_applications')} />
-                <StatCard icon="bookmark" iconColor={theme.color.info} iconBg={theme.color.infoSoft}
+                <StatCard icon="bookmark" iconColor={c.info} iconBg={c.infoSoft}
                   title="Saved Jobs" value={stats.saved_jobs} onPress={() => router.push('/(helper)/saved_jobs')} />
-                <StatCard icon="eye" iconColor={theme.color.success} iconBg={theme.color.successSoft}
+                <StatCard icon="eye" iconColor={c.success} iconBg={c.successSoft}
                   title="Profile Views" value={stats.profile_views} />
               </View>
 
               <SectionHeader title="Quick Actions" />
               <View style={layoutStyles.quickActionsGrid}>
-                <QuickActionDesktop icon="search" title="Find Jobs" desc="Browse PESO-verified openings"
-                  color={theme.color.info} onPress={() => router.push('/(helper)/browse_jobs')} />
-                <QuickActionDesktop icon="person" title="My Profile" desc="Update your info & docs"
-                  color={theme.color.helper} onPress={() => router.push('/(helper)/profile')} />
-                <QuickActionDesktop icon="document-text" title="Applications" desc="Track your applications"
-                  color={theme.color.success} onPress={() => router.push('/(helper)/my_applications')} />
+                <QuickActionDesktopInner icon="search" title="Find Jobs" desc="Browse PESO-verified openings"
+                  color={c.info} onPress={() => router.push('/(helper)/browse_jobs')} />
+                <QuickActionDesktopInner icon="person" title="My Profile" desc="Update your info & docs"
+                  color={c.helper} onPress={() => router.push('/(helper)/profile')} />
+                <QuickActionDesktopInner icon="document-text" title="Applications" desc="Track your applications"
+                  color={c.success} onPress={() => router.push('/(helper)/my_applications')} />
               </View>
 
               <RecommendationsSection />
@@ -195,7 +215,7 @@ export default function HelperHome() {
     <SafeAreaView style={layoutStyles.container}>
       <MobileHeader
         onMenuPress={() => setIsMobileMenuOpen(true)}
-        accentColor={theme.color.helper}
+        accentColor={c.helper}
         subtitle={showWorkDash ? 'Work Mode' : 'Helper Portal'}
         notificationCount={unreadCount}
         onNotificationPress={() => router.push('/(helper)/notifications')}
@@ -232,15 +252,15 @@ export default function HelperHome() {
                   marginBottom: 14,
                   padding: 14,
                   borderRadius: 14,
-                  backgroundColor: theme.color.surfaceElevated,
+                  backgroundColor: c.surfaceElevated,
                   borderWidth: 1,
-                  borderColor: theme.color.line,
+                  borderColor: c.line,
                 }}
               >
-                <Text style={{ fontSize: 15, fontWeight: '800', color: theme.color.ink, marginBottom: 4 }}>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: c.ink, marginBottom: 4 }}>
                   Employment ended
                 </Text>
-                <Text style={{ fontSize: 14, color: theme.color.muted, lineHeight: 20 }}>
+                <Text style={{ fontSize: 14, color: c.muted, lineHeight: 20 }}>
                   Your placement
                   {employmentEnded.job_title ? ` (${employmentEnded.job_title})` : ''} with{' '}
                   {employmentEnded.employer_name || 'your employer'} ended on{' '}
@@ -254,22 +274,22 @@ export default function HelperHome() {
             ) : null}
 
             <View style={layoutStyles.mobileStatsRow}>
-              <MobileStatCard icon="briefcase" color={theme.color.helper} value={stats.applications}
+              <MobileStatCard icon="briefcase" color={c.helper} value={stats.applications}
                 label="Applied" onPress={() => router.push('/(helper)/my_applications')} />
-              <MobileStatCard icon="bookmark" color={theme.color.info} value={stats.saved_jobs}
+              <MobileStatCard icon="bookmark" color={c.info} value={stats.saved_jobs}
                 label="Saved" onPress={() => router.push('/(helper)/saved_jobs')} />
-              <MobileStatCard icon="eye" color={theme.color.success} value={stats.profile_views} label="Views" />
+              <MobileStatCard icon="eye" color={c.success} value={stats.profile_views} label="Views" />
             </View>
 
             <SectionHeader title="Quick Actions" />
             <View style={layoutStyles.quickActionsGrid}>
-              <QuickAction icon="search" label="Find Jobs" color={theme.color.info}
+              <QuickAction icon="search" label="Find Jobs" color={c.info}
                 onPress={() => router.push('/(helper)/browse_jobs')} />
-              <QuickAction icon="person" label="My Profile" color={theme.color.helper}
+              <QuickAction icon="person" label="My Profile" color={c.helper}
                 onPress={() => router.push('/(helper)/profile')} />
-              <QuickAction icon="document-text" label="Applications" color={theme.color.success}
+              <QuickAction icon="document-text" label="Applications" color={c.success}
                 onPress={() => router.push('/(helper)/my_applications')} />
-              <QuickAction icon="document" label="Documents" color={theme.color.peso}
+              <QuickAction icon="document" label="Documents" color={c.peso}
                 onPress={() => router.push('/(helper)/profile')} />
             </View>
 
@@ -279,7 +299,7 @@ export default function HelperHome() {
                 <Text style={layoutStyles.recruitBannerSub}>All jobs are PESO-verified and safe.</Text>
               </View>
               <TouchableOpacity
-                style={[layoutStyles.recruitBannerBtn, { backgroundColor: theme.color.helper }]}
+                style={[layoutStyles.recruitBannerBtn, { backgroundColor: c.helper }]}
                 onPress={() => router.push('/(helper)/browse_jobs')}
               >
                 <Text style={layoutStyles.recruitBannerBtnText}>Browse</Text>
@@ -296,19 +316,3 @@ export default function HelperHome() {
     </SafeAreaView>
   );
 }
-
-function QuickActionDesktop({ icon, title, desc, color, onPress }: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  title: string; desc: string; color: string; onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity style={layoutStyles.qaDesktop} onPress={onPress} activeOpacity={0.88}>
-      <View style={[layoutStyles.qaDesktopIcon, { backgroundColor: color + '18' }]}>
-        <Ionicons name={icon} size={28} color={color} />
-      </View>
-      <Text style={layoutStyles.qaDesktopTitle}>{title}</Text>
-      <Text style={layoutStyles.qaDesktopDesc}>{desc}</Text>
-    </TouchableOpacity>
-  );
-}
-

@@ -1,11 +1,11 @@
 // app/(helper)/messages.tsx
-import React, { useState, useEffect, useRef, useCallback, createElement } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback, createElement } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
   SafeAreaView, KeyboardAvoidingView, Platform, Image,
-  ActivityIndicator, ScrollView, StyleSheet, Modal,
+  ActivityIndicator, ScrollView, Modal,
   Linking, Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -20,11 +20,23 @@ import { LoadingSpinner, ConfirmationModal, NotificationModal } from '@/componen
 import API_URL from '@/constants/api';
 import { applicationContractPdfUrl, applicationSignContractUrl } from '@/constants/applications';
 import { ChatCallOptionsModal, HelperInterviewRequestModal } from '@/components/shared/ChatCallOptionsModal';
-import { theme } from '@/constants/theme';
+import type { ThemeColor } from '@/constants/theme';
+import { useHelperTheme } from '@/contexts/HelperThemeContext';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
+import { createHelperMessagesStyles } from './messages.styles';
 
-const ACCENT  = theme.color.helper;
-const CANVAS  = theme.color.canvasHelper;
+type MessagesAppearanceValue = {
+  s: ReturnType<typeof createHelperMessagesStyles>;
+  c: ThemeColor;
+  accent: string;
+};
+const MessagesAppearanceContext = React.createContext<MessagesAppearanceValue | null>(null);
+
+function useMessagesAppearance(): MessagesAppearanceValue {
+  const v = React.useContext(MessagesAppearanceContext);
+  if (!v) throw new Error('Messages appearance unavailable');
+  return v;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -62,7 +74,8 @@ function shouldShowDivider(prev: Message | undefined, curr: Message) {
 function Avatar({
   name, photo, size = 40, color,
 }: { name: string; photo?: string | null; size?: number; color?: string }) {
-  const bg       = color ?? ACCENT;
+  const { accent } = useMessagesAppearance();
+  const bg = color ?? accent;
   const initials = name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
   if (photo) {
     return (
@@ -82,10 +95,11 @@ function Avatar({
 // ─── ConvItem ─────────────────────────────────────────────────────────────────
 
 function ConvItem({ item, onPress, active }: { item: Conversation; onPress: () => void; active: boolean }) {
+  const { s, c } = useMessagesAppearance();
   return (
     <TouchableOpacity style={[s.convItem, active && s.convItemActive]} onPress={onPress} activeOpacity={0.7}>
       <View style={s.convAvaWrap}>
-        <Avatar name={item.partner_name} photo={item.partner_photo} size={48} color={theme.color.parent} />
+        <Avatar name={item.partner_name} photo={item.partner_photo} size={48} color={c.parent} />
         {item.unread_count > 0 && (
           <View style={s.badge}><Text style={s.badgeTxt}>{item.unread_count > 9 ? '9+' : item.unread_count}</Text></View>
         )}
@@ -100,7 +114,7 @@ function ConvItem({ item, onPress, active }: { item: Conversation; onPress: () =
         {item.job_title && (
           <Text style={s.convJob} numberOfLines={1}>re: {item.job_title}</Text>
         )}
-        <Text style={[s.convPreview, item.unread_count > 0 && { color: theme.color.ink, fontWeight: '600' }]} numberOfLines={1}>
+        <Text style={[s.convPreview, item.unread_count > 0 && { color: c.ink, fontWeight: '600' }]} numberOfLines={1}>
           {item.is_mine ? 'You: ' : ''}
           {item.last_message || 'Photo'}
         </Text>
@@ -112,6 +126,7 @@ function ConvItem({ item, onPress, active }: { item: Conversation; onPress: () =
 // ─── ImageViewer Modal ────────────────────────────────────────────────────────
 
 function ImageViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
+  const { s } = useMessagesAppearance();
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={s.imgViewerBg} activeOpacity={1} onPress={onClose}>
@@ -132,6 +147,7 @@ function Bubble({
   onImagePress?: (uri: string) => void;
   onEditPress?: () => void;
 }) {
+  const { s, c, accent } = useMessagesAppearance();
   const isVideoCall = msg.message_type === 'video_call';
   const isImage     = msg.message_type === 'image';
 
@@ -147,10 +163,10 @@ function Bubble({
             <Ionicons name="videocam" size={22} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={s.videoCardTitle}>Video Call Invitation</Text>
-            <Text style={s.videoCardSub}>Tap to join the call</Text>
+            <Text style={[s.videoCardTitle, isMine && { color: '#fff' }]}>Video Call Invitation</Text>
+            <Text style={[s.videoCardSub, isMine && { color: 'rgba(255,255,255,0.85)' }]}>Tap to join the call</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={isMine ? 'rgba(255,255,255,0.7)' : ACCENT} />
+          <Ionicons name="chevron-forward" size={18} color={isMine ? 'rgba(255,255,255,0.7)' : accent} />
         </TouchableOpacity>
         <Text style={[s.bubbleMeta, isMine ? s.bubbleMetaRight : s.bubbleMetaLeft]}>
           {fullTime(msg.sent_at)}{isMine && (msg.is_read ? ' ✓✓' : ' ✓')}
@@ -192,7 +208,7 @@ function Bubble({
         </TouchableOpacity>
         {isMine && onEditPress && (
           <TouchableOpacity onPress={onEditPress} hitSlop={8} style={s.editBubbleBtn} accessibilityLabel="Edit message">
-            <Ionicons name="create-outline" size={18} color={theme.color.muted} />
+            <Ionicons name="create-outline" size={18} color={c.muted} />
           </TouchableOpacity>
         )}
       </View>
@@ -208,6 +224,7 @@ function Bubble({
 function EditModal({
   visible, initialText, onSave, onClose,
 }: { visible: boolean; initialText: string; onSave: (t: string) => void; onClose: () => void }) {
+  const { s, c } = useMessagesAppearance();
   const [text, setText] = useState(initialText);
   useEffect(() => { if (visible) setText(initialText); }, [visible, initialText]);
   return (
@@ -225,7 +242,7 @@ function EditModal({
           />
           <View style={s.editModalBtns}>
             <TouchableOpacity style={s.editModalCancel} onPress={onClose}>
-              <Text style={{ color: theme.color.muted, fontWeight: '600' }}>Cancel</Text>
+              <Text style={{ color: c.muted, fontWeight: '600' }}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.editModalSave, !text.trim() && { opacity: 0.4 }]}
@@ -249,6 +266,7 @@ function ChatPanel({
   partnerId: number; partnerName: string; partnerPhoto?: string | null;
   jobPostId?: number | null; onBack?: () => void;
 }) {
+  const { s, c, accent } = useMessagesAppearance();
   const { messages, loading, sending, myUserId, sendMessage, editMessage, sendImage, sendVideoCall, fetchMessages } = useChat(partnerId);
   const [text, setText]                   = useState('');
   const [editTarget, setEditTarget]       = useState<Message | null>(null);
@@ -392,7 +410,11 @@ function ChatPanel({
   };
 
   if (loading) {
-    return <View style={s.chatLoadWrap}><ActivityIndicator color={ACCENT} size="large" /></View>;
+    return (
+      <View style={s.chatLoadWrap}>
+        <ActivityIndicator color={accent} size="large" />
+      </View>
+    );
   }
 
   return (
@@ -404,16 +426,16 @@ function ChatPanel({
       <View style={s.chatHeader}>
         {onBack && (
           <TouchableOpacity onPress={onBack} style={s.chatBack}>
-            <Ionicons name="arrow-back" size={22} color={theme.color.ink} />
+            <Ionicons name="arrow-back" size={22} color={c.ink} />
           </TouchableOpacity>
         )}
-        <Avatar name={partnerName} photo={partnerPhoto} size={38} color={theme.color.parent} />
+        <Avatar name={partnerName} photo={partnerPhoto} size={38} color={c.parent} />
         <View style={{ marginLeft: 10, flex: 1 }}>
           <Text style={s.chatHeaderName} numberOfLines={1}>{partnerName}</Text>
           {jobPostId && <Text style={s.chatHeaderSub}>Job #{jobPostId}</Text>}
         </View>
         <TouchableOpacity style={s.callBtn} onPress={() => setCallModal(true)}>
-          <Ionicons name="videocam" size={20} color={ACCENT} />
+          <Ionicons name="videocam" size={20} color={accent} />
         </TouchableOpacity>
       </View>
 
@@ -449,7 +471,7 @@ function ChatPanel({
       )}
       {resolvedApp && (resolvedApp.status === 'hired' || resolvedApp.status === 'Accepted') && (
         <View style={s.hiredBar}>
-          <Ionicons name="checkmark-circle" size={18} color={theme.color.success} />
+          <Ionicons name="checkmark-circle" size={18} color={c.success} />
           <Text style={s.hiredBarTxt}>You are hired for this job</Text>
           <TouchableOpacity style={s.hiredBarLink} onPress={() => { void openReviewContract(); }}>
             <Text style={s.hiredBarLinkTxt}>Contract</Text>
@@ -487,7 +509,7 @@ function ChatPanel({
         }}
         ListEmptyComponent={
           <View style={s.chatEmpty}>
-            <Ionicons name="chatbubbles-outline" size={52} color={theme.color.subtle} />
+            <Ionicons name="chatbubbles-outline" size={52} color={c.subtle} />
             <Text style={s.chatEmptyTitle}>No messages yet</Text>
             <Text style={s.chatEmptySub}>Say hello to {partnerName}!</Text>
           </View>
@@ -497,14 +519,14 @@ function ChatPanel({
       {/* Input bar */}
       <View style={s.inputRow}>
         <TouchableOpacity style={s.inputIcon} onPress={handlePickImage}>
-          <Ionicons name="image-outline" size={22} color={theme.color.muted} />
+          <Ionicons name="image-outline" size={22} color={c.muted} />
         </TouchableOpacity>
         <TextInput
           style={s.input}
           value={text}
           onChangeText={setText}
           placeholder="Type a message…"
-          placeholderTextColor={theme.color.subtle}
+          placeholderTextColor={c.subtle}
           multiline
           maxLength={2000}
           returnKeyType="default"
@@ -535,7 +557,7 @@ function ChatPanel({
       <ChatCallOptionsModal
         visible={callModal}
         onClose={() => setCallModal(false)}
-        accent={ACCENT}
+        accent={accent}
         partnerName={partnerName}
         onScheduleInterview={() => setHelperScheduleModal(true)}
         onConfirmStartVideo={async () => {
@@ -546,7 +568,7 @@ function ChatPanel({
       <HelperInterviewRequestModal
         visible={helperScheduleModal}
         onClose={() => setHelperScheduleModal(false)}
-        accent={ACCENT}
+        accent={accent}
         partnerName={partnerName}
         jobPostId={jobPostId ?? null}
         helperId={myUserId}
@@ -595,7 +617,8 @@ function ChatPanel({
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
-export default function HelperMessages() {
+function HelperMessagesContent() {
+  const { s, c, accent } = useMessagesAppearance();
   const router           = useRouter();
   const { isDesktop }    = useResponsive();
   const { handleLogout } = useAuth();
@@ -656,17 +679,17 @@ export default function HelperMessages() {
     <>
       {/* Search */}
       <View style={s.convSearch}>
-        <Ionicons name="search" size={16} color={theme.color.muted} style={{ marginRight: 6 }} />
+        <Ionicons name="search" size={16} color={c.muted} style={{ marginRight: 6 }} />
         <TextInput
           style={s.convSearchInput}
           value={convSearch}
           onChangeText={setConvSearch}
           placeholder="Search conversations…"
-          placeholderTextColor={theme.color.subtle}
+          placeholderTextColor={c.subtle}
         />
         {convSearch.length > 0 && (
           <TouchableOpacity onPress={() => setConvSearch('')}>
-            <Ionicons name="close-circle" size={16} color={theme.color.subtle} />
+            <Ionicons name="close-circle" size={16} color={c.subtle} />
           </TouchableOpacity>
         )}
       </View>
@@ -675,7 +698,7 @@ export default function HelperMessages() {
         <LoadingSpinner visible />
       ) : filteredConvs.length === 0 ? (
         <View style={s.emptyWrap}>
-          <Ionicons name="chatbubbles-outline" size={52} color={theme.color.subtle} />
+          <Ionicons name="chatbubbles-outline" size={52} color={c.subtle} />
           <Text style={s.emptyTitle}>{convSearch ? 'No matches' : 'No messages yet'}</Text>
           <Text style={s.emptySub}>
             {convSearch ? 'Try a different name.' : 'Apply to a job and start chatting with a parent.'}
@@ -702,13 +725,13 @@ export default function HelperMessages() {
   // ── Mobile layout ──────────────────────────────────────────────────────────
   if (!isDesktop) {
     return (
-      <View style={{ flex: 1, backgroundColor: CANVAS }}>
+      <View style={{ flex: 1, backgroundColor: c.canvasHelper }}>
         {!activePartner ? (
           <SafeAreaView style={{ flex: 1 }}>
             <View style={{ flex: 1 }}>
               <View style={s.mobileHeader}>
                 <TouchableOpacity onPress={() => setIsMobileMenuOpen(true)} style={s.menuBtn}>
-                  <Ionicons name="menu-outline" size={26} color={theme.color.ink} />
+                  <Ionicons name="menu-outline" size={26} color={c.ink} />
                 </TouchableOpacity>
                 <Text style={s.mobileTitle}>Messages</Text>
                 <View style={{ width: 40 }} />
@@ -718,7 +741,7 @@ export default function HelperMessages() {
             {isWorkMode && activeHire ? <WorkModeTabBar /> : <HelperTabBar />}
           </SafeAreaView>
         ) : (
-          <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7FA' }}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: c.surface }}>
             <ChatPanel
               partnerId={activePartner.partner_id}
               partnerName={activePartner.partner_name}
@@ -784,7 +807,7 @@ export default function HelperMessages() {
           ) : (
             <View style={s.noChatWrap}>
               <View style={s.noChatIcon}>
-                <Ionicons name="chatbubbles-outline" size={56} color={ACCENT} />
+                <Ionicons name="chatbubbles-outline" size={56} color={accent} />
               </View>
               <Text style={s.noChatTitle}>Your Messages</Text>
               <Text style={s.noChatSub}>
@@ -817,199 +840,17 @@ export default function HelperMessages() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const s = StyleSheet.create({
-  // Desktop shell
-  desktopWrap:      { flex: 1, flexDirection: 'row', backgroundColor: CANVAS },
-  desktopMain:      { flex: 1, flexDirection: 'row', overflow: 'hidden' },
-
-  // Conversation panel
-  convPanel:        { width: 300, backgroundColor: '#fff', borderRightWidth: 1, borderRightColor: '#EAECEF' },
-  convPanelHeader:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 16,
-                      borderBottomWidth: 1, borderBottomColor: '#EAECEF' },
-  convPanelTitle:   { fontSize: 17, fontWeight: '700', color: theme.color.ink, flex: 1 },
-  convPanelCount:   { fontSize: 13, color: theme.color.muted, backgroundColor: '#F0F2F5',
-                      paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-
-  // Conv search
-  convSearch:       { flexDirection: 'row', alignItems: 'center', marginHorizontal: 12, marginVertical: 10,
-                      backgroundColor: '#F5F7FA', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8 },
-  convSearchInput:  { flex: 1, fontSize: 14, color: theme.color.ink, padding: 0 },
-
-  // Conv item
-  convItem:         { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12,
-                      borderBottomWidth: 1, borderBottomColor: '#F5F7FA' },
-  convItemActive:   { backgroundColor: '#F0F8F2' },
-  convAvaWrap:      { position: 'relative' },
-  badge:            { position: 'absolute', top: -2, right: -2, backgroundColor: ACCENT,
-                      borderRadius: 8, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center',
-                      paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#fff' },
-  badgeTxt:         { color: '#fff', fontSize: 10, fontWeight: '700' },
-  convRow:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
-  convName:         { fontSize: 14, fontWeight: '600', color: theme.color.ink, flex: 1, marginRight: 6 },
-  convTime:         { fontSize: 11, color: theme.color.muted },
-  convJob:          { fontSize: 11, color: ACCENT, marginBottom: 2 },
-  convPreview:      { fontSize: 13, color: theme.color.muted },
-
-  // Empty states
-  emptyWrap:        { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  emptyTitle:       { fontSize: 16, fontWeight: '700', color: theme.color.ink, marginTop: 14, marginBottom: 6 },
-  emptySub:         { fontSize: 14, color: theme.color.muted, textAlign: 'center', lineHeight: 20 },
-
-  // No chat selected
-  chatPanelWrap:    { flex: 1, backgroundColor: '#F5F7FA' },
-  noChatWrap:       { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  noChatIcon:       { width: 96, height: 96, borderRadius: 48, backgroundColor: '#E6F7ED',
-                      justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  noChatTitle:      { fontSize: 20, fontWeight: '700', color: theme.color.ink, marginBottom: 8 },
-  noChatSub:        { fontSize: 14, color: theme.color.muted, textAlign: 'center', lineHeight: 22, maxWidth: 300 },
-
-  // Mobile header
-  mobileHeader:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                      paddingHorizontal: 16, paddingVertical: 12,
-                      backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#EAECEF' },
-  menuBtn:          { padding: 4 },
-  mobileTitle:      { fontSize: 18, fontWeight: '700', color: theme.color.ink },
-
-  // Chat header
-  chatHeader:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12,
-                      backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#EAECEF',
-                      ...Platform.select({ web: { boxShadow: '0 1px 4px rgba(0,0,0,0.06)' } }) },
-  chatBack:         { marginRight: 8, padding: 4 },
-  chatHeaderName:   { fontSize: 15, fontWeight: '700', color: theme.color.ink },
-  chatHeaderSub:    { fontSize: 12, color: theme.color.muted },
-  callBtn:          { width: 38, height: 38, borderRadius: 19, backgroundColor: '#E6F7ED',
-                      justifyContent: 'center', alignItems: 'center', marginLeft: 6 },
-
-  contractActionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: '#FFF8E6',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EAECEF',
-  },
-  contractActionTitle: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
-  contractActionSub: { fontSize: 11, color: theme.color.muted, marginTop: 2 },
-  contractActionBtns: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
-  contractOutlineBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: ACCENT,
-    backgroundColor: '#fff',
-  },
-  contractOutlineBtnTxt: { fontSize: 13, fontWeight: '700', color: ACCENT },
-  contractPrimaryBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: theme.color.success,
-    minWidth: 88,
-    alignItems: 'center',
-  },
-  contractPrimaryBtnDisabled: { opacity: 0.45 },
-  contractPrimaryBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  hiredBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: theme.color.successSoft,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EAECEF',
-  },
-  hiredBarTxt: { flex: 1, fontSize: 13, color: theme.color.success, fontWeight: '600' },
-  hiredBarLink: { paddingVertical: 4, paddingHorizontal: 8 },
-  hiredBarLinkTxt: { fontSize: 13, fontWeight: '700', color: ACCENT },
-  contractPdfModal: { flex: 1, backgroundColor: '#fff' },
-  contractPdfHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EAECEF',
-  },
-  contractPdfTitle: { fontSize: 16, fontWeight: '700', color: theme.color.ink },
-  contractPdfClose: { fontSize: 15, fontWeight: '700', color: ACCENT },
-
-  // Chat loading
-  chatLoadWrap:     { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  // Date divider
-  dateDividerWrap:  { alignItems: 'center', marginVertical: 10 },
-  dateDivider:      { fontSize: 11, color: theme.color.muted, backgroundColor: '#E8EAED',
-                      paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-
-  // Chat empty
-  chatEmpty:        { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
-  chatEmptyTitle:   { fontSize: 16, fontWeight: '700', color: theme.color.ink, marginTop: 14 },
-  chatEmptySub:     { fontSize: 13, color: theme.color.muted, marginTop: 6 },
-
-  // Bubble
-  bubbleWrap:       { marginBottom: 4, maxWidth: '75%' },
-  bubbleWrapRight:  { alignSelf: 'flex-end', alignItems: 'flex-end' },
-  bubbleWrapLeft:   { alignSelf: 'flex-start', alignItems: 'flex-start' },
-  bubble:           { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18 },
-  bubbleMine:       { backgroundColor: ACCENT, borderBottomRightRadius: 4 },
-  bubbleTheirs:     { backgroundColor: '#fff', borderBottomLeftRadius: 4,
-                      shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 },
-  bubbleText:       { fontSize: 15, color: theme.color.ink, lineHeight: 21 },
-  bubbleTextMine:   { color: '#fff' },
-  editedLabel:      { fontSize: 10, color: 'rgba(0,0,0,0.4)', marginTop: 2 },
-  editedLabelMine:  { color: 'rgba(255,255,255,0.6)' },
-  bubbleMeta:       { fontSize: 11, color: theme.color.muted, marginTop: 3 },
-  bubbleMetaRight:  { alignSelf: 'flex-end' },
-  bubbleMetaLeft:   { alignSelf: 'flex-start' },
-
-  // Image bubble
-  imgBubble:        { width: 200, height: 160, borderRadius: 14, backgroundColor: '#e0e0e0' },
-
-  // Video call card
-  videoCard:        { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
-                      borderRadius: 14, padding: 12, borderWidth: 1.5, borderColor: ACCENT,
-                      maxWidth: 260, gap: 10 },
-  videoCardMine:    { backgroundColor: ACCENT, borderColor: 'rgba(255,255,255,0.3)' },
-  videoCardIcon:    { width: 38, height: 38, borderRadius: 19, backgroundColor: ACCENT,
-                      justifyContent: 'center', alignItems: 'center' },
-  videoCardTitle:   { fontSize: 14, fontWeight: '700', color: theme.color.ink },
-  videoCardSub:     { fontSize: 12, color: theme.color.muted, marginTop: 1 },
-
-  // Input
-  inputRow:         { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 10,
-                      paddingVertical: 10, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#EAECEF',
-                      gap: 8 },
-  inputIcon:        { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F7FA',
-                      justifyContent: 'center', alignItems: 'center' },
-  input:            { flex: 1, backgroundColor: '#F5F7FA', borderRadius: 22, paddingHorizontal: 16,
-                      paddingVertical: Platform.OS === 'ios' ? 10 : 8, fontSize: 15, color: theme.color.ink,
-                      maxHeight: 120 },
-  sendBtn:          { width: 42, height: 42, borderRadius: 21, backgroundColor: ACCENT,
-                      justifyContent: 'center', alignItems: 'center' },
-  sendBtnDisabled:  { opacity: 0.35 },
-  editBubbleBtn:    { padding: 4, marginBottom: 2 },
-
-  // Edit modal
-  editModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center',
-                      alignItems: 'center', padding: 24 },
-  editModalBox:     { backgroundColor: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 440 },
-  editModalTitle:   { fontSize: 16, fontWeight: '700', color: theme.color.ink, marginBottom: 12 },
-  editModalInput:   { backgroundColor: '#F5F7FA', borderRadius: 10, padding: 12, fontSize: 15,
-                      color: theme.color.ink, minHeight: 80, maxHeight: 180 },
-  editModalBtns:    { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 14, gap: 10 },
-  editModalCancel:  { paddingHorizontal: 16, paddingVertical: 10 },
-  editModalSave:    { backgroundColor: ACCENT, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
-
-  // Image viewer
-  imgViewerBg:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
-  imgViewerImg:     { width: '90%', height: '80%' },
-});
+export default function HelperMessages() {
+  const { color: c } = useHelperTheme();
+  const accent = c.helper;
+  const s = useMemo(() => createHelperMessagesStyles(c, accent), [c, accent]);
+  const appearance = useMemo(
+    (): MessagesAppearanceValue => ({ s, c, accent }),
+    [s, c, accent],
+  );
+  return (
+    <MessagesAppearanceContext.Provider value={appearance}>
+      <HelperMessagesContent />
+    </MessagesAppearanceContext.Provider>
+  );
+}

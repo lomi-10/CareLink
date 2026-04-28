@@ -13,11 +13,13 @@ import { theme } from '@/constants/theme';
 import type { ThemeColor } from '@/constants/theme';
 import {
   HELPER_PORTAL_APPEARANCE_KEY,
+  HELPER_THEME_DEFAULT_MERGED,
   isParentThemeId,
   mergeHelperThemeColors,
   type ParentThemeId,
 } from '@/constants/helperThemePalettes';
-import { mergeParentThemeColors } from '@/constants/parentThemePalettes';
+import { adaptPortalColorsForBrightness } from '@/constants/themeBrightnessAdapt';
+import { useColorSchemePreference } from '@/contexts/ColorSchemePreferenceContext';
 
 type HelperThemeValue = {
   themeId: ParentThemeId;
@@ -28,6 +30,7 @@ type HelperThemeValue = {
 const HelperThemeContext = createContext<HelperThemeValue | null>(null);
 
 export function HelperThemeProvider({ children }: { children: React.ReactNode }) {
+  const { resolvedColorScheme } = useColorSchemePreference();
   const [themeId, setThemeIdState] = useState<ParentThemeId>('default');
 
   useEffect(() => {
@@ -56,7 +59,10 @@ export function HelperThemeProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  const color = useMemo(() => mergeHelperThemeColors(themeId), [themeId]);
+  const color = useMemo(() => {
+    const base = mergeHelperThemeColors(themeId);
+    return adaptPortalColorsForBrightness(base, resolvedColorScheme === 'dark' ? 'dark' : 'light');
+  }, [resolvedColorScheme, themeId]);
 
   const applyToGlobalTheme = useCallback((merged: ThemeColor) => {
     const t = theme.color as unknown as Record<keyof ThemeColor, string>;
@@ -66,12 +72,15 @@ export function HelperThemeProvider({ children }: { children: React.ReactNode })
   }, []);
 
   useLayoutEffect(() => {
-    applyToGlobalTheme(mergeHelperThemeColors(themeId));
-  }, [applyToGlobalTheme, themeId]);
+    const base = mergeHelperThemeColors(themeId);
+    applyToGlobalTheme(
+      adaptPortalColorsForBrightness(base, resolvedColorScheme === 'dark' ? 'dark' : 'light'),
+    );
+  }, [applyToGlobalTheme, resolvedColorScheme, themeId]);
 
   useLayoutEffect(
     () => () => {
-      applyToGlobalTheme(mergeParentThemeColors('default'));
+      applyToGlobalTheme(HELPER_THEME_DEFAULT_MERGED);
     },
     [applyToGlobalTheme],
   );

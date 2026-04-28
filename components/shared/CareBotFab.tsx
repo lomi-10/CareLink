@@ -1,5 +1,11 @@
 import AnimatedPressable from '@/components/shared/AnimatedPressable';
-import { CALM_MODAL_FROM, CALM_MODAL_IN, CALM_MODAL_OUT, CALM_MODAL_TRANSITION } from '@/components/shared/calmMoti';
+import {
+  CALM_EASE,
+  CALM_MODAL_FROM,
+  CALM_MODAL_IN,
+  CALM_MODAL_OUT,
+  CALM_MODAL_TRANSITION,
+} from '@/components/shared/calmMoti';
 import { MotiView } from 'moti';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Modal, StyleSheet, Platform, Dimensions, TouchableWithoutFeedback } from 'react-native';
@@ -11,6 +17,14 @@ import { theme } from '@/constants/theme';
 import { CareBotChatPanel } from './CareBotChatPanel';
 
 const FAB_SIZE = 56;
+
+/** Slide duration for native bottom-sheet; must match dismiss timeout in requestClose(). */
+const MOBILE_SHEET_TRANSITION_MS = 280;
+const MOBILE_SHEET_TRANSITION = {
+  type: 'timing' as const,
+  duration: MOBILE_SHEET_TRANSITION_MS,
+  easing: CALM_EASE,
+};
 
 function segmentsIndicateParentOrHelper(segments: readonly string[] | string[][]): boolean {
   const flat = segments.flat().map((s) => String(s));
@@ -43,10 +57,11 @@ export function CareBotFab() {
   const requestClose = () => {
     if (exiting) return;
     setExiting(true);
+    const ms = Platform.OS === 'web' ? CALM_MODAL_TRANSITION.duration : MOBILE_SHEET_TRANSITION_MS;
     setTimeout(() => {
       close();
       setExiting(false);
-    }, CALM_MODAL_TRANSITION.duration);
+    }, ms);
   };
 
   const panelOpen = isOpen && !exiting;
@@ -83,7 +98,33 @@ export function CareBotFab() {
     Math.max(360, winH - insets.top - insets.bottom - 20),
   );
 
+  const useBottomSheet = Platform.OS !== 'web';
+  /** Stretched sheet rising from bottom to roughly upper-middle of the screen (~62–74% viewport). */
+  const sheetHeight = useMemo(
+    () =>
+      Math.min(winH * 0.74, Math.max(380, winH - insets.top - 24)),
+    [winH, insets.top],
+  );
+  const sheetFromInOut = useMemo(
+    () => ({
+      from: { opacity: 1, translateY: sheetHeight },
+      in: { opacity: 1, translateY: 0 },
+      out: { opacity: 1, translateY: sheetHeight },
+    }),
+    [sheetHeight],
+  );
+
   const wrapStyle = useMemo(() => {
+    if (useBottomSheet) {
+      return {
+        flex: 1,
+        justifyContent: 'flex-end' as const,
+        alignItems: 'stretch' as const,
+        paddingHorizontal: 0,
+        paddingBottom: 0,
+        paddingTop: 0,
+      };
+    }
     const base = {
       flex: 1,
       justifyContent: 'center' as const,
@@ -98,7 +139,7 @@ export function CareBotFab() {
       };
     }
     return { ...base, alignItems: 'center' as const, paddingHorizontal: 12 };
-  }, [insets.bottom, insets.top, winW]);
+  }, [insets.bottom, insets.top, useBottomSheet, winW]);
 
   const fabBottom = insets.bottom + (Platform.OS === 'ios' ? 92 : 76);
 
@@ -144,10 +185,22 @@ export function CareBotFab() {
           </TouchableWithoutFeedback>
           <View style={[styles.modalCenter, wrapStyle]} pointerEvents="box-none">
             <MotiView
-              from={CALM_MODAL_FROM}
-              animate={panelOpen ? { ...CALM_MODAL_IN } : { ...CALM_MODAL_OUT }}
-              transition={CALM_MODAL_TRANSITION}
-              style={[styles.card, { width: modalW, height: cardHeight, maxHeight: modalMaxH }]}
+              from={useBottomSheet ? sheetFromInOut.from : CALM_MODAL_FROM}
+              animate={
+                panelOpen
+                  ? useBottomSheet
+                    ? sheetFromInOut.in
+                    : { ...CALM_MODAL_IN }
+                  : useBottomSheet
+                    ? sheetFromInOut.out
+                    : { ...CALM_MODAL_OUT }
+              }
+              transition={useBottomSheet ? MOBILE_SHEET_TRANSITION : CALM_MODAL_TRANSITION}
+              style={
+                useBottomSheet
+                  ? [styles.cardSheet, { height: sheetHeight }]
+                  : [styles.card, { width: modalW, height: cardHeight, maxHeight: modalMaxH }]
+              }
             >
               <CareBotChatPanel sessionKey={sessionKey} showChrome onRequestClose={requestClose} />
             </MotiView>
@@ -217,5 +270,25 @@ const styles = StyleSheet.create({
         elevation: 16,
       },
     }),
+  },
+  /** Full-width sheet on iOS/Android: slides up from bottom; top corners rounded only. */
+  cardSheet: {
+    width: '100%',
+    alignSelf: 'stretch',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    overflow: 'hidden',
+    backgroundColor: theme.color.surface,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: theme.color.line,
+    flexShrink: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 24,
   },
 });

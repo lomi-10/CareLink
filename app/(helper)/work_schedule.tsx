@@ -20,9 +20,12 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth, useResponsive } from '@/hooks/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { WorkModeShell } from '@/components/helper/work';
-import { theme } from '@/constants/theme';
+import { useHelperTheme } from '@/contexts/HelperThemeContext';
 
-import { styles } from './work_schedule.styles';
+import {
+  createHelperWorkScheduleStyles,
+  type HelperWorkScheduleStyles,
+} from './work_schedule.styles';
 import { ymdLocal } from '@/lib/helperWorkApi';
 import { monthOverlapsContract } from '@/lib/contractAttendanceNav';
 import {
@@ -43,6 +46,8 @@ import { Picker } from '@react-native-picker/picker';
 
 export default function WorkScheduleScreen() {
   const router = useRouter();
+  const { color: c } = useHelperTheme();
+  const styles = useMemo(() => createHelperWorkScheduleStyles(c), [c]);
   const { isDesktop } = useResponsive();
   const { userData, loading: authLoading } = useAuth();
   const { ready, isWorkMode, activeHire } = useHelperWorkMode();
@@ -264,7 +269,7 @@ export default function WorkScheduleScreen() {
   if (!ready || authLoading || !isWorkMode || !activeHire) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.color.helper} />
+        <ActivityIndicator size="large" color={c.helper} />
       </View>
     );
   }
@@ -278,12 +283,12 @@ export default function WorkScheduleScreen() {
 
   const legend = (
     <View style={styles.legendRow}>
-      <LegendItem color="#22C55E" label="Present" />
-      <LegendItem color="#A855F7" label="Rest" />
-      <LegendItem color="#EAB308" label="Leave" />
-      <LegendItem color="#9CA3AF" label="Absent" />
-      <LegendItem color="#FFFFFF" label="Future" />
-      <LegendItem color="#2563EB" label="Today" outline />
+      <LegendItem styles={styles} color="#22C55E" label="Present" />
+      <LegendItem styles={styles} color="#A855F7" label="Rest" />
+      <LegendItem styles={styles} color="#EAB308" label="Leave" />
+      <LegendItem styles={styles} color="#9CA3AF" label="Absent" />
+      <LegendItem styles={styles} color="#FFFFFF" label="Future" />
+      <LegendItem styles={styles} color="#2563EB" label="Today" outline />
     </View>
   );
 
@@ -300,7 +305,7 @@ export default function WorkScheduleScreen() {
           style={[styles.navBtn, !canPrevMonth && styles.navBtnDisabled]}
           disabled={!canPrevMonth}
         >
-          <Ionicons name="chevron-back" size={22} color={theme.color.helper} />
+          <Ionicons name="chevron-back" size={22} color={c.helper} />
         </TouchableOpacity>
         <Text style={styles.weekLabel}>
           {new Date(year, month - 1, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
@@ -310,14 +315,14 @@ export default function WorkScheduleScreen() {
           style={[styles.navBtn, !canNextMonth && styles.navBtnDisabled]}
           disabled={!canNextMonth}
         >
-          <Ionicons name="chevron-forward" size={22} color={theme.color.helper} />
+          <Ionicons name="chevron-forward" size={22} color={c.helper} />
         </TouchableOpacity>
       </View>
 
       {legend}
 
       {loading && days.length === 0 ? (
-        <ActivityIndicator color={theme.color.helper} style={{ marginTop: 24 }} />
+        <ActivityIndicator color={c.helper} style={{ marginTop: 24 }} />
       ) : (
         <AttendanceCalendarGrid
           year={year}
@@ -349,7 +354,7 @@ export default function WorkScheduleScreen() {
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>Request day off</Text>
           {balanceLoading ? (
-            <ActivityIndicator color={theme.color.helper} style={{ marginBottom: 12 }} />
+            <ActivityIndicator color={c.helper} style={{ marginBottom: 12 }} />
           ) : null}
           <Text style={styles.modalLabel}>Date</Text>
           {Platform.OS === 'web' ? (
@@ -357,6 +362,7 @@ export default function WorkScheduleScreen() {
               value: leaveDate,
               min: minLeaveYmd,
               max: maxLeaveYmd ?? undefined,
+              lineColor: c.line,
               onChange: (v: string) => {
                 setLeaveDate(v);
                 if (modalLeaveBalance?.blocked_dates?.includes(v)) {
@@ -374,9 +380,9 @@ export default function WorkScheduleScreen() {
                 onPress={() => setShowDatePicker(true)}
                 activeOpacity={0.85}
               >
-                <Ionicons name="calendar-outline" size={20} color={theme.color.helper} />
+                <Ionicons name="calendar-outline" size={20} color={c.helper} />
                 <Text style={styles.datePickText}>{formatDisplayYmd(leaveDate)}</Text>
-                <Ionicons name="chevron-down" size={18} color={theme.color.muted} />
+                <Ionicons name="chevron-down" size={18} color={c.muted} />
               </TouchableOpacity>
               {showDatePicker ? (
                 <DateTimePicker
@@ -412,6 +418,8 @@ export default function WorkScheduleScreen() {
             WebReasonSelect({
               value: leaveReasonCode,
               onChange: setLeaveReasonCode,
+              lineColor: c.line,
+              inputBg: c.surfaceElevated,
             })
           ) : (
             <View style={styles.pickerWrap}>
@@ -432,7 +440,7 @@ export default function WorkScheduleScreen() {
             value={leaveHelperNote}
             onChangeText={setLeaveHelperNote}
             placeholder="Add details if needed"
-            placeholderTextColor={theme.color.subtle}
+            placeholderTextColor={c.subtle}
             multiline
             numberOfLines={3}
           />
@@ -558,10 +566,12 @@ function labelForDetail(d: AttendanceDay): string {
 }
 
 function LegendItem({
+  styles,
   color,
   label,
   outline,
 }: {
+  styles: HelperWorkScheduleStyles;
   color: string;
   label: string;
   outline?: boolean;
@@ -583,9 +593,13 @@ function LegendItem({
 function WebReasonSelect({
   value,
   onChange,
+  lineColor,
+  inputBg,
 }: {
   value: LeaveReasonCode;
   onChange: (v: LeaveReasonCode) => void;
+  lineColor: string;
+  inputBg: string;
 }) {
   return React.createElement(
     'select',
@@ -594,14 +608,14 @@ function WebReasonSelect({
       onChange: (e: { target: { value: string } }) => onChange(e.target.value as LeaveReasonCode),
       style: {
         padding: '12px',
-        border: `1px solid ${theme.color.line}`,
+        border: `1px solid ${lineColor}`,
         borderRadius: 12,
         fontSize: 16,
         marginBottom: 16,
         width: '100%',
         boxSizing: 'border-box' as const,
         fontFamily: 'inherit',
-        backgroundColor: '#fff',
+        backgroundColor: inputBg,
       },
     } as any,
     LEAVE_REASON_OPTIONS.map((o) =>
@@ -615,11 +629,13 @@ function WebDateInput({
   min,
   max,
   onChange,
+  lineColor,
 }: {
   value: string;
   min: string;
   max?: string;
   onChange: (ymd: string) => void;
+  lineColor: string;
 }) {
   return React.createElement('input', {
     type: 'date',
@@ -632,7 +648,7 @@ function WebDateInput({
     },
     style: {
       padding: '12px',
-      border: `1px solid ${theme.color.line}`,
+      border: `1px solid ${lineColor}`,
       borderRadius: 12,
       fontSize: 16,
       marginBottom: 12,

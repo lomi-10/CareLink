@@ -24,6 +24,24 @@ export const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
   sectionHint: { fontSize: 13, marginBottom: 12, lineHeight: 18 },
 
+  options: { gap: 10, marginTop: 4 },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 14,
+    borderRadius: 14,
+  },
+  optionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionTitle: { fontSize: 16, fontWeight: '700' },
+  optionHint: { fontSize: 12, marginTop: 2, lineHeight: 16 },
+
   themeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   themeCard: {
     width: '48%',

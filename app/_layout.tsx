@@ -1,8 +1,9 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
-import React from 'react';
+import React, { useMemo } from 'react';
+import { createCareLinkNavigationTheme } from '@/constants/careNavigationTheme';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
@@ -20,9 +21,13 @@ export const unstable_settings = {
 
 function RootLayoutInner() {
   const { resolvedColorScheme } = useColorSchemePreference();
+  const navigationTheme = useMemo(
+    () => createCareLinkNavigationTheme(resolvedColorScheme),
+    [resolvedColorScheme],
+  );
 
   return (
-    <ThemeProvider value={resolvedColorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navigationTheme}>
       <Stack>
         {/* 1. The Landing Page (No folder, sits at app/index.tsx) */}
         <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -52,7 +57,7 @@ function RootLayoutInner() {
         {/* CRITICAL: Remove 'adminlogin' and '(tabs)' from here 
            because they don't exist as root files anymore. */}
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style={resolvedColorScheme === 'dark' ? 'light' : 'dark'} />
     </ThemeProvider>
   );
 }

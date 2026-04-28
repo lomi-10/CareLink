@@ -32,12 +32,15 @@ import {
 } from '@/components/parent/browse/';
 
 import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared/';
-import {styles} from './browse_helpers.styles';
+import { useParentTheme } from '@/contexts/ParentThemeContext';
+import { createParentBrowseHelpersStyles } from './browse_helpers.styles';
 
 export default function BrowseHelpers() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
+  const { color: c } = useParentTheme();
+  const styles = useMemo(() => createParentBrowseHelpersStyles(c), [c]);
   
   // Data hooks
   const {

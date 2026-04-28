@@ -17,6 +17,8 @@ import {
   PARENT_PORTAL_APPEARANCE_KEY,
   type ParentThemeId,
 } from '@/constants/parentThemePalettes';
+import { adaptPortalColorsForBrightness } from '@/constants/themeBrightnessAdapt';
+import { useColorSchemePreference } from '@/contexts/ColorSchemePreferenceContext';
 
 type ParentThemeValue = {
   themeId: ParentThemeId;
@@ -27,6 +29,7 @@ type ParentThemeValue = {
 const ParentThemeContext = createContext<ParentThemeValue | null>(null);
 
 export function ParentThemeProvider({ children }: { children: React.ReactNode }) {
+  const { resolvedColorScheme } = useColorSchemePreference();
   const [themeId, setThemeIdState] = useState<ParentThemeId>('default');
 
   useEffect(() => {
@@ -55,7 +58,10 @@ export function ParentThemeProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  const color = useMemo(() => mergeParentThemeColors(themeId), [themeId]);
+  const color = useMemo(() => {
+    const base = mergeParentThemeColors(themeId);
+    return adaptPortalColorsForBrightness(base, resolvedColorScheme === 'dark' ? 'dark' : 'light');
+  }, [resolvedColorScheme, themeId]);
 
   /** So existing screens using `import { theme }` pick up the chosen portal palette. */
   const applyToGlobalTheme = useCallback((merged: ThemeColor) => {
@@ -66,8 +72,11 @@ export function ParentThemeProvider({ children }: { children: React.ReactNode })
   }, []);
 
   useLayoutEffect(() => {
-    applyToGlobalTheme(mergeParentThemeColors(themeId));
-  }, [applyToGlobalTheme, themeId]);
+    const base = mergeParentThemeColors(themeId);
+    applyToGlobalTheme(
+      adaptPortalColorsForBrightness(base, resolvedColorScheme === 'dark' ? 'dark' : 'light'),
+    );
+  }, [applyToGlobalTheme, resolvedColorScheme, themeId]);
 
   useLayoutEffect(
     () => () => {

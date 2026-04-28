@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTheme } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -13,14 +14,31 @@ import API_URL from '../../constants/api';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from './settings.styles';
+import {
+  useColorSchemePreference,
+  type ColorSchemePreference,
+} from '@/contexts/ColorSchemePreferenceContext';
 import { PARENT_THEME_OPTIONS, type ParentThemeId } from '@/constants/parentThemePalettes';
 import { useParentTheme } from '@/contexts/ParentThemeContext';
 import { useAuth, useResponsive } from '@/hooks/shared';
 import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 
+const APPEARANCE_OPTIONS: {
+  value: ColorSchemePreference;
+  label: string;
+  hint: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+}[] = [
+  { value: 'system', label: 'Match device', hint: 'Use the same light or dark mode as this phone or computer.', icon: 'phone-portrait-outline' },
+  { value: 'light', label: 'Always light', hint: 'Bright backgrounds and dark text across the app chrome.', icon: 'sunny-outline' },
+  { value: 'dark', label: 'Always dark', hint: 'Deep backgrounds and light text across the whole app.', icon: 'moon-outline' },
+];
+
 export default function SettingsScreen() {
   const router = useRouter();
+  const navTheme = useTheme();
+  const { preference, setPreference } = useColorSchemePreference();
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
   const { themeId, setThemeId, color } = useParentTheme();
@@ -43,10 +61,18 @@ export default function SettingsScreen() {
           return;
         }
         const response = await fetch(`${API_URL}/logtrail.php?user_id=${userId}`);
+        if (!response.ok) {
+          setLogs([]);
+          return;
+        }
+        const ct = response.headers.get('content-type');
+        if (!ct || !ct.includes('application/json')) {
+          setLogs([]);
+          return;
+        }
         const data = await response.json();
         setLogs(Array.isArray(data) ? data : []);
-      } catch (e) {
-        console.error(e);
+      } catch {
         setLogs([]);
       } finally {
         setLoading(false);
@@ -94,9 +120,10 @@ export default function SettingsScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: c.ink }]}>Portal theme</Text>
+        <Text style={[styles.sectionTitle, { color: c.ink }]}>CareLink palette</Text>
         <Text style={[styles.sectionHint, { color: c.inkMuted }]}>
-          This updates colors across the parent portal. Your choice is saved on this device.
+          Pick a color story (default, warm, sage, night, etc.). This changes backgrounds, cards, and accent colors
+          in the parent portal only. Saved on this device.
         </Text>
         <View style={styles.themeRow}>
           {PARENT_THEME_OPTIONS.map((opt) => {
@@ -125,6 +152,47 @@ export default function SettingsScreen() {
                     <Ionicons name="checkmark-circle" size={20} color={accent} />
                   </View>
                 ) : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: c.ink }]}>Interface brightness</Text>
+        <Text style={[styles.sectionHint, { color: c.inkMuted }]}>
+          Controls light or dark mode for the whole CareLink app (both parent and helper). This is separate from the
+          palette above.
+        </Text>
+        <View style={styles.options}>
+          {APPEARANCE_OPTIONS.map((opt) => {
+            const selected = preference === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[
+                  styles.optionRow,
+                  {
+                    backgroundColor: navTheme.colors.card,
+                    borderColor: selected ? accent : navTheme.colors.border,
+                    borderWidth: selected ? 2 : 1,
+                  },
+                ]}
+                onPress={() => void setPreference(opt.value)}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.optionIcon, { backgroundColor: c.parentSoft }]}>
+                  <Ionicons name={opt.icon} size={22} color={accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.optionTitle, { color: navTheme.colors.text }]}>{opt.label}</Text>
+                  <Text style={[styles.optionHint, { color: c.muted }]}>{opt.hint}</Text>
+                </View>
+                {selected ? (
+                  <Ionicons name="checkmark-circle" size={24} color={accent} />
+                ) : (
+                  <View style={{ width: 24 }} />
+                )}
               </TouchableOpacity>
             );
           })}

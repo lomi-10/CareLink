@@ -23,8 +23,8 @@ import { groupApplicationsByHelper, type HelperApplicationGroup } from '@/lib/gr
 import { LoadingSpinner, NotificationModal, ConfirmationModal, InterviewModal } from '@/components/shared/';
 import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
 import { HelperProfileModal } from '@/components/parent/browse/';
-import { theme } from '@/constants/theme';
-import { styles as s } from './applications.styles';
+import { useParentTheme } from '@/contexts/ParentThemeContext';
+import { createParentApplicationsStyles } from './applications.styles';
 
 const STATUS_FILTERS = [
   { key: 'all',         label: 'All',         icon: 'list-outline' as const },
@@ -39,6 +39,8 @@ export default function JobApplications() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
+  const { color: c } = useParentTheme();
+  const s = useMemo(() => createParentApplicationsStyles(c), [c]);
   const params = useLocalSearchParams<{ job_id?: string }>();
 
   const { jobs: postedJobs, loading: loadingJobs } = useParentJobs();
@@ -272,7 +274,7 @@ export default function JobApplications() {
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setSelectedGroup(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="close" size={28} color={theme.color.ink} />
+                <Ionicons name="close" size={28} color={c.ink} />
               </TouchableOpacity>
             </View>
             <ScrollView
@@ -303,7 +305,7 @@ export default function JobApplications() {
         {!isDesktop && (
           <View style={s.mobileHeader}>
             <TouchableOpacity onPress={() => setIsMobileMenuOpen(true)} style={s.menuBtn}>
-              <Ionicons name="menu" size={26} color={theme.color.ink} />
+              <Ionicons name="menu" size={26} color={c.ink} />
             </TouchableOpacity>
             <Text style={s.mobileTitle}>Applications</Text>
             <View style={{ width: 40 }} />
@@ -311,7 +313,7 @@ export default function JobApplications() {
         )}
         <View style={s.empty}>
           <View style={s.emptyIconCircle}>
-            <Ionicons name="briefcase-outline" size={38} color={theme.color.parent} />
+            <Ionicons name="briefcase-outline" size={38} color={c.parent} />
           </View>
           <Text style={s.emptyTitle}>No Jobs Posted Yet</Text>
           <Text style={s.emptySub}>Post a job to start receiving applications from helpers.</Text>
@@ -328,10 +330,10 @@ export default function JobApplications() {
 
   // ── Stats (for selected job) ────────────────────────────────────────────────
   const appStats = [
-    { label: 'Total',       value: applications.length,                                          color: theme.color.parent,  bg: theme.color.parentSoft,   icon: 'people-outline' as const },
-    { label: 'Pending',     value: applications.filter(a => a.status === 'Pending').length,      color: theme.color.warning, bg: theme.color.warningSoft,  icon: 'time-outline' as const },
+    { label: 'Total',       value: applications.length,                                          color: c.parent,  bg: c.parentSoft,   icon: 'people-outline' as const },
+    { label: 'Pending',     value: applications.filter(a => a.status === 'Pending').length,      color: c.warning, bg: c.warningSoft,  icon: 'time-outline' as const },
     { label: 'Shortlisted', value: applications.filter(a => a.status === 'Shortlisted').length,  color: '#7C3AED',           bg: '#F3E8FF',                icon: 'star-outline' as const },
-    { label: 'Hired',       value: applications.filter(a => a.status === 'hired' || a.status === 'Accepted').length, color: theme.color.success, bg: theme.color.successSoft,  icon: 'checkmark-circle-outline' as const },
+    { label: 'Hired',       value: applications.filter(a => a.status === 'hired' || a.status === 'Accepted').length, color: c.success, bg: c.successSoft,  icon: 'checkmark-circle-outline' as const },
   ];
 
   const mainContent = (
@@ -340,13 +342,13 @@ export default function JobApplications() {
       <View style={[s.selectorSection, isDesktop && { paddingHorizontal: 32 }]}>
         {/* "All jobs" pill + job dropdown in one row */}
         <View style={s.dropCard}>
-          <Text style={s.dropLabel}>Filter by Job Post <Text style={{ color: theme.color.muted, fontWeight: '400' }}>(optional)</Text></Text>
+          <Text style={s.dropLabel}>Filter by Job Post <Text style={{ color: c.muted, fontWeight: '400' }}>(optional)</Text></Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity
               style={[s.allJobBtn, !selectedJobId && s.allJobBtnActive]}
               onPress={() => { setSelectedJobId(''); setSelectedCategory(''); }}
             >
-              <Ionicons name="layers-outline" size={14} color={!selectedJobId ? '#fff' : theme.color.muted} />
+              <Ionicons name="layers-outline" size={14} color={!selectedJobId ? '#fff' : c.muted} />
               <Text style={[s.allJobBtnText, !selectedJobId && { color: '#fff' }]}>All Jobs</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -354,10 +356,10 @@ export default function JobApplications() {
               onPress={() => { setIsJobDropdownOpen(v => !v); setIsCategoryDropdownOpen(false); }}
               activeOpacity={0.8}
             >
-              <Text style={[s.dropHeadText, !currentJob && { color: theme.color.subtle }]} numberOfLines={1}>
+              <Text style={[s.dropHeadText, !currentJob && { color: c.subtle }]} numberOfLines={1}>
                 {currentJob ? currentJob.title : 'Specific job…'}
               </Text>
-              <Ionicons name={isJobDropdownOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.color.muted} />
+              <Ionicons name={isJobDropdownOpen ? 'chevron-up' : 'chevron-down'} size={16} color={c.muted} />
             </TouchableOpacity>
           </View>
           {isJobDropdownOpen && (
@@ -407,7 +409,7 @@ export default function JobApplications() {
               onPress={() => setActiveFilter(f.key)}
               activeOpacity={0.8}
             >
-              <Ionicons name={f.icon} size={13} color={isActive ? '#fff' : theme.color.muted} />
+              <Ionicons name={f.icon} size={13} color={isActive ? '#fff' : c.muted} />
               <Text style={[s.filterChipText, isActive && s.filterChipTextActive]}>{f.label}</Text>
             </TouchableOpacity>
           );
@@ -426,7 +428,7 @@ export default function JobApplications() {
         ListEmptyComponent={
           <View style={s.empty}>
             <View style={s.emptyIconCircle}>
-              <Ionicons name="folder-open-outline" size={38} color={theme.color.parent} />
+              <Ionicons name="folder-open-outline" size={38} color={c.parent} />
             </View>
             <Text style={s.emptyTitle}>No applications found</Text>
             <Text style={s.emptySub}>
@@ -471,7 +473,7 @@ export default function JobApplications() {
       {renderModals()}
       <View style={s.mobileHeader}>
         <TouchableOpacity style={s.menuBtn} onPress={() => setIsMobileMenuOpen(true)}>
-          <Ionicons name="menu" size={26} color={theme.color.ink} />
+          <Ionicons name="menu" size={26} color={c.ink} />
         </TouchableOpacity>
         <View style={s.mobileHeaderCenter}>
           <Text style={s.mobileTitle}>Applications</Text>
@@ -482,7 +484,7 @@ export default function JobApplications() {
           )}
         </View>
         <TouchableOpacity style={s.jobsIconBtn} onPress={() => router.push('/(parent)/jobs' as never)}>
-          <Ionicons name="briefcase-outline" size={20} color={theme.color.parent} />
+          <Ionicons name="briefcase-outline" size={20} color={c.parent} />
         </TouchableOpacity>
       </View>
       {mainContent}

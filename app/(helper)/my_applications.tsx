@@ -1,5 +1,5 @@
 // app/(helper)/my_applications.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   FlatList,
@@ -20,9 +20,9 @@ import {
   ApplicationDetailsModal,
 } from '@/components/helper/applications/';
 import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared/';
-import { theme } from '@/constants/theme';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
-import { styles as s } from './my_applications.styles';
+import { useHelperTheme } from '@/contexts/HelperThemeContext';
+import { createHelperMyApplicationsStyles } from './my_applications.styles';
 
 const FILTER_TABS = [
   { key: 'all',                   label: 'All',          icon: 'list-outline' as const },
@@ -35,6 +35,8 @@ const FILTER_TABS = [
 
 export default function MyApplications() {
   const router = useRouter();
+  const { color: c } = useHelperTheme();
+  const s = useMemo(() => createHelperMyApplicationsStyles(c), [c]);
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
   const { ready, isWorkMode } = useHelperWorkMode();
@@ -112,10 +114,10 @@ export default function MyApplications() {
 
   // ── Stats tiles ──────────────────────────────────────────────────────────────
   const statTiles = [
-    { label: 'Total',       value: stats.total,       color: theme.color.ink,     bg: theme.color.surface,      icon: 'layers-outline' as const },
-    { label: 'Pending',     value: stats.pending,     color: theme.color.warning, bg: theme.color.warningSoft,  icon: 'time-outline' as const },
-    { label: 'Shortlisted', value: stats.shortlisted, color: '#7C3AED',           bg: '#F3E8FF',                icon: 'star-outline' as const },
-    { label: 'Hired',       value: stats.accepted,    color: theme.color.success, bg: theme.color.successSoft,  icon: 'checkmark-circle-outline' as const },
+    { label: 'Total',       value: stats.total,       color: c.ink,     bg: c.surface,      icon: 'layers-outline' as const },
+    { label: 'Pending',     value: stats.pending,     color: c.warning, bg: c.warningSoft,  icon: 'time-outline' as const },
+    { label: 'Shortlisted', value: stats.shortlisted, color: c.parent,  bg: c.parentSoft,   icon: 'star-outline' as const },
+    { label: 'Hired',       value: stats.accepted,    color: c.success, bg: c.successSoft,  icon: 'checkmark-circle-outline' as const },
   ];
 
   const mainContent = (
@@ -152,7 +154,7 @@ export default function MyApplications() {
               onPress={() => setStatusFilter(tab.key)}
               activeOpacity={0.8}
             >
-              <Ionicons name={tab.icon} size={13} color={isActive ? '#fff' : theme.color.muted} />
+              <Ionicons name={tab.icon} size={13} color={isActive ? '#fff' : c.muted} />
               <Text style={[s.filterChipText, isActive && s.filterChipTextActive]}>{tab.label}</Text>
             </TouchableOpacity>
           );
@@ -162,7 +164,7 @@ export default function MyApplications() {
       {/* Results info */}
       <View style={[s.resultsBar, isDesktop && { paddingHorizontal: 32 }]}>
         <Text style={s.resultsText}>
-          <Text style={{ color: theme.color.helper, fontWeight: '800' }}>{applications.length}</Text>
+          <Text style={{ color: c.helper, fontWeight: '800' }}>{applications.length}</Text>
           {' '}application{applications.length !== 1 ? 's' : ''}
           {statusFilter !== 'all' ? ` · ${FILTER_TABS.find(f => f.key === statusFilter)?.label}` : ''}
         </Text>
@@ -172,7 +174,7 @@ export default function MyApplications() {
       {applications.length === 0 ? (
         <View style={s.empty}>
           <View style={s.emptyIconCircle}>
-            <Ionicons name="document-text-outline" size={38} color={theme.color.helper} />
+            <Ionicons name="document-text-outline" size={38} color={c.helper} />
           </View>
           <Text style={s.emptyTitle}>
             {statusFilter === 'all' ? 'No applications yet' : `No ${FILTER_TABS.find(f => f.key === statusFilter)?.label?.toLowerCase()} applications`}
@@ -201,7 +203,7 @@ export default function MyApplications() {
             />
           )}
           contentContainerStyle={[s.listPad, isDesktop && s.listPadDesktop]}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={theme.color.helper} />}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={c.helper} />}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -221,7 +223,7 @@ export default function MyApplications() {
               <Text style={s.pageSubtitle}>Track the status of your job applications</Text>
             </View>
             <TouchableOpacity style={s.browseJobsBtn} onPress={() => router.push('/(helper)/browse_jobs')} activeOpacity={0.8}>
-              <Ionicons name="search-outline" size={18} color={theme.color.helper} />
+              <Ionicons name="search-outline" size={18} color={c.helper} />
               <Text style={s.browseJobsBtnText}>Browse Jobs</Text>
             </TouchableOpacity>
           </View>
@@ -237,7 +239,7 @@ export default function MyApplications() {
       {renderModals()}
       <View style={s.mobileHeader}>
         <TouchableOpacity style={s.menuBtn} onPress={() => setIsMobileMenuOpen(true)} activeOpacity={0.7}>
-          <Ionicons name="menu" size={26} color={theme.color.ink} />
+          <Ionicons name="menu" size={26} color={c.ink} />
         </TouchableOpacity>
         <View style={s.mobileHeaderCenter}>
           <Text style={s.mobileTitle}>My Applications</Text>
@@ -248,7 +250,7 @@ export default function MyApplications() {
           )}
         </View>
         <TouchableOpacity style={s.searchIconBtn} onPress={() => router.push('/(helper)/browse_jobs')} activeOpacity={0.8}>
-          <Ionicons name="search-outline" size={20} color={theme.color.helper} />
+          <Ionicons name="search-outline" size={20} color={c.helper} />
         </TouchableOpacity>
       </View>
       {mainContent}

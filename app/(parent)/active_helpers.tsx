@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -11,7 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { theme } from '@/constants/theme';
+import { useParentTheme } from '@/contexts/ParentThemeContext';
 import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
 import { MobileHeader } from '@/components/helper/home';
 import { ActiveHelperCard } from '@/components/parent/home/ActiveHelperCard';
@@ -19,11 +19,13 @@ import { useParentActivePlacements } from '@/hooks/parent/useParentActivePlaceme
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 
-import { styles } from './active_helpers.styles';
+import { createParentActiveHelpersStyles } from './active_helpers.styles';
 
 export default function ActiveHelpersScreen() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
+  const { color: c } = useParentTheme();
+  const styles = useMemo(() => createParentActiveHelpersStyles(c), [c]);
   const { handleLogout, userData } = useAuth();
   const parentId = userData ? Number(userData.user_id) : 0;
   const { placements, loading, refresh } = useParentActivePlacements();
@@ -56,7 +58,7 @@ export default function ActiveHelpersScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={() => void onRefresh()}
-          tintColor={theme.color.parent}
+          tintColor={c.parent}
         />
       }
     >
@@ -66,7 +68,7 @@ export default function ActiveHelpersScreen() {
       </Text>
 
       {loading && placements.length === 0 ? (
-        <ActivityIndicator color={theme.color.parent} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={c.parent} style={{ marginTop: 40 }} />
       ) : placements.length === 0 ? (
         <Text style={styles.empty}>No active helpers yet. Hire from Applications, then return here.</Text>
       ) : (
@@ -127,7 +129,7 @@ export default function ActiveHelpersScreen() {
     <SafeAreaView style={styles.root}>
       <MobileHeader
         onMenuPress={() => setMenuOpen(true)}
-        accentColor={theme.color.parent}
+        accentColor={c.parent}
         subtitle="Active helpers"
         notificationCount={unreadCount}
         onNotificationPress={() => router.push('/(parent)/notifications')}

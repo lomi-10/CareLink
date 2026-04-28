@@ -1,10 +1,176 @@
 // components/helper/profile/ProfileHeader.tsx
 // Profile header with avatar, name, verification badge, and action buttons
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { ThemeColor } from '@/constants/theme';
 import { theme } from '@/constants/theme';
+import { useHelperTheme } from '@/contexts/HelperThemeContext';
+
+function createProfileHeaderStyles(c: ThemeColor) {
+  return StyleSheet.create({
+    container: {
+      backgroundColor: c.surfaceElevated,
+      borderRadius: theme.radius.xl,
+      marginBottom: theme.space.lg,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.line,
+      ...theme.shadow.card,
+    },
+    coverPhoto: {
+      height: 112,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    coverWash: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: c.helperSoft,
+    },
+    coverBand: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 36,
+      backgroundColor: c.helper,
+      opacity: 0.2,
+    },
+    avatarWrapper: {
+      alignItems: 'center',
+      marginTop: -50,
+    },
+    avatarContainer: {
+      position: 'relative',
+    },
+    avatar: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      borderWidth: 4,
+      borderColor: c.surfaceElevated,
+    },
+    avatarPlaceholder: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: c.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 4,
+      borderColor: c.surfaceElevated,
+    },
+    miniStatusBadge: {
+      position: 'absolute',
+      bottom: 0,
+      right: -4,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: c.surfaceElevated,
+    },
+    miniStatusBadgePeso: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+    },
+    pesoVerifiedBlock: {
+      alignItems: 'center',
+      alignSelf: 'stretch',
+      marginBottom: 12,
+      paddingVertical: theme.space.md,
+      paddingHorizontal: theme.space.lg,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1.5,
+      maxWidth: 320,
+    },
+    pesoShieldCircle: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 10,
+    },
+    pesoVerifiedTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: c.ink,
+      letterSpacing: -0.3,
+    },
+    pesoVerifiedSub: {
+      marginTop: 4,
+      fontSize: theme.font.caption,
+      color: c.muted,
+      fontWeight: '600',
+    },
+    info: {
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      paddingTop: 16,
+    },
+    name: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: c.ink,
+      marginBottom: 8,
+      letterSpacing: -0.4,
+    },
+    verificationBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      marginBottom: 12,
+    },
+    badgeText: {
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    bio: {
+      fontSize: 14,
+      color: c.muted,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    actionButtons: {
+      flexDirection: 'row',
+      gap: 12,
+      paddingHorizontal: 24,
+      paddingVertical: 24,
+    },
+    actionButtonPrimary: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: c.helper,
+      paddingVertical: 12,
+      borderRadius: theme.radius.md,
+      gap: 8,
+    },
+    actionButtonSecondary: {
+      backgroundColor: c.surfaceElevated,
+      borderWidth: 1.5,
+      borderColor: c.helper,
+    },
+    actionButtonText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    actionButtonTextSecondary: {
+      color: c.helper,
+    },
+  });
+}
 
 interface ProfileHeaderProps {
   profileImage?: string;
@@ -28,6 +194,9 @@ export function ProfileHeader({
   onEditProfile,
   onManageDocuments,
 }: ProfileHeaderProps) {
+  const { color: c } = useHelperTheme();
+  const styles = useMemo(() => createProfileHeaderStyles(c), [c]);
+
   return (
     <View style={styles.container}>
       <View style={styles.coverPhoto}>
@@ -35,14 +204,13 @@ export function ProfileHeader({
         <View style={styles.coverBand} />
       </View>
 
-      {/* Avatar */}
       <View style={styles.avatarWrapper}>
         <View style={styles.avatarContainer}>
           {profileImage ? (
             <Image source={{ uri: profileImage }} style={styles.avatar} />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={60} color="#ccc" />
+              <Ionicons name="person" size={60} color={c.subtle} />
             </View>
           )}
         </View>
@@ -61,14 +229,13 @@ export function ProfileHeader({
         </View>
       </View>
 
-      {/* Info */}
       <View style={styles.info}>
         <Text style={styles.name}>{fullName}</Text>
         {badge.variant === 'peso_verified' ? (
           <View
             style={[
               styles.pesoVerifiedBlock,
-              { borderColor: badge.color + '55', backgroundColor: theme.color.helperSoft },
+              { borderColor: badge.color + '55', backgroundColor: c.helperSoft },
             ]}
           >
             <View style={[styles.pesoShieldCircle, { backgroundColor: badge.color }]}>
@@ -90,13 +257,8 @@ export function ProfileHeader({
         )}
       </View>
 
-      {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        <TouchableOpacity
-          style={styles.actionButtonPrimary}
-          onPress={onEditProfile}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.actionButtonPrimary} onPress={onEditProfile} activeOpacity={0.7}>
           <Ionicons name="create-outline" size={18} color="#fff" />
           <Text style={styles.actionButtonText}>Edit Profile</Text>
         </TouchableOpacity>
@@ -105,174 +267,10 @@ export function ProfileHeader({
           onPress={onManageDocuments}
           activeOpacity={0.7}
         >
-          <Ionicons name="cloud-upload-outline" size={18} color={theme.color.helper} />
-          <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>
-            Manage Documents
-          </Text>
+          <Ionicons name="cloud-upload-outline" size={18} color={c.helper} />
+          <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>Manage Documents</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: theme.radius.xl,
-    marginBottom: theme.space.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    ...theme.shadow.card,
-  },
-  coverPhoto: {
-    height: 112,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  coverWash: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.color.helperSoft,
-  },
-  coverBand: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 36,
-    backgroundColor: theme.color.helper,
-    opacity: 0.2,
-  },
-  avatarWrapper: {
-    alignItems: 'center',
-    marginTop: -50,
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 4,
-    borderColor: theme.color.surfaceElevated,
-  },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#F0F0F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: '#fff',
-  },
-  miniStatusBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: -4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  miniStatusBadgePeso: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  pesoVerifiedBlock: {
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    marginBottom: 12,
-    paddingVertical: theme.space.md,
-    paddingHorizontal: theme.space.lg,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1.5,
-    maxWidth: 320,
-  },
-  pesoShieldCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  pesoVerifiedTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: theme.color.ink,
-    letterSpacing: -0.3,
-  },
-  pesoVerifiedSub: {
-    marginTop: 4,
-    fontSize: theme.font.caption,
-    color: theme.color.muted,
-    fontWeight: '600',
-  },
-  info: {
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: theme.color.ink,
-    marginBottom: 8,
-    letterSpacing: -0.4,
-  },
-  verificationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  bio: {
-    fontSize: 14,
-    color: theme.color.muted,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-  },
-  actionButtonPrimary: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.color.helper,
-    paddingVertical: 12,
-    borderRadius: theme.radius.md,
-    gap: 8,
-  },
-  actionButtonSecondary: {
-    backgroundColor: theme.color.surfaceElevated,
-    borderWidth: 1.5,
-    borderColor: theme.color.helper,
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  actionButtonTextSecondary: {
-    color: theme.color.helper,
-  },
-});

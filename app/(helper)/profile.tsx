@@ -2,10 +2,9 @@
 // Helper Profile Screen - Modularized & Clean
 // Main orchestration file - delegates to components and hooks
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
-  StyleSheet,
   ScrollView,
   RefreshControl,
   TouchableOpacity,
@@ -17,9 +16,8 @@ import { DrawerActions } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
-// styles
-import { styles } from "./profile.styles";
-import { theme } from "@/constants/theme";
+import { createHelperProfileStyles } from "./profile.styles";
+import { useHelperTheme } from "@/contexts/HelperThemeContext";
 
 // Custom Hooks
 import { useHelperProfile } from '@/hooks/helper';
@@ -46,6 +44,8 @@ import HelperDocumentModal from '@/components/helper/profile/DocumentManagementM
 export default function HelperProfile() {
   const router = useRouter();
   const navigation = useNavigation();
+  const { color: c } = useHelperTheme();
+  const styles = useMemo(() => createHelperProfileStyles(c), [c]);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -135,7 +135,7 @@ export default function HelperProfile() {
   if (!profileData) {
     return (
       <View style={styles.emptyState}>
-        <Ionicons name="person-circle-outline" size={80} color="#ccc" />
+        <Ionicons name="person-circle-outline" size={80} color={c.subtle} />
         <Text style={styles.emptyText}>No profile data found</Text>
         <TouchableOpacity
           style={styles.createProfileBtn}
@@ -248,14 +248,14 @@ export default function HelperProfile() {
 
             <InfoCard
               icon="person-outline"
-              iconColor={theme.color.helper}
+              iconColor={c.helper}
               title="Personal Information"
               items={personalInfoItems}
             />
 
             <InfoCard
               icon="briefcase-outline"
-              iconColor={theme.color.info}
+              iconColor={c.info}
               title="Work Preferences"
               items={workInfoItems}
             />
@@ -269,7 +269,7 @@ export default function HelperProfile() {
 
             <InfoCard
               icon="location-outline"
-              iconColor={theme.color.success}
+              iconColor={c.success}
               title="Address"
               items={[
                 {
@@ -332,14 +332,14 @@ export default function HelperProfile() {
           style={styles.menuButton}
           onPress={() => setIsMobileMenuOpen(true)}
         >
-          <Ionicons name="menu" size={28} color="#1A1C1E" />
+          <Ionicons name="menu" size={28} color={c.ink} />
         </TouchableOpacity>
         <Text style={styles.mobileTitle}>My Profile</Text>
         <TouchableOpacity
           style={styles.editIconButton}
           onPress={() => setIsEditModalOpen(true)}
         >
-          <Ionicons name="pencil" size={24} color={theme.color.helper} />
+          <Ionicons name="pencil" size={24} color={c.helper} />
         </TouchableOpacity>
       </View>
 
@@ -366,14 +366,14 @@ export default function HelperProfile() {
 
         <InfoCard
           icon="person-outline"
-          iconColor={theme.color.helper}
+          iconColor={c.helper}
           title="Personal Information"
           items={personalInfoItems}
         />
 
         <InfoCard
           icon="briefcase-outline"
-          iconColor={theme.color.info}
+          iconColor={c.info}
           title="Work Preferences"
           items={workInfoItems}
         />

@@ -2,7 +2,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -18,7 +18,7 @@ import { useAuth, useJobReferences, useResponsive } from '@/hooks/shared';
 
 import { MobileMenu, Sidebar, HelperTabBar } from '@/components/helper/home';
 
-import { styles as s } from './browse_jobs.styles';
+import { createHelperBrowseJobsStyles } from './browse_jobs.styles';
 import {
   AdvancedSearchModal,
   ApplicationModal,
@@ -28,11 +28,13 @@ import {
   SearchBar,
 } from '@/components/helper/jobs/';
 import { ConfirmationModal, LoadingSpinner, NotificationModal } from '@/components/shared/';
-import { theme } from '@/constants/theme';
+import { useHelperTheme } from '@/contexts/HelperThemeContext';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 
 export default function BrowseJobs() {
   const router = useRouter();
+  const { color: c } = useHelperTheme();
+  const s = useMemo(() => createHelperBrowseJobsStyles(c), [c]);
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
   const { ready, isWorkMode } = useHelperWorkMode();
@@ -153,7 +155,7 @@ export default function BrowseJobs() {
       <View style={s.resultsBar}>
         <View style={s.resultsLeft}>
           <Text style={s.resultsCount}>
-            <Text style={{ color: theme.color.helper, fontWeight: '800' }}>{filteredCount}</Text>
+            <Text style={{ color: c.helper, fontWeight: '800' }}>{filteredCount}</Text>
             {' '}job{filteredCount !== 1 ? 's' : ''} available
           </Text>
           {filteredCount !== totalCount && (
@@ -162,7 +164,7 @@ export default function BrowseJobs() {
         </View>
         {activeFilterCount > 0 && (
           <TouchableOpacity style={s.clearFiltersBtn} onPress={resetFilters} hitSlop={8}>
-            <Ionicons name="close-circle" size={14} color={theme.color.helper} />
+            <Ionicons name="close-circle" size={14} color={c.helper} />
             <Text style={s.clearFiltersBtnText}>Clear filters</Text>
           </TouchableOpacity>
         )}
@@ -172,7 +174,7 @@ export default function BrowseJobs() {
       {jobs.length === 0 ? (
         <View style={s.empty}>
           <View style={s.emptyIconWrap}>
-            <Ionicons name="search-outline" size={40} color={theme.color.helper} />
+            <Ionicons name="search-outline" size={40} color={c.helper} />
           </View>
           <Text style={s.emptyTitle}>No jobs found</Text>
           <Text style={s.emptyBody}>
@@ -206,7 +208,7 @@ export default function BrowseJobs() {
           key={isDesktop ? 'desktop-3' : 'mobile-1'}
           columnWrapperStyle={isDesktop ? s.colWrapper : undefined}
           refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={theme.color.helper} />
+            <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={c.helper} />
           }
           showsVerticalScrollIndicator={false}
         />
@@ -232,7 +234,7 @@ export default function BrowseJobs() {
             <View style={s.heroActions}>
               {(savedCount ?? 0) > 0 && (
                 <View style={s.savedBadge}>
-                  <Ionicons name="bookmark" size={15} color={theme.color.parent} />
+                  <Ionicons name="bookmark" size={15} color={c.parent} />
                   <Text style={s.savedBadgeText}>{savedCount} Saved</Text>
                 </View>
               )}
@@ -241,7 +243,7 @@ export default function BrowseJobs() {
                 onPress={() => router.push('/(helper)/my_applications')}
                 activeOpacity={0.85}
               >
-                <Ionicons name="document-text-outline" size={18} color={theme.color.helper} />
+                <Ionicons name="document-text-outline" size={18} color={c.helper} />
                 <Text style={s.applicationsBtnText}>My Applications</Text>
               </TouchableOpacity>
             </View>
@@ -263,7 +265,7 @@ export default function BrowseJobs() {
           onPress={() => setMobileMenu(true)}
           activeOpacity={0.7}
         >
-          <Ionicons name="menu" size={24} color={theme.color.ink} />
+          <Ionicons name="menu" size={24} color={c.ink} />
         </TouchableOpacity>
 
         <View style={s.mobileTitleWrap}>
@@ -280,7 +282,7 @@ export default function BrowseJobs() {
           onPress={() => router.push('/(helper)/my_applications')}
           activeOpacity={0.8}
         >
-          <Ionicons name="document-text-outline" size={20} color={theme.color.helper} />
+          <Ionicons name="document-text-outline" size={20} color={c.helper} />
           {(savedCount ?? 0) > 0 && <View style={s.savedDot} />}
         </TouchableOpacity>
       </View>

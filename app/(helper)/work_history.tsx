@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,16 +10,18 @@ import { useRouter } from 'expo-router';
 import { useAuth, useResponsive } from '@/hooks/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { WorkModeShell } from '@/components/helper/work';
-import { theme } from '@/constants/theme';
+import { useHelperTheme } from '@/contexts/HelperThemeContext';
 import { fetchWeekAttendance, listWeekStartsGoingBack, type WeekDayAttendance } from '@/lib/helperWorkApi';
 import { attendanceDotBackground } from '@/lib/attendanceUi';
 
-import { styles } from './work_history.styles';
+import { createHelperWorkHistoryStyles } from './work_history.styles';
 
 type WeekBlock = { week_start: string; days: WeekDayAttendance[] };
 
 export default function WorkHistoryScreen() {
   const router = useRouter();
+  const { color: c } = useHelperTheme();
+  const styles = useMemo(() => createHelperWorkHistoryStyles(c), [c]);
   const { isDesktop } = useResponsive();
   const { userData, loading: authLoading } = useAuth();
   const { ready, isWorkMode, activeHire } = useHelperWorkMode();
@@ -65,7 +67,7 @@ export default function WorkHistoryScreen() {
   if (!ready || authLoading || !isWorkMode || !activeHire) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.color.helper} />
+        <ActivityIndicator size="large" color={c.helper} />
       </View>
     );
   }
@@ -76,7 +78,7 @@ export default function WorkHistoryScreen() {
       contentContainerStyle={[styles.scroll, !isDesktop && { paddingBottom: 24 }]}
     >
       {loading && weeks.length === 0 ? (
-        <ActivityIndicator color={theme.color.helper} style={{ marginTop: 24 }} />
+        <ActivityIndicator color={c.helper} style={{ marginTop: 24 }} />
       ) : (
         weeks.map((w) => {
           const checkedDays = w.days.filter((d) => d.checked_in).length;

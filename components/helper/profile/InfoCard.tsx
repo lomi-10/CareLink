@@ -1,10 +1,91 @@
 // components/helper/profile/InfoCard.tsx
 // Profile section card — themed, readable, not a wall of bold text
 
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import type { ThemeColor } from "@/constants/theme";
 import { theme } from "@/constants/theme";
+import { useHelperTheme } from "@/contexts/HelperThemeContext";
+
+function createInfoCardStyles(c: ThemeColor) {
+  return StyleSheet.create({
+    container: {
+      backgroundColor: c.surfaceElevated,
+      borderRadius: theme.radius.xl,
+      marginBottom: theme.space.lg,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: c.line,
+      ...theme.shadow.card,
+    },
+    accentBar: {
+      height: 3,
+      width: "100%",
+      opacity: 0.95,
+    },
+    inner: {
+      padding: theme.space.lg,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.space.md,
+      marginBottom: theme.space.lg,
+    },
+    iconBadge: {
+      width: 44,
+      height: 44,
+      borderRadius: theme.radius.md,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.surface,
+      borderLeftWidth: 3,
+    },
+    title: {
+      fontSize: theme.font.subtitle,
+      fontWeight: "800",
+      color: c.ink,
+      letterSpacing: -0.3,
+      flex: 1,
+    },
+    grid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      marginHorizontal: -6,
+    },
+    gridItem: {
+      width: "50%",
+      paddingHorizontal: 6,
+      marginBottom: theme.space.md,
+    },
+    gridItemFull: {
+      width: "100%",
+    },
+    label: {
+      fontSize: 10,
+      color: c.muted,
+      fontWeight: "700",
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      marginBottom: 6,
+    },
+    valuePill: {
+      backgroundColor: c.surface,
+      borderRadius: theme.radius.md,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderWidth: 1,
+      borderColor: c.line,
+    },
+    value: {
+      fontSize: theme.font.small,
+      color: c.ink,
+      fontWeight: "600",
+      lineHeight: 20,
+    },
+  });
+}
 
 interface InfoItem {
   label: string;
@@ -20,6 +101,9 @@ interface InfoCardProps {
 }
 
 export function InfoCard({ icon, iconColor, title, items, children }: InfoCardProps) {
+  const { color: c } = useHelperTheme();
+  const styles = useMemo(() => createInfoCardStyles(c), [c]);
+
   return (
     <View style={styles.container}>
       <View style={[styles.accentBar, { backgroundColor: iconColor }]} />
@@ -50,80 +134,3 @@ export function InfoCard({ icon, iconColor, title, items, children }: InfoCardPr
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: theme.radius.xl,
-    marginBottom: theme.space.lg,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    ...theme.shadow.card,
-  },
-  accentBar: {
-    height: 3,
-    width: "100%",
-    opacity: 0.95,
-  },
-  inner: {
-    padding: theme.space.lg,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.space.md,
-    marginBottom: theme.space.lg,
-  },
-  iconBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: theme.radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.color.surface,
-    borderLeftWidth: 3,
-  },
-  title: {
-    fontSize: theme.font.subtitle,
-    fontWeight: "800",
-    color: theme.color.ink,
-    letterSpacing: -0.3,
-    flex: 1,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginHorizontal: -6,
-  },
-  gridItem: {
-    width: "50%",
-    paddingHorizontal: 6,
-    marginBottom: theme.space.md,
-  },
-  gridItemFull: {
-    width: "100%",
-  },
-  label: {
-    fontSize: 10,
-    color: theme.color.muted,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 6,
-  },
-  valuePill: {
-    backgroundColor: theme.color.surface,
-    borderRadius: theme.radius.md,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-  },
-  value: {
-    fontSize: theme.font.small,
-    color: theme.color.ink,
-    fontWeight: "600",
-    lineHeight: 20,
-  },
-});
