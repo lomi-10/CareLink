@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import API_URL from "../../constants/api";
+import { fetchAdminComplaints } from "@/lib/complaintsApi";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -60,8 +61,14 @@ export default function AdminDashboard() {
         setStats(prev => ({ ...prev, logs: logs.length }));
       }
 
-      // Placeholder for complaints
-      setStats(prev => ({ ...prev, complaints: 0 }));
+      const userRaw = await AsyncStorage.getItem("user_data");
+      const adminUid = userRaw ? Number(JSON.parse(userRaw).user_id) : 0;
+      if (adminUid) {
+        const cRes = await fetchAdminComplaints(adminUid);
+        const list = cRes.success && cRes.complaints ? cRes.complaints : [];
+        const open = list.filter((c) => c.status === "Pending").length;
+        setStats((prev) => ({ ...prev, complaints: open }));
+      }
       
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -115,7 +122,7 @@ export default function AdminDashboard() {
             <Text style={styles.navLabel}>SYSTEM</Text>
             <SidebarItem icon="grid" label="Dashboard" isActive={true} onPress={() => {}} />
             <SidebarItem icon="list" label="Log Trail" onPress={() => router.push("/admin/logs")} />
-            <SidebarItem icon="warning" label="Complaints" onPress={() => {}} />
+            <SidebarItem icon="warning" label="Complaints" onPress={() => router.push("/admin/complaints")} />
             
             <Text style={[styles.navLabel, { marginTop: 20 }]}>MANAGEMENT</Text>
             <SidebarItem 
@@ -163,7 +170,11 @@ export default function AdminDashboard() {
                   </View>
                 </View>
 
-                <View style={styles.statCard}>
+                <TouchableOpacity
+                  style={styles.statCard}
+                  onPress={() => router.push("/admin/complaints")}
+                  activeOpacity={0.85}
+                >
                   <View style={[styles.statIcon, { backgroundColor: '#FFD6D6' }]}>
                     <Ionicons name="warning" size={24} color="#FF3B30" />
                   </View>
@@ -171,7 +182,7 @@ export default function AdminDashboard() {
                     <Text style={styles.statNumber}>{stats.complaints}</Text>
                     <Text style={styles.statLabel}>Open Complaints</Text>
                   </View>
-                </View>
+                </TouchableOpacity>
 
                 <View style={styles.statCard}>
                   <View style={[styles.statIcon, { backgroundColor: '#E8F5E9' }]}>

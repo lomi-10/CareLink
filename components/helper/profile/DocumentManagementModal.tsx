@@ -5,6 +5,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Linking,
     Modal,
     Platform,
     StyleSheet,
@@ -37,6 +38,52 @@ interface DocumentState {
   type: string | null;
 }
 
+function mergeLatestDocsPerType(docs: any[]): any[] {
+  const m = new Map<string, any>();
+  for (const d of docs) {
+    const t = d.document_type as string;
+    const cur = m.get(t);
+    if (!cur || Number(d.document_id) > Number(cur.document_id)) m.set(t, d);
+  }
+  return Array.from(m.values());
+}
+
+function isLockedDocStatus(status?: string): boolean {
+  const s = (status || '').trim();
+  return s === 'Verified' || s === 'Pending';
+}
+
+function LockedHelperDocCard({
+  title,
+  subtitle,
+  status,
+  fileUrl,
+}: {
+  title: string;
+  subtitle: string;
+  status: string;
+  fileUrl?: string;
+}) {
+  const open = () => {
+    if (fileUrl) Linking.openURL(fileUrl).catch(() => {});
+  };
+  return (
+    <View style={styles.lockedCard}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.docTitle}>{title}</Text>
+        <Text style={styles.docSubtitle}>{subtitle}</Text>
+        <Text style={styles.lockedStatus}>{status}</Text>
+      </View>
+      {fileUrl ? (
+        <TouchableOpacity onPress={open} style={styles.openLink}>
+          <Ionicons name="open-outline" size={18} color="#007AFF" />
+          <Text style={styles.openLinkText}>Open</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
 export default function DocumentManagementModal({ 
   visible, 
   onClose, 
@@ -47,6 +94,7 @@ export default function DocumentManagementModal({
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [existingDocs, setExistingDocs] = useState<any[]>([]);
 
   // Documents
   const [barangayDoc, setBarangayDoc] = useState<DocumentState>({ uri: null, name: null, type: null });
@@ -82,21 +130,60 @@ export default function DocumentManagementModal({
 
   useEffect(() => {
     if (visible) {
+      setBarangayDoc({ uri: null, name: null, type: null });
+      setValidIdDoc({ uri: null, name: null, type: null });
+      setPoliceDoc({ uri: null, name: null, type: null });
+      setTesdaDoc({ uri: null, name: null, type: null });
       loadUserData();
     }
   }, [visible]);
 
   const loadUserData = async () => {
     try {
+      setLoading(true);
       const userData = await AsyncStorage.getItem('user_data');
       if (userData) {
         const parsed = JSON.parse(userData);
-        setUserId(parsed.user_id);
+        const uid = String(parsed.user_id);
+        setUserId(uid);
+        await fetchExistingDocuments(uid);
       }
     } catch (error) {
       console.error("Failed to load user data", error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  const fetchExistingDocuments = async (uid: string) => {
+    try {
+      const res = await fetch(`${API_URL}/helper/get_documents.php?user_id=${encodeURIComponent(uid)}`);
+      const data = await res.json();
+      const raw = data.data?.documents ?? data.documents ?? [];
+      const merged = mergeLatestDocsPerType(Array.isArray(raw) ? raw : []);
+      setExistingDocs(merged);
+      const vid = merged.find((d) => d.document_type === 'Valid ID');
+      if (vid?.id_type) setIdType(String(vid.id_type));
+    } catch (e) {
+      console.error('fetchExistingDocuments', e);
+      setExistingDocs([]);
+    }
+  };
+
+  const getDoc = (documentType: string) => existingDocs.find((d) => d.document_type === documentType);
+
+  const barRec = getDoc('Barangay Clearance');
+  const validRec = getDoc('Valid ID');
+  const policeRec = getDoc('Police Clearance');
+  const tesdaRec = getDoc('TESDA NC2');
+
+  const needsBarUpload = !barRec || barRec.status === 'Rejected';
+  const needsValidUpload = !validRec || validRec.status === 'Rejected';
+
+  const requiredAllLocked = !needsBarUpload && !needsValidUpload;
+  const optionalPoliceOk = !policeRec || isLockedDocStatus(policeRec.status);
+  const optionalTesdaOk = !tesdaRec || isLockedDocStatus(tesdaRec.status);
+  const nothingToSubmit = requiredAllLocked && optionalPoliceOk && optionalTesdaOk;
 
   const showNotification = (msg: string, type: 'success' | 'error') => {
     setNotifMessage(msg);
@@ -157,11 +244,19 @@ export default function DocumentManagementModal({
   // ============================================================================
 
   const handleUpload = async () => {
-    if (!barangayDoc.uri) return showNotification('Barangay Clearance is required.', 'error');
-    if (!validIdDoc.uri)  return showNotification('Valid ID is required.', 'error');
-
     if (!userId) {
       return showNotification('User ID not found', 'error');
+    }
+    if (needsBarUpload && !barangayDoc.uri) {
+      return showNotification('Please choose a Barangay Clearance file to upload.', 'error');
+    }
+    if (needsValidUpload && !validIdDoc.uri) {
+      return showNotification('Please choose a Valid ID file to upload.', 'error');
+    }
+    const hasAny =
+      !!barangayDoc.uri || !!validIdDoc.uri || !!policeDoc.uri || !!tesdaDoc.uri;
+    if (!hasAny) {
+      return showNotification('Select at least one file to upload.', 'error');
     }
 
     setUploading(true);
@@ -169,7 +264,9 @@ export default function DocumentManagementModal({
     try {
       const formData = new FormData();
       formData.append('user_id', userId);
-      formData.append('id_type', idType); // For Valid ID
+      if (validIdDoc.uri) {
+        formData.append('id_type', idType);
+      }
 
       // Function to prepare document for upload
       const prepareDoc = async (doc: DocumentState, fieldName: string) => {
@@ -192,7 +289,6 @@ export default function DocumentManagementModal({
         }
       };
 
-      // Add all documents to FormData
       await prepareDoc(barangayDoc, 'barangay_clearance');
       await prepareDoc(validIdDoc, 'valid_id');
       await prepareDoc(policeDoc, 'police_clearance');
@@ -253,167 +349,233 @@ export default function DocumentManagementModal({
         subtitle="Required for PESO verification · JPG, PNG, or PDF"
         accent="helper"
         variant="wide"
+        loading={loading}
+        loadingText="Loading your documents..."
         scrollContentStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
         footer={
-          <TouchableOpacity
-            style={[styles.submitBtn, uploading && styles.submitBtnDisabled]}
-            onPress={handleUpload}
-            disabled={uploading}
-          >
-            {uploading ? (
-              <ActivityIndicator color="#fff" />
+          !loading ? (
+            nothingToSubmit ? (
+              <View style={styles.footerAllSet}>
+                <Ionicons name="checkmark-circle" size={22} color="#15803d" />
+                <Text style={styles.footerAllSetText}>
+                  All documents are on file. You only need to return here if PESO rejects a file or you want to add an optional document later.
+                </Text>
+              </View>
             ) : (
-              <Text style={styles.submitText}>Submit Documents</Text>
-            )}
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.submitBtn, uploading && styles.submitBtnDisabled]}
+                onPress={handleUpload}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.submitText}>Submit upload</Text>
+                )}
+              </TouchableOpacity>
+            )
+          ) : null
         }
       >
-            {/* Info Card */}
             <View style={styles.infoCard}>
               <Ionicons name="information-circle" size={20} color="#059669" />
               <Text style={styles.infoText}>
-                Upload clear photos. Accepted: JPG, PNG, PDF
+                {requiredAllLocked
+                  ? 'Your required documents are on file (verified or pending). Upload only files PESO rejected or optional documents you still want to add.'
+                  : 'Upload clear photos. Accepted: JPG, PNG, PDF. You can submit only the documents that need replacing.'}
               </Text>
             </View>
 
-            {/* Barangay Clearance - REQUIRED */}
-            <View style={styles.docCard}>
-              <View style={styles.docHeader}>
-                <View>
-                  <Text style={styles.docTitle}>
-                    Barangay Clearance <Text style={styles.requiredMark}>*</Text>
-                  </Text>
-                  <Text style={styles.docSubtitle}>Required by PESO</Text>
-                </View>
-                {barangayDoc.uri ? (
-                  <View style={styles.docActions}>
+            {/* Barangay — on file or replace */}
+            {barRec && isLockedDocStatus(barRec.status) ? (
+              <LockedHelperDocCard
+                title="Barangay Clearance"
+                subtitle="Required · on file"
+                status={barRec.status}
+                fileUrl={barRec.file_url}
+              />
+            ) : (
+              <View style={styles.docCard}>
+                <View style={styles.docHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.docTitle}>
+                      Barangay Clearance <Text style={styles.requiredMark}>*</Text>
+                    </Text>
+                    <Text style={styles.docSubtitle}>
+                      {barRec?.status === 'Rejected'
+                        ? 'PESO rejected this file — upload a replacement.'
+                        : 'Required by PESO'}
+                    </Text>
+                    {barRec?.status === 'Rejected' && barRec.rejection_reason ? (
+                      <Text style={styles.rejectHint}>{String(barRec.rejection_reason)}</Text>
+                    ) : null}
+                  </View>
+                  {!barangayDoc.uri ? (
+                    <TouchableOpacity
+                      style={styles.uploadBtn}
+                      onPress={() => pickDocument('barangay', setBarangayDoc)}
+                    >
+                      <Ionicons name="cloud-upload" size={18} color="#fff" />
+                      <Text style={styles.uploadBtnText}>Upload</Text>
+                    </TouchableOpacity>
+                  ) : (
                     <TouchableOpacity onPress={() => removeDocument(setBarangayDoc)}>
                       <Ionicons name="trash" size={20} color="#FF3B30" />
                     </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity 
-                    style={styles.uploadBtn} 
-                    onPress={() => pickDocument('barangay', setBarangayDoc)}
-                  >
-                    <Ionicons name="cloud-upload" size={18} color="#fff" />
-                    <Text style={styles.uploadBtnText}>Upload</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              {barangayDoc.uri && (
-                <View style={styles.docPreview}>
-                  <Ionicons name="document" size={16} color="#007AFF" />
-                  <Text style={styles.docName} numberOfLines={1}>
-                    {barangayDoc.name}
-                  </Text>
+                  )}
                 </View>
-              )}
-            </View>
+                {barangayDoc.uri ? (
+                  <View style={styles.docPreview}>
+                    <Ionicons name="document" size={16} color="#007AFF" />
+                    <Text style={styles.docName} numberOfLines={1}>
+                      {barangayDoc.name}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            )}
 
-            {/* Valid ID - REQUIRED */}
-            <View style={styles.docCard}>
-              <View style={styles.docHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.docTitle}>
-                    Valid ID <Text style={styles.requiredMark}>*</Text>
-                  </Text>
-                  <Text style={styles.docSubtitle}>PhilSys, Passport, etc.</Text>
-                  
-                  {/* ID Type Selector */}
-                  <TouchableOpacity 
-                    style={styles.idTypeBtn}
-                    onPress={() => setIdTypeModalVisible(true)}
-                  >
-                    <Text style={styles.idTypeText}>Type: {idType}</Text>
-                    <Ionicons name="chevron-down" size={16} color="#666" />
-                  </TouchableOpacity>
+            {/* Valid ID */}
+            {validRec && isLockedDocStatus(validRec.status) ? (
+              <LockedHelperDocCard
+                title="Valid ID"
+                subtitle={validRec.id_type ? String(validRec.id_type) : 'On file'}
+                status={validRec.status}
+                fileUrl={validRec.file_url}
+              />
+            ) : (
+              <View style={styles.docCard}>
+                <View style={styles.docHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.docTitle}>
+                      Valid ID <Text style={styles.requiredMark}>*</Text>
+                    </Text>
+                    <Text style={styles.docSubtitle}>
+                      {validRec?.status === 'Rejected'
+                        ? 'PESO rejected this file — upload a replacement.'
+                        : 'PhilSys, Passport, etc.'}
+                    </Text>
+                    {validRec?.status === 'Rejected' && validRec.rejection_reason ? (
+                      <Text style={styles.rejectHint}>{String(validRec.rejection_reason)}</Text>
+                    ) : null}
+                    <TouchableOpacity
+                      style={styles.idTypeBtn}
+                      onPress={() => setIdTypeModalVisible(true)}
+                    >
+                      <Text style={styles.idTypeText}>Type: {idType}</Text>
+                      <Ionicons name="chevron-down" size={16} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                  {!validIdDoc.uri ? (
+                    <TouchableOpacity
+                      style={styles.uploadBtn}
+                      onPress={() => pickDocument('valid_id', setValidIdDoc)}
+                    >
+                      <Ionicons name="cloud-upload" size={18} color="#fff" />
+                      <Text style={styles.uploadBtnText}>Upload</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity onPress={() => removeDocument(setValidIdDoc)}>
+                      <Ionicons name="trash" size={20} color="#FF3B30" />
+                    </TouchableOpacity>
+                  )}
                 </View>
                 {validIdDoc.uri ? (
-                  <TouchableOpacity onPress={() => removeDocument(setValidIdDoc)}>
-                    <Ionicons name="trash" size={20} color="#FF3B30" />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity 
-                    style={styles.uploadBtn} 
-                    onPress={() => pickDocument('valid_id', setValidIdDoc)}
-                  >
-                    <Ionicons name="cloud-upload" size={18} color="#fff" />
-                    <Text style={styles.uploadBtnText}>Upload</Text>
-                  </TouchableOpacity>
-                )}
+                  <View style={styles.docPreview}>
+                    <Ionicons name="document" size={16} color="#007AFF" />
+                    <Text style={styles.docName} numberOfLines={1}>
+                      {validIdDoc.name}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-              {validIdDoc.uri && (
-                <View style={styles.docPreview}>
-                  <Ionicons name="document" size={16} color="#007AFF" />
-                  <Text style={styles.docName} numberOfLines={1}>
-                    {validIdDoc.name}
-                  </Text>
-                </View>
-              )}
-            </View>
+            )}
 
-            {/* Police Clearance - OPTIONAL */}
-            <View style={styles.docCard}>
-              <View style={styles.docHeader}>
-                <View>
-                  <Text style={styles.docTitle}>Police Clearance</Text>
-                  <Text style={styles.docSubtitle}>Optional (recommended)</Text>
+            {/* Police — optional */}
+            {policeRec && isLockedDocStatus(policeRec.status) ? (
+              <LockedHelperDocCard
+                title="Police Clearance"
+                subtitle="Optional · on file"
+                status={policeRec.status}
+                fileUrl={policeRec.file_url}
+              />
+            ) : (
+              <View style={styles.docCard}>
+                <View style={styles.docHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.docTitle}>Police Clearance</Text>
+                    <Text style={styles.docSubtitle}>Optional (recommended)</Text>
+                    {policeRec?.status === 'Rejected' && policeRec.rejection_reason ? (
+                      <Text style={styles.rejectHint}>{String(policeRec.rejection_reason)}</Text>
+                    ) : null}
+                  </View>
+                  {!policeDoc.uri ? (
+                    <TouchableOpacity
+                      style={[styles.uploadBtn, styles.uploadBtnSecondary]}
+                      onPress={() => pickDocument('police', setPoliceDoc)}
+                    >
+                      <Ionicons name="cloud-upload" size={18} color="#007AFF" />
+                      <Text style={styles.uploadBtnTextSecondary}>Upload</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity onPress={() => removeDocument(setPoliceDoc)}>
+                      <Ionicons name="trash" size={20} color="#FF3B30" />
+                    </TouchableOpacity>
+                  )}
                 </View>
                 {policeDoc.uri ? (
-                  <TouchableOpacity onPress={() => removeDocument(setPoliceDoc)}>
-                    <Ionicons name="trash" size={20} color="#FF3B30" />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity 
-                    style={[styles.uploadBtn, styles.uploadBtnSecondary]} 
-                    onPress={() => pickDocument('police', setPoliceDoc)}
-                  >
-                    <Ionicons name="cloud-upload" size={18} color="#007AFF" />
-                    <Text style={styles.uploadBtnTextSecondary}>Upload</Text>
-                  </TouchableOpacity>
-                )}
+                  <View style={styles.docPreview}>
+                    <Ionicons name="document" size={16} color="#007AFF" />
+                    <Text style={styles.docName} numberOfLines={1}>
+                      {policeDoc.name}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-              {policeDoc.uri && (
-                <View style={styles.docPreview}>
-                  <Ionicons name="document" size={16} color="#007AFF" />
-                  <Text style={styles.docName} numberOfLines={1}>
-                    {policeDoc.name}
-                  </Text>
-                </View>
-              )}
-            </View>
+            )}
 
-            {/* TESDA NC2 - OPTIONAL */}
-            <View style={styles.docCard}>
-              <View style={styles.docHeader}>
-                <View>
-                  <Text style={styles.docTitle}>TESDA NC2</Text>
-                  <Text style={styles.docSubtitle}>Optional (good to have)</Text>
+            {/* TESDA — optional */}
+            {tesdaRec && isLockedDocStatus(tesdaRec.status) ? (
+              <LockedHelperDocCard
+                title="TESDA NC2"
+                subtitle="Optional · on file"
+                status={tesdaRec.status}
+                fileUrl={tesdaRec.file_url}
+              />
+            ) : (
+              <View style={styles.docCard}>
+                <View style={styles.docHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.docTitle}>TESDA NC2</Text>
+                    <Text style={styles.docSubtitle}>Optional (good to have)</Text>
+                    {tesdaRec?.status === 'Rejected' && tesdaRec.rejection_reason ? (
+                      <Text style={styles.rejectHint}>{String(tesdaRec.rejection_reason)}</Text>
+                    ) : null}
+                  </View>
+                  {!tesdaDoc.uri ? (
+                    <TouchableOpacity
+                      style={[styles.uploadBtn, styles.uploadBtnSecondary]}
+                      onPress={() => pickDocument('tesda', setTesdaDoc)}
+                    >
+                      <Ionicons name="cloud-upload" size={18} color="#007AFF" />
+                      <Text style={styles.uploadBtnTextSecondary}>Upload</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity onPress={() => removeDocument(setTesdaDoc)}>
+                      <Ionicons name="trash" size={20} color="#FF3B30" />
+                    </TouchableOpacity>
+                  )}
                 </View>
                 {tesdaDoc.uri ? (
-                  <TouchableOpacity onPress={() => removeDocument(setTesdaDoc)}>
-                    <Ionicons name="trash" size={20} color="#FF3B30" />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity 
-                    style={[styles.uploadBtn, styles.uploadBtnSecondary]} 
-                    onPress={() => pickDocument('tesda', setTesdaDoc)}
-                  >
-                    <Ionicons name="cloud-upload" size={18} color="#007AFF" />
-                    <Text style={styles.uploadBtnTextSecondary}>Upload</Text>
-                  </TouchableOpacity>
-                )}
+                  <View style={styles.docPreview}>
+                    <Ionicons name="document" size={16} color="#007AFF" />
+                    <Text style={styles.docName} numberOfLines={1}>
+                      {tesdaDoc.name}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-              {tesdaDoc.uri && (
-                <View style={styles.docPreview}>
-                  <Ionicons name="document" size={16} color="#007AFF" />
-                  <Text style={styles.docName} numberOfLines={1}>
-                    {tesdaDoc.name}
-                  </Text>
-                </View>
-              )}
-            </View>
+            )}
 
             <View style={{ height: 48 }} />
       </FormModalLayout>
@@ -480,6 +642,47 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1976D2',
   },
+  lockedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    gap: 10,
+  },
+  lockedStatus: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#15803d',
+  },
+  openLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    padding: 8,
+  },
+  openLinkText: { fontSize: 13, fontWeight: '600', color: '#007AFF' },
+  rejectHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#b91c1c',
+    lineHeight: 16,
+  },
+  footerAllSet: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#f0fdf4',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  footerAllSetText: { flex: 1, fontSize: 13, color: '#14532d', lineHeight: 18 },
   docCard: {
     backgroundColor: '#f8f8f8',
     padding: 14,

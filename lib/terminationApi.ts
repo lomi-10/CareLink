@@ -88,3 +88,24 @@ export function computePreviewLastWorkingDay(isMutual: boolean, todayYmd: string
   if (isMutual) return todayYmd;
   return addDaysToYmd(todayYmd, 5);
 }
+
+/** Normalize API application / placement status strings. */
+export function isTerminationPendingStatus(status: string): boolean {
+  const s = status.trim().toLowerCase().replace(/\s+/g, '_');
+  return s === 'termination_pending' || s === 'pending_termination';
+}
+
+/**
+ * True while the notice-period UI should show: termination pending and either no last day yet
+ * or today is still on/before last working day (local YYYY-MM-DD lexicographic compare).
+ */
+export function noticePeriodStillActive(
+  isTerminationPending: boolean,
+  terminationLastDayYmd: string | null | undefined,
+  todayYmd: string,
+): boolean {
+  if (!isTerminationPending) return false;
+  const last = terminationLastDayYmd?.trim();
+  if (!last) return true;
+  return todayYmd <= last;
+}

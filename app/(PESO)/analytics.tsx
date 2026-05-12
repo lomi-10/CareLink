@@ -12,11 +12,30 @@ import {
   View,
 } from "react-native";
 import API_URL from "../../constants/api";
+import { withPesoStaffQuery } from "@/lib/pesoStaffQuery";
+
+function safePct(part: number, whole: number): number {
+  const w = Number(whole);
+  if (!Number.isFinite(w) || w <= 0) return 0;
+  const p = Number(part);
+  if (!Number.isFinite(p)) return 0;
+  return Math.min(100, Math.round((p / w) * 100));
+}
+
+function EmptyHint({ message }: { message: string }) {
+  return (
+    <View style={{ paddingVertical: 28, alignItems: "center", paddingHorizontal: 16 }}>
+      <Ionicons name="folder-open-outline" size={36} color="#999" />
+      <Text style={{ marginTop: 10, color: "#666", fontSize: 14, textAlign: "center" }}>{message}</Text>
+    </View>
+  );
+}
 
 export default function Analytics() {
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<"jobs" | "skills" | "demographics">("jobs");
 
   useEffect(() => {
@@ -26,16 +45,29 @@ export default function Analytics() {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/peso/get_analytics.php`);
+      setFetchError(null);
+      const url = await withPesoStaffQuery(`${API_URL}/peso/get_analytics.php`);
+      const response = await fetch(url);
       const text = await response.text();
-      console.log("Analytics:", text);
-      const data = JSON.parse(text);
+      let data: { success?: boolean; data?: any; message?: string };
+      try {
+        data = JSON.parse(text);
+      } catch {
+        setFetchError("Invalid response from server.");
+        setAnalytics(null);
+        return;
+      }
 
-      if (data.success) {
+      if (data.success && data.data) {
         setAnalytics(data.data);
+      } else {
+        setAnalytics(null);
+        setFetchError(data.message || "Could not load analytics.");
       }
     } catch (error) {
       console.error("Error fetching analytics:", error);
+      setFetchError("Network error while loading analytics.");
+      setAnalytics(null);
     } finally {
       setLoading(false);
     }
@@ -47,11 +79,41 @@ export default function Analytics() {
     setRefreshing(false);
   };
 
+  const maxCategoryHelpers = Math.max(
+    0,
+    ...((analytics?.top_categories as any[]) ?? []).map((c: any) => Number(c?.helper_count ?? 0)),
+  );
+  const categoryBarDen = Math.max(maxCategoryHelpers, 1);
+
+  const totalHelpersDemo = Math.max(Number(analytics?.total_helpers ?? 0), 1);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FF9500" />
         <Text style={styles.loadingText}>Loading analytics...</Text>
+      </View>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.pageTitle}>Analytics & Insights</Text>
+            <Text style={styles.pageSubtitle}>Market trends and statistics</Text>
+          </View>
+        </View>
+        <View style={styles.errorWrap}>
+          <Ionicons name="alert-circle-outline" size={44} color="#FF3B30" />
+          <Text style={styles.errorTitle}>Could not load analytics</Text>
+          <Text style={styles.errorBody}>{fetchError}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => void fetchAnalytics()} activeOpacity={0.85}>
+            <Ionicons name="refresh" size={18} color="#fff" />
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -123,7 +185,8 @@ export default function Analytics() {
                 <Ionicons name="trending-up" size={22} color="#FF9500" />
                 <Text style={styles.sectionTitle}>Most Popular Job Categories</Text>
               </View>
-              {analytics?.top_categories?.map((category: any, index: number) => (
+              {analytics?.top_categories?.length ? (
+              analytics.top_categories.map((category: any, index: number) => (
                 <View key={category.category_id} style={styles.rankItem}>
                   <View style={styles.rankBadge}>
                     <Text style={styles.rankNumber}>#{index + 1}</Text>
@@ -135,7 +198,7 @@ export default function Analytics() {
                         style={[
                           styles.progressFill,
                           {
-                            width: `${(category.helper_count / analytics?.top_categories[0]?.helper_count) * 100}%`,
+                            width: `${safePct(Number(category.helper_count ?? 0), categoryBarDen)}%`,
                           },
                         ]}
                       />
@@ -146,7 +209,10 @@ export default function Analytics() {
                     <Text style={styles.rankCountLabel}>helpers</Text>
                   </View>
                 </View>
-              ))}
+              ))
+              ) : (
+                <EmptyHint message="No helper category data yet." />
+              )}
             </View>
 
             {/* Specific Jobs */}
@@ -155,7 +221,8 @@ export default function Analytics() {
                 <Ionicons name="list" size={22} color="#007AFF" />
                 <Text style={styles.sectionTitle}>Most In-Demand Jobs</Text>
               </View>
-              {analytics?.top_jobs?.map((job: any, index: number) => (
+              {analytics?.top_jobs?.length ? (
+              analytics.top_jobs.map((job: any, index: number) => (
                 <View key={job.job_id} style={styles.jobItem}>
                   <View style={styles.jobLeft}>
                     <Text style={styles.jobRank}>{index + 1}</Text>
@@ -166,10 +233,13 @@ export default function Analytics() {
                   </View>
                   <View style={styles.jobRight}>
                     <Text style={styles.jobCount}>{job.helper_count}</Text>
-                    <Ionicons name="person" size={16} color="#999" />
+                    <Ionicons name="briefcase-outline" size={16} color="#999" />
                   </View>
                 </View>
-              ))}
+              ))
+              ) : (
+                <EmptyHint message="No open job postings to rank yet." />
+              )}
             </View>
           </>
         )}
@@ -182,7 +252,8 @@ export default function Analytics() {
                 <Ionicons name="star" size={22} color="#FFC107" />
                 <Text style={styles.sectionTitle}>Most Common Skills</Text>
               </View>
-              {analytics?.top_skills?.map((skill: any, index: number) => (
+              {analytics?.top_skills?.length ? (
+              analytics.top_skills.map((skill: any, index: number) => (
                 <View key={skill.skill_id} style={styles.skillItem}>
                   <View style={styles.skillLeft}>
                     <View
@@ -207,7 +278,10 @@ export default function Analytics() {
                     <Text style={styles.skillLabel}>helpers</Text>
                   </View>
                 </View>
-              ))}
+              ))
+              ) : (
+                <EmptyHint message="No skills data recorded yet." />
+              )}
             </View>
 
             {/* Skills Gap Analysis */}
@@ -242,7 +316,8 @@ export default function Analytics() {
                 <Ionicons name="home" size={22} color="#34C759" />
                 <Text style={styles.sectionTitle}>Employment Type Preferences</Text>
               </View>
-              {analytics?.employment_types?.map((type: any) => (
+              {analytics?.employment_types?.length ? (
+              analytics.employment_types.map((type: any) => (
                 <View key={type.employment_type} style={styles.demoItem}>
                   <View style={styles.demoInfo}>
                     <Text style={styles.demoLabel}>{type.employment_type}</Text>
@@ -251,7 +326,7 @@ export default function Analytics() {
                         style={[
                           styles.demoBarFill,
                           {
-                            width: `${(type.count / analytics?.total_helpers) * 100}%`,
+                            width: `${safePct(Number(type.count ?? 0), totalHelpersDemo)}%`,
                             backgroundColor: "#34C759",
                           },
                         ]}
@@ -261,11 +336,14 @@ export default function Analytics() {
                   <View style={styles.demoCount}>
                     <Text style={styles.demoNumber}>{type.count}</Text>
                     <Text style={styles.demoPercent}>
-                      {Math.round((type.count / analytics?.total_helpers) * 100)}%
+                      {safePct(Number(type.count ?? 0), totalHelpersDemo)}%
                     </Text>
                   </View>
                 </View>
-              ))}
+              ))
+              ) : (
+                <EmptyHint message="No employment-type breakdown yet." />
+              )}
             </View>
 
             {/* Work Schedule */}
@@ -274,7 +352,8 @@ export default function Analytics() {
                 <Ionicons name="time" size={22} color="#007AFF" />
                 <Text style={styles.sectionTitle}>Work Schedule Preferences</Text>
               </View>
-              {analytics?.work_schedules?.map((schedule: any) => (
+              {analytics?.work_schedules?.length ? (
+              analytics.work_schedules.map((schedule: any) => (
                 <View key={schedule.work_schedule} style={styles.demoItem}>
                   <View style={styles.demoInfo}>
                     <Text style={styles.demoLabel}>{schedule.work_schedule}</Text>
@@ -283,7 +362,7 @@ export default function Analytics() {
                         style={[
                           styles.demoBarFill,
                           {
-                            width: `${(schedule.count / analytics?.total_helpers) * 100}%`,
+                            width: `${safePct(Number(schedule.count ?? 0), totalHelpersDemo)}%`,
                             backgroundColor: "#007AFF",
                           },
                         ]}
@@ -293,11 +372,14 @@ export default function Analytics() {
                   <View style={styles.demoCount}>
                     <Text style={styles.demoNumber}>{schedule.count}</Text>
                     <Text style={styles.demoPercent}>
-                      {Math.round((schedule.count / analytics?.total_helpers) * 100)}%
+                      {safePct(Number(schedule.count ?? 0), totalHelpersDemo)}%
                     </Text>
                   </View>
                 </View>
-              ))}
+              ))
+              ) : (
+                <EmptyHint message="No work-schedule breakdown yet." />
+              )}
             </View>
 
             {/* Experience Distribution */}
@@ -307,7 +389,7 @@ export default function Analytics() {
                 <Text style={styles.sectionTitle}>Experience Levels</Text>
               </View>
               <View style={styles.experienceGrid}>
-                {analytics?.experience_ranges?.map((range: any) => (
+                {(analytics?.experience_ranges ?? []).map((range: any) => (
                   <View key={range.range} style={styles.experienceCard}>
                     <Text style={styles.experienceRange}>{range.range}</Text>
                     <Text style={styles.experienceCount}>{range.count}</Text>
@@ -323,8 +405,9 @@ export default function Analytics() {
                 <Ionicons name="location" size={22} color="#FF3B30" />
                 <Text style={styles.sectionTitle}>Top Locations</Text>
               </View>
-              {analytics?.top_locations?.map((location: any, index: number) => (
-                <View key={location.municipality} style={styles.locationItem}>
+              {analytics?.top_locations?.length ? (
+              analytics.top_locations.map((location: any, index: number) => (
+                <View key={`${location.municipality}-${location.province}-${index}`} style={styles.locationItem}>
                   <View style={styles.locationLeft}>
                     <Text style={styles.locationRank}>{index + 1}</Text>
                     <View>
@@ -334,7 +417,10 @@ export default function Analytics() {
                   </View>
                   <Text style={styles.locationCount}>{location.helper_count}</Text>
                 </View>
-              ))}
+              ))
+              ) : (
+                <EmptyHint message="No location data for helpers yet." />
+              )}
             </View>
           </>
         )}
@@ -711,4 +797,26 @@ const styles = StyleSheet.create({
     color: "#666",
     fontSize: 14,
   },
+  errorWrap: {
+    marginHorizontal: 24,
+    marginTop: 24,
+    padding: 24,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+  },
+  errorTitle: { fontSize: 17, fontWeight: "800", color: "#1A1C1E", marginTop: 12, marginBottom: 8 },
+  errorBody: { fontSize: 14, color: "#666", textAlign: "center", marginBottom: 16, lineHeight: 20 },
+  retryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FF9500",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  retryBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 });

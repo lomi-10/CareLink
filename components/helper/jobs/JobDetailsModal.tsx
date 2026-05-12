@@ -42,6 +42,18 @@ function createJobDetailsStyles(c: ThemeColor) {
       borderRadius: 6, borderWidth: 1, borderColor: c.line,
     },
     catText: { fontSize: 11, fontWeight: '600', color: c.muted },
+    matchPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: c.warningSoft,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: c.warning + '44',
+    },
+    matchPillText: { fontSize: 11, fontWeight: '800', color: c.warning },
     closeBtn:{ padding: 6, backgroundColor: c.surface, borderRadius: 16 },
 
     scroll:  { paddingHorizontal: 22, paddingTop: 8 },
@@ -62,6 +74,18 @@ function createJobDetailsStyles(c: ThemeColor) {
       paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10,
     },
     viewProfileBtnText: { fontSize: 11, fontWeight: '700', color: c.parent },
+
+    matchFitBox: {
+      backgroundColor: c.surface,
+      padding: 14,
+      borderRadius: 14,
+      marginBottom: 24,
+      borderWidth: 1,
+      borderColor: c.line,
+    },
+    matchFitTitle: { fontSize: 12, fontWeight: '800', color: c.ink, marginBottom: 10 },
+    matchFitRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
+    matchFitText: { flex: 1, fontSize: 13, color: c.muted, lineHeight: 19, fontWeight: '600' },
 
     section:      { marginBottom: 24 },
     sectionHeader:{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: c.line },
@@ -169,6 +193,11 @@ export function JobDetailsModal({ visible, onClose, onApply, job }: JobDetailsMo
 
   const profileUri = getProfileUrl(job.parent_profile_image);
 
+  const matchPct = Math.min(100, Math.max(0, Math.round(Number(job.match_score ?? 0))));
+  const matchReasonsList: string[] = Array.isArray(job.match_reasons)
+    ? job.match_reasons.filter((r: unknown) => r != null && String(r).trim() !== '')
+    : [];
+
   return (
     <>
       <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -186,6 +215,10 @@ export function JobDetailsModal({ visible, onClose, onApply, job }: JobDetailsMo
                   </View>
                   <View style={s.catPill}>
                     <Text style={s.catText}>{displayCategory}</Text>
+                  </View>
+                  <View style={s.matchPill}>
+                    <Ionicons name="pulse-outline" size={12} color={c.warning} />
+                    <Text style={s.matchPillText}>{matchPct}% match</Text>
                   </View>
                 </View>
               </View>
@@ -221,6 +254,18 @@ export function JobDetailsModal({ visible, onClose, onApply, job }: JobDetailsMo
                   <Ionicons name="chevron-forward" size={14} color={c.parent} />
                 </View>
               </TouchableOpacity>
+
+              {matchReasonsList.length > 0 ? (
+                <View style={s.matchFitBox}>
+                  <Text style={s.matchFitTitle}>Why this fits your profile</Text>
+                  {matchReasonsList.slice(0, 6).map((reason: string, idx: number) => (
+                    <View key={`mr-${idx}`} style={s.matchFitRow}>
+                      <Ionicons name="checkmark-circle" size={16} color={c.success} />
+                      <Text style={s.matchFitText}>{String(reason)}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
 
               {/* Role & Schedule */}
               <Section icon="calendar-outline" title="Role & Schedule">

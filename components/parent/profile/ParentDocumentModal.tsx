@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator, Dimensions,
     Image,
+    Linking,
     Modal,
     Platform,
     StyleSheet,
@@ -35,6 +36,24 @@ interface DocumentState {
 const isWeb = Platform.OS === 'web';
 const { width } = Dimensions.get('window');
 
+const DOC_VALID_ID = 'Valid ID';
+const DOC_BRGY = 'Barangay Clearance';
+
+function mergeLatestDocsPerType(docs: any[]): any[] {
+  const m = new Map<string, any>();
+  for (const d of docs) {
+    const t = d.document_type as string;
+    const cur = m.get(t);
+    if (!cur || Number(d.document_id) > Number(cur.document_id)) m.set(t, d);
+  }
+  return Array.from(m.values());
+}
+
+function isLockedDocStatus(status?: string): boolean {
+  const s = (status || '').trim();
+  return s === 'Verified' || s === 'Pending';
+}
+
 export default function ParentDocumentModal({ 
   visible, 
   onClose, 
@@ -60,6 +79,8 @@ export default function ParentDocumentModal({
 
   useEffect(() => {
     if (visible) {
+      setValidIdDoc({ uri: null, name: null, type: null });
+      setBrgyClearanceDoc({ uri: null, name: null, type: null });
       loadUserData();
     }
   }, [visible]);
@@ -92,8 +113,8 @@ export default function ParentDocumentModal({
       const data = await response.json();
       
       if (data.success) {
-        // Handle both single object or array returns safely
-        setExistingDocs(Array.isArray(data.documents) ? data.documents : (data.document ? [data.document] : []));
+        const raw = Array.isArray(data.documents) ? data.documents : data.document ? [data.document] : [];
+        setExistingDocs(mergeLatestDocsPerType(raw));
       }
     } catch (error) {
       console.error("Failed to fetch documents", error);
@@ -103,10 +124,13 @@ export default function ParentDocumentModal({
     }
   };
 
-  const getDocStatus = (docType: string) => {
-    const doc = existingDocs.find(d => d.document_type === docType);
-    return doc ? doc.status : undefined;
-  };
+  const getDocRecord = (docType: string) => existingDocs.find((d) => d.document_type === docType);
+
+  const validRec = getDocRecord(DOC_VALID_ID);
+  const brgyRec = getDocRecord(DOC_BRGY);
+  const needsValidUpload = !validRec || validRec.status === 'Rejected';
+  const needsBrgyUpload = !brgyRec || brgyRec.status === 'Rejected';
+  const allSlotsSatisfied = !needsValidUpload && !needsBrgyUpload;
 
   const pickDocument = async (type: 'validId' | 'brgyClearance') => {
     try {
@@ -150,14 +174,20 @@ export default function ParentDocumentModal({
   };
 
   const validateDocument = (): boolean => {
-    if (!brgyClearanceDoc.uri) {
-      setNotifMessage("Barangay Clearance is required.");
+    if (allSlotsSatisfied) {
+      setNotifMessage('Your documents are already on file. There is nothing new to upload.');
       setNotifType('error');
       setNotifVisible(true);
       return false;
     }
-    if (!validIdDoc.uri) {
-      setNotifMessage("Valid ID is required.");
+    if (needsBrgyUpload && !brgyClearanceDoc.uri) {
+      setNotifMessage('Please choose a new Barangay Clearance file to upload.');
+      setNotifType('error');
+      setNotifVisible(true);
+      return false;
+    }
+    if (needsValidUpload && !validIdDoc.uri) {
+      setNotifMessage('Please choose a new Valid ID file to upload.');
       setNotifType('error');
       setNotifVisible(true);
       return false;
@@ -174,7 +204,7 @@ export default function ParentDocumentModal({
       const formData = new FormData();
       formData.append('user_id', userId || '');
 
-      // Add Valid ID
+      // Add Valid ID (only when user selected a replacement)
       if (validIdDoc.uri) {
         if (Platform.OS === 'web') {
           try {
@@ -201,7 +231,7 @@ export default function ParentDocumentModal({
         }
       }
 
-      // Add Barangay Clearance
+      // Add Barangay Clearance (only when user selected a replacement)
       if (brgyClearanceDoc.uri) {
         if (Platform.OS === 'web') {
           try {
@@ -226,6 +256,14 @@ export default function ParentDocumentModal({
             type: brgyClearanceDoc.type || 'application/octet-stream',
           });
         }
+      }
+
+      if (!validIdDoc.uri && !brgyClearanceDoc.uri) {
+        setUploading(false);
+        setNotifMessage('Please select at least one file to upload.');
+        setNotifType('error');
+        setNotifVisible(true);
+        return;
       }
 
       const response = await fetch(`${API_URL}/parent/upload_documents.php`, {
@@ -291,24 +329,37 @@ export default function ParentDocumentModal({
         scrollContentStyle={{ paddingHorizontal: 20, paddingTop: 8 }}
         footer={
           !loading ? (
-            <TouchableOpacity
-              style={[
-                styles.uploadButton,
-                uploading && styles.uploadButtonDisabled,
-                isWeb && styles.uploadButtonWeb,
-              ]}
-              onPress={handleUpload}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
-                  <Text style={styles.uploadButtonText}>Upload Documents</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            allSlotsSatisfied ? (
+              <View style={styles.footerInfo}>
+                <Ionicons name="checkmark-circle" size={22} color="#28a745" />
+                <Text style={styles.footerInfoText}>
+                  All required documents are on file (verified or pending review). You only need to return here if PESO asks for a new file.
+                </Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.uploadButton,
+                  uploading && styles.uploadButtonDisabled,
+                  isWeb && styles.uploadButtonWeb,
+                ]}
+                onPress={handleUpload}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
+                    <Text style={styles.uploadButtonText}>
+                      {needsValidUpload && needsBrgyUpload
+                        ? 'Upload documents'
+                        : 'Upload selected document(s)'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )
           ) : null
         }
       >
@@ -325,70 +376,93 @@ export default function ParentDocumentModal({
                 </View>
               </View>
 
-              {/* EXISTING DOCUMENT STATUS */}
-              {existingDocs.length > 0 && (
+              {/* Documents on file (verified or pending — not rejected) */}
+              {(validRec && isLockedDocStatus(validRec.status)) ||
+              (brgyRec && isLockedDocStatus(brgyRec.status)) ? (
                 <View style={styles.existingDocsCard}>
-                  <Text style={styles.instructionTitle}>Current Document Status</Text>
-                  <DocumentStatusSummary 
-                    title="Valid ID"
-                    hasDocument={!!getDocStatus('Valid ID')}
-                    status={getDocStatus('Valid ID')}
-                  />
-                  <DocumentStatusSummary 
-                    title="Barangay Clearance"
-                    hasDocument={!!getDocStatus('Barangay Clearance')}
-                    status={getDocStatus('Barangay Clearance')}
-                  />
+                  <Text style={styles.instructionTitle}>On file with PESO</Text>
+                  <Text style={[styles.instructionBody, { marginBottom: 12 }]}>
+                    These documents are set. You do not need to upload them again unless PESO rejects one below.
+                  </Text>
+                  {validRec && isLockedDocStatus(validRec.status) ? (
+                    <LockedDocumentRow
+                      title="Valid Government ID"
+                      status={validRec.status}
+                      fileUrl={validRec.file_url}
+                    />
+                  ) : null}
+                  {brgyRec && isLockedDocStatus(brgyRec.status) ? (
+                    <LockedDocumentRow
+                      title="Barangay Clearance"
+                      status={brgyRec.status}
+                      fileUrl={brgyRec.file_url}
+                    />
+                  ) : null}
                 </View>
-              )}
+              ) : null}
 
-              {/* UPLOAD SECTION 1: VALID ID */}
-              <View style={styles.documentSection}>
-                <Text style={styles.sectionLabel}>
-                  Valid Government ID <Text style={styles.required}>*</Text>
-                </Text>
-                <Text style={styles.sectionHelper}>
-                  Upload a clear photo or PDF of your government-issued ID
-                </Text>
+              {/* Replace rejected or add missing — Valid ID */}
+              {needsValidUpload ? (
+                <View style={styles.documentSection}>
+                  <Text style={styles.sectionLabel}>
+                    Valid Government ID <Text style={styles.required}>*</Text>
+                  </Text>
+                  <Text style={styles.sectionHelper}>
+                    {validRec?.status === 'Rejected'
+                      ? 'PESO rejected this document. Upload a clear replacement (photo or PDF).'
+                      : 'Upload a clear photo or PDF of your government-issued ID'}
+                  </Text>
+                  {validRec?.status === 'Rejected' && validRec.rejection_reason ? (
+                    <View style={styles.rejectReasonBox}>
+                      <Ionicons name="alert-circle" size={18} color="#dc3545" />
+                      <Text style={styles.rejectReasonText}>{String(validRec.rejection_reason)}</Text>
+                    </View>
+                  ) : null}
+                  {!validIdDoc.uri ? (
+                    <View style={styles.uploadButtons}>
+                      <TouchableOpacity style={styles.uploadBtn} onPress={() => pickDocument('validId')}>
+                        <Ionicons name="camera-outline" size={20} color="#007AFF" />
+                        <Text style={styles.uploadBtnText}>Choose File</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <DocumentPreview doc={validIdDoc} onRemove={() => removeDocument('validId')} />
+                  )}
+                </View>
+              ) : null}
 
-                {!validIdDoc.uri ? (
-                  <View style={styles.uploadButtons}>
-                    <TouchableOpacity 
-                      style={styles.uploadBtn}
-                      onPress={() => pickDocument('validId')}
-                    >
-                      <Ionicons name="camera-outline" size={20} color="#007AFF" />
-                      <Text style={styles.uploadBtnText}>Choose File</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <DocumentPreview doc={validIdDoc} onRemove={() => removeDocument('validId')} />
-                )}
-              </View>
-
-              {/* UPLOAD SECTION 2: BARANGAY CLEARANCE */}
-              <View style={styles.documentSection}>
-                <Text style={styles.sectionLabel}>
-                  Barangay Clearance <Text style={styles.required}>*</Text>
-                </Text>
-                <Text style={styles.sectionHelper}>
-                  Upload a clear photo or PDF of your recent Barangay Clearance
-                </Text>
-
-                {!brgyClearanceDoc.uri ? (
-                  <View style={styles.uploadButtons}>
-                    <TouchableOpacity 
-                      style={styles.uploadBtn}
-                      onPress={() => pickDocument('brgyClearance')}
-                    >
-                      <Ionicons name="document-outline" size={20} color="#007AFF" />
-                      <Text style={styles.uploadBtnText}>Choose File</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <DocumentPreview doc={brgyClearanceDoc} onRemove={() => removeDocument('brgyClearance')} />
-                )}
-              </View>
+              {/* Replace rejected or add missing — Barangay */}
+              {needsBrgyUpload ? (
+                <View style={styles.documentSection}>
+                  <Text style={styles.sectionLabel}>
+                    Barangay Clearance <Text style={styles.required}>*</Text>
+                  </Text>
+                  <Text style={styles.sectionHelper}>
+                    {brgyRec?.status === 'Rejected'
+                      ? 'PESO rejected this document. Upload a clear replacement (photo or PDF).'
+                      : 'Upload a clear photo or PDF of your recent Barangay Clearance'}
+                  </Text>
+                  {brgyRec?.status === 'Rejected' && brgyRec.rejection_reason ? (
+                    <View style={styles.rejectReasonBox}>
+                      <Ionicons name="alert-circle" size={18} color="#dc3545" />
+                      <Text style={styles.rejectReasonText}>{String(brgyRec.rejection_reason)}</Text>
+                    </View>
+                  ) : null}
+                  {!brgyClearanceDoc.uri ? (
+                    <View style={styles.uploadButtons}>
+                      <TouchableOpacity
+                        style={styles.uploadBtn}
+                        onPress={() => pickDocument('brgyClearance')}
+                      >
+                        <Ionicons name="document-outline" size={20} color="#007AFF" />
+                        <Text style={styles.uploadBtnText}>Choose File</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <DocumentPreview doc={brgyClearanceDoc} onRemove={() => removeDocument('brgyClearance')} />
+                  )}
+                </View>
+              ) : null}
 
               {/* NOTE */}
               <View style={styles.noteCard}>
@@ -414,6 +488,34 @@ export default function ParentDocumentModal({
 }
 
 // HELPER COMPONENTS
+function LockedDocumentRow({
+  title,
+  status,
+  fileUrl,
+}: {
+  title: string;
+  status: string;
+  fileUrl?: string;
+}) {
+  const open = () => {
+    if (fileUrl) Linking.openURL(fileUrl).catch(() => {});
+  };
+  return (
+    <View style={styles.lockedRow}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.statusSummaryText}>{title}</Text>
+        <Text style={[styles.statusSummaryLabel, { color: '#28a745' }]}>{status}</Text>
+      </View>
+      {fileUrl ? (
+        <TouchableOpacity onPress={open} style={styles.openFileBtn}>
+          <Ionicons name="open-outline" size={18} color="#007AFF" />
+          <Text style={styles.openFileBtnText}>Open</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
 interface DocumentPreviewProps {
   doc: DocumentState;
   onRemove: () => void;
@@ -436,33 +538,6 @@ function DocumentPreview({ doc, onRemove }: DocumentPreviewProps) {
       <TouchableOpacity style={styles.removeBtn} onPress={onRemove}>
         <Ionicons name="close-circle" size={24} color="#FF3B30" />
       </TouchableOpacity>
-    </View>
-  );
-}
-
-interface DocumentStatusSummaryProps {
-  title: string;
-  hasDocument: boolean;
-  status?: string;
-}
-
-function DocumentStatusSummary({ title, hasDocument, status }: DocumentStatusSummaryProps) {
-  const getStatusIcon = () => {
-    if (!hasDocument) return { name: 'close-circle', color: '#dc3545' };
-    if (status === 'Verified') return { name: 'checkmark-circle', color: '#28a745' };
-    if (status === 'Pending' || status === 'Pending Review') return { name: 'time', color: '#ffc107' };
-    return { name: 'alert-circle', color: '#6c757d' };
-  };
-
-  const icon = getStatusIcon();
-
-  return (
-    <View style={styles.statusSummaryRow}>
-      <Ionicons name={icon.name as any} size={20} color={icon.color} />
-      <Text style={styles.statusSummaryText}>{title}</Text>
-      <Text style={[styles.statusSummaryLabel, { color: icon.color }]}>
-        {hasDocument ? (status || 'Uploaded') : 'Not Uploaded'}
-      </Text>
     </View>
   );
 }
@@ -535,21 +610,52 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 20,
   },
-  statusSummaryRow: {
+  lockedRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
     gap: 10,
   },
+  openFileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  openFileBtnText: { fontSize: 13, fontWeight: '600', color: '#007AFF' },
   statusSummaryText: {
-    flex: 1,
     fontSize: 14,
     color: '#333',
+    fontWeight: '600',
   },
   statusSummaryLabel: {
     fontSize: 12,
     fontWeight: '600',
+    marginTop: 2,
   },
+  rejectReasonBox: {
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: '#fff5f5',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  rejectReasonText: { flex: 1, fontSize: 13, color: '#b91c1c', lineHeight: 18 },
+  footerInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#E8F5E9',
+    padding: 14,
+    borderRadius: 12,
+  },
+  footerInfoText: { flex: 1, fontSize: 13, color: '#1b5e20', lineHeight: 18 },
   documentSection: {
     marginBottom: 30,
   },

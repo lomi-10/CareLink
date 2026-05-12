@@ -14,6 +14,7 @@ export default function AdminLayout() {
       <Stack.Screen name="user_management" options={{ title: 'User Management' }} />
       <Stack.Screen name="logs" options={{ title: 'Audit Logs' }} />
       <Stack.Screen name="create_admin_user" options={{ title: 'Create Admin Account' }} />
+      <Stack.Screen name="complaints" options={{ title: 'Complaints' }} />
     </Stack>
       </View>
     </RoleScreenBackground>

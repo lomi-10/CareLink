@@ -13,7 +13,7 @@ import { useHelperTheme } from '@/contexts/HelperThemeContext';
 import { useHelperStats } from '@/hooks/helper';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 
-import { NotificationModal, ConfirmationModal } from '@/components/shared';
+import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard } from '@/components/shared';
 import {
   Sidebar, MobileHeader, GreetingCard,
   StatCard, MobileStatCard, QuickAction, SectionHeader,
@@ -21,6 +21,7 @@ import {
 } from '@/components/helper/home';
 import { WorkModeDashboard, WorkModeTabBar } from '@/components/helper/work';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
+import type { PendingReview } from '@/lib/reviewsApi';
 
 export default function HelperHome() {
   const router = useRouter();
@@ -42,6 +43,21 @@ export default function HelperHome() {
   const [isMobileMenuOpen,    setIsMobileMenuOpen]    = useState(false);
   const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
   const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
+  const [placementReviewRefreshTok, setPlacementReviewRefreshTok] = useState(0);
+  const [renewalRefreshTok, setRenewalRefreshTok] = useState(0);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState<{
+    applicationId: number;
+    counterpartyName: string;
+    jobTitle?: string;
+  } | null>(null);
+
+  const openPlacementReview = (applicationId: number, counterpartyName: string, jobTitle?: string) => {
+    setReviewTarget({ applicationId, counterpartyName, jobTitle });
+    setReviewModalVisible(true);
+  };
+
+  const bumpPlacementReviewBanner = () => setPlacementReviewRefreshTok((t) => t + 1);
 
   const initiateLogout = () => { setIsMobileMenuOpen(false); setConfirmLogoutVisible(true); };
   const executeLogout  = () => { setConfirmLogoutVisible(false); setSuccessLogoutVisible(true); };
@@ -97,6 +113,22 @@ export default function HelperHome() {
         duration={1500}
         onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }}
       />
+      <PlacementReviewModal
+        visible={reviewModalVisible && !!reviewTarget}
+        onClose={() => {
+          setReviewModalVisible(false);
+          setReviewTarget(null);
+        }}
+        applicationId={reviewTarget?.applicationId ?? 0}
+        userType="helper"
+        counterpartyName={reviewTarget?.counterpartyName ?? ''}
+        jobTitle={reviewTarget?.jobTitle}
+        accentColor={c.helper}
+        onSubmitted={() => {
+          bumpPlacementReviewBanner();
+          void refreshWork();
+        }}
+      />
     </>
   );
 
@@ -114,6 +146,7 @@ export default function HelperHome() {
               onRefresh={() => {
                 refresh();
                 void refreshWork();
+                bumpPlacementReviewBanner();
               }}
             />
           }
@@ -154,7 +187,17 @@ export default function HelperHome() {
             <>
               <GreetingCard userName={getFullName()} />
 
-              {employmentEnded?.employment_ended_on ? (
+              <PendingPlacementReviewsBanner
+                userType="helper"
+                accentColor={c.helper}
+                softBg={c.helperSoft}
+                refreshToken={placementReviewRefreshTok}
+                onReviewPress={(item: PendingReview) =>
+                  openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
+                }
+              />
+
+              {employmentEnded?.application_id ? (
                 <View
                   style={{
                     marginBottom: 16,
@@ -171,14 +214,54 @@ export default function HelperHome() {
                   <Text style={{ fontSize: 14, color: c.muted, lineHeight: 20 }}>
                     Your placement
                     {employmentEnded.job_title ? ` (${employmentEnded.job_title})` : ''} with{' '}
-                    {employmentEnded.employer_name || 'your employer'} ended on{' '}
-                    {new Date(employmentEnded.employment_ended_on.replace(/-/g, '/')).toLocaleDateString(
-                      undefined,
-                      { month: 'short', day: 'numeric', year: 'numeric' },
-                    )}
-                    . You are back in job-hunting mode.
+                    {employmentEnded.employer_name || 'your employer'}
+                    {employmentEnded.employment_ended_on
+                      ? ` ended on ${new Date(employmentEnded.employment_ended_on.replace(/-/g, '/')).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}.`
+                      : '.'}{' '}
+                    You are back in job-hunting mode.
                   </Text>
+                  <TouchableOpacity
+                    style={{
+                      marginTop: 12,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 8,
+                      alignSelf: 'flex-start',
+                      paddingVertical: 10,
+                      paddingHorizontal: 14,
+                      borderRadius: 12,
+                      backgroundColor: c.helperSoft,
+                      borderWidth: 1,
+                      borderColor: c.line,
+                    }}
+                    onPress={() =>
+                      openPlacementReview(
+                        employmentEnded.application_id,
+                        employmentEnded.employer_name || 'Employer',
+                        employmentEnded.job_title,
+                      )
+                    }
+                  >
+                    <Ionicons name="star-outline" size={18} color={c.helper} />
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: c.helper }}>Rate this placement</Text>
+                  </TouchableOpacity>
                 </View>
+              ) : null}
+
+              {employmentEnded?.application_id ? (
+                <PostPlacementRenewalCard
+                  applicationId={employmentEnded.application_id}
+                  jobPostId={employmentEnded.job_post_id}
+                  messagesPartnerUserId={employmentEnded.parent_id}
+                  userType="helper"
+                  counterpartyName={employmentEnded.employer_name || 'Employer'}
+                  jobTitle={employmentEnded.job_title}
+                  endedOn={employmentEnded.employment_ended_on}
+                  accentColor={c.helper}
+                  softBg={c.helperSoft}
+                  refreshToken={renewalRefreshTok}
+                  onIntentSaved={() => setRenewalRefreshTok((x) => x + 1)}
+                />
               ) : null}
 
               <SectionHeader title="Your Overview" />
@@ -231,6 +314,7 @@ export default function HelperHome() {
             onRefresh={() => {
               refresh();
               void refreshWork();
+              bumpPlacementReviewBanner();
             }}
           />
         }
@@ -246,7 +330,17 @@ export default function HelperHome() {
           <>
             <GreetingCard userName={getFullName()} />
 
-            {employmentEnded?.employment_ended_on ? (
+            <PendingPlacementReviewsBanner
+              userType="helper"
+              accentColor={c.helper}
+              softBg={c.helperSoft}
+              refreshToken={placementReviewRefreshTok}
+              onReviewPress={(item: PendingReview) =>
+                openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
+              }
+            />
+
+            {employmentEnded?.application_id ? (
               <View
                 style={{
                   marginBottom: 14,
@@ -263,14 +357,53 @@ export default function HelperHome() {
                 <Text style={{ fontSize: 14, color: c.muted, lineHeight: 20 }}>
                   Your placement
                   {employmentEnded.job_title ? ` (${employmentEnded.job_title})` : ''} with{' '}
-                  {employmentEnded.employer_name || 'your employer'} ended on{' '}
-                  {new Date(employmentEnded.employment_ended_on.replace(/-/g, '/')).toLocaleDateString(
-                    undefined,
-                    { month: 'short', day: 'numeric', year: 'numeric' },
-                  )}
-                  .
+                  {employmentEnded.employer_name || 'your employer'}
+                  {employmentEnded.employment_ended_on
+                    ? ` ended on ${new Date(employmentEnded.employment_ended_on.replace(/-/g, '/')).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}.`
+                    : '.'}
                 </Text>
+                <TouchableOpacity
+                  style={{
+                    marginTop: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    alignSelf: 'flex-start',
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
+                    borderRadius: 12,
+                    backgroundColor: c.helperSoft,
+                    borderWidth: 1,
+                    borderColor: c.line,
+                  }}
+                  onPress={() =>
+                    openPlacementReview(
+                      employmentEnded.application_id,
+                      employmentEnded.employer_name || 'Employer',
+                      employmentEnded.job_title,
+                    )
+                  }
+                >
+                  <Ionicons name="star-outline" size={18} color={c.helper} />
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: c.helper }}>Rate this placement</Text>
+                </TouchableOpacity>
               </View>
+            ) : null}
+
+            {employmentEnded?.application_id ? (
+              <PostPlacementRenewalCard
+                applicationId={employmentEnded.application_id}
+                jobPostId={employmentEnded.job_post_id}
+                messagesPartnerUserId={employmentEnded.parent_id}
+                userType="helper"
+                counterpartyName={employmentEnded.employer_name || 'Employer'}
+                jobTitle={employmentEnded.job_title}
+                endedOn={employmentEnded.employment_ended_on}
+                accentColor={c.helper}
+                softBg={c.helperSoft}
+                refreshToken={renewalRefreshTok}
+                onIntentSaved={() => setRenewalRefreshTok((x) => x + 1)}
+              />
             ) : null}
 
             <View style={layoutStyles.mobileStatsRow}>

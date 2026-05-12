@@ -11,9 +11,11 @@ import { createParentHomeStyles } from './home.styles';
 import { useParentTheme } from '@/contexts/ParentThemeContext';
 
 import { useParentStats } from '@/hooks/parent';
+import { useParentRecentlyEndedPlacements } from '@/hooks/parent/useParentRecentlyEndedPlacements';
+import type { PendingReview } from '@/lib/reviewsApi';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 
-import { NotificationModal, ConfirmationModal } from '@/components/shared';
+import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard } from '@/components/shared';
 import { Sidebar, MobileMenu, GreetingCard, ActiveHelpersSection, ParentTabBar } from '@/components/parent/home';
 import {
   MobileHeader, StatCard, MobileStatCard,
@@ -26,6 +28,8 @@ export default function ParentHome() {
   const layoutStyles = useMemo(() => createParentHomeStyles(c), [c]);
 
   const { handleLogout, getFullName } = useAuth();
+  const { placements: recentlyEnded, loading: endedLoading, refresh: refreshEnded } =
+    useParentRecentlyEndedPlacements(1);
   const { stats, loading: statsLoading, refresh } = useParentStats();
   const { isDesktop } = useResponsive();
   const { unreadCount } = useNotifications('parent');
@@ -33,6 +37,21 @@ export default function ParentHome() {
   const [isMobileMenuOpen,     setIsMobileMenuOpen]     = useState(false);
   const [confirmLogoutVisible,  setConfirmLogoutVisible]  = useState(false);
   const [successLogoutVisible,  setSuccessLogoutVisible]  = useState(false);
+  const [placementReviewRefreshTok, setPlacementReviewRefreshTok] = useState(0);
+  const [renewalRefreshTok, setRenewalRefreshTok] = useState(0);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState<{
+    applicationId: number;
+    counterpartyName: string;
+    jobTitle?: string;
+  } | null>(null);
+
+  const openPlacementReview = (applicationId: number, counterpartyName: string, jobTitle?: string) => {
+    setReviewTarget({ applicationId, counterpartyName, jobTitle });
+    setReviewModalVisible(true);
+  };
+
+  const bumpPlacementReviewBanner = () => setPlacementReviewRefreshTok((t) => t + 1);
 
   const initiateLogout = () => { setIsMobileMenuOpen(false); setConfirmLogoutVisible(true); };
   const executeLogout  = () => { setConfirmLogoutVisible(false); setSuccessLogoutVisible(true); };
@@ -58,6 +77,8 @@ export default function ParentHome() {
     );
   }
 
+  const lastEnded = recentlyEnded[0];
+
   const renderModals = () => (
     <>
       <ConfirmationModal
@@ -78,6 +99,22 @@ export default function ParentHome() {
         duration={1500}
         onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }}
       />
+      <PlacementReviewModal
+        visible={reviewModalVisible && !!reviewTarget}
+        onClose={() => {
+          setReviewModalVisible(false);
+          setReviewTarget(null);
+        }}
+        applicationId={reviewTarget?.applicationId ?? 0}
+        userType="parent"
+        counterpartyName={reviewTarget?.counterpartyName ?? ''}
+        jobTitle={reviewTarget?.jobTitle}
+        accentColor={c.parent}
+        onSubmitted={() => {
+          bumpPlacementReviewBanner();
+          void refreshEnded();
+        }}
+      />
     </>
   );
 
@@ -89,7 +126,16 @@ export default function ParentHome() {
         <ScrollView
           style={layoutStyles.mainContent}
           contentContainerStyle={[layoutStyles.scrollContent, { maxWidth: 900, alignSelf: 'center', width: '100%' }]}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={false}
+              onRefresh={() => {
+                refresh();
+                void refreshEnded();
+                bumpPlacementReviewBanner();
+              }}
+            />
+          }
         >
           {/* Desktop top bar */}
           <View style={layoutStyles.desktopTopBar}>
@@ -115,6 +161,61 @@ export default function ParentHome() {
           </View>
 
           <GreetingCard userName={getFullName()} />
+
+          <PendingPlacementReviewsBanner
+            userType="parent"
+            accentColor={c.parent}
+            softBg={c.parentSoft}
+            refreshToken={placementReviewRefreshTok}
+            onReviewPress={(item: PendingReview) =>
+              openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
+            }
+          />
+
+          {!endedLoading && lastEnded ? (
+            <View style={{ marginBottom: 8 }}>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: c.ink, marginBottom: 10 }}>
+                Recent placement
+              </Text>
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  alignSelf: 'flex-start',
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  borderRadius: 12,
+                  backgroundColor: c.parentSoft,
+                  borderWidth: 1,
+                  borderColor: c.line,
+                  marginBottom: 12,
+                }}
+                onPress={() =>
+                  openPlacementReview(lastEnded.application_id, lastEnded.helper_name, lastEnded.job_title)
+                }
+              >
+                <Ionicons name="star-outline" size={18} color={c.parent} />
+                <Text style={{ fontSize: 14, fontWeight: '800', color: c.parent }}>Rate your helper</Text>
+              </TouchableOpacity>
+              <PostPlacementRenewalCard
+                applicationId={lastEnded.application_id}
+                jobPostId={lastEnded.job_post_id}
+                messagesPartnerUserId={lastEnded.helper_id}
+                userType="parent"
+                counterpartyName={lastEnded.helper_name}
+                jobTitle={lastEnded.job_title}
+                endedOn={lastEnded.ended_on}
+                accentColor={c.parent}
+                softBg={c.parentSoft}
+                refreshToken={renewalRefreshTok}
+                onIntentSaved={() => {
+                  setRenewalRefreshTok((x) => x + 1);
+                  void refreshEnded();
+                }}
+              />
+            </View>
+          ) : null}
 
           <ActiveHelpersSection />
 
@@ -161,9 +262,73 @@ export default function ParentHome() {
       />
       <ScrollView
         contentContainerStyle={[layoutStyles.mobileScrollContent, { paddingBottom: 88 }]}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={() => {
+              refresh();
+              void refreshEnded();
+              bumpPlacementReviewBanner();
+            }}
+          />
+        }
       >
         <GreetingCard userName={getFullName()} />
+
+        <PendingPlacementReviewsBanner
+          userType="parent"
+          accentColor={c.parent}
+          softBg={c.parentSoft}
+          refreshToken={placementReviewRefreshTok}
+          onReviewPress={(item: PendingReview) =>
+            openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
+          }
+        />
+
+        {!endedLoading && lastEnded ? (
+          <View style={{ marginBottom: 8 }}>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: c.ink, marginBottom: 10 }}>
+              Recent placement
+            </Text>
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                alignSelf: 'flex-start',
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 12,
+                backgroundColor: c.parentSoft,
+                borderWidth: 1,
+                borderColor: c.line,
+                marginBottom: 12,
+              }}
+              onPress={() =>
+                openPlacementReview(lastEnded.application_id, lastEnded.helper_name, lastEnded.job_title)
+              }
+            >
+              <Ionicons name="star-outline" size={18} color={c.parent} />
+              <Text style={{ fontSize: 14, fontWeight: '800', color: c.parent }}>Rate your helper</Text>
+            </TouchableOpacity>
+            <PostPlacementRenewalCard
+              applicationId={lastEnded.application_id}
+              jobPostId={lastEnded.job_post_id}
+              messagesPartnerUserId={lastEnded.helper_id}
+              userType="parent"
+              counterpartyName={lastEnded.helper_name}
+              jobTitle={lastEnded.job_title}
+              endedOn={lastEnded.ended_on}
+              accentColor={c.parent}
+              softBg={c.parentSoft}
+              refreshToken={renewalRefreshTok}
+              onIntentSaved={() => {
+                setRenewalRefreshTok((x) => x + 1);
+                void refreshEnded();
+              }}
+            />
+          </View>
+        ) : null}
 
         <ActiveHelpersSection compactCards />
 

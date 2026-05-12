@@ -31,8 +31,10 @@ export interface JobApplication {
     | 'contract_pending'
     | 'hired'
     | 'auto_rejected'
-    | 'Pending Termination';
+    | 'Pending Termination'
+    | 'termination_pending';
   applied_at: string;
+  termination_last_day?: string | null;
   job_start_date?: string | null;
   reviewed_at?: string;
   parent_notes?: string;

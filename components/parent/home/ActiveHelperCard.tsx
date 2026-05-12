@@ -27,8 +27,12 @@ import {
 } from '@/lib/attendanceApi';
 import { attendanceDotBackground } from '@/lib/attendanceUi';
 import { applicationContractPdfUrl, applicationTerminationRecordUrl } from '@/constants/applications';
-import { EndEmploymentModal } from '@/components/shared';
+import { EndEmploymentModal, SubmitComplaintModal } from '@/components/shared';
 import { mondayOfWeekContaining, ymdLocal } from '@/lib/helperWorkApi';
+import {
+  isTerminationPendingStatus,
+  noticePeriodStillActive,
+} from '@/lib/terminationApi';
 import {
   currentPayPeriodYmd,
   isSalaryMarkedForPeriod,
@@ -162,10 +166,15 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
   const [loading, setLoading] = useState(true);
   const [salaryMarked, setSalaryMarked] = useState(false);
   const [endModal, setEndModal] = useState(false);
+  const [complaintOpen, setComplaintOpen] = useState(false);
   const period = currentPayPeriodYmd();
-  const terminationPending = placement.status === 'termination_pending';
+  const terminationPending = noticePeriodStillActive(
+    isTerminationPendingStatus(placement.status),
+    placement.termination_last_day,
+    ymdLocal(),
+  );
   const canInitiateTermination =
-    placement.status === 'hired' || placement.status === 'Accepted';
+    (placement.status === 'hired' || placement.status === 'Accepted') && !terminationPending;
 
   const load = useCallback(async () => {
     if (!appId || !parentId || !helperId) return;
@@ -349,6 +358,10 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
         <TouchableOpacity style={styles.chip} onPress={() => void openContract()}>
           <Ionicons name="document-text-outline" size={16} color={t.parent} />
           <Text style={styles.chipText}>Contract</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.chip} onPress={() => setComplaintOpen(true)}>
+          <Ionicons name="flag-outline" size={16} color={t.warning} />
+          <Text style={styles.chipText}>Report issue</Text>
         </TouchableOpacity>
         {canInitiateTermination ? (
           <TouchableOpacity style={styles.chip} onPress={() => setEndModal(true)}>

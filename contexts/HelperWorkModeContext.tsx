@@ -8,6 +8,8 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
+import { ymdLocal } from '@/lib/helperWorkApi';
+import { isTerminationPendingStatus } from '@/lib/terminationApi';
 
 export type ActiveHire = {
   application_id: number;
@@ -67,8 +69,32 @@ async function loadWorkContext(): Promise<LoadResult> {
     };
   }
 
-  const placement_status =
-    data.placement_status === 'termination_pending' ? 'termination_pending' : 'active';
+  const todayYmd = ymdLocal();
+  const lastDayRaw = (data.termination_last_day ?? '').trim();
+  const pendingNotice = isTerminationPendingStatus(String(data.placement_status ?? ''));
+  const noticeStale =
+    pendingNotice && lastDayRaw !== '' && todayYmd > lastDayRaw;
+
+  if (noticeStale) {
+    const hire = data.active_hire as ActiveHire;
+    const synthesized: EmploymentEndedInfo = {
+      application_id: hire.application_id,
+      job_post_id: hire.job_post_id,
+      parent_id: hire.parent_id,
+      job_title: hire.job_title,
+      employer_name: hire.employer_name,
+      employment_ended_on: lastDayRaw,
+    };
+    return {
+      isWorkMode: false,
+      activeHire: null,
+      employmentEnded: employmentEnded ?? synthesized,
+    };
+  }
+
+  const placement_status = isTerminationPendingStatus(String(data.placement_status ?? ''))
+    ? 'termination_pending'
+    : 'active';
 
   const activeHire: ActiveHire = {
     ...(data.active_hire as ActiveHire),

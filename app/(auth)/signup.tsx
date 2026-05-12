@@ -1,19 +1,19 @@
 // app/(auth)/signup.tsx
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import React from "react";
 import {
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
 
 import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
@@ -57,32 +57,44 @@ export default function SignUpScreen() {
     else router.replace("/");
   };
 
+  const { width } = useWindowDimensions();
+  const compact = width < 420;
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
       >
         <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
-          <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-            <View style={styles.card}>
+          <ScrollView
+            contentContainerStyle={[
+              styles.scrollContainer,
+              compact && styles.scrollContainerCompact,
+            ]}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={[styles.card, compact && styles.cardCompact]}>
               <Pressable style={styles.closeButton} onPress={goBack} hitSlop={12}>
                 <Text style={styles.closeText}>✕</Text>
               </Pressable>
 
-              <View style={{ alignItems: "center", marginBottom: 12 }}>
-                <CareLinkLogoMark size={56} />
+              <View style={{ alignItems: "center", marginBottom: compact ? 8 : 12 }}>
+                <CareLinkLogoMark size={compact ? 48 : 56} />
               </View>
 
               <Text style={styles.kicker}>Create account</Text>
-              <Text style={styles.title}>
+              <Text style={[styles.title, compact && styles.titleCompact]}>
                 {role === "helper"
                   ? "Helper registration"
                   : role === "parent"
                     ? "Parent registration"
                     : "Join CareLink"}
               </Text>
-              <Text style={styles.subtitle}>
+              <Text style={[styles.subtitle, compact && styles.subtitleCompact]}>
                 You’ll complete your profile and documents next for PESO verification.
               </Text>
 
@@ -119,8 +131,8 @@ export default function SignUpScreen() {
                 </View>
               )}
 
-              <View style={styles.inputRow}>
-                <View style={{ flex: 1 }}>
+              <View style={[styles.inputRow, compact && styles.inputRowStack]}>
+                <View style={[styles.inputRowField, compact && styles.inputRowFieldFull]}>
                   <Text style={styles.label}>First name <Text style={styles.required}>*</Text></Text>
                   <TextInput
                     placeholder="Juan"
@@ -130,8 +142,8 @@ export default function SignUpScreen() {
                     onChangeText={(v) => handleChange("first_name", v)}
                   />
                 </View>
-                <View style={{ width: 12 }} />
-                <View style={{ flex: 1 }}>
+                {!compact ? <View style={styles.inputRowGap} /> : null}
+                <View style={[styles.inputRowField, compact && styles.inputRowFieldFull]}>
                   <Text style={styles.label}>Last name <Text style={styles.required}>*</Text></Text>
                   <TextInput
                     placeholder="Dela Cruz"

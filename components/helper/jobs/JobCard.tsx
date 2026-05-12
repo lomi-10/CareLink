@@ -139,9 +139,11 @@ interface JobCardProps {
   onPress: () => void;
   onApply: () => void;
   onToggleSave?: (jobId: string) => void;
+  /** When set, tapping the employer row opens employer profile instead of job details. */
+  onEmployerPress?: () => void;
 }
 
-export function JobCard({ job, onPress, onApply, onToggleSave }: JobCardProps) {
+export function JobCard({ job, onPress, onApply, onToggleSave, onEmployerPress }: JobCardProps) {
   const { color: c } = useHelperTheme();
   const styles = useMemo(() => createJobCardStyles(c), [c]);
 
@@ -151,131 +153,132 @@ export function JobCard({ job, onPress, onApply, onToggleSave }: JobCardProps) {
   const hasGoodMatch = job.match_score && job.match_score >= 70;
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9}>
-      <View style={styles.header}>
-        <View style={styles.titleWrap}>
-          <Text style={styles.title} numberOfLines={1}>
-            {job.title}
-          </Text>
+    <View style={styles.container}>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.92}>
+        <View style={styles.header}>
+          <View style={styles.titleWrap}>
+            <Text style={styles.title} numberOfLines={1}>
+              {job.title}
+            </Text>
 
-          <View style={styles.badgeRow}>
-            <View style={styles.pesoBadge}>
-              <Ionicons name="shield-checkmark" size={12} color={c.helper} />
-              <Text style={styles.pesoBadgeText}>PESO Verified</Text>
-            </View>
-
-            <View style={styles.catPill}>
-              <Text style={styles.catText}>{displayCategory}</Text>
-            </View>
-
-            {hasGoodMatch && (
-              <View style={styles.matchPill}>
-                <Ionicons name="flash" size={11} color={c.warning} />
-                <Text style={styles.matchText}>{job.match_score}% Match</Text>
+            <View style={styles.badgeRow}>
+              <View style={styles.pesoBadge}>
+                <Ionicons name="shield-checkmark" size={12} color={c.helper} />
+                <Text style={styles.pesoBadgeText}>PESO Verified</Text>
               </View>
-            )}
+
+              <View style={styles.catPill}>
+                <Text style={styles.catText}>{displayCategory}</Text>
+              </View>
+
+              {hasGoodMatch && (
+                <View style={styles.matchPill}>
+                  <Ionicons name="flash" size={11} color={c.warning} />
+                  <Text style={styles.matchText}>{job.match_score}% Match</Text>
+                </View>
+              )}
+            </View>
           </View>
+
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={(e) => {
+              e.stopPropagation();
+              onToggleSave?.(job.job_post_id);
+            }}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={job.is_saved ? 'bookmark' : 'bookmark-outline'}
+              size={22}
+              color={job.is_saved ? c.parent : c.subtle}
+            />
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={styles.saveBtn}
-          onPress={(e) => {
-            e.stopPropagation();
-            onToggleSave?.(job.job_post_id);
-          }}
-          hitSlop={8}
-        >
-          <Ionicons
-            name={job.is_saved ? 'bookmark' : 'bookmark-outline'}
-            size={22}
-            color={job.is_saved ? c.parent : c.subtle}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.catJobRow}>
-        <View style={styles.catJobItem}>
-          <Ionicons name="grid-outline" size={12} color={c.muted} />
-          <Text style={styles.catJobLabel}>Category:</Text>
-          <Text style={styles.catJobValue}>{displayCategory}</Text>
-        </View>
-        {jobNames.length > 0 && (
+        <View style={styles.catJobRow}>
           <View style={styles.catJobItem}>
-            <Ionicons name="briefcase-outline" size={12} color={c.muted} />
-            <Text style={styles.catJobLabel}>Job:</Text>
-            <Text style={styles.catJobValue} numberOfLines={1}>
-              {jobNames.join(', ')}
+            <Ionicons name="grid-outline" size={12} color={c.muted} />
+            <Text style={styles.catJobLabel}>Category:</Text>
+            <Text style={styles.catJobValue}>{displayCategory}</Text>
+          </View>
+          {jobNames.length > 0 && (
+            <View style={styles.catJobItem}>
+              <Ionicons name="briefcase-outline" size={12} color={c.muted} />
+              <Text style={styles.catJobLabel}>Job:</Text>
+              <Text style={styles.catJobValue} numberOfLines={1}>
+                {jobNames.join(', ')}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.quickBar}>
+          <View style={styles.quickItem}>
+            <Ionicons name="location-outline" size={13} color={c.muted} />
+            <Text style={styles.quickText} numberOfLines={1}>
+              {job.municipality}
             </Text>
           </View>
-        )}
-      </View>
+          <View style={styles.dot} />
+          <View style={styles.quickItem}>
+            <Ionicons name="cash-outline" size={13} color={c.success} />
+            <Text style={[styles.quickText, { color: c.success, fontWeight: '700' }]}>
+              ₱{Number(job.salary_offered).toLocaleString()}
+            </Text>
+          </View>
+          <View style={styles.dot} />
+          <View style={styles.quickItem}>
+            <Ionicons name="briefcase-outline" size={13} color={c.muted} />
+            <Text style={styles.quickText}>{job.employment_type}</Text>
+          </View>
+        </View>
 
-      <View style={styles.quickBar}>
-        <View style={styles.quickItem}>
-          <Ionicons name="location-outline" size={13} color={c.muted} />
-          <Text style={styles.quickText} numberOfLines={1}>
-            {job.municipality}
-          </Text>
-        </View>
-        <View style={styles.dot} />
-        <View style={styles.quickItem}>
-          <Ionicons name="cash-outline" size={13} color={c.success} />
-          <Text style={[styles.quickText, { color: c.success, fontWeight: '700' }]}>
-            ₱{Number(job.salary_offered).toLocaleString()}
-          </Text>
-        </View>
-        <View style={styles.dot} />
-        <View style={styles.quickItem}>
-          <Ionicons name="briefcase-outline" size={13} color={c.muted} />
-          <Text style={styles.quickText}>{job.employment_type}</Text>
-        </View>
-      </View>
+        <Text style={styles.summary} numberOfLines={2}>
+          {job.description}
+        </Text>
+      </TouchableOpacity>
 
-      <Text style={styles.summary} numberOfLines={2}>
-        {job.description}
-      </Text>
-
-      <View style={styles.employerRow}>
-        <View style={styles.employerAvatar}>
-          <Text style={styles.employerAvatarText}>
-            {job.parent_name ? job.parent_name.charAt(0).toUpperCase() : 'E'}
-          </Text>
+      <TouchableOpacity
+        onPress={onEmployerPress ?? onPress}
+        activeOpacity={0.85}
+      >
+        <View style={styles.employerRow}>
+          <View style={styles.employerAvatar}>
+            <Text style={styles.employerAvatarText}>
+              {job.parent_name ? job.parent_name.charAt(0).toUpperCase() : 'E'}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.employerName}>{job.parent_name || 'Verified Employer'}</Text>
+            <Text style={styles.postedDate}>
+              Posted{' '}
+              {job.posted_at
+                ? new Date(job.posted_at).toLocaleDateString('en-PH', { dateStyle: 'medium' })
+                : 'recently'}
+              {job.distance ? `  ·  ~${job.distance} km` : ''}
+              {onEmployerPress ? '  ·  Tap for employer profile' : ''}
+            </Text>
+          </View>
+          {onEmployerPress ? (
+            <Ionicons name="chevron-forward" size={18} color={c.muted} />
+          ) : null}
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.employerName}>{job.parent_name || 'Verified Employer'}</Text>
-          <Text style={styles.postedDate}>
-            Posted{' '}
-            {job.posted_at
-              ? new Date(job.posted_at).toLocaleDateString('en-PH', { dateStyle: 'medium' })
-              : 'recently'}
-            {job.distance ? `  ·  ~${job.distance} km` : ''}
-          </Text>
-        </View>
-      </View>
+      </TouchableOpacity>
 
       <View style={styles.actions}>
         <TouchableOpacity
           style={styles.detailsBtn}
-          onPress={(e) => {
-            e.stopPropagation();
-            onPress();
-          }}
+          onPress={onPress}
           activeOpacity={0.75}
         >
           <Text style={styles.detailsBtnText}>View Details</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.applyBtn}
-          onPress={(e) => {
-            e.stopPropagation();
-            onApply();
-          }}
-          activeOpacity={0.85}
-        >
+        <TouchableOpacity style={styles.applyBtn} onPress={onApply} activeOpacity={0.85}>
           <Ionicons name="paper-plane-outline" size={15} color="#fff" />
           <Text style={styles.applyBtnText}>Apply Now</Text>
         </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }

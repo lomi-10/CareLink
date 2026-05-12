@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from "react";
 import {
   Animated,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -78,7 +79,14 @@ export function NotificationModal({
   const heading = title ?? defaultTitles[type];
 
   return (
-    <Modal transparent visible={visible} animationType="none" onRequestClose={handleClose}>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      onRequestClose={handleClose}
+      presentationStyle={Platform.OS === "ios" ? "overFullScreen" : undefined}
+      statusBarTranslucent={Platform.OS === "android"}
+    >
       <View style={styles.overlay}>
         <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
           <View style={[styles.iconWrap, { backgroundColor: cfg.soft }]}>

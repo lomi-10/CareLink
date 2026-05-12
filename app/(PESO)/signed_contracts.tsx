@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { pesoSignedContractsUrl, pesoTerminatedPlacementsUrl } from "@/constants/applications";
 import { theme } from "@/constants/theme";
+import { withPesoStaffQuery } from "@/lib/pesoStaffQuery";
 
 type SignedRow = {
   application_id: number;
@@ -46,10 +47,11 @@ export default function SignedContractsScreen() {
 
   const load = useCallback(async () => {
     try {
-      const [cRes, tRes] = await Promise.all([
-        fetch(pesoSignedContractsUrl()),
-        fetch(pesoTerminatedPlacementsUrl()),
+      const [signedUrl, termUrl] = await Promise.all([
+        withPesoStaffQuery(pesoSignedContractsUrl()),
+        withPesoStaffQuery(pesoTerminatedPlacementsUrl()),
       ]);
+      const [cRes, tRes] = await Promise.all([fetch(signedUrl), fetch(termUrl)]);
       const cData = await cRes.json();
       const tData = await tRes.json();
       if (cData.success && Array.isArray(cData.contracts)) {

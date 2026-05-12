@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import API_URL from "../../constants/api";
 import { theme } from "../../constants/theme";
+import { withPesoStaffQuery } from "@/lib/pesoStaffQuery";
 
 export default function PESODashboard() {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function PESODashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -39,15 +41,26 @@ export default function PESODashboard() {
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/peso/get_dashboard_stats.php`);
+      setLoadError(null);
+      const url = await withPesoStaffQuery(`${API_URL}/peso/get_dashboard_stats.php`);
+      const response = await fetch(url);
       const text = await response.text();
-      const data = JSON.parse(text);
-      
-      if (data.success) {
+      let data: { success?: boolean; data?: typeof stats; message?: string };
+      try {
+        data = JSON.parse(text);
+      } catch {
+        setLoadError("Invalid response from server.");
+        return;
+      }
+
+      if (data.success && data.data) {
         setStats(data.data);
+      } else {
+        setLoadError(data.message || "Could not load dashboard statistics.");
       }
     } catch (error) {
       console.error("Error fetching stats:", error);
+      setLoadError("Network error while loading statistics.");
     } finally {
       setLoading(false);
     }
@@ -83,6 +96,16 @@ export default function PESODashboard() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.color.peso} />
           <Text style={styles.loadingText}>Loading statistics...</Text>
+        </View>
+      ) : loadError ? (
+        <View style={styles.errorCard}>
+          <Ionicons name="alert-circle-outline" size={40} color={theme.color.danger} />
+          <Text style={styles.errorTitle}>Could not load dashboard</Text>
+          <Text style={styles.errorBody}>{loadError}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => void fetchDashboardStats()} activeOpacity={0.85}>
+            <Ionicons name="refresh" size={18} color="#fff" />
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <>
@@ -316,4 +339,25 @@ const styles = StyleSheet.create({
   },
   placeholderBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
   placeholderText: { color: '#999', fontSize: 14, marginTop: 12 },
+  errorCard: {
+    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: theme.radius.lg,
+    padding: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    marginBottom: 24,
+  },
+  errorTitle: { fontSize: 17, fontWeight: '800', color: theme.color.ink, marginTop: 12, marginBottom: 8 },
+  errorBody: { fontSize: 14, color: theme.color.muted, textAlign: 'center', marginBottom: 16, lineHeight: 20 },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: theme.color.peso,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  retryBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

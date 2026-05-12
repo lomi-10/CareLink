@@ -3,7 +3,9 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
+  Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -12,6 +14,7 @@ import {
 } from "react-native";
 import API_URL from "@/constants/api";
 import { pesoHireReportsUrl } from "@/constants/applications";
+import { withPesoStaffQuery } from "@/lib/pesoStaffQuery";
 import { theme } from "@/constants/theme";
 
 type ReportRow = {
@@ -93,6 +96,29 @@ function formatLastActivity(r: HireReportRow): string {
   return formatWhen(new Date(ms).toISOString());
 }
 
+function csvEscape(v: unknown): string {
+  const s = v == null ? "" : String(v);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+async function exportCsvDownload(filename: string, header: string[], rows: (string | number | boolean | null | undefined)[][]): Promise<void> {
+  const lines = [header.map(csvEscape).join(","), ...rows.map((r) => r.map(csvEscape).join(","))];
+  const body = "\uFEFF" + lines.join("\r\n");
+  if (Platform.OS === "web" && typeof document !== "undefined") {
+    const blob = new Blob([body], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+  const msg = body.length > 120000 ? body.slice(0, 120000) + "\n…(truncated for share sheet)" : body;
+  await Share.share({ title: filename, message: msg });
+}
+
 const ACTION_LABEL: Record<string, string> = {
   VERIFY_USER_APPROVE:    "Account Approved",
   VERIFY_USER_REJECT:     "Account Rejected",
@@ -101,6 +127,20 @@ const ACTION_LABEL: Record<string, string> = {
   VERIFY_JOB_APPROVE:     "Job Approved",
   VERIFY_JOB_REJECT:      "Job Rejected",
 };
+
+function verificationCsvFields(r: ReportRow) {
+  const isDoc = (r.action || "").includes("DOCUMENT");
+  const isUser = (r.action || "").includes("USER") && !isDoc;
+  const isJob = (r.action || "").includes("JOB");
+  const subject = isJob ? r.job_owner_name : isUser ? r.target_user_name : r.doc_owner_name;
+  const subEmail = isJob ? r.job_owner_email : isUser ? r.target_user_email : r.doc_owner_email;
+  const detailLine = isJob
+    ? `Job: ${r.target_job_title ?? "—"}`
+    : isUser
+      ? `Account ${r.target_verification_status ?? "—"}`
+      : `${r.target_document_type ?? "—"}`;
+  return { subject, subEmail, detailLine };
+}
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   Verified:  { bg: theme.color.successSoft,  text: theme.color.success },
@@ -164,15 +204,30 @@ export default function Reports() {
   const [hireSort, setHireSort]       = useState<"recent" | "oldest" | "parent" | "helper" | "job">("recent");
   const [hireSigFilter, setHireSigFilter] = useState<"all" | "signed" | "pending">("all");
 
+  const [repMeta, setRepMeta] = useState<{ total?: number; limit?: number; offset?: number } | null>(null);
+  const [lastFetchedVerification, setLastFetchedVerification] = useState<string | null>(null);
+  const [lastFetchedHires, setLastFetchedHires] = useState<string | null>(null);
+  const [reportDateFrom, setReportDateFrom] = useState("");
+  const [reportDateTo, setReportDateTo] = useState("");
+
   const fetchReports = async () => {
     try {
       setLoading(true);
-      const res  = await fetch(`${API_URL}/peso/get_verification_reports.php?limit=250`);
+      const params = new URLSearchParams({ limit: "500", offset: "0" });
+      const df = reportDateFrom.trim();
+      const dt = reportDateTo.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(df)) params.set("from", df);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dt)) params.set("to", dt);
+      const rawUrl = `${API_URL}/peso/get_verification_reports.php?${params.toString()}`;
+      const res = await fetch(await withPesoStaffQuery(rawUrl));
       const text = await res.text();
       const data = JSON.parse(text);
       setRows(data.success ? (data.data || []) : []);
+      setRepMeta(data.success ? data.meta ?? null : null);
+      setLastFetchedVerification(data.success ? new Date().toLocaleString() : null);
     } catch {
       setRows([]);
+      setRepMeta(null);
     } finally {
       setLoading(false);
     }
@@ -183,11 +238,13 @@ export default function Reports() {
   const fetchHires = useCallback(async () => {
     try {
       setHireLoading(true);
-      const res = await fetch(pesoHireReportsUrl());
+      const res = await fetch(await withPesoStaffQuery(pesoHireReportsUrl()));
       const data = await res.json();
       setHireRows(data.success && Array.isArray(data.hires) ? data.hires : []);
+      setLastFetchedHires(data.success ? new Date().toLocaleString() : null);
     } catch {
       setHireRows([]);
+      setLastFetchedHires(null);
     } finally {
       setHireLoading(false);
     }
@@ -267,6 +324,71 @@ export default function Reports() {
   const totalApproved = filtered.filter((r) => r.action.endsWith("APPROVE")).length;
   const totalRejected = filtered.filter((r) => r.action.endsWith("REJECT")).length;
 
+  const dateFilterInvalid =
+    (reportDateFrom.trim() !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(reportDateFrom.trim())) ||
+    (reportDateTo.trim() !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(reportDateTo.trim()));
+
+  const exportVerificationCsv = useCallback(() => {
+    const header = [
+      "created_at",
+      "action_code",
+      "action_label",
+      "module",
+      "verified_by_name",
+      "verified_by_email",
+      "subject",
+      "subject_email",
+      "detail",
+    ];
+    const dataRows = filtered.map((r) => {
+      const { subject, subEmail, detailLine } = verificationCsvFields(r);
+      return [
+        r.created_at,
+        r.action,
+        ACTION_LABEL[r.action] ?? r.action,
+        r.module,
+        r.verified_by_name,
+        r.verified_by_email,
+        subject ?? "",
+        subEmail ?? "",
+        detailLine,
+      ];
+    });
+    void exportCsvDownload(`peso-verification-audit-${Date.now()}.csv`, header, dataRows);
+  }, [filtered]);
+
+  const exportHiresCsv = useCallback(() => {
+    const header = [
+      "application_id",
+      "job_title",
+      "parent_name",
+      "parent_email",
+      "helper_name",
+      "helper_email",
+      "application_status",
+      "fully_signed",
+      "employer_signed_at",
+      "helper_signed_at",
+      "contract_generated_at",
+      "pdf_url",
+    ];
+    const dataRows = filteredHires.map((r) => [
+      r.application_id,
+      r.job_title,
+      r.parent_name,
+      r.parent_email ?? "",
+      r.helper_name,
+      r.helper_email ?? "",
+      r.application_status,
+      r.fully_signed,
+      r.employer_signed_at ?? "",
+      r.helper_signed_at ?? "",
+      r.contract_generated_at ?? "",
+      r.pdf_url ?? "",
+    ]);
+    void exportCsvDownload(`peso-hires-${Date.now()}.csv`, header, dataRows);
+  }, [filteredHires]);
+
   const hireFullySigned = hireRows.filter((r) => r.fully_signed).length;
   const hirePendingSig = hireRows.filter((r) => !r.fully_signed).length;
 
@@ -275,17 +397,24 @@ export default function Reports() {
 
       {/* ── HEADER ── */}
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1, paddingRight: 12 }}>
           <Text style={styles.pageTitle}>Reports</Text>
           <Text style={styles.pageSubtitle}>
             {reportSection === "verification"
               ? loading
                 ? "Loading…"
-                : `${filtered.length} verification record${filtered.length !== 1 ? "s" : ""}`
+                : `${filtered.length} shown after filters · ${rows.length} loaded${
+                    typeof repMeta?.total === "number" ? ` · ${repMeta.total} in date range` : ""
+                  }`
               : hireLoading
                 ? "Loading…"
-                : `${filteredHires.length} hire${filteredHires.length !== 1 ? "s" : ""} shown`}
+                : `${filteredHires.length} hire${filteredHires.length !== 1 ? "s" : ""} shown after filters`}
           </Text>
+          {(reportSection === "verification" ? lastFetchedVerification : lastFetchedHires) ? (
+            <Text style={styles.lastFetched}>
+              Last fetched: {reportSection === "verification" ? lastFetchedVerification : lastFetchedHires}
+            </Text>
+          ) : null}
         </View>
         <TouchableOpacity
           style={styles.refreshBtn}
@@ -352,6 +481,50 @@ export default function Reports() {
           </View>
         </View>
       )}
+
+      <View style={styles.dateExportSection}>
+        <Text style={styles.dateHint}>Verification audit: filter server rows by date (YYYY-MM-DD)</Text>
+        <View style={styles.dateInputsRow}>
+          <TextInput
+            value={reportDateFrom}
+            onChangeText={setReportDateFrom}
+            placeholder="From"
+            placeholderTextColor={theme.color.subtle}
+            style={styles.dateInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TextInput
+            value={reportDateTo}
+            onChangeText={setReportDateTo}
+            placeholder="To"
+            placeholderTextColor={theme.color.subtle}
+            style={styles.dateInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity
+            style={[styles.smallBtn, dateFilterInvalid && styles.smallBtnDisabled]}
+            onPress={() => void fetchReports()}
+            disabled={dateFilterInvalid}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.smallBtnText}>Apply range</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.exportCsvBtn, filtered.length === 0 && styles.smallBtnDisabled]}
+            onPress={() => void exportVerificationCsv()}
+            disabled={filtered.length === 0}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="download-outline" size={18} color="#fff" />
+            <Text style={styles.exportCsvBtnText}>Export CSV</Text>
+          </TouchableOpacity>
+        </View>
+        {dateFilterInvalid ? (
+          <Text style={styles.dateWarn}>Use YYYY-MM-DD or leave fields blank.</Text>
+        ) : null}
+      </View>
 
       {/* ── TOOLBAR ── */}
       <View style={styles.toolbar}>
@@ -604,6 +777,18 @@ export default function Reports() {
                 </View>
               </View>
             </View>
+
+            <View style={styles.hiresExportRow}>
+              <TouchableOpacity
+                style={[styles.exportCsvBtn, filteredHires.length === 0 && styles.smallBtnDisabled]}
+                onPress={() => void exportHiresCsv()}
+                disabled={filteredHires.length === 0}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="download-outline" size={18} color="#fff" />
+                <Text style={styles.exportCsvBtnText}>Export CSV</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {hireLoading ? (
@@ -785,6 +970,49 @@ const styles = StyleSheet.create({
   },
   pageTitle: { fontSize: 26, fontWeight: "900", color: theme.color.ink, letterSpacing: -0.4 },
   pageSubtitle: { fontSize: 13, color: theme.color.muted, fontWeight: "600", marginTop: 3 },
+  lastFetched: { fontSize: 11, color: theme.color.subtle, fontWeight: "600", marginTop: 4 },
+
+  dateExportSection: { paddingHorizontal: 24, marginBottom: 12, gap: 8 },
+  dateHint: { fontSize: 12, color: theme.color.muted, fontWeight: "600" },
+  dateInputsRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 },
+  dateInput: {
+    minWidth: 110,
+    flexGrow: 1,
+    maxWidth: 160,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    backgroundColor: theme.color.surfaceElevated,
+    color: theme.color.ink,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  dateWarn: { fontSize: 12, color: theme.color.danger, fontWeight: "700" },
+  smallBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: theme.color.surfaceElevated,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+  },
+  smallBtnDisabled: { opacity: 0.45 },
+  smallBtnText: { fontSize: 13, fontWeight: "800", color: theme.color.ink },
+  exportCsvBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: theme.color.peso,
+    ...theme.shadow.nav,
+  },
+  exportCsvBtnText: { color: "#fff", fontWeight: "800", fontSize: 13 },
+  hiresExportRow: { marginTop: 12 },
+
   refreshBtn: {
     flexDirection: "row",
     alignItems: "center",

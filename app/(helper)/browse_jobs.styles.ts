@@ -125,6 +125,7 @@ export function createHelperBrowseJobsStyles(c: ThemeColor) {
     listDesktop: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 60 },
     mobileCardWrap: { marginBottom: 0 },
     desktopCardWrap: { flex: 1, maxWidth: '33.333%', paddingHorizontal: 8, marginBottom: 8 },
+    desktopParentWrap: { flex: 1, maxWidth: '50%', paddingHorizontal: 8, marginBottom: 4 },
     colWrapper: { marginBottom: 8 },
 
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 48, marginTop: 20 },

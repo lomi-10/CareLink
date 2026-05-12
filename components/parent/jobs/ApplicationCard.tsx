@@ -45,7 +45,9 @@ export function ApplicationCard({
       case 'hired': return { color: '#059669', bg: '#D1FAE5', icon: 'checkmark-done', label: 'Hired' };
       case 'Rejected': return { color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle', label: 'Rejected' };
       case 'auto_rejected': return { color: '#6B7280', bg: '#F3F4F6', icon: 'briefcase', label: 'Closed (other role)' };
-      case 'Pending Termination': return { color: '#B45309', bg: '#FEF3C7', icon: 'document-text', label: 'Ending contract' };
+      case 'Pending Termination':
+      case 'termination_pending':
+        return { color: '#B45309', bg: '#FEF3C7', icon: 'document-text', label: 'Ending contract' };
       case 'Withdrawn': return { color: '#6B7280', bg: '#F3F4F6', icon: 'arrow-undo', label: 'Withdrawn' };
       default: return { color: '#6B7280', bg: '#F3F4F6', icon: 'information-circle', label: application.status };
     }

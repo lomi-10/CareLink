@@ -11,3 +11,7 @@ export { InterviewModal } from './InterviewModal';
 export type { InterviewInfo } from './InterviewModal';
 export { LocationSearchInput } from './LocationSearchInput';
 export type { LocationResult } from './LocationSearchInput';
+export { SubmitComplaintModal } from './SubmitComplaintModal';
+export { PlacementReviewModal } from './PlacementReviewModal';
+export { PendingPlacementReviewsBanner } from './PendingPlacementReviewsBanner';
+export { PostPlacementRenewalCard } from './PostPlacementRenewalCard';

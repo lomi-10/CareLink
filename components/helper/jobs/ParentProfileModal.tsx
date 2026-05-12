@@ -16,11 +16,17 @@ import {
 import API_URL from '@/constants/api';
 import { theme } from '@/constants/theme';
 import { formatParentHouseholdType } from '@/constants/parentHousehold';
+import type { JobPost } from '@/hooks/helper';
+import { CompactJobCard } from './CompactJobCard';
 
 interface ParentProfileModalProps {
   visible: boolean;
   onClose: () => void;
   parentData: any; // job object — used for parent_id
+  /** When set (e.g. from Browse Jobs), lists open roles for this employer */
+  browseJobs?: JobPost[];
+  onOpenJob?: (job: JobPost) => void;
+  onToggleSaveJob?: (jobId: string) => void;
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -84,7 +90,14 @@ function StarRating({ rating }: { rating: number }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function ParentProfileModal({ visible, onClose, parentData }: ParentProfileModalProps) {
+export function ParentProfileModal({
+  visible,
+  onClose,
+  parentData,
+  browseJobs,
+  onOpenJob,
+  onToggleSaveJob,
+}: ParentProfileModalProps) {
   const [data,       setData]       = useState<any>(null);
   const [loading,    setLoading]    = useState(false);
   const [docViewing, setDocViewing] = useState<{ title: string; url: string } | null>(null);
@@ -124,6 +137,11 @@ export function ParentProfileModal({ visible, onClose, parentData }: ParentProfi
   const avgRating  = data?.avg_rating  ?? 0;
   const reviewCount= data?.review_count ?? 0;
   const activeJobs = data?.active_jobs  ?? 0;
+  const recentReviews = (data?.recent_reviews ?? []) as {
+    rating: number;
+    review_text: string;
+    reviewer_name: string;
+  }[];
 
   const name         = user.first_name ? `${user.first_name} ${user.last_name}` : (parentData.parent_name ?? 'Employer');
   const profileImage = profile.profile_image ?? null;
@@ -202,6 +220,20 @@ export function ParentProfileModal({ visible, onClose, parentData }: ParentProfi
                     )}
                   </View>
                 </View>
+
+                {/* ── Open roles (browse context) ── */}
+                {browseJobs && browseJobs.length > 0 && (
+                  <Section icon="briefcase-outline" title="Open roles">
+                    {browseJobs.map((job) => (
+                      <CompactJobCard
+                        key={job.job_post_id}
+                        job={job}
+                        onPress={() => onOpenJob?.(job)}
+                        onToggleSave={onToggleSaveJob}
+                      />
+                    ))}
+                  </Section>
+                )}
 
                 {/* ── Bio ── */}
                 {profile.bio ? (
@@ -335,6 +367,31 @@ export function ParentProfileModal({ visible, onClose, parentData }: ParentProfi
                   </Section>
                 )}
 
+                {/* ── Written reviews ── */}
+                {recentReviews.length > 0 ? (
+                  <Section icon="chatbubbles-outline" title="What helpers say">
+                    {recentReviews.map((r, i) => (
+                      <View key={`${r.reviewer_name}-${i}`} style={s.reviewCard}>
+                        <View style={s.reviewHead}>
+                          <Text style={s.reviewName} numberOfLines={1}>
+                            {r.reviewer_name}
+                          </Text>
+                          <StarRating rating={Number(r.rating) || 0} />
+                        </View>
+                        {r.review_text ? (
+                          <Text style={s.reviewBody}>{r.review_text}</Text>
+                        ) : (
+                          <Text style={s.reviewMeta}>No written comment.</Text>
+                        )}
+                      </View>
+                    ))}
+                  </Section>
+                ) : reviewCount > 0 ? (
+                  <Section icon="chatbubbles-outline" title="What helpers say">
+                    <Text style={s.reviewMeta}>Ratings only — no written reviews to show yet.</Text>
+                  </Section>
+                ) : null}
+
                 {/* ── Member since ── */}
                 <View style={s.metaFooter}>
                   <Ionicons name="calendar-outline" size={13} color={theme.color.subtle} />
@@ -462,4 +519,17 @@ const s = StyleSheet.create({
   docViewerTitle:  { color: '#fff', fontSize: 17, fontWeight: '700', flex: 1 },
   docViewerClose:  { padding: 8, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 16 },
   docViewerImage:  { flex: 1, marginHorizontal: 16, marginBottom: 40 },
+
+  reviewCard: {
+    backgroundColor: theme.color.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.color.line,
+    padding: 12,
+    marginBottom: 8,
+  },
+  reviewHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 },
+  reviewName: { fontSize: 13, fontWeight: '800', color: theme.color.ink, flex: 1 },
+  reviewBody: { fontSize: 13, lineHeight: 19, color: theme.color.inkMuted },
+  reviewMeta: { fontSize: 12, color: theme.color.muted, fontStyle: 'italic' },
 });

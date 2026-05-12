@@ -56,6 +56,22 @@ function createCompactJobCardStyles(c: ThemeColor) {
       color: c.muted,
       textTransform: 'uppercase',
     },
+    matchBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      backgroundColor: c.warningSoft,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 5,
+      borderWidth: 1,
+      borderColor: c.warning + '44',
+    },
+    matchBadgeText: {
+      fontSize: 9,
+      fontWeight: '900',
+      color: c.warning,
+    },
 
     title: {
       fontSize: 13,
@@ -103,6 +119,7 @@ export function CompactJobCard({ job, onPress, onToggleSave }: CompactJobCardPro
 
   const displayCategory =
     job.category_name || (job.categories && job.categories[0]) || 'General';
+  const matchPct = Math.min(100, Math.max(0, Math.round(Number(job.match_score ?? 0))));
 
   return (
     <TouchableOpacity style={s.container} onPress={onPress} activeOpacity={0.9}>
@@ -130,6 +147,10 @@ export function CompactJobCard({ job, onPress, onToggleSave }: CompactJobCardPro
           <Text style={s.catBadgeText} numberOfLines={1}>
             {displayCategory}
           </Text>
+        </View>
+        <View style={s.matchBadge}>
+          <Ionicons name="pulse-outline" size={10} color={c.warning} />
+          <Text style={s.matchBadgeText}>{matchPct}% match</Text>
         </View>
       </View>
 

@@ -16,6 +16,7 @@ import { useHelperTheme } from '@/contexts/HelperThemeContext';
 import { applicationContractPdfUrl, applicationTerminationRecordUrl } from '@/constants/applications';
 import type { ActiveHire } from '@/contexts/HelperWorkModeContext';
 import { fetchWeekAttendance, postAttendance, ymdLocal, type WeekDayAttendance } from '@/lib/helperWorkApi';
+import { noticePeriodStillActive } from '@/lib/terminationApi';
 import { fetchApplicationTasks, type ApplicationTask } from '@/lib/applicationTasksApi';
 import { fetchAttendanceToday, formatAttendanceTime, type AttendanceToday } from '@/lib/attendanceApi';
 import { attendanceDotBackground } from '@/lib/attendanceUi';
@@ -49,7 +50,11 @@ export function WorkModeDashboard({
   const [checkoutWarnVisible, setCheckoutWarnVisible] = useState(false);
   const [checkoutWarnMessage, setCheckoutWarnMessage] = useState('');
 
-  const placementTerminationPending = activeHire.placement_status === 'termination_pending';
+  const placementTerminationPending = noticePeriodStillActive(
+    activeHire.placement_status === 'termination_pending',
+    activeHire.termination_last_day,
+    ymdLocal(),
+  );
   const lastDay = activeHire.termination_last_day;
 
   const load = useCallback(async () => {
