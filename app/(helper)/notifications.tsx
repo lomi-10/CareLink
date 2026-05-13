@@ -22,6 +22,7 @@ import { useHelperTheme } from '@/contexts/HelperThemeContext';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { useAuth } from '@/hooks/shared';
 import type { Notification } from '@/hooks/shared';
+import { getHelperNotificationRoute } from '@/utils/notification-routes';
 
 import { createHelperNotificationsStyles } from './notifications.styles';
 
@@ -115,7 +116,16 @@ function NotifContent({
   c: ThemeColor;
   typeCfg: ReturnType<typeof buildNotificationTypeConfig>;
 }) {
+  const router = useRouter();
   const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } = useNotifications('helper');
+
+  const handleNotificationPress = (item: Notification) => {
+    if (!item.is_read) markOneRead(item.notification_id);
+    const route = getHelperNotificationRoute(item);
+    if (route) {
+      router.push(route as any);
+    }
+  };
 
   return (
     <View style={s.panel}>
@@ -158,9 +168,7 @@ function NotifContent({
               c={c}
               typeCfg={typeCfg}
               accent={accent}
-              onPress={() => {
-                if (!item.is_read) markOneRead(item.notification_id);
-              }}
+              onPress={() => handleNotificationPress(item)}
             />
           )}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={accent} />}

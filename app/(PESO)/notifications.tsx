@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "@/constants/theme";
 import { useNotifications } from "@/hooks/shared";
 import type { Notification } from "@/hooks/shared";
+import { getPesoNotificationRoute } from "@/utils/notification-routes";
 
 import { styles as s } from "./notifications.styles";
 
@@ -112,15 +113,9 @@ function NotifContent({ accent }: { accent: string }) {
 
   const onItemPress = (item: Notification) => {
     if (!item.is_read) markOneRead(item.notification_id);
-    if (item.type === "peso_queue_user" && item.ref_id) {
-      router.push({
-        pathname: "/(peso)/view_user_profile",
-        params: { user_id: String(item.ref_id) },
-      } as never);
-      return;
-    }
-    if (item.type === "peso_queue_job") {
-      router.push("/(peso)/job_verification" as never);
+    const route = getPesoNotificationRoute(item);
+    if (route) {
+      router.push(route as never);
     }
   };
 

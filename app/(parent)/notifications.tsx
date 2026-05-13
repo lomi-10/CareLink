@@ -13,6 +13,7 @@ import { useParentTheme } from '@/contexts/ParentThemeContext';
 import { Sidebar, ParentTabBar } from '@/components/parent/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import type { Notification } from '@/hooks/shared';
+import { getParentNotificationRoute } from '@/utils/notification-routes';
 
 import { createParentNotificationsStyles } from './notifications.styles';
 
@@ -101,7 +102,16 @@ function NotifContent({
   styles: ReturnType<typeof createParentNotificationsStyles>;
   palette: Record<string, IconCfg>;
 }) {
+  const router = useRouter();
   const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } = useNotifications('parent');
+
+  const handleNotificationPress = (item: Notification) => {
+    if (!item.is_read) markOneRead(item.notification_id);
+    const route = getParentNotificationRoute(item);
+    if (route) {
+      router.push(route as any);
+    }
+  };
 
   return (
     <View style={st.panel}>
@@ -143,7 +153,7 @@ function NotifContent({
               accent={accent}
               styles={st}
               palette={palette}
-              onPress={() => { if (!item.is_read) markOneRead(item.notification_id); }}
+              onPress={() => handleNotificationPress(item)}
             />
           )}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={accent} />}
