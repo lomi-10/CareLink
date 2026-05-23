@@ -2,18 +2,31 @@ const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
 const { withNativeWind } = require('nativewind/metro');
 
-// Metro can resolve tslib to an ESM build where `import tslib from "tslib"` has no
-// default export, causing: Cannot destructure property '__extends' of 'tslib.default' as it is undefined.
-// Force the classic CommonJS entry so `__importDefault` / interop works.
-const TSLIB_CJS = path.resolve(__dirname, 'node_modules/tslib/tslib.js');
-
+// 1. Get the base Expo config
 const config = getDefaultConfig(__dirname);
 
-const merged = withNativeWind(config, { input: './global.css' });
-merged.resolver = merged.resolver || {};
+// 2. Setup the SVG Transformer logic
+const { transformer, resolver } = config;
 
-const priorResolve = merged.resolver.resolveRequest;
-merged.resolver.resolveRequest = (context, moduleName, platform) => {
+config.transformer = {
+  ...transformer,
+  babelTransformerPath: require.resolve('react-native-svg-transformer/expo'),
+};
+
+config.resolver = {
+  ...resolver,
+  assetExts: resolver.assetExts.filter((ext) => ext !== "svg"),
+  sourceExts: [...resolver.sourceExts, "svg"],
+};
+
+// 3. Wrap with NativeWind
+const mergedConfig = withNativeWind(config, { input: './global.css' });
+
+// 4. Add your custom tslib resolution fix
+const TSLIB_CJS = path.resolve(__dirname, 'node_modules/tslib/tslib.js');
+const priorResolve = mergedConfig.resolver.resolveRequest;
+
+mergedConfig.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'tslib') {
     return { type: 'sourceFile', filePath: TSLIB_CJS };
   }
@@ -23,4 +36,4 @@ merged.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
-module.exports = merged;
+module.exports = mergedConfig;

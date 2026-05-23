@@ -12,8 +12,6 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { DrawerActions } from '@react-navigation/native';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { createHelperProfileStyles } from "./profile.styles";
@@ -43,7 +41,6 @@ import HelperDocumentModal from '@/components/helper/profile/DocumentManagementM
 
 export default function HelperProfile() {
   const router = useRouter();
-  const navigation = useNavigation();
   const { color: c } = useHelperTheme();
   const styles = useMemo(() => createHelperProfileStyles(c), [c]);
 

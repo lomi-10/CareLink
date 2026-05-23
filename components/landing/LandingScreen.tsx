@@ -38,8 +38,8 @@ const {
 const PARENT_COLOR = parent;
 const HELPER_COLOR = helper;
 const ACCENT_WARM = "#F97316";
-const BG_CREAM = "#FAFAF8";
-const BG_HERO = "#F0F4FF";
+const BG_CREAM = "#FDF8F0";
+const BG_HERO = "#FDF3E7";
 
 export function LandingScreen() {
   const router = useRouter();
@@ -57,7 +57,7 @@ export function LandingScreen() {
     ]).start();
   }, []);
 
-  if (Platform.OS === "web") {
+  /*if (Platform.OS === "web") {
     return (
       <View style={styles.webShell}>
         {React.createElement("iframe", {
@@ -67,7 +67,7 @@ export function LandingScreen() {
         })}
       </View>
     );
-  }
+  }*/
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -109,13 +109,13 @@ export function LandingScreen() {
           </View>
 
           <Text style={styles.heroTitle}>
-            Trusted helpers.{"\n"}
-            <Text style={styles.heroTitleAccent}>Supported families.</Text>
+            Fair Work.{"\n"}
+            <Text style={styles.heroTitleAccent}>Trusted Help.</Text>
           </Text>
 
           <Text style={styles.heroSub}>
-            Connect with PESO-verified domestic helpers. Automated DOLE contracts.
-            Full protection for both parties.
+            PESO-verified. DOLE-ready.{"\n"}
+             Built for helpers and families.
           </Text>
 
           {/* ── ROLE CARDS ── */}
@@ -309,14 +309,14 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: 40, flexGrow: 1, backgroundColor: BG_CREAM },
 
   nav: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: BG_CREAM,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.07)",
+    flexDirection: "row",       // children sit side by side
+    alignItems: "center",       // vertically centered
+    justifyContent: "space-between", // logo left, button right
+    paddingHorizontal: 20,      // 20px left and right padding
+    paddingVertical: 14,        // 14px top and bottom padding
+    backgroundColor: BG_CREAM,  // cream background color
+    borderBottomWidth: StyleSheet.hairlineWidth, // very thin line at bottom
+    borderBottomColor: "rgba(0,0,0,0.07)",       // nearly invisible gray
   },
   navBrand: { flexDirection: "row", alignItems: "center", gap: 9 },
   navLogo: { fontSize: 20, fontWeight: "800", color: PARENT_COLOR, letterSpacing: -0.4 },
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
       android: { elevation: 3 },
     }),
   },
-  heroBg: { ...StyleSheet.absoluteFillObject },
+  heroBg: { ...StyleSheet.absoluteFill },
   blobTL: {
     position: "absolute",
     width: 200,

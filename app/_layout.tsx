@@ -1,17 +1,25 @@
+import { CareBotFab } from '@/components/shared/CareBotFab';
+import { createCareLinkNavigationTheme } from '@/constants/careNavigationTheme';
+import { CareBotProvider } from '@/contexts/CareBotContext';
+import {
+    ColorSchemePreferenceProvider,
+    useColorSchemePreference,
+} from '@/contexts/ColorSchemePreferenceContext';
+import {
+    Fredoka_300Light,
+    Fredoka_400Regular,
+    Fredoka_500Medium,
+    Fredoka_600SemiBold,
+    Fredoka_700Bold
+} from '@expo-google-fonts/fredoka';
+import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { ThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
 import React, { useMemo } from 'react';
-import { createCareLinkNavigationTheme } from '@/constants/careNavigationTheme';
-import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import {
-  ColorSchemePreferenceProvider,
-  useColorSchemePreference,
-} from '@/contexts/ColorSchemePreferenceContext';
-import { CareBotProvider } from '@/contexts/CareBotContext';
-import { CareBotFab } from '@/components/shared/CareBotFab';
+import 'react-native-reanimated';
 
 export const unstable_settings = {
   // Fix 1: Change initial route to 'index' (your landing page)
@@ -63,6 +71,18 @@ function RootLayoutInner() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    'Fredoka-Light': Fredoka_300Light,
+    'Fredoka-Regular': Fredoka_400Regular,
+    'Fredoka-Medium': Fredoka_500Medium,
+    'Fredoka-SemiBold': Fredoka_600SemiBold,
+    'Fredoka-Bold': Fredoka_700Bold,
+  });
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ActionSheetProvider>
