@@ -2,14 +2,19 @@
 frontend/node_modules/
 frontend/.expo/
 frontend/dist/
+frontend/.env
 frontend/.env.local
 frontend/.env.*.local
 frontend/web-build/
+frontend/ios/
+frontend/android/
 
 # Backend
 backend/uploads/
 backend/error.log
 backend/vendor/
+.DS_Store
+Thumbs.db
 
 # IDE
 .idea/
@@ -26,3 +31,8 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.log
+
+# Environment variables (NEVER commit these!)
+.env
+.env.local
+.env.*.local

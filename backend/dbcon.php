@@ -1,6 +1,6 @@
 <?php
 // carelink_api/dbcon.php
-// Database connection for Laragon (MySQL)
+// Database connection - works for both Laragon (local) and production (Railway)
 
 // Error handling setup
 ini_set('display_errors', 0);
@@ -11,14 +11,15 @@ ini_set('error_log', __DIR__ . '/error.log');
 // Start output buffering
 ob_start();
 
-// Database configuration for Laragon
-$host = 'localhost';        // Laragon default
-$username = 'root';         // Laragon default
-$password = '';             // Laragon default (empty)
-$database = 'carelink';
+// Load environment variables if available
+$host = getenv('DB_HOST') ?: 'localhost';
+$username = getenv('DB_USERNAME') ?: 'root';
+$password = getenv('DB_PASSWORD') ?: '';
+$database = getenv('DB_DATABASE') ?: 'carelink';
+$port = getenv('DB_PORT') ?: 3306;
 
 // Create connection
-$conn = mysqli_connect($host, $username, $password, $database);
+$conn = mysqli_connect($host, $username, $password, $database, $port);
 
 // Check connection
 if (!$conn) {
