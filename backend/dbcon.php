@@ -11,7 +11,7 @@ ini_set('error_log', __DIR__ . '/error.log');
 // Start output buffering
 ob_start();
 
-// Load environment variables if available
+// Load environment variables if available (PRODUCTION USES THESE!)
 $host = getenv('DB_HOST') ?: 'localhost';
 $username = getenv('DB_USERNAME') ?: 'root';
 $password = getenv('DB_PASSWORD') ?: '';

@@ -68,7 +68,7 @@ New-Item -ItemType SymbolicLink -Path "C:\laragon\www\uploads" -Target "C:\Codin
 
 ### Option 2: Alternatives
 If you don't like Railway/Vercel:
-- **Backend**: Heroku, DigitalOcean App Platform, AWS Elastic Beanstalk
+- **Backend**: Heroku, DigitalOcean App Platzform, AWS Elastic Beanstalk
 - **Frontend**: Netlify, Cloudflare Pages
 - **Storage**: AWS S3, Firebase Storage
 

@@ -16,11 +16,13 @@
 
 
 -- Dumping database structure for carelink
-CREATE DATABASE IF NOT EXISTS `carelink` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
-USE `carelink`;
+DROP DATABASE IF EXISTS `railway`;
+CREATE DATABASE `railway` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+USE `railway`;
 
 -- Dumping structure for table carelink.application_tasks
-CREATE TABLE IF NOT EXISTS `application_tasks` (
+DROP TABLE IF EXISTS `application_tasks`;
+CREATE TABLE `application_tasks` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `application_id` int NOT NULL,
   `created_by` int NOT NULL,
@@ -47,7 +49,8 @@ INSERT INTO `application_tasks` (`id`, `application_id`, `created_by`, `title`, 
 	(1, 3, 2, 'Clean the pets', NULL, NULL, 0, 0, NULL, 'pending', NULL, NULL, '2026-04-19 13:55:59', '2026-04-19 13:55:59');
 
 -- Dumping structure for table carelink.attendance_logs
-CREATE TABLE IF NOT EXISTS `attendance_logs` (
+DROP TABLE IF EXISTS `attendance_logs`;
+CREATE TABLE `attendance_logs` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `application_id` int NOT NULL,
   `helper_id` int NOT NULL,
@@ -76,7 +79,8 @@ INSERT INTO `attendance_logs` (`id`, `application_id`, `helper_id`, `date`, `che
 	(6, 3, 17, '2026-05-06', '2026-05-06 18:13:29', NULL, 'present', NULL, '2026-05-06 10:13:29', '2026-05-06 10:13:29');
 
 -- Dumping structure for table carelink.complaints
-CREATE TABLE IF NOT EXISTS `complaints` (
+DROP TABLE IF EXISTS `complaints`;
+CREATE TABLE `complaints` (
   `complaint_id` int NOT NULL AUTO_INCREMENT,
   `complainant_id` int NOT NULL COMMENT 'Who is filing the complaint',
   `complainant_role` enum('parent','helper') COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Complainant role in CareLink',
@@ -115,7 +119,8 @@ CREATE TABLE IF NOT EXISTS `complaints` (
 -- Dumping data for table carelink.complaints: ~0 rows (approximately)
 
 -- Dumping structure for table carelink.contracts
-CREATE TABLE IF NOT EXISTS `contracts` (
+DROP TABLE IF EXISTS `contracts`;
+CREATE TABLE `contracts` (
   `contract_id` int unsigned NOT NULL AUTO_INCREMENT,
   `application_id` int unsigned NOT NULL,
   `job_post_id` int unsigned NOT NULL,
@@ -143,7 +148,8 @@ INSERT INTO `contracts` (`contract_id`, `application_id`, `job_post_id`, `employ
 	(3, 5, 7, 20, 21, 'contracts/contract_app5_20260428_201613.pdf', 'BK-1-v1', '2026-04-28 20:16:13', '2026-04-29', '2026-10-29', 'Extend Months', NULL, NULL);
 
 -- Dumping structure for table carelink.helper_jobs
-CREATE TABLE IF NOT EXISTS `helper_jobs` (
+DROP TABLE IF EXISTS `helper_jobs`;
+CREATE TABLE `helper_jobs` (
   `hj_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `job_id` int NOT NULL COMMENT 'ref_jobs.job_id - specific role',
@@ -152,7 +158,7 @@ CREATE TABLE IF NOT EXISTS `helper_jobs` (
   KEY `idx_job` (`job_id`),
   CONSTRAINT `fk_hjobs_job` FOREIGN KEY (`job_id`) REFERENCES `ref_jobs` (`job_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_hjobs_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=72 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=74 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table carelink.helper_jobs: ~20 rows (approximately)
 INSERT INTO `helper_jobs` (`hj_id`, `profile_id`, `job_id`) VALUES
@@ -173,14 +179,16 @@ INSERT INTO `helper_jobs` (`hj_id`, `profile_id`, `job_id`) VALUES
 	(62, 1, 15),
 	(45, 3, 1),
 	(44, 3, 2),
-	(65, 4, 8),
+	(73, 4, 8),
 	(68, 5, 1),
 	(69, 5, 2),
 	(71, 6, 1),
-	(70, 6, 2);
+	(70, 6, 2),
+	(72, 9, 10);
 
 -- Dumping structure for table carelink.helper_languages
-CREATE TABLE IF NOT EXISTS `helper_languages` (
+DROP TABLE IF EXISTS `helper_languages`;
+CREATE TABLE `helper_languages` (
   `hl_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `language_id` int NOT NULL,
@@ -189,9 +197,9 @@ CREATE TABLE IF NOT EXISTS `helper_languages` (
   KEY `idx_language` (`language_id`),
   CONSTRAINT `fk_hlang_language` FOREIGN KEY (`language_id`) REFERENCES `ref_languages` (`language_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_hlang_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=95 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.helper_languages: ~15 rows (approximately)
+-- Dumping data for table carelink.helper_languages: ~18 rows (approximately)
 INSERT INTO `helper_languages` (`hl_id`, `profile_id`, `language_id`) VALUES
 	(74, 1, 1),
 	(75, 1, 2),
@@ -200,17 +208,21 @@ INSERT INTO `helper_languages` (`hl_id`, `profile_id`, `language_id`) VALUES
 	(78, 1, 5),
 	(79, 1, 6),
 	(69, 3, 2),
-	(84, 4, 1),
-	(85, 4, 2),
+	(98, 4, 1),
+	(99, 4, 2),
 	(89, 5, 1),
 	(90, 5, 2),
 	(91, 5, 3),
 	(92, 6, 1),
 	(93, 6, 2),
-	(94, 6, 3);
+	(94, 6, 3),
+	(95, 9, 1),
+	(96, 9, 2),
+	(97, 9, 3);
 
 -- Dumping structure for table carelink.helper_profiles
-CREATE TABLE IF NOT EXISTS `helper_profiles` (
+DROP TABLE IF EXISTS `helper_profiles`;
+CREATE TABLE `helper_profiles` (
   `profile_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
   `contact_number` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -233,7 +245,6 @@ CREATE TABLE IF NOT EXISTS `helper_profiles` (
   `work_schedule` enum('Full-time','Part-time','Any') COLLATE utf8mb4_general_ci DEFAULT 'Any' COMMENT 'Hours commitment (college students = Part-time)',
   `expected_salary` decimal(10,2) DEFAULT '6000.00' COMMENT 'Minimum per PESO: ₱6,000',
   `salary_period` enum('Daily','Monthly') COLLATE utf8mb4_general_ci DEFAULT 'Monthly',
-  `availability_status` enum('Available','Employed','Not Available') COLLATE utf8mb4_general_ci DEFAULT 'Available',
   `custom_jobs` text COLLATE utf8mb4_general_ci DEFAULT (_utf8mb4'[]'),
   `custom_skills` text COLLATE utf8mb4_general_ci DEFAULT (_utf8mb4'[]'),
   `verification_status` enum('Unverified','Pending','Verified','Rejected') COLLATE utf8mb4_general_ci DEFAULT 'Unverified',
@@ -248,22 +259,26 @@ CREATE TABLE IF NOT EXISTS `helper_profiles` (
   `rejection_reason` text COLLATE utf8mb4_general_ci,
   PRIMARY KEY (`profile_id`),
   UNIQUE KEY `uk_user_id` (`user_id`),
-  KEY `idx_search` (`municipality`,`availability_status`,`employment_type`,`work_schedule`),
+  KEY `idx_search` (`municipality`,`employment_type`,`work_schedule`),
   KEY `idx_verification` (`verification_status`),
   CONSTRAINT `fk_hprofile_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.helper_profiles: ~6 rows (approximately)
-INSERT INTO `helper_profiles` (`profile_id`, `user_id`, `contact_number`, `profile_image`, `birth_date`, `gender`, `civil_status`, `religion`, `province`, `municipality`, `barangay`, `latitude`, `longitude`, `address`, `landmark`, `bio`, `education_level`, `experience_years`, `employment_type`, `work_schedule`, `expected_salary`, `salary_period`, `availability_status`, `custom_jobs`, `custom_skills`, `verification_status`, `rating_average`, `rating_count`, `created_at`, `updated_at`, `verified_by`, `verified_at`, `rejected_by`, `rejected_at`, `rejection_reason`) VALUES
-	(1, 1, '09396954318', 'http://localhost/carelink_api/uploads/profiles/helper_1_1774364835.jpg', '2002-03-10', 'Male', 'Single', 'Catholic', 'Leyte', 'Palompon', 'Mazawalo', 11.0464299, 124.3860640, 'Mazawalo, Palompon, Leyte', 'Near SM', 'I am good and very very good', 'High School Grad', 0, 'Live-out', 'Part-time', 6000.00, 'Monthly', 'Available', '[]', '[]', 'Verified', 0.00, 0, '2026-03-02 01:44:36', '2026-04-15 17:28:10', NULL, NULL, NULL, NULL, NULL),
-	(2, 14, NULL, NULL, NULL, NULL, 'Single', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'Any', 'Any', 6000.00, 'Monthly', 'Available', '[]', '[]', 'Unverified', 0.00, 0, '2026-03-30 13:46:28', NULL, NULL, NULL, NULL, NULL, NULL),
-	(3, 15, '09999999999', NULL, '2001-10-13', 'Female', 'Single', 'Catholic', 'Leyte', 'Ormoc', 'Punta', NULL, NULL, 'Punta, Ormoc, Leyte', 'near riverside', 'Sample', 'College Grad', 0, 'Any', 'Any', 6000.00, 'Monthly', 'Available', '[]', '[]', 'Verified', 0.00, 0, '2026-04-08 09:09:42', '2026-04-14 15:01:27', 4, '2026-04-14 15:01:27', NULL, NULL, NULL),
-	(4, 17, '09999999999', 'http://localhost/carelink_api/uploads/profiles/helper_17_1776166680.jpg', '2001-10-13', 'Female', 'Single', 'Catholic', 'Cebu', 'Pilar', 'Esperanza', 10.7998654, 124.5364924, 'Esperanza, Pilar, Cebu', 'near riverside', 'Kuan kanang Bio ni kurt russel ardines', 'High School Grad', 100, 'Live-out', 'Part-time', 6000.00, 'Monthly', 'Available', '[]', '[]', 'Verified', 0.00, 0, '2026-04-12 16:27:01', '2026-04-27 04:34:34', 4, '2026-04-14 14:50:11', NULL, NULL, NULL),
-	(5, 18, '09999999999', 'http://localhost/carelink_api/uploads/profiles/helper_18_1777366827.jpg', '2005-12-03', 'Male', 'Single', 'Catholic', 'Cebu', 'Pilar', 'Upper Poblacion', NULL, NULL, 'Upper Poblacion, Pilar, Cebu', 'near municipal hall', 'Im a great Helper', 'College Grad', 2, 'Live-out', 'Part-time', 8000.00, 'Monthly', 'Available', '[]', '[]', 'Verified', 0.00, 0, '2026-04-28 08:56:29', '2026-04-28 10:13:57', 4, '2026-04-28 10:13:57', NULL, NULL, NULL),
-	(6, 21, '09999999', 'http://localhost/carelink_api/uploads/profiles/helper_21_1777375647.jpg', '2007-02-01', 'Female', 'Single', 'Roman Catholic', 'Leyte', 'Isabel', 'Matlang', NULL, NULL, 'Matlang, Isabel, Leyte', 'Near elem school', 'Sample Bio Helper', 'High School Grad', 2, 'Live-in', 'Full-time', 6000.00, 'Monthly', 'Available', '[]', '[]', 'Verified', 0.00, 0, '2026-04-28 11:02:35', '2026-04-28 11:43:35', 22, '2026-04-28 11:43:35', NULL, NULL, NULL);
+-- Dumping data for table carelink.helper_profiles: ~9 rows (approximately)
+INSERT INTO `helper_profiles` (`profile_id`, `user_id`, `contact_number`, `profile_image`, `birth_date`, `gender`, `civil_status`, `religion`, `province`, `municipality`, `barangay`, `latitude`, `longitude`, `address`, `landmark`, `bio`, `education_level`, `experience_years`, `employment_type`, `work_schedule`, `expected_salary`, `salary_period`, `custom_jobs`, `custom_skills`, `verification_status`, `rating_average`, `rating_count`, `created_at`, `updated_at`, `verified_by`, `verified_at`, `rejected_by`, `rejected_at`, `rejection_reason`) VALUES
+	(1, 1, '09396954318', 'http://localhost/carelink_api/uploads/profiles/helper_1_1774364835.jpg', '2002-03-10', 'Male', 'Single', 'Catholic', 'Leyte', 'Palompon', 'Mazawalo', 11.0464299, 124.3860640, 'Mazawalo, Palompon, Leyte', 'Near SM', 'I am good and very very good', 'High School Grad', 0, 'Live-out', 'Part-time', 6000.00, 'Monthly', '[]', '[]', 'Verified', 0.00, 0, '2026-03-02 01:44:36', '2026-04-15 17:28:10', NULL, NULL, NULL, NULL, NULL),
+	(2, 14, NULL, NULL, NULL, NULL, 'Single', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'Any', 'Any', 6000.00, 'Monthly', '[]', '[]', 'Unverified', 0.00, 0, '2026-03-30 13:46:28', NULL, NULL, NULL, NULL, NULL, NULL),
+	(3, 15, '09999999999', NULL, '2001-10-13', 'Female', 'Single', 'Catholic', 'Leyte', 'Ormoc', 'Punta', NULL, NULL, 'Punta, Ormoc, Leyte', 'near riverside', 'Sample', 'College Grad', 0, 'Any', 'Any', 6000.00, 'Monthly', '[]', '[]', 'Verified', 0.00, 0, '2026-04-08 09:09:42', '2026-04-14 15:01:27', 4, '2026-04-14 15:01:27', NULL, NULL, NULL),
+	(4, 17, '09999999999', 'http://localhost/carelink_api/uploads/profiles/helper_17_1776166680.jpg', '2001-10-13', 'Female', 'Single', 'Catholic', 'Cebu', 'Pilar', 'Esperanza', 10.7998654, 124.5364924, 'Esperanza, Pilar, Cebu', 'near riverside', 'Kuan kanang Bio ni kurt russel ardines', 'High School Grad', 100, 'Live-out', 'Part-time', 6000.00, 'Monthly', '[]', '[]', 'Verified', 0.00, 0, '2026-04-12 16:27:01', '2026-05-25 18:07:46', 4, '2026-04-14 14:50:11', NULL, NULL, NULL),
+	(5, 18, '09999999999', 'http://localhost/carelink_api/uploads/profiles/helper_18_1777366827.jpg', '2005-12-03', 'Male', 'Single', 'Catholic', 'Cebu', 'Pilar', 'Upper Poblacion', NULL, NULL, 'Upper Poblacion, Pilar, Cebu', 'near municipal hall', 'Im a great Helper', 'College Grad', 2, 'Live-out', 'Part-time', 8000.00, 'Monthly', '[]', '[]', 'Verified', 0.00, 0, '2026-04-28 08:56:29', '2026-04-28 10:13:57', 4, '2026-04-28 10:13:57', NULL, NULL, NULL),
+	(6, 21, '09999999', 'http://localhost/carelink_api/uploads/profiles/helper_21_1777375647.jpg', '2007-02-01', 'Female', 'Single', 'Roman Catholic', 'Leyte', 'Isabel', 'Matlang', NULL, NULL, 'Matlang, Isabel, Leyte', 'Near elem school', 'Sample Bio Helper', 'High School Grad', 2, 'Live-in', 'Full-time', 6000.00, 'Monthly', '[]', '[]', 'Verified', 0.00, 0, '2026-04-28 11:02:35', '2026-04-28 11:43:35', 22, '2026-04-28 11:43:35', NULL, NULL, NULL),
+	(7, 23, NULL, NULL, NULL, NULL, 'Single', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'Any', 'Any', 6000.00, 'Monthly', '[]', '[]', 'Unverified', 0.00, 0, '2026-05-11 06:48:14', NULL, NULL, NULL, NULL, NULL, NULL),
+	(8, 24, NULL, NULL, NULL, NULL, 'Single', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'Any', 'Any', 6000.00, 'Monthly', '[]', '[]', 'Unverified', 0.00, 0, '2026-05-11 06:49:24', NULL, NULL, NULL, NULL, NULL, NULL),
+	(9, 26, '099999999', 'http://localhost/carelink_api/uploads/profiles/helper_26_1778483681.jpg', '2002-12-11', 'Male', 'Single', 'Catholic', 'Leyte', 'Merida', 'Poblacion', NULL, NULL, 'Poblacion, Merida, Leyte', 'near ivan\'s bakeshop', 'Labandera in your hood', 'High School Grad', 4, 'Live-out', 'Full-time', 6000.00, 'Monthly', '[]', '[]', 'Verified', 0.00, 0, '2026-05-11 06:58:56', '2026-05-11 07:50:03', 22, '2026-05-11 07:50:03', NULL, NULL, NULL);
 
 -- Dumping structure for table carelink.helper_skills
-CREATE TABLE IF NOT EXISTS `helper_skills` (
+DROP TABLE IF EXISTS `helper_skills`;
+CREATE TABLE `helper_skills` (
   `hs_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `skill_id` int NOT NULL,
@@ -274,7 +289,7 @@ CREATE TABLE IF NOT EXISTS `helper_skills` (
   KEY `idx_skill` (`skill_id`),
   CONSTRAINT `fk_hskills_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_hskills_skill` FOREIGN KEY (`skill_id`) REFERENCES `ref_skills` (`skill_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=54 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table carelink.helper_skills: ~18 rows (approximately)
 INSERT INTO `helper_skills` (`hs_id`, `profile_id`, `skill_id`, `proficiency_level`, `years_experience`) VALUES
@@ -287,7 +302,6 @@ INSERT INTO `helper_skills` (`hs_id`, `profile_id`, `skill_id`, `proficiency_lev
 	(34, 1, 5, 'Intermediate', 0),
 	(35, 1, 6, 'Intermediate', 0),
 	(36, 1, 7, 'Intermediate', 0),
-	(39, 4, 14, 'Intermediate', 0),
 	(44, 5, 1, 'Intermediate', 0),
 	(45, 5, 2, 'Intermediate', 0),
 	(46, 5, 3, 'Intermediate', 0),
@@ -295,10 +309,13 @@ INSERT INTO `helper_skills` (`hs_id`, `profile_id`, `skill_id`, `proficiency_lev
 	(48, 6, 1, 'Intermediate', 0),
 	(49, 6, 2, 'Intermediate', 0),
 	(50, 6, 3, 'Intermediate', 0),
-	(51, 6, 4, 'Intermediate', 0);
+	(51, 6, 4, 'Intermediate', 0),
+	(52, 9, 16, 'Intermediate', 0),
+	(53, 4, 14, 'Intermediate', 0);
 
 -- Dumping structure for table carelink.helper_work_history
-CREATE TABLE IF NOT EXISTS `helper_work_history` (
+DROP TABLE IF EXISTS `helper_work_history`;
+CREATE TABLE `helper_work_history` (
   `history_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `employer_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
@@ -318,7 +335,8 @@ CREATE TABLE IF NOT EXISTS `helper_work_history` (
 -- Dumping data for table carelink.helper_work_history: ~0 rows (approximately)
 
 -- Dumping structure for table carelink.interview_schedules
-CREATE TABLE IF NOT EXISTS `interview_schedules` (
+DROP TABLE IF EXISTS `interview_schedules`;
+CREATE TABLE `interview_schedules` (
   `interview_id` int NOT NULL AUTO_INCREMENT,
   `application_id` int NOT NULL,
   `interview_date` datetime NOT NULL,
@@ -334,14 +352,16 @@ CREATE TABLE IF NOT EXISTS `interview_schedules` (
   PRIMARY KEY (`interview_id`),
   KEY `idx_application` (`application_id`),
   CONSTRAINT `fk_isched_application` FOREIGN KEY (`application_id`) REFERENCES `job_applications` (`application_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table carelink.interview_schedules: ~0 rows (approximately)
 INSERT INTO `interview_schedules` (`interview_id`, `application_id`, `interview_date`, `interview_type`, `location_or_link`, `parent_confirmed`, `helper_confirmed`, `status`, `notes`, `result`, `created_at`, `updated_at`) VALUES
-	(1, 4, '2026-04-29 10:29:33', 'In-person', 'ormoc city plaza', 1, 0, 'Scheduled', 'Meet in there in time', 'Pending', '2026-04-28 10:30:05', NULL);
+	(1, 4, '2026-04-29 10:29:33', 'In-person', 'ormoc city plaza', 1, 0, 'Scheduled', 'Meet in there in time', 'Pending', '2026-04-28 10:30:05', NULL),
+	(2, 6, '2026-05-12 07:42:25', 'In-person', 'Ormoc Plaza', 1, 0, 'Scheduled', '', 'Pending', '2026-05-11 07:42:41', NULL);
 
 -- Dumping structure for table carelink.job_applications
-CREATE TABLE IF NOT EXISTS `job_applications` (
+DROP TABLE IF EXISTS `job_applications`;
+CREATE TABLE `job_applications` (
   `application_id` int NOT NULL AUTO_INCREMENT,
   `job_post_id` int NOT NULL,
   `helper_id` int NOT NULL COMMENT 'users.user_id of helper',
@@ -369,18 +389,23 @@ CREATE TABLE IF NOT EXISTS `job_applications` (
   CONSTRAINT `fk_japps_helper` FOREIGN KEY (`helper_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_japps_job` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_japps_term_initiator` FOREIGN KEY (`termination_initiated_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.job_applications: ~5 rows (approximately)
+-- Dumping data for table carelink.job_applications: ~7 rows (approximately)
 INSERT INTO `job_applications` (`application_id`, `job_post_id`, `helper_id`, `cover_letter`, `status`, `parent_notes`, `applied_at`, `reviewed_at`, `updated_at`, `employer_signed_at`, `helper_signed_at`, `termination_initiated_by`, `contract_generated_at`, `leave_days_used`, `termination_reason`, `termination_note`, `termination_notice_date`, `termination_last_day`) VALUES
 	(1, 2, 1, 'xhSXSxsDWBJHBDWBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', 'Pending', NULL, '2026-04-08 04:18:16', '2026-04-08 05:43:06', '2026-04-08 05:50:33', NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL),
 	(2, 5, 17, 'hvhhfhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh', 'auto_rejected', 'Closed automatically: employer is proceeding with another of your applications with them.', '2026-04-14 17:59:35', '2026-04-18 06:05:54', '2026-04-18 06:05:54', NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL),
 	(3, 3, 17, 'nkjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj', 'termination_pending', NULL, '2026-04-16 16:55:49', '2026-04-18 06:06:35', '2026-04-28 03:16:18', '2026-04-18 14:06:05', '2026-04-18 14:06:35', 17, '2026-04-18 14:05:54', 0, 'mutual_agreement', '', '2026-04-28', '2026-04-28'),
 	(4, 6, 18, 'my skills and expertise perfectly match your job description', 'hired', NULL, '2026-04-28 10:27:59', '2026-04-28 10:33:52', '2026-04-28 10:33:52', '2026-04-28 18:33:23', '2026-04-28 18:33:52', NULL, '2026-04-28 18:33:10', 0, NULL, NULL, NULL, NULL),
-	(5, 7, 21, 'SampleSampleSampleSampleSampleSampleSampleSampleSampleSample', 'hired', NULL, '2026-04-28 12:06:03', '2026-04-28 12:23:19', '2026-04-28 12:23:19', '2026-04-28 20:17:35', '2026-04-28 20:23:19', NULL, '2026-04-28 20:16:13', 0, NULL, NULL, NULL, NULL);
+	(5, 7, 21, 'SampleSampleSampleSampleSampleSampleSampleSampleSampleSample', 'hired', NULL, '2026-04-28 12:06:03', '2026-04-28 12:23:19', '2026-04-28 12:23:19', '2026-04-28 20:17:35', '2026-04-28 20:23:19', NULL, '2026-04-28 20:16:13', 0, NULL, NULL, NULL, NULL),
+	(6, 8, 1, 'i believe my skills matches in your job description', 'Interview Scheduled', NULL, '2026-05-11 07:37:57', '2026-05-11 07:41:48', '2026-05-11 07:42:41', NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL),
+	(7, 9, 26, 'Sample LetterSample LetterSample LetterSample Letter', 'Shortlisted', NULL, '2026-05-11 08:07:24', '2026-05-11 08:12:04', '2026-05-11 08:12:04', NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL),
+	(8, 9, 17, 'lololopbkl iyfbguhijihgtdrsasedrtfyuioikhgjfhdser6tyuij', 'Pending', NULL, '2026-05-12 18:01:36', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL),
+	(9, 8, 17, 'Dear New Parent,\n\nI am writing to express my strong interest in the Laundry Person position you have posted. I believe my skills and experience make me a great fit for this role.\n\nI have experience in Laundry Person and I am confident I can perform the duties required. I am hardworking, reliable, and eager to contribute to your household.\n\nI would welcome the opportunity to discuss how I can be of service to you and your family. Thank you for considering my application!\n\nSincerely,\n[Your Name]', 'Pending', NULL, '2026-05-24 16:45:10', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL);
 
 -- Dumping structure for table carelink.job_posts
-CREATE TABLE IF NOT EXISTS `job_posts` (
+DROP TABLE IF EXISTS `job_posts`;
+CREATE TABLE `job_posts` (
   `job_post_id` int NOT NULL AUTO_INCREMENT,
   `parent_id` int NOT NULL COMMENT 'users.user_id of parent',
   `category_id` int NOT NULL COMMENT 'ref_categories.category_id',
@@ -389,10 +414,10 @@ CREATE TABLE IF NOT EXISTS `job_posts` (
   `title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `custom_job_title` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `description` text COLLATE utf8mb4_general_ci NOT NULL,
-  `employment_type` enum('Live-in','Live-out','Any') COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Accommodation arrangement',
+  `employment_type` enum('Stay-in','Stay-out','Any') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Any',
   `work_schedule` enum('Full-time','Part-time','Any') COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Hours commitment',
   `salary_offered` decimal(10,2) NOT NULL COMMENT 'Minimum: ₱6,000/month',
-  `salary_period` enum('Daily','Monthly') COLLATE utf8mb4_general_ci DEFAULT 'Monthly',
+  `salary_period` enum('Daily','Weekly','Monthly') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Monthly',
   `benefits` text COLLATE utf8mb4_general_ci COMMENT 'SSS, PhilHealth, Pag-IBIG, etc.',
   `province` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `municipality` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
@@ -417,7 +442,6 @@ CREATE TABLE IF NOT EXISTS `job_posts` (
   `work_hours` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Work hours (e.g., 8am-5pm)',
   `days_off` json DEFAULT NULL COMMENT 'Array of preferred days off',
   `contract_duration` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Contract duration',
-  `probation_period` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Probation period',
   `provides_meals` tinyint(1) DEFAULT '0',
   `provides_accommodation` tinyint(1) DEFAULT '0',
   `provides_sss` tinyint(1) DEFAULT '0',
@@ -440,20 +464,23 @@ CREATE TABLE IF NOT EXISTS `job_posts` (
   CONSTRAINT `fk_jposts_language` FOREIGN KEY (`preferred_language_id`) REFERENCES `ref_languages` (`language_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_jposts_parent` FOREIGN KEY (`parent_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_jposts_verified_by` FOREIGN KEY (`verified_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.job_posts: ~7 rows (approximately)
-INSERT INTO `job_posts` (`job_post_id`, `parent_id`, `category_id`, `custom_category`, `job_ids`, `title`, `custom_job_title`, `description`, `employment_type`, `work_schedule`, `salary_offered`, `salary_period`, `benefits`, `province`, `municipality`, `barangay`, `latitude`, `longitude`, `preferred_religion`, `preferred_language_id`, `require_police_clearance`, `prefer_tesda_nc2`, `status`, `posted_at`, `expires_at`, `filled_at`, `updated_at`, `skill_ids`, `custom_skills`, `min_age`, `max_age`, `min_experience_years`, `start_date`, `work_hours`, `days_off`, `contract_duration`, `probation_period`, `provides_meals`, `provides_accommodation`, `provides_sss`, `provides_philhealth`, `provides_pagibig`, `vacation_days`, `sick_days`, `verified_by`, `verified_at`, `rejection_reason`) VALUES
-	(2, 2, 3, '', '["6"]', 'Family Cook', '', 'CookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookingnounououb', 'Live-out', 'Part-time', 8000.00, 'Monthly', '13th month pay', 'Leyte', 'Isabela', 'San Jose', NULL, NULL, 'Roman Catholic', 8, 1, 1, 'Open', '2026-04-06 14:31:00', NULL, NULL, '2026-04-08 03:55:28', '["13", "11"]', '0', 18, 65, 0, 'Apr 15, 2026', NULL, '["Saturday", "Tuesday"]', 'Indefinite', '0', 1, 1, 0, 1, 0, 10, 10, NULL, NULL, NULL),
-	(3, 2, 6, 'Pet Care', '["15"]', 'Pet Care Aide', '', 'The Impact You\'ll Make\nAs a Pet Care Aide, you’ll be the heartbeat of our animal care operations. Your hands-on care will ensure that every pet feels safe, healthy, and loved. From feeding and grooming to playtime and health monitoring, you’ll be making a direct difference in the lives of animals and the families who cherish them.\n\nWhat You\'ll Do\nProvide daily feeding, fresh water, and enrichment activities for dogs, cats, and other small animals.\nMaintain clean, safe, and comfortable living spaces—sanitizing kennels, litter boxes, and play areas.\nMonitor animal behavior and health, promptly reporting any changes or concerns to veterinary staff.\nAssist with grooming tasks such as bathing, brushing, and nail trimming.\nSupport exercise routines, including supervised play sessions and walks.\nComfort and calm anxious or newly arrived animals through gentle handling and positive interaction.\nHelp with intake and discharge processes, ensuring accurate records and smooth transitions for pets.\nWhat You\'ll Bring\nA genuine love for animals and a commitment to their well-being.\nExperience in animal care (shelter, kennel, veterinary clinic, or pet sitting) is a plus, but not required—we value passion and willingness to learn.\nAbility to handle animals of various sizes and temperaments safely and confidently.\nPhysical stamina for active, sometimes physically demanding work.\nStrong observation skills to detect changes in animal behavior or health.\nReliability, empathy, and a team-oriented mindset.\nWhy You\'ll Love It Here\nWork in a supportive, animal-loving environment where your compassion makes a real difference.\nHands-on training in animal handling, health monitoring, and enrichment techniques.\nOpportunities to grow into veterinary assistant or animal behavior roles.\nStaff discounts on pet supplies and services.\nFlexible scheduling options to support work-life balance.\nWe are an equal opportunity employer and welcome applicants from all backgrounds.\n\nJoin Us\nIf you have a heart for animals and a desire to make their days brighter, we’d love to meet you. Send us your resume—and if you have one, a short note about your favorite animal care experience. Let’s create happier tails together. 🐾', 'Live-out', 'Part-time', 8000.00, 'Monthly', 'Extra Payment for Overtime', 'Leyte', 'Isabela', 'San Jose', NULL, NULL, 'Iglesia ni Cristo', 8, 1, 1, 'Filled', '2026-04-07 02:51:29', NULL, '2026-04-18 06:06:35', '2026-04-18 06:06:35', '[]', 'Knows how to take care of pets', 18, 65, 0, 'Apr 25, 2026', '8:00 am - 10:00 pm', '["Wednesday", "Thursday"]', '1 year', '1 month', 1, 0, 1, 0, 0, 5, 5, 4, '2026-04-18 02:45:48', NULL),
-	(4, 16, 3, '', '["6"]', 'Family Cook', NULL, 'samplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmd', 'Any', 'Any', 8000.00, 'Monthly', '', 'Leyte', 'Ormoc', 'Cogon', NULL, NULL, 'Roman Catholic', 2, 1, 1, 'Open', '2026-04-08 09:30:26', NULL, NULL, '2026-04-14 09:16:55', '["13", "11"]', '', 18, 65, 0, 'Apr 30, 2026', NULL, '["Wednesday", "Thursday"]', '6 months', '1 month', 0, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL),
-	(5, 2, 4, '', '["8"]', 'Gardener', NULL, 'loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll', 'Live-out', 'Part-time', 8000.00, 'Daily', '', 'Leyte', 'Isabela', 'San Jose', NULL, NULL, 'Roman Catholic', 8, 1, 1, 'Open', '2026-04-14 17:16:16', NULL, NULL, '2026-04-14 17:29:34', '["14", "15"]', '', 18, 65, 0, 'Apr 30, 2026', NULL, '["Thursday"]', 'Indefinite', 'None', 0, 0, 0, 0, 0, 0, 0, 4, '2026-04-14 17:29:34', NULL),
-	(6, 19, 1, '', '["2", "1"]', 'Household Manager, Housekeeper', NULL, 'We are looking for general househelp.', 'Live-out', 'Part-time', 8000.00, 'Monthly', 'SSS', 'Leyte', 'Ormoc City', '', NULL, NULL, 'Roman Catholic', 2, 1, 1, 'Filled', '2026-04-28 10:23:24', NULL, '2026-04-28 10:33:52', '2026-04-28 10:33:52', '["2", "4", "3", "1"]', '', 18, 40, 1, 'Apr 29, 2026', '8:00am-6:00pm', '["Sunday", "Saturday"]', 'Indefinite', 'None', 1, 1, 1, 0, 0, 30, 30, 4, '2026-04-28 10:25:10', NULL),
-	(7, 20, 1, '', '["2", "1"]', 'Household Manager, Housekeeper', NULL, 'SampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSample', 'Live-in', 'Full-time', 8000.00, 'Monthly', 'SSS', 'Leyte', 'Ormoc City', '', NULL, NULL, 'Roman Catholic', 2, 1, 1, 'Filled', '2026-04-28 11:51:23', NULL, '2026-04-28 12:23:19', '2026-04-28 12:23:19', '["2", "4", "1", "3"]', '', 18, 65, 2, 'Apr 29, 2026', '8:00am-9:00pm', '["Sunday"]', '6 months', 'None', 1, 0, 1, 0, 0, 0, 0, 22, '2026-04-28 11:54:27', NULL),
-	(8, 20, 5, '', '["10"]', 'Laundry Person', NULL, 'SampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSample', 'Live-out', 'Part-time', 6000.00, 'Monthly', 'SSS', 'Leyte', 'Ormoc City', '', NULL, NULL, 'Iglesia ni Cristo', 3, 1, 1, 'Open', '2026-04-28 11:53:13', NULL, NULL, '2026-04-28 11:53:57', '["16", "18"]', '', 18, 65, 0, 'Apr 30, 2026', '8:00am-9:00pm', '["Sunday"]', '6 months', 'None', 0, 0, 0, 0, 0, 0, 0, 22, '2026-04-28 11:53:57', NULL);
+-- Dumping data for table carelink.job_posts: ~9 rows (approximately)
+INSERT INTO `job_posts` (`job_post_id`, `parent_id`, `category_id`, `custom_category`, `job_ids`, `title`, `custom_job_title`, `description`, `employment_type`, `work_schedule`, `salary_offered`, `salary_period`, `benefits`, `province`, `municipality`, `barangay`, `latitude`, `longitude`, `preferred_religion`, `preferred_language_id`, `require_police_clearance`, `prefer_tesda_nc2`, `status`, `posted_at`, `expires_at`, `filled_at`, `updated_at`, `skill_ids`, `custom_skills`, `min_age`, `max_age`, `min_experience_years`, `start_date`, `work_hours`, `days_off`, `contract_duration`, `provides_meals`, `provides_accommodation`, `provides_sss`, `provides_philhealth`, `provides_pagibig`, `vacation_days`, `sick_days`, `verified_by`, `verified_at`, `rejection_reason`) VALUES
+	(2, 2, 3, '', '["6"]', 'Family Cook', '', 'CookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookCookingnounououb', 'Stay-out', 'Part-time', 8000.00, 'Monthly', '13th month pay', 'Leyte', 'Isabela', 'San Jose', NULL, NULL, 'Roman Catholic', 8, 1, 1, 'Open', '2026-04-06 14:31:00', NULL, NULL, '2026-05-25 15:28:41', '["13", "11"]', '0', 18, 65, 0, 'Apr 15, 2026', NULL, '["Saturday", "Tuesday"]', 'Indefinite', 1, 1, 0, 1, 0, 10, 10, NULL, NULL, NULL),
+	(3, 2, 6, 'Pet Care', '["15"]', 'Pet Care Aide', '', 'The Impact You\'ll Make\nAs a Pet Care Aide, you’ll be the heartbeat of our animal care operations. Your hands-on care will ensure that every pet feels safe, healthy, and loved. From feeding and grooming to playtime and health monitoring, you’ll be making a direct difference in the lives of animals and the families who cherish them.\n\nWhat You\'ll Do\nProvide daily feeding, fresh water, and enrichment activities for dogs, cats, and other small animals.\nMaintain clean, safe, and comfortable living spaces—sanitizing kennels, litter boxes, and play areas.\nMonitor animal behavior and health, promptly reporting any changes or concerns to veterinary staff.\nAssist with grooming tasks such as bathing, brushing, and nail trimming.\nSupport exercise routines, including supervised play sessions and walks.\nComfort and calm anxious or newly arrived animals through gentle handling and positive interaction.\nHelp with intake and discharge processes, ensuring accurate records and smooth transitions for pets.\nWhat You\'ll Bring\nA genuine love for animals and a commitment to their well-being.\nExperience in animal care (shelter, kennel, veterinary clinic, or pet sitting) is a plus, but not required—we value passion and willingness to learn.\nAbility to handle animals of various sizes and temperaments safely and confidently.\nPhysical stamina for active, sometimes physically demanding work.\nStrong observation skills to detect changes in animal behavior or health.\nReliability, empathy, and a team-oriented mindset.\nWhy You\'ll Love It Here\nWork in a supportive, animal-loving environment where your compassion makes a real difference.\nHands-on training in animal handling, health monitoring, and enrichment techniques.\nOpportunities to grow into veterinary assistant or animal behavior roles.\nStaff discounts on pet supplies and services.\nFlexible scheduling options to support work-life balance.\nWe are an equal opportunity employer and welcome applicants from all backgrounds.\n\nJoin Us\nIf you have a heart for animals and a desire to make their days brighter, we’d love to meet you. Send us your resume—and if you have one, a short note about your favorite animal care experience. Let’s create happier tails together. 🐾', 'Stay-out', 'Part-time', 8000.00, 'Monthly', 'Extra Payment for Overtime', 'Leyte', 'Isabela', 'San Jose', NULL, NULL, 'Iglesia ni Cristo', 8, 1, 1, 'Filled', '2026-04-07 02:51:29', NULL, '2026-04-18 06:06:35', '2026-05-25 15:28:41', '[]', 'Knows how to take care of pets', 18, 65, 0, 'Apr 25, 2026', '8:00 am - 10:00 pm', '["Wednesday", "Thursday"]', '1 year', 1, 0, 1, 0, 0, 5, 5, 4, '2026-04-18 02:45:48', NULL),
+	(4, 16, 3, '', '["6"]', 'Family Cook', NULL, 'samplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmdsamplesmd', 'Any', 'Any', 8000.00, 'Monthly', '', 'Leyte', 'Ormoc', 'Cogon', NULL, NULL, 'Roman Catholic', 2, 1, 1, 'Open', '2026-04-08 09:30:26', NULL, NULL, '2026-04-14 09:16:55', '["13", "11"]', '', 18, 65, 0, 'Apr 30, 2026', NULL, '["Wednesday", "Thursday"]', '6 months', 0, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL),
+	(5, 2, 4, '', '["8"]', 'Gardener', NULL, 'loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll loolllll', 'Stay-out', 'Part-time', 8000.00, 'Daily', '', 'Leyte', 'Isabela', 'San Jose', NULL, NULL, 'Roman Catholic', 8, 1, 1, 'Open', '2026-04-14 17:16:16', NULL, NULL, '2026-05-25 15:28:41', '["14", "15"]', '', 18, 65, 0, 'Apr 30, 2026', NULL, '["Thursday"]', 'Indefinite', 0, 0, 0, 0, 0, 0, 0, 4, '2026-04-14 17:29:34', NULL),
+	(6, 19, 1, '', '["2", "1"]', 'Household Manager, Housekeeper', NULL, 'We are looking for general househelp.', 'Stay-out', 'Part-time', 8000.00, 'Monthly', 'SSS', 'Leyte', 'Ormoc City', '', NULL, NULL, 'Roman Catholic', 2, 1, 1, 'Filled', '2026-04-28 10:23:24', NULL, '2026-04-28 10:33:52', '2026-05-25 15:28:41', '["2", "4", "3", "1"]', '', 18, 40, 1, 'Apr 29, 2026', '8:00am-6:00pm', '["Sunday", "Saturday"]', 'Indefinite', 1, 1, 1, 0, 0, 30, 30, 4, '2026-04-28 10:25:10', NULL),
+	(7, 20, 1, '', '["2", "1"]', 'Household Manager, Housekeeper', NULL, 'SampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSample', 'Stay-in', 'Full-time', 8000.00, 'Monthly', 'SSS', 'Leyte', 'Ormoc City', '', NULL, NULL, 'Roman Catholic', 2, 1, 1, 'Filled', '2026-04-28 11:51:23', NULL, '2026-04-28 12:23:19', '2026-05-25 15:28:41', '["2", "4", "1", "3"]', '', 18, 65, 2, 'Apr 29, 2026', '8:00am-9:00pm', '["Sunday"]', '6 months', 1, 0, 1, 0, 0, 0, 0, 22, '2026-04-28 11:54:27', NULL),
+	(8, 20, 5, '', '["10"]', 'Laundry Person', NULL, 'SampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSampleSample', 'Stay-out', 'Part-time', 6000.00, 'Monthly', 'SSS', 'Leyte', 'Ormoc City', '', NULL, NULL, 'Iglesia ni Cristo', 3, 1, 1, 'Open', '2026-04-28 11:53:13', NULL, NULL, '2026-05-25 15:28:41', '["16", "18"]', '', 18, 65, 0, 'Apr 30, 2026', '8:00am-9:00pm', '["Sunday"]', '6 months', 0, 0, 0, 0, 0, 0, 0, 22, '2026-04-28 11:53:57', NULL),
+	(9, 27, 6, 'Driver', '["14"]', 'Driving (Driving)', NULL, 'Sample descriptionSample descriptionSample descriptionSample descriptionSample descriptionSample descriptionSample descriptionSample descriptionSample descriptionSample description', 'Stay-in', 'Full-time', 8000.00, 'Monthly', '', 'Leyte', 'Ormoc City', '', NULL, NULL, 'Roman Catholic', 2, 1, 1, 'Open', '2026-05-11 08:04:16', NULL, NULL, '2026-05-25 15:28:41', '[]', 'Driving, Licensed\n', 30, 65, 1, 'May 12, 2026', NULL, '["Tuesday", "Saturday"]', 'Indefinite', 0, 0, 0, 0, 0, 0, 0, 22, '2026-05-11 08:05:06', NULL),
+	(10, 2, 1, '', '["2"]', 'Household Manager', NULL, 'We are looking for a reliable helper to join our family!\n\nResponsibilities include:\n• general household related tasks\n• Maintaining a clean and organized home\n• Following family instructions carefully\n• Other duties as assigned\n\nRequirements:\n• Honest and hardworking\n• Good communication skills\n• Willing to learn\n• Previous experience is a plus\n\nWe offer a friendly, respectful working environment!', 'Any', 'Any', 8000.00, 'Monthly', '', 'Leyte', 'Ormoc City', '', NULL, NULL, 'Islam', 8, 1, 1, 'Pending', '2026-05-24 16:47:30', NULL, NULL, NULL, '[]', '', 18, 65, 0, NULL, NULL, '[]', 'Indefinite', 1, 0, 1, 0, 0, 0, 0, NULL, NULL, NULL);
 
 -- Dumping structure for table carelink.job_views
-CREATE TABLE IF NOT EXISTS `job_views` (
+DROP TABLE IF EXISTS `job_views`;
+CREATE TABLE `job_views` (
   `view_id` int NOT NULL AUTO_INCREMENT,
   `helper_id` int NOT NULL,
   `job_post_id` int NOT NULL,
@@ -468,7 +495,8 @@ CREATE TABLE IF NOT EXISTS `job_views` (
 -- Dumping data for table carelink.job_views: ~0 rows (approximately)
 
 -- Dumping structure for table carelink.leave_requests
-CREATE TABLE IF NOT EXISTS `leave_requests` (
+DROP TABLE IF EXISTS `leave_requests`;
+CREATE TABLE `leave_requests` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `application_id` int unsigned NOT NULL,
   `helper_id` int unsigned NOT NULL,
@@ -492,7 +520,8 @@ CREATE TABLE IF NOT EXISTS `leave_requests` (
 -- Dumping data for table carelink.leave_requests: ~0 rows (approximately)
 
 -- Dumping structure for table carelink.log_trail
-CREATE TABLE IF NOT EXISTS `log_trail` (
+DROP TABLE IF EXISTS `log_trail`;
+CREATE TABLE `log_trail` (
   `log_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
   `action` varchar(100) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'e.g., LOGIN, LOGOUT, APPLY_JOB, UPLOAD_DOC',
@@ -506,9 +535,9 @@ CREATE TABLE IF NOT EXISTS `log_trail` (
   KEY `idx_user` (`user_id`),
   KEY `idx_action` (`action`),
   CONSTRAINT `fk_log_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=464 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=550 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.log_trail: ~418 rows (approximately)
+-- Dumping data for table carelink.log_trail: ~522 rows (approximately)
 INSERT INTO `log_trail` (`log_id`, `user_id`, `action`, `module`, `record_id`, `status`, `ip_address`, `device_info`, `created_at`) VALUES
 	(1, 1, 'LOGIN', NULL, NULL, '', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-02 01:44:42'),
 	(2, 1, 'LOGIN', NULL, NULL, '', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', '2026-03-02 01:44:47'),
@@ -972,10 +1001,97 @@ INSERT INTO `log_trail` (`log_id`, `user_id`, `action`, `module`, `record_id`, `
 	(460, 21, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-04-28 12:32:46'),
 	(461, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-05-06 10:12:43'),
 	(462, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-05-06 10:13:49'),
-	(463, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-05-06 10:21:28');
+	(463, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-05-06 10:21:28'),
+	(464, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-05-06 13:05:47'),
+	(465, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-05-06 14:48:30'),
+	(466, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-05-06 14:49:34'),
+	(467, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-05-06 15:30:19'),
+	(468, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0', '2026-05-06 16:15:09'),
+	(469, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/147.0.0.0', '2026-05-08 15:19:34'),
+	(470, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 03:17:55'),
+	(471, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 04:06:02'),
+	(472, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 04:12:05'),
+	(473, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 04:16:30'),
+	(474, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 04:17:14'),
+	(475, 18, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 06:15:56'),
+	(476, 19, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 06:16:58'),
+	(477, 22, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 06:33:42'),
+	(478, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 06:41:58'),
+	(479, 17, 'LOGIN', 'Auth', NULL, 'Success', '10.126.140.239', 'okhttp/4.12.0', '2026-05-11 06:43:45'),
+	(480, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 06:45:21'),
+	(481, 22, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 06:45:28'),
+	(482, 22, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 06:56:08'),
+	(483, 24, 'LOGIN', 'Auth', NULL, 'Failed', '10.126.140.239', 'okhttp/4.12.0', '2026-05-11 06:57:01'),
+	(484, 22, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:00:48'),
+	(485, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:01:45'),
+	(486, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:04:26'),
+	(487, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:04:29'),
+	(488, 27, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:09:39'),
+	(489, 26, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:12:15'),
+	(490, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:15:05'),
+	(491, 26, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:15:32'),
+	(492, 26, 'UPLOAD_DOCUMENTS', 'Documents', NULL, 'Success', NULL, NULL, '2026-05-11 07:16:13'),
+	(493, 26, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:16:43'),
+	(494, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:17:00'),
+	(495, 26, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:30:44'),
+	(496, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:36:51'),
+	(497, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:38:35'),
+	(498, 19, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:39:52'),
+	(499, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:40:20'),
+	(500, 16, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:40:55'),
+	(501, 20, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:41:34'),
+	(502, 1, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:42:56'),
+	(503, 22, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:43:56'),
+	(504, 22, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:44:01'),
+	(505, 22, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:45:33'),
+	(506, 27, 'LOGIN', 'Auth', NULL, 'Failed', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:46:22'),
+	(507, 22, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:48:24'),
+	(508, 22, 'VERIFY_DOCUMENT_APPROVE', 'PESO Verification', 33, 'Success', NULL, NULL, '2026-05-11 07:49:17'),
+	(509, 22, 'VERIFY_DOCUMENT_APPROVE', 'PESO Verification', 32, 'Success', NULL, NULL, '2026-05-11 07:49:20'),
+	(510, 22, 'VERIFY_USER_APPROVE', 'PESO Verification', 27, 'Success', NULL, NULL, '2026-05-11 07:49:24'),
+	(511, 22, 'VERIFY_DOCUMENT_APPROVE', 'PESO Verification', 34, 'Success', NULL, NULL, '2026-05-11 07:49:42'),
+	(512, 22, 'VERIFY_DOCUMENT_APPROVE', 'PESO Verification', 35, 'Success', NULL, NULL, '2026-05-11 07:49:46'),
+	(513, 22, 'VERIFY_DOCUMENT_APPROVE', 'PESO Verification', 36, 'Success', NULL, NULL, '2026-05-11 07:49:52'),
+	(514, 22, 'VERIFY_DOCUMENT_APPROVE', 'PESO Verification', 37, 'Success', NULL, NULL, '2026-05-11 07:50:01'),
+	(515, 22, 'VERIFY_USER_APPROVE', 'PESO Verification', 26, 'Success', NULL, NULL, '2026-05-11 07:50:03'),
+	(516, 27, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 07:50:41'),
+	(517, 22, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 08:04:50'),
+	(518, 22, 'VERIFY_JOB_APPROVE', 'PESO Job Verification', 9, 'Success', NULL, NULL, '2026-05-11 08:05:06'),
+	(519, 26, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 08:05:34'),
+	(520, 27, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 08:08:02'),
+	(521, 27, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 15:48:03'),
+	(522, 22, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 15:48:08'),
+	(523, 26, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-11 15:57:45'),
+	(524, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-12 17:39:27'),
+	(525, 16, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-13 03:51:41'),
+	(526, 19, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-13 03:52:09'),
+	(527, 20, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-13 08:19:02'),
+	(528, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-13 08:25:45'),
+	(529, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-15 13:13:13'),
+	(530, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/148.0.0.0', '2026-05-16 08:07:27'),
+	(531, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/148.0.0.0', '2026-05-21 06:34:08'),
+	(532, 18, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/148.0.0.0', '2026-05-21 06:34:41'),
+	(533, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-21 06:36:21'),
+	(534, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-21 06:36:24'),
+	(535, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-21 06:46:08'),
+	(536, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-21 06:46:11'),
+	(537, 19, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/148.0.0.0', '2026-05-21 06:46:28'),
+	(538, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-21 06:54:15'),
+	(539, 4, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-21 06:54:19'),
+	(540, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-21 07:03:10'),
+	(541, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/148.0.0.0', '2026-05-24 10:50:23'),
+	(542, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-24 14:00:12'),
+	(543, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-24 15:13:22'),
+	(544, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-24 16:29:34'),
+	(545, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-24 16:45:27'),
+	(546, 17, 'LOGIN', 'Auth', NULL, 'Success', '191.168.89.93', 'okhttp/4.12.0', '2026-05-25 01:48:35'),
+	(547, 17, 'LOGIN', 'Auth', NULL, 'Success', '191.168.89.93', 'okhttp/4.12.0', '2026-05-25 02:03:53'),
+	(548, 2, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1 Edg/148.0.0.0', '2026-05-25 10:13:14'),
+	(549, 17, 'LOGIN', 'Auth', NULL, 'Success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', '2026-05-25 15:57:29');
 
 -- Dumping structure for table carelink.messages
-CREATE TABLE IF NOT EXISTS `messages` (
+DROP TABLE IF EXISTS `messages`;
+CREATE TABLE `messages` (
   `message_id` int NOT NULL AUTO_INCREMENT,
   `sender_id` int NOT NULL,
   `receiver_id` int NOT NULL,
@@ -996,9 +1112,9 @@ CREATE TABLE IF NOT EXISTS `messages` (
   CONSTRAINT `fk_msg_job` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_msg_receiver` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_msg_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.messages: ~21 rows (approximately)
+-- Dumping data for table carelink.messages: ~26 rows (approximately)
 INSERT INTO `messages` (`message_id`, `sender_id`, `receiver_id`, `job_post_id`, `message_text`, `message_type`, `image_url`, `is_read`, `read_at`, `sent_at`, `is_edited`, `edited_at`) VALUES
 	(1, 2, 17, NULL, 'hi', 'text', NULL, 1, '2026-04-15 17:59:02', '2026-04-15 17:57:36', 0, NULL),
 	(2, 2, 17, NULL, 'hi uy', 'text', NULL, 1, '2026-04-15 17:59:02', '2026-04-15 17:57:52', 0, NULL),
@@ -1021,10 +1137,15 @@ INSERT INTO `messages` (`message_id`, `sender_id`, `receiver_id`, `job_post_id`,
 	(19, 20, 21, 7, 'Hi! I\'d like to invite you to apply for my job posting: "Household Manager, Housekeeper". Please check the job listing and apply if you\'re interested. Looking forward to hearing from you!', 'text', NULL, 1, '2026-04-28 11:57:36', '2026-04-28 11:56:31', 0, NULL),
 	(20, 20, 21, 7, 'Hi! I\'d like to invite you to apply for my job posting: "Household Manager, Housekeeper". Please check the job listing and apply if you\'re interested. Looking forward to hearing from you!', 'text', NULL, 1, '2026-04-28 11:59:43', '2026-04-28 11:58:28', 0, NULL),
 	(21, 21, 20, 7, 'im interested', 'text', NULL, 1, '2026-04-28 12:07:55', '2026-04-28 12:00:05', 0, NULL),
-	(22, 20, 21, 7, 'https://meet.jit.si/CareLink-20-21', 'video_call', NULL, 1, '2026-04-28 12:20:03', '2026-04-28 12:11:41', 0, NULL);
+	(22, 20, 21, 7, 'https://meet.jit.si/CareLink-20-21', 'video_call', NULL, 1, '2026-04-28 12:20:03', '2026-04-28 12:11:41', 0, NULL),
+	(23, 2, 15, 2, 'Hi! I\'d like to invite you to apply for my job posting: "Family Cook". Please check the job listing and apply if you\'re interested. Looking forward to hearing from you!', 'text', NULL, 0, NULL, '2026-05-11 07:38:59', 0, NULL),
+	(24, 20, 1, 8, 'hdihidwidh', 'text', NULL, 1, '2026-05-11 07:43:05', '2026-05-11 07:42:01', 0, NULL),
+	(25, 20, 1, 8, '', 'image', 'uploads/messages/msg_20_1778485327_0114c4e0.jpg', 1, '2026-05-11 07:43:05', '2026-05-11 07:42:07', 0, NULL),
+	(26, 20, 1, 8, 'Interview scheduled: In-person on May 12, 2026 7:42 AM. Location: Ormoc Plaza', 'text', NULL, 1, '2026-05-11 07:43:05', '2026-05-11 07:42:41', 0, NULL);
 
 -- Dumping structure for table carelink.notifications
-CREATE TABLE IF NOT EXISTS `notifications` (
+DROP TABLE IF EXISTS `notifications`;
+CREATE TABLE `notifications` (
   `notification_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL COMMENT 'Recipient (users.user_id)',
   `type` varchar(64) COLLATE utf8mb4_general_ci NOT NULL,
@@ -1039,9 +1160,9 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   KEY `idx_notifications_user_unread` (`user_id`,`is_read`),
   KEY `idx_notifications_created` (`created_at`),
   CONSTRAINT `fk_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=99 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=127 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.notifications: ~96 rows (approximately)
+-- Dumping data for table carelink.notifications: ~116 rows (approximately)
 INSERT INTO `notifications` (`notification_id`, `user_id`, `type`, `title`, `message`, `is_read`, `ref_type`, `ref_id`, `created_at`) VALUES
 	(1, 1, 'job_invite', 'Job Invitation', 'Kirby Calderon invited you to apply for "Family Cook"', 1, 'job', 2, '2026-04-17 02:31:00'),
 	(2, 17, 'profile_update', 'Profile Updated', 'Your profile is 100% complete and has been submitted for PESO verification.', 1, 'profile', 4, '2026-04-17 12:04:21'),
@@ -1071,10 +1192,10 @@ INSERT INTO `notifications` (`notification_id`, `user_id`, `type`, `title`, `mes
 	(26, 2, 'attendance_checkin', 'Helper checked in', 'kurt ardines checked in at 7:29 PM', 1, 'attendance_log', 1, '2026-04-19 19:29:39'),
 	(27, 2, 'attendance_checkin', 'Helper checked in', 'kurt ardines checked in at 2:59 AM', 1, 'attendance_log', 2, '2026-04-20 02:59:51'),
 	(28, 2, 'new_message', 'New Message from Sean Howie Eulogio', 'Sean Howie Eulogio is inviting you to a video call!', 1, 'message', 1, '2026-04-21 14:38:10'),
-	(29, 1, 'job_invite', 'Job Invitation', 'Kirby Calderon invited you to apply for "Gardener"', 0, 'job', 5, '2026-04-21 17:27:51'),
+	(29, 1, 'job_invite', 'Job Invitation', 'Kirby Calderon invited you to apply for "Gardener"', 1, 'job', 5, '2026-04-21 17:27:51'),
 	(30, 2, 'attendance_checkin', 'Helper checked in', 'kurt ardines checked in at 2:38 PM', 1, 'attendance_log', 3, '2026-04-23 14:38:39'),
 	(31, 17, 'profile_update', 'Profile Updated', 'Your profile is 100% complete and has been submitted for PESO verification.', 1, 'profile', 4, '2026-04-27 12:34:34'),
-	(32, 2, 'attendance_checkin', 'Helper checked in', 'kurt ardines checked in at 12:34 PM', 0, 'attendance_log', 4, '2026-04-27 12:34:46'),
+	(32, 2, 'attendance_checkin', 'Helper checked in', 'kurt ardines checked in at 12:34 PM', 1, 'attendance_log', 4, '2026-04-27 12:34:46'),
 	(33, 2, 'contract_terminated', 'Employment ending', 'kurt ardines has started ending the placement for "Pet Care Aide". Last working day: 2026-04-28. Open the app for details.', 1, 'application', 3, '2026-04-28 11:16:18'),
 	(34, 3, 'contract_terminated', 'Contract termination', 'Placement "Pet Care Aide" (Kirby Calderon / kurt ardines): contract ending; last working day 2026-04-28.', 0, 'application', 3, '2026-04-28 11:16:18'),
 	(35, 4, 'contract_terminated', 'Contract termination', 'Placement "Pet Care Aide" (Kirby Calderon / kurt ardines): contract ending; last working day 2026-04-28.', 1, 'application', 3, '2026-04-28 11:16:18'),
@@ -1100,11 +1221,11 @@ INSERT INTO `notifications` (`notification_id`, `user_id`, `type`, `title`, `mes
 	(55, 18, 'new_message', 'New Message from Pinky Pacabis', 'hey', 1, 'message', 19, '2026-04-28 18:28:53'),
 	(56, 18, 'interview_scheduled', 'Interview Scheduled', 'Your interview for "Household Manager, Housekeeper" is set: In-person on Apr 29, 2026 10:29am.', 1, 'application', 4, '2026-04-28 18:30:05'),
 	(57, 19, 'interview_scheduled', 'Interview confirmed', 'You scheduled an interview with the applicant for "Household Manager, Housekeeper" (In-person, Apr 29, 2026 10:29am).', 1, 'application', 4, '2026-04-28 18:30:05'),
-	(58, 19, 'new_message', 'New Message from George Pericano', 'George Pericano is inviting you to a video call!', 0, 'message', 18, '2026-04-28 18:31:07'),
-	(59, 19, 'status_changed', 'Review employment contract', 'Please review and confirm the contract for: Household Manager, Housekeeper', 0, 'application', 4, '2026-04-28 18:33:10'),
-	(60, 18, 'status_changed', 'Review employment contract', 'Please review and confirm the contract for: Household Manager, Housekeeper', 0, 'application', 4, '2026-04-28 18:33:10'),
-	(61, 19, 'status_changed', 'Hiring confirmed', 'Hiring confirmed. George Pericano is now officially hired as Household Manager, Housekeeper. Download your contract copy from the app.', 0, 'application', 4, '2026-04-28 18:33:52'),
-	(62, 18, 'status_changed', 'Congratulations — you\'re hired!', 'Congratulations! You are now hired as Household Manager, Housekeeper by Pinky Pacabis. Download your contract copy from the app.', 0, 'application', 4, '2026-04-28 18:33:52'),
+	(58, 19, 'new_message', 'New Message from George Pericano', 'George Pericano is inviting you to a video call!', 1, 'message', 18, '2026-04-28 18:31:07'),
+	(59, 19, 'status_changed', 'Review employment contract', 'Please review and confirm the contract for: Household Manager, Housekeeper', 1, 'application', 4, '2026-04-28 18:33:10'),
+	(60, 18, 'status_changed', 'Review employment contract', 'Please review and confirm the contract for: Household Manager, Housekeeper', 1, 'application', 4, '2026-04-28 18:33:10'),
+	(61, 19, 'status_changed', 'Hiring confirmed', 'Hiring confirmed. George Pericano is now officially hired as Household Manager, Housekeeper. Download your contract copy from the app.', 1, 'application', 4, '2026-04-28 18:33:52'),
+	(62, 18, 'status_changed', 'Congratulations — you\'re hired!', 'Congratulations! You are now hired as Household Manager, Housekeeper by Pinky Pacabis. Download your contract copy from the app.', 1, 'application', 4, '2026-04-28 18:33:52'),
 	(63, 3, 'contract_signed', 'New contract signed', 'New contract signed. Application #4 between Pinky Pacabis and George Pericano is now active.', 0, 'application', 4, '2026-04-28 18:33:52'),
 	(64, 4, 'contract_signed', 'New contract signed', 'New contract signed. Application #4 between Pinky Pacabis and George Pericano is now active.', 0, 'application', 4, '2026-04-28 18:33:52'),
 	(65, 5, 'contract_signed', 'New contract signed', 'New contract signed. Application #4 between Pinky Pacabis and George Pericano is now active.', 0, 'application', 4, '2026-04-28 18:33:52'),
@@ -1120,9 +1241,9 @@ INSERT INTO `notifications` (`notification_id`, `user_id`, `type`, `title`, `mes
 	(75, 20, 'document_verified', 'Document Verified ✅', 'Your Barangay Clearance has been verified by PESO.', 1, 'document', 31, '2026-04-28 19:46:24'),
 	(76, 20, 'account_verified', 'Account Verified! 🎉', 'Your CareLink account has been verified by PESO. You can now access all features.', 1, 'account', 20, '2026-04-28 19:46:28'),
 	(77, 4, 'peso_queue_job', 'New job post pending verification', 'A parent submitted "Household Manager, Housekeeper" for PESO approval.', 0, 'job', 7, '2026-04-28 19:51:23'),
-	(78, 22, 'peso_queue_job', 'New job post pending verification', 'A parent submitted "Household Manager, Housekeeper" for PESO approval.', 0, 'job', 7, '2026-04-28 19:51:23'),
+	(78, 22, 'peso_queue_job', 'New job post pending verification', 'A parent submitted "Household Manager, Housekeeper" for PESO approval.', 1, 'job', 7, '2026-04-28 19:51:23'),
 	(79, 4, 'peso_queue_job', 'New job post pending verification', 'A parent submitted "Laundry Person" for PESO approval.', 0, 'job', 8, '2026-04-28 19:53:13'),
-	(80, 22, 'peso_queue_job', 'New job post pending verification', 'A parent submitted "Laundry Person" for PESO approval.', 0, 'job', 8, '2026-04-28 19:53:13'),
+	(80, 22, 'peso_queue_job', 'New job post pending verification', 'A parent submitted "Laundry Person" for PESO approval.', 1, 'job', 8, '2026-04-28 19:53:13'),
 	(81, 20, 'job_verified', 'Job Post Approved ✅', 'Your job post "Laundry Person" has been verified by PESO and is now live.', 1, 'job', 8, '2026-04-28 19:53:57'),
 	(82, 20, 'job_verified', 'Job Post Approved ✅', 'Your job post "Household Manager, Housekeeper" has been verified by PESO and is now live.', 1, 'job', 7, '2026-04-28 19:54:27'),
 	(83, 21, 'job_invite', 'Job Invitation', 'New Parent invited you to apply for "Household Manager, Housekeeper"', 1, 'job', 7, '2026-04-28 19:56:31'),
@@ -1138,12 +1259,41 @@ INSERT INTO `notifications` (`notification_id`, `user_id`, `type`, `title`, `mes
 	(93, 3, 'contract_signed', 'New contract signed', 'New contract signed. Application #5 between New Parent and New Helper is now active.', 0, 'application', 5, '2026-04-28 20:23:19'),
 	(94, 4, 'contract_signed', 'New contract signed', 'New contract signed. Application #5 between New Parent and New Helper is now active.', 0, 'application', 5, '2026-04-28 20:23:19'),
 	(95, 5, 'contract_signed', 'New contract signed', 'New contract signed. Application #5 between New Parent and New Helper is now active.', 0, 'application', 5, '2026-04-28 20:23:19'),
-	(96, 22, 'contract_signed', 'New contract signed', 'New contract signed. Application #5 between New Parent and New Helper is now active.', 0, 'application', 5, '2026-04-28 20:23:19'),
+	(96, 22, 'contract_signed', 'New contract signed', 'New contract signed. Application #5 between New Parent and New Helper is now active.', 1, 'application', 5, '2026-04-28 20:23:19'),
 	(97, 20, 'attendance_checkin', 'Helper checked in', 'New Helper checked in at 8:33 PM', 0, 'attendance_log', 5, '2026-04-28 20:33:07'),
-	(98, 2, 'attendance_checkin', 'Helper checked in', 'kurt ardines checked in at 6:13 PM', 0, 'attendance_log', 6, '2026-05-06 18:13:29');
+	(98, 2, 'attendance_checkin', 'Helper checked in', 'kurt ardines checked in at 6:13 PM', 1, 'attendance_log', 6, '2026-05-06 18:13:29'),
+	(99, 2, 'placement_renewal', 'Helper interested in renewing', 'Your helper indicated they may want to renew this placement. (Pet Care Aide)', 1, 'job_application', 3, '2026-05-06 22:48:34'),
+	(100, 27, 'profile_update', 'Profile Updated', 'Your profile was updated successfully. Complete all sections to submit for verification.', 0, 'profile', 7, '2026-05-11 15:11:10'),
+	(101, 26, 'profile_update', 'Profile Updated', 'Your profile was updated successfully. Complete all sections to submit for verification.', 1, 'profile', 9, '2026-05-11 15:14:41'),
+	(102, 20, 'application_received', 'New Application Received', 'Sean Howie Eulogio applied for your job: Laundry Person', 1, 'application', 6, '2026-05-11 15:37:57'),
+	(103, 15, 'job_invite', 'Job Invitation', 'Kirby Calderon invited you to apply for "Family Cook"', 0, 'job', 2, '2026-05-11 15:38:59'),
+	(104, 1, 'status_changed', 'You\'ve Been Shortlisted! 🌟', 'Great news! You are shortlisted for: Laundry Person', 0, 'application', 6, '2026-05-11 15:41:48'),
+	(105, 1, 'new_message', 'New Message from New Parent', 'hdihidwidh', 0, 'message', 20, '2026-05-11 15:42:01'),
+	(106, 1, 'new_message', 'New Message from New Parent', 'New Parent sent you an image.', 0, 'message', 20, '2026-05-11 15:42:07'),
+	(107, 1, 'interview_scheduled', 'Interview Scheduled', 'Your interview for "Laundry Person" is set: In-person on May 12, 2026 7:42am.', 0, 'application', 6, '2026-05-11 15:42:41'),
+	(108, 20, 'interview_scheduled', 'Interview confirmed', 'You scheduled an interview with the applicant for "Laundry Person" (In-person, May 12, 2026 7:42am).', 0, 'application', 6, '2026-05-11 15:42:41'),
+	(109, 27, 'document_verified', 'Document Verified ✅', 'Your Barangay Clearance has been verified by PESO.', 0, 'document', 33, '2026-05-11 15:49:17'),
+	(110, 27, 'document_verified', 'Document Verified ✅', 'Your Valid ID has been verified by PESO.', 0, 'document', 32, '2026-05-11 15:49:20'),
+	(111, 27, 'account_verified', 'Account Verified! 🎉', 'Your CareLink account has been verified by PESO. You can now access all features.', 0, 'account', 27, '2026-05-11 15:49:24'),
+	(112, 26, 'document_verified', 'Document Verified ✅', 'Your Barangay Clearance has been verified by PESO.', 1, 'document', 34, '2026-05-11 15:49:42'),
+	(113, 26, 'document_verified', 'Document Verified ✅', 'Your Valid ID has been verified by PESO.', 1, 'document', 35, '2026-05-11 15:49:46'),
+	(114, 26, 'document_verified', 'Document Verified ✅', 'Your Police Clearance has been verified by PESO.', 1, 'document', 36, '2026-05-11 15:49:52'),
+	(115, 26, 'document_verified', 'Document Verified ✅', 'Your TESDA NC2 has been verified by PESO.', 1, 'document', 37, '2026-05-11 15:50:01'),
+	(116, 26, 'account_verified', 'Account Verified! 🎉', 'Your CareLink account has been verified by PESO. You can now access all features.', 1, 'account', 26, '2026-05-11 15:50:03'),
+	(117, 4, 'peso_queue_job', 'New job post pending verification', 'A parent submitted "Driving (Driving)" for PESO approval.', 0, 'job', 9, '2026-05-11 16:04:16'),
+	(118, 22, 'peso_queue_job', 'New job post pending verification', 'A parent submitted "Driving (Driving)" for PESO approval.', 0, 'job', 9, '2026-05-11 16:04:16'),
+	(119, 27, 'job_verified', 'Job Post Approved ✅', 'Your job post "Driving (Driving)" has been verified by PESO and is now live.', 0, 'job', 9, '2026-05-11 16:05:06'),
+	(120, 27, 'application_received', 'New Application Received', 'New Helper12 applied for your job: Driving (Driving)', 0, 'application', 7, '2026-05-11 16:07:24'),
+	(121, 26, 'status_changed', 'You\'ve Been Shortlisted! 🌟', 'Great news! You are shortlisted for: Driving (Driving)', 1, 'application', 7, '2026-05-11 16:12:04'),
+	(122, 27, 'application_received', 'New Application Received', 'kurt ardines applied for your job: Driving (Driving)', 0, 'application', 8, '2026-05-13 02:01:36'),
+	(123, 20, 'application_received', 'New Application Received', 'kurt ardines applied for your job: Laundry Person', 0, 'application', 9, '2026-05-25 00:45:10'),
+	(124, 4, 'peso_queue_job', 'New job post pending verification', 'A parent submitted "Household Manager" for PESO approval.', 0, 'job', 10, '2026-05-25 00:47:30'),
+	(125, 22, 'peso_queue_job', 'New job post pending verification', 'A parent submitted "Household Manager" for PESO approval.', 0, 'job', 10, '2026-05-25 00:47:30'),
+	(126, 17, 'profile_update', 'Profile Updated', 'Your profile is 100% complete and has been submitted for PESO verification.', 0, 'profile', 4, '2026-05-26 02:07:46');
 
 -- Dumping structure for table carelink.parent_children
-CREATE TABLE IF NOT EXISTS `parent_children` (
+DROP TABLE IF EXISTS `parent_children`;
+CREATE TABLE `parent_children` (
   `child_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `age` int NOT NULL COMMENT '0-18 years old',
@@ -1154,7 +1304,7 @@ CREATE TABLE IF NOT EXISTS `parent_children` (
   PRIMARY KEY (`child_id`),
   KEY `idx_profile` (`profile_id`),
   CONSTRAINT `fk_pchildren_profile` FOREIGN KEY (`profile_id`) REFERENCES `parent_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table carelink.parent_children: ~5 rows (approximately)
 INSERT INTO `parent_children` (`child_id`, `profile_id`, `age`, `gender`, `special_needs`, `created_at`, `updated_at`) VALUES
@@ -1162,10 +1312,12 @@ INSERT INTO `parent_children` (`child_id`, `profile_id`, `age`, `gender`, `speci
 	(11, 1, 18, 'Male', 'Autism', '2026-04-15 17:36:09', NULL),
 	(12, 4, 8, 'Female', 'Autism', '2026-04-28 09:22:55', NULL),
 	(13, 5, 10, 'Male', 'Autism', '2026-04-28 11:38:01', NULL),
-	(14, 5, 11, 'Female', 'Autism', '2026-04-28 11:38:01', NULL);
+	(14, 5, 11, 'Female', 'Autism', '2026-04-28 11:38:01', NULL),
+	(15, 7, 0, 'Prefer not to say', NULL, '2026-05-11 07:11:10', NULL);
 
 -- Dumping structure for table carelink.parent_elderly
-CREATE TABLE IF NOT EXISTS `parent_elderly` (
+DROP TABLE IF EXISTS `parent_elderly`;
+CREATE TABLE `parent_elderly` (
   `elderly_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `age` int NOT NULL COMMENT '60+ years old',
@@ -1189,7 +1341,8 @@ INSERT INTO `parent_elderly` (`elderly_id`, `profile_id`, `age`, `gender`, `cond
 	(9, 5, 65, 'Male', 'Diabetic', 'Independent', '2026-04-28 11:38:01', NULL);
 
 -- Dumping structure for table carelink.parent_household
-CREATE TABLE IF NOT EXISTS `parent_household` (
+DROP TABLE IF EXISTS `parent_household`;
+CREATE TABLE `parent_household` (
   `household_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `household_size` int DEFAULT NULL COMMENT 'Total number of people in the house',
@@ -1203,17 +1356,19 @@ CREATE TABLE IF NOT EXISTS `parent_household` (
   PRIMARY KEY (`household_id`),
   UNIQUE KEY `uk_profile_id` (`profile_id`),
   CONSTRAINT `fk_phousehold_profile` FOREIGN KEY (`profile_id`) REFERENCES `parent_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table carelink.parent_household: ~2 rows (approximately)
 INSERT INTO `parent_household` (`household_id`, `profile_id`, `household_size`, `household_type`, `has_children`, `has_elderly`, `has_pets`, `pet_details`, `created_at`, `updated_at`) VALUES
 	(1, 1, 10, NULL, 1, 1, 1, '2 dogs german cut', '2026-03-15 10:54:38', '2026-04-15 17:36:09'),
 	(2, 3, 5, NULL, 1, 1, 1, '1 golden retriever', '2026-04-08 09:21:05', NULL),
 	(3, 4, 8, 'townhouse', 1, 1, 0, '', '2026-04-28 09:22:55', NULL),
-	(4, 5, 8, 'house', 1, 1, 1, '1 golden retriever', '2026-04-28 11:38:01', NULL);
+	(4, 5, 8, 'house', 1, 1, 1, '1 golden retriever', '2026-04-28 11:38:01', NULL),
+	(5, 7, 8, 'house', 0, 0, 0, '', '2026-05-11 07:11:10', NULL);
 
 -- Dumping structure for table carelink.parent_profiles
-CREATE TABLE IF NOT EXISTS `parent_profiles` (
+DROP TABLE IF EXISTS `parent_profiles`;
+CREATE TABLE `parent_profiles` (
   `profile_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
   `contact_number` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -1237,18 +1392,21 @@ CREATE TABLE IF NOT EXISTS `parent_profiles` (
   PRIMARY KEY (`profile_id`),
   UNIQUE KEY `uk_user_id` (`user_id`),
   CONSTRAINT `fk_pprofile_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.parent_profiles: ~5 rows (approximately)
+-- Dumping data for table carelink.parent_profiles: ~7 rows (approximately)
 INSERT INTO `parent_profiles` (`profile_id`, `user_id`, `contact_number`, `profile_image`, `province`, `municipality`, `barangay`, `latitude`, `longitude`, `address`, `landmark`, `bio`, `verification_status`, `created_at`, `updated_at`, `verified_by`, `verified_at`, `rejected_by`, `rejected_at`, `rejection_reason`) VALUES
 	(1, 2, '09396954318', 'http://localhost/carelink_api/uploads/profiles/parentProfile_2_1773577099.jpg', 'Leyte', 'Isabel', 'San Roque', 10.9698251, 124.4578588, 'San Roque, Isabel, Leyte', 'Near our House', 'Test Bio ni Kirby cAlderon', 'Verified', '2026-03-05 10:16:53', '2026-04-15 17:36:09', NULL, NULL, NULL, NULL, NULL),
 	(2, 9, NULL, NULL, 'Leyte', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Verified', '2026-03-25 05:54:51', '2026-03-25 05:57:13', NULL, NULL, NULL, NULL, NULL),
 	(3, 16, '09999999999', NULL, 'Leyte', 'Ormoc', 'Cogon', NULL, NULL, 'Cogon, Ormoc, Leyte', 'near Aclc', 'sample', 'Verified', '2026-04-08 09:10:25', '2026-04-08 09:24:30', NULL, NULL, NULL, NULL, NULL),
 	(4, 19, '0999999999', 'http://localhost/carelink_api/uploads/profiles/parentProfile_19_1777368175.jpg', 'Leyte', 'Isabel', 'Matlang', NULL, NULL, 'Matlang, Isabel, Leyte', 'Isabel', 'Need Assistance for Elderly Parents', 'Verified', '2026-04-28 09:18:35', '2026-04-28 10:18:10', 4, '2026-04-28 10:18:10', NULL, NULL, NULL),
-	(5, 20, '0999999999', 'http://localhost/carelink_api/uploads/profiles/parentProfile_20_1777376281.jpg', 'Leyte', 'Isabel', 'Matlang', NULL, NULL, 'Matlang, Isabel, Leyte', 'Isabel', 'Sample Parent Bio', 'Verified', '2026-04-28 11:01:40', '2026-04-28 11:46:28', 22, '2026-04-28 11:46:28', NULL, NULL, NULL);
+	(5, 20, '0999999999', 'http://localhost/carelink_api/uploads/profiles/parentProfile_20_1777376281.jpg', 'Leyte', 'Isabel', 'Matlang', NULL, NULL, 'Matlang, Isabel, Leyte', 'Isabel', 'Sample Parent Bio', 'Verified', '2026-04-28 11:01:40', '2026-04-28 11:46:28', 22, '2026-04-28 11:46:28', NULL, NULL, NULL),
+	(6, 25, NULL, NULL, 'Leyte', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Unverified', '2026-05-11 06:52:26', NULL, NULL, NULL, NULL, NULL, NULL),
+	(7, 27, '0999999999', 'http://localhost/carelink_api/uploads/profiles/parentProfile_27_1778483470.jpg', 'Leyte', 'Isabel', 'Matlang', NULL, NULL, 'Matlang, Isabel, Leyte', 'Isabel', 'More about the Household basta kuan', 'Verified', '2026-05-11 07:00:38', '2026-05-11 07:49:24', 22, '2026-05-11 07:49:24', NULL, NULL, NULL);
 
 -- Dumping structure for table carelink.peso_reports
-CREATE TABLE IF NOT EXISTS `peso_reports` (
+DROP TABLE IF EXISTS `peso_reports`;
+CREATE TABLE `peso_reports` (
   `report_id` int NOT NULL AUTO_INCREMENT,
   `report_type` enum('Monthly','Quarterly','Annual','Custom') COLLATE utf8mb4_general_ci NOT NULL,
   `report_period_start` date NOT NULL,
@@ -1271,7 +1429,8 @@ CREATE TABLE IF NOT EXISTS `peso_reports` (
 -- Dumping data for table carelink.peso_reports: ~0 rows (approximately)
 
 -- Dumping structure for table carelink.placements
-CREATE TABLE IF NOT EXISTS `placements` (
+DROP TABLE IF EXISTS `placements`;
+CREATE TABLE `placements` (
   `placement_id` int NOT NULL AUTO_INCREMENT,
   `application_id` int DEFAULT NULL COMMENT 'Source application, if any',
   `parent_id` int NOT NULL,
@@ -1309,8 +1468,23 @@ INSERT INTO `placements` (`placement_id`, `application_id`, `parent_id`, `helper
 	(2, 4, 19, 18, 6, NULL, 'Live-out', 'Part-time', 8000.00, 'Monthly', '2026-04-28', NULL, 'Active', NULL, '2026-04-28 10:33:52', NULL, NULL),
 	(3, 5, 20, 21, 7, NULL, 'Live-in', 'Full-time', 8000.00, 'Monthly', '2026-04-28', NULL, 'Active', NULL, '2026-04-28 12:23:19', NULL, NULL);
 
+-- Dumping structure for table carelink.placement_renewal_intent
+DROP TABLE IF EXISTS `placement_renewal_intent`;
+CREATE TABLE `placement_renewal_intent` (
+  `application_id` int NOT NULL COMMENT 'job_applications.application_id',
+  `parent_interested` tinyint(1) DEFAULT NULL COMMENT 'NULL undecided, 0 no, 1 yes',
+  `helper_interested` tinyint(1) DEFAULT NULL COMMENT 'NULL undecided, 0 no, 1 yes',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`application_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Dumping data for table carelink.placement_renewal_intent: ~1 rows (approximately)
+INSERT INTO `placement_renewal_intent` (`application_id`, `parent_interested`, `helper_interested`, `updated_at`) VALUES
+	(3, 0, 1, '2026-05-06 14:49:51');
+
 -- Dumping structure for table carelink.placement_reviews
-CREATE TABLE IF NOT EXISTS `placement_reviews` (
+DROP TABLE IF EXISTS `placement_reviews`;
+CREATE TABLE `placement_reviews` (
   `review_id` int NOT NULL AUTO_INCREMENT,
   `placement_id` int NOT NULL,
   `reviewer_id` int NOT NULL COMMENT 'Who gave the review',
@@ -1326,12 +1500,15 @@ CREATE TABLE IF NOT EXISTS `placement_reviews` (
   KEY `fk_reviews_reviewer` (`reviewer_id`),
   CONSTRAINT `fk_reviews_placement` FOREIGN KEY (`placement_id`) REFERENCES `placements` (`placement_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_reviews_reviewer` FOREIGN KEY (`reviewer_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table carelink.placement_reviews: ~0 rows (approximately)
+INSERT INTO `placement_reviews` (`review_id`, `placement_id`, `reviewer_id`, `reviewee_id`, `reviewer_type`, `rating`, `review_text`, `is_visible`, `created_at`) VALUES
+	(1, 1, 17, 2, 'helper', 3.0, 'lol', 1, '2026-05-06 15:50:20');
 
 -- Dumping structure for table carelink.placement_tasks
-CREATE TABLE IF NOT EXISTS `placement_tasks` (
+DROP TABLE IF EXISTS `placement_tasks`;
+CREATE TABLE `placement_tasks` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `application_id` int NOT NULL,
   `created_by` int NOT NULL,
@@ -1356,7 +1533,8 @@ CREATE TABLE IF NOT EXISTS `placement_tasks` (
 -- Dumping data for table carelink.placement_tasks: ~0 rows (approximately)
 
 -- Dumping structure for table carelink.ref_categories
-CREATE TABLE IF NOT EXISTS `ref_categories` (
+DROP TABLE IF EXISTS `ref_categories`;
+CREATE TABLE `ref_categories` (
   `category_id` int NOT NULL AUTO_INCREMENT,
   `category_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'PESO Nature of Work',
   `icon` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Icon name for frontend',
@@ -1375,7 +1553,8 @@ INSERT INTO `ref_categories` (`category_id`, `category_name`, `icon`, `descripti
 	(6, 'Others', 'ellipsis', 'Other domestic services not listed above');
 
 -- Dumping structure for table carelink.ref_jobs
-CREATE TABLE IF NOT EXISTS `ref_jobs` (
+DROP TABLE IF EXISTS `ref_jobs`;
+CREATE TABLE `ref_jobs` (
   `job_id` int NOT NULL AUTO_INCREMENT,
   `category_id` int NOT NULL,
   `job_title` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
@@ -1404,7 +1583,8 @@ INSERT INTO `ref_jobs` (`job_id`, `category_id`, `job_title`, `description`) VAL
 	(15, 6, 'Pet Care Aide', 'Feeding, walking, and grooming pets');
 
 -- Dumping structure for table carelink.ref_languages
-CREATE TABLE IF NOT EXISTS `ref_languages` (
+DROP TABLE IF EXISTS `ref_languages`;
+CREATE TABLE `ref_languages` (
   `language_id` int NOT NULL AUTO_INCREMENT,
   `language_name` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   PRIMARY KEY (`language_id`),
@@ -1425,7 +1605,8 @@ INSERT INTO `ref_languages` (`language_id`, `language_name`) VALUES
 	(6, 'Waray');
 
 -- Dumping structure for table carelink.ref_skills
-CREATE TABLE IF NOT EXISTS `ref_skills` (
+DROP TABLE IF EXISTS `ref_skills`;
+CREATE TABLE `ref_skills` (
   `skill_id` int NOT NULL AUTO_INCREMENT,
   `job_id` int NOT NULL,
   `skill_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
@@ -1460,7 +1641,8 @@ INSERT INTO `ref_skills` (`skill_id`, `job_id`, `skill_name`, `description`) VAL
 	(21, 12, 'Dementia / Alzheimer Care', 'Patience-based care and safety supervision');
 
 -- Dumping structure for table carelink.saved_jobs
-CREATE TABLE IF NOT EXISTS `saved_jobs` (
+DROP TABLE IF EXISTS `saved_jobs`;
+CREATE TABLE `saved_jobs` (
   `saved_id` int NOT NULL AUTO_INCREMENT,
   `helper_id` int NOT NULL,
   `job_post_id` int NOT NULL,
@@ -1481,7 +1663,8 @@ INSERT INTO `saved_jobs` (`saved_id`, `helper_id`, `job_post_id`, `saved_at`) VA
 	(3, 18, 6, '2026-04-28 10:26:24');
 
 -- Dumping structure for table carelink.saved_profiles
-CREATE TABLE IF NOT EXISTS `saved_profiles` (
+DROP TABLE IF EXISTS `saved_profiles`;
+CREATE TABLE `saved_profiles` (
   `save_id` int NOT NULL AUTO_INCREMENT,
   `parent_id` int NOT NULL,
   `helper_id` int NOT NULL,
@@ -1496,7 +1679,8 @@ CREATE TABLE IF NOT EXISTS `saved_profiles` (
 -- Dumping data for table carelink.saved_profiles: ~0 rows (approximately)
 
 -- Dumping structure for table carelink.saved_searches
-CREATE TABLE IF NOT EXISTS `saved_searches` (
+DROP TABLE IF EXISTS `saved_searches`;
+CREATE TABLE `saved_searches` (
   `search_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
   `search_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1512,7 +1696,8 @@ CREATE TABLE IF NOT EXISTS `saved_searches` (
 -- Dumping data for table carelink.saved_searches: ~0 rows (approximately)
 
 -- Dumping structure for table carelink.users
-CREATE TABLE IF NOT EXISTS `users` (
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
   `user_id` int NOT NULL AUTO_INCREMENT,
   `email` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `username` varchar(100) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
@@ -1530,9 +1715,9 @@ CREATE TABLE IF NOT EXISTS `users` (
   UNIQUE KEY `uk_email` (`email`),
   KEY `idx_usertype` (`user_type`),
   KEY `idx_status` (`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.users: ~15 rows (approximately)
+-- Dumping data for table carelink.users: ~20 rows (approximately)
 INSERT INTO `users` (`user_id`, `email`, `username`, `password`, `first_name`, `middle_name`, `last_name`, `user_type`, `status`, `profile_completed`, `created_at`, `updated_at`, `last_login`) VALUES
 	(1, 'sean@gmail.com', 'sean3656', '$2y$10$ix2Ys48ZgJFPe5J9MiTUtO0Mq8r4LO4kZ.3KhXvL3Iqbfh1tjS6eG', 'Sean Howie', 'Genshin Impact', 'Eulogio', 'helper', 'approved', 1, '2026-03-02 01:44:36', '2026-04-15 17:28:10', NULL),
 	(2, 'kirby@gmail.com', 'kirby1942', '$2y$10$/kaQADUGo.YF61535.m3RuLiZaJGjmQidyie6IpfMVO5yDk5IR0Lm', 'Kirby', 'Baguion', 'Calderon', 'parent', 'approved', 1, '2026-03-05 10:16:53', '2026-04-15 17:36:09', NULL),
@@ -1543,15 +1728,21 @@ INSERT INTO `users` (`user_id`, `email`, `username`, `password`, `first_name`, `
 	(14, 'sample@gmail.com', 'sample4618', '$2y$10$8Ls3IE7VDjrYwpTRUPEmjuHIpalENMEp9xM1Upb4EPgWvfI7VS2Py', 'sample', '', 'helper', 'helper', 'pending', 0, '2026-03-30 13:46:28', NULL, NULL),
 	(15, 'helper1@gmail.com', 'helper19016', '$2y$10$eMMgV6wbyaAO3Lo3DSxlDOfHkLrqigeiHiZT.0Hcqp8xnX/HaCeym', 'Sample1', '', 'Helper1', 'helper', 'approved', 0, '2026-04-08 09:09:42', '2026-04-14 15:01:27', NULL),
 	(16, 'parent1@gmail.com', 'parent16084', '$2y$10$xFfA2AlBRGST0a3e26FmXO.5p/3bvB.MD9rjVK1DqzuzNaSdGIP5K', 'parent1', '', 'parent1', 'parent', 'approved', 1, '2026-04-08 09:10:25', '2026-04-14 11:35:31', NULL),
-	(17, 'kurt@gmail.com', 'kurt6302', '$2y$10$CMoHhF4Ixnq.z7.ykE2D1eQASL/SRuAKrfG/bjS6ppjzy.yZNbIUC', 'kurt', 'russel', 'ardines', 'helper', 'approved', 1, '2026-04-12 16:27:01', '2026-04-27 04:34:34', NULL),
+	(17, 'kurt@gmail.com', 'kurt6302', '$2y$10$CMoHhF4Ixnq.z7.ykE2D1eQASL/SRuAKrfG/bjS6ppjzy.yZNbIUC', 'kurt', 'russel', 'ardines', 'helper', 'approved', 1, '2026-04-12 16:27:01', '2026-05-25 18:07:46', NULL),
 	(18, 'george@gmail.com', 'george6296', '$2y$10$bpPC4cU6U329ZMi4togwjeE2Mzq2Eb.Jxs85lMTDKQwAZZaIqwgNi', 'George', 'Garciano', 'Pericano', 'helper', 'approved', 1, '2026-04-28 08:56:29', '2026-04-28 10:13:57', NULL),
 	(19, 'pinky@gmail.com', 'pinky8210', '$2y$10$uj2wJuvyGsmv8NFhm1D7bOHWiE5phfsuntv027XeBgiYpX91BLhyK', 'Pinky', '', 'Pacabis', 'parent', 'approved', 1, '2026-04-28 09:18:35', '2026-04-28 10:18:10', NULL),
 	(20, 'newparent1@gmail.com', 'newparent14152', '$2y$10$7XD/sCCTg/HRhOsiwE5lQezAqrXdFgrLI1XEHnNaUhWyOiJaMdGUO', 'New', '', 'Parent', 'parent', 'approved', 1, '2026-04-28 11:01:40', '2026-04-28 11:46:28', NULL),
 	(21, 'newhelper1@gmail.com', 'newhelper18988', '$2y$10$4L05yVjiE4F2z4rt7j9CleR6knn47oVGr/U8jgDrGYmNbWpSg7KJ6', 'New', '', 'Helper', 'helper', 'approved', 1, '2026-04-28 11:02:35', '2026-04-28 11:43:35', NULL),
-	(22, 'new@peso.com', 'peso1234', '$2y$10$3wzH6k/2TNG2i0ybUY2llO6q6PQvcwMr3W.JdbvSXbWNm7oRDkAnG', 'New', '', 'Peso', 'peso', 'approved', 1, '2026-04-28 11:07:31', NULL, NULL);
+	(22, 'new@peso.com', 'peso1234', '$2y$10$3wzH6k/2TNG2i0ybUY2llO6q6PQvcwMr3W.JdbvSXbWNm7oRDkAnG', 'New', '', 'Peso', 'peso', 'approved', 1, '2026-04-28 11:07:31', NULL, NULL),
+	(23, 'helper123@gmail.com', 'helper1237393', '$2y$10$xy2H9xVfHsaXNXi8NlRyRuL8fwzMOzm.v6AnVYtolEnL9UsCIWyem', 'User', '', 'Helper123', 'helper', 'pending', 0, '2026-05-11 06:48:14', NULL, NULL),
+	(24, 'userhelper1234@gmail.com', 'userhelper12343156', '$2y$10$IJBjq/yaxLGLHOcBcQb/d.WbizkvjufkNIGUR3A4JrlqWSBe4yY0.', 'Users', '', 'Helper1234', 'helper', 'pending', 0, '2026-05-11 06:49:24', NULL, NULL),
+	(25, 'userparent1234@gmail.com', 'userparent12347865', '$2y$10$SaMEee5UkjvjmH8FM4PB3OVqrf8SBa215ZIpm46deqLbH1o/bDhPK', 'Users', '', 'Parent1234', 'parent', 'pending', 0, '2026-05-11 06:52:26', NULL, NULL),
+	(26, 'newhelper@gmail.com', 'newhelper5489', '$2y$10$waU9Spsex7cnwKqeeXUu.OmArALdRZh9.lt4Uf730B4.oeARHgGWK', 'New', '', 'Helper12', 'helper', 'approved', 1, '2026-05-11 06:58:56', '2026-05-11 07:50:03', NULL),
+	(27, 'newparent12@gmail.com', 'newparent129452', '$2y$10$IjgiP7EN1K2Ac8neA2kfQ.5MaUkgMRFpvm6ThAkDlEIAYP0keJh3S', 'New', '', 'Parent12', 'parent', 'approved', 1, '2026-05-11 07:00:38', '2026-05-11 07:49:24', NULL);
 
 -- Dumping structure for table carelink.user_documents
-CREATE TABLE IF NOT EXISTS `user_documents` (
+DROP TABLE IF EXISTS `user_documents`;
+CREATE TABLE `user_documents` (
   `document_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
   `document_type` enum('Barangay Clearance','Valid ID','Police Clearance','TESDA NC2') COLLATE utf8mb4_general_ci NOT NULL,
@@ -1572,9 +1763,9 @@ CREATE TABLE IF NOT EXISTS `user_documents` (
   KEY `idx_verified_by` (`verified_by`),
   CONSTRAINT `fk_udocs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_udocs_verified_by` FOREIGN KEY (`verified_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table carelink.user_documents: ~28 rows (approximately)
+-- Dumping data for table carelink.user_documents: ~34 rows (approximately)
 INSERT INTO `user_documents` (`document_id`, `user_id`, `document_type`, `file_path`, `id_type`, `expiry_date`, `status`, `ai_verification_status`, `ai_confidence_score`, `rejection_reason`, `verified_by`, `verified_at`, `uploaded_at`, `updated_at`) VALUES
 	(1, 1, 'Barangay Clearance', 'barangay_1_1773489962.jpg', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, NULL, '2026-04-14 10:20:27', '2026-03-14 12:06:02', '2026-04-14 10:20:27'),
 	(2, 1, 'Valid ID', 'valid_id_1_1773489962.png', 'PhilSys', NULL, 'Verified', 'Unchecked', NULL, NULL, NULL, '2026-04-14 10:20:23', '2026-03-14 12:06:02', '2026-04-14 10:20:23'),
@@ -1603,7 +1794,13 @@ INSERT INTO `user_documents` (`document_id`, `user_id`, `document_type`, `file_p
 	(27, 21, 'Police Clearance', 'police_21_1777375904.png', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, 22, '2026-04-28 11:43:06', '2026-04-28 11:31:44', '2026-04-28 11:43:06'),
 	(28, 21, 'TESDA NC2', 'tesda_21_1777375904.png', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, 22, '2026-04-28 11:43:09', '2026-04-28 11:31:44', '2026-04-28 11:43:09'),
 	(29, 20, 'Valid ID', 'parent_validid_20_1777376321.png', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, 22, '2026-04-28 11:44:43', '2026-04-28 11:38:41', '2026-04-28 11:44:43'),
-	(31, 20, 'Barangay Clearance', 'parent_brgy_20_1777376746.png', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, 22, '2026-04-28 11:46:24', '2026-04-28 11:45:46', '2026-04-28 11:46:24');
+	(31, 20, 'Barangay Clearance', 'parent_brgy_20_1777376746.png', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, 22, '2026-04-28 11:46:24', '2026-04-28 11:45:46', '2026-04-28 11:46:24'),
+	(32, 27, 'Valid ID', 'parent_validid_27_1778483501.png', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, 22, '2026-05-11 07:49:20', '2026-05-11 07:11:41', '2026-05-11 07:49:20'),
+	(33, 27, 'Barangay Clearance', 'parent_brgy_27_1778483501.png', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, 22, '2026-05-11 07:49:17', '2026-05-11 07:11:41', '2026-05-11 07:49:17'),
+	(34, 26, 'Barangay Clearance', 'barangay_26_1778483773.png', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, 22, '2026-05-11 07:49:42', '2026-05-11 07:16:13', '2026-05-11 07:49:42'),
+	(35, 26, 'Valid ID', 'valid_id_26_1778483773.png', 'PhilSys (recommended)', NULL, 'Verified', 'Unchecked', NULL, NULL, 22, '2026-05-11 07:49:46', '2026-05-11 07:16:13', '2026-05-11 07:49:46'),
+	(36, 26, 'Police Clearance', 'police_26_1778483773.png', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, 22, '2026-05-11 07:49:52', '2026-05-11 07:16:13', '2026-05-11 07:49:52'),
+	(37, 26, 'TESDA NC2', 'tesda_26_1778483773.png', NULL, NULL, 'Verified', 'Unchecked', NULL, NULL, 22, '2026-05-11 07:50:01', '2026-05-11 07:16:13', '2026-05-11 07:50:01');
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
