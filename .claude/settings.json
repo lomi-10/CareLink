@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls components/shared/)",
+      "Bash(ls components/)",
+      "Bash(grep -n '$completeness' helper/get_profile.php)"
+    ]
+  }
+}

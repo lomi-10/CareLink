@@ -1,15 +1,14 @@
-// components/profile/ParentDocumentModal.tsx
-// FIXED - Added Barangay Clearance, correct endpoint, responsive styles
+// components/parent/profile/ParentDocumentModal.tsx
+// Upload Valid ID and Barangay Clearance for parent (PESO) verification.
+// PHP: parent/get_documents.php (status check), parent/upload_documents.php (upload)
 
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator, Dimensions,
-    Image,
+    ActivityIndicator,
     Linking,
-    Modal,
     Platform,
     StyleSheet,
     Text,
@@ -17,8 +16,9 @@ import {
     View
 } from 'react-native';
 import API_URL from '@/constants/api';
+import { theme } from '@/constants/theme';
 
-import { FormModalLayout, LoadingSpinner, NotificationModal } from '@/components/shared';
+import { FormModalLayout, NotificationModal } from '@/components/shared';
 
 interface ParentDocumentModalProps {
   visible: boolean;
@@ -30,11 +30,7 @@ interface DocumentState {
   uri: string | null;
   name: string | null;
   type: string | null;
-  base64?: string | null;
 }
-
-const isWeb = Platform.OS === 'web';
-const { width } = Dimensions.get('window');
 
 const DOC_VALID_ID = 'Valid ID';
 const DOC_BRGY = 'Barangay Clearance';
@@ -54,23 +50,52 @@ function isLockedDocStatus(status?: string): boolean {
   return s === 'Verified' || s === 'Pending';
 }
 
-export default function ParentDocumentModal({ 
-  visible, 
-  onClose, 
-  onSaveSuccess 
+function LockedParentDocCard({
+  title,
+  subtitle,
+  status,
+  fileUrl,
+}: {
+  title: string;
+  subtitle: string;
+  status: string;
+  fileUrl?: string;
+}) {
+  const open = () => {
+    if (fileUrl) Linking.openURL(fileUrl).catch(() => {});
+  };
+  return (
+    <View style={styles.lockedCard}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.docTitle}>{title}</Text>
+        <Text style={styles.docSubtitle}>{subtitle}</Text>
+        <Text style={styles.lockedStatus}>{status}</Text>
+      </View>
+      {fileUrl ? (
+        <TouchableOpacity onPress={open} style={styles.openLink}>
+          <Ionicons name="open-outline" size={18} color="#007AFF" />
+          <Text style={styles.openLinkText}>Open</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
+export default function ParentDocumentModal({
+  visible,
+  onClose,
+  onSaveSuccess,
 }: ParentDocumentModalProps) {
-  
+
   // STATE
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [existingDocs, setExistingDocs] = useState<any[]>([]);
 
   // Document States
+  const [brgyDoc, setBrgyDoc] = useState<DocumentState>({ uri: null, name: null, type: null });
   const [validIdDoc, setValidIdDoc] = useState<DocumentState>({ uri: null, name: null, type: null });
-  const [brgyClearanceDoc, setBrgyClearanceDoc] = useState<DocumentState>({ uri: null, name: null, type: null });
-
-  // Existing documents
-  const [existingDocs, setExistingDocs] = useState<any[]>([]);
 
   // Notification
   const [notifVisible, setNotifVisible] = useState(false);
@@ -79,60 +104,63 @@ export default function ParentDocumentModal({
 
   useEffect(() => {
     if (visible) {
+      setBrgyDoc({ uri: null, name: null, type: null });
       setValidIdDoc({ uri: null, name: null, type: null });
-      setBrgyClearanceDoc({ uri: null, name: null, type: null });
       loadUserData();
     }
   }, [visible]);
 
   const loadUserData = async () => {
     try {
+      setLoading(true);
       const userData = await AsyncStorage.getItem('user_data');
       if (userData) {
         const parsed = JSON.parse(userData);
-        setUserId(parsed.user_id);
-        await fetchExistingDocuments(parsed.user_id);
+        const uid = String(parsed.user_id);
+        setUserId(uid);
+        await fetchExistingDocuments(uid);
       }
     } catch (error) {
-      console.error("Failed to load user data", error);
-      setNotifMessage("Failed to load user data. Please try again.");
-      setNotifType('error');
-      setNotifVisible(true);
-    }
-  };
-
-  const fetchExistingDocuments = async (uid: string) => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${API_URL}/parent/get_documents.php?user_id=${uid}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        const raw = Array.isArray(data.documents) ? data.documents : data.document ? [data.document] : [];
-        setExistingDocs(mergeLatestDocsPerType(raw));
-      }
-    } catch (error) {
-      console.error("Failed to fetch documents", error);
-      // Don't show error if it's just "no documents" - that's expected for new users
+      console.error('Failed to load user data', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const getDocRecord = (docType: string) => existingDocs.find((d) => d.document_type === docType);
+  const fetchExistingDocuments = async (uid: string) => {
+    try {
+      const res = await fetch(`${API_URL}/parent/get_documents.php?user_id=${encodeURIComponent(uid)}`);
+      const data = await res.json();
+      const raw = Array.isArray(data.documents) ? data.documents : data.document ? [data.document] : [];
+      setExistingDocs(mergeLatestDocsPerType(raw));
+    } catch (e) {
+      console.error('fetchExistingDocuments', e);
+      setExistingDocs([]);
+    }
+  };
 
-  const validRec = getDocRecord(DOC_VALID_ID);
-  const brgyRec = getDocRecord(DOC_BRGY);
-  const needsValidUpload = !validRec || validRec.status === 'Rejected';
+  const getDoc = (documentType: string) => existingDocs.find((d) => d.document_type === documentType);
+
+  const brgyRec = getDoc(DOC_BRGY);
+  const validRec = getDoc(DOC_VALID_ID);
+
   const needsBrgyUpload = !brgyRec || brgyRec.status === 'Rejected';
-  const allSlotsSatisfied = !needsValidUpload && !needsBrgyUpload;
+  const needsValidUpload = !validRec || validRec.status === 'Rejected';
+  const nothingToSubmit = !needsBrgyUpload && !needsValidUpload;
 
-  const pickDocument = async (type: 'validId' | 'brgyClearance') => {
+  const showNotification = (msg: string, type: 'success' | 'error') => {
+    setNotifMessage(msg);
+    setNotifType(type);
+    setNotifVisible(true);
+  };
+
+  // ============================================================================
+  // DOCUMENT PICKER
+  // ============================================================================
+
+  const pickDocument = async (
+    setDoc: React.Dispatch<React.SetStateAction<DocumentState>>
+  ) => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/*', 'application/pdf'],
@@ -141,130 +169,79 @@ export default function ParentDocumentModal({
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        
+
         let fileName = asset.name;
         const mimeType = asset.mimeType || '';
-        
+
         if (!fileName.includes('.')) {
           if (mimeType.includes('pdf')) fileName += '.pdf';
           else if (mimeType.includes('png')) fileName += '.png';
           else fileName += '.jpg';
         }
 
-        const docData = {
+        setDoc({
           uri: asset.uri,
           name: fileName,
           type: mimeType || (fileName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
-        };
-
-        if (type === 'validId') setValidIdDoc(docData);
-        else setBrgyClearanceDoc(docData);
+        });
       }
     } catch (error) {
-      console.error('Error picking document:', error);
-      setNotifMessage("Failed to pick document. Please try again.");
-      setNotifType('error');
-      setNotifVisible(true);
+      console.error('Document pick error:', error);
+      showNotification('Failed to pick document', 'error');
     }
   };
 
-  const removeDocument = (type: 'validId' | 'brgyClearance') => {
-    if (type === 'validId') setValidIdDoc({ uri: null, name: null, type: null });
-    else setBrgyClearanceDoc({ uri: null, name: null, type: null });
+  const removeDocument = (
+    setDoc: React.Dispatch<React.SetStateAction<DocumentState>>
+  ) => {
+    setDoc({ uri: null, name: null, type: null });
   };
 
-  const validateDocument = (): boolean => {
-    if (allSlotsSatisfied) {
-      setNotifMessage('Your documents are already on file. There is nothing new to upload.');
-      setNotifType('error');
-      setNotifVisible(true);
-      return false;
-    }
-    if (needsBrgyUpload && !brgyClearanceDoc.uri) {
-      setNotifMessage('Please choose a new Barangay Clearance file to upload.');
-      setNotifType('error');
-      setNotifVisible(true);
-      return false;
-    }
-    if (needsValidUpload && !validIdDoc.uri) {
-      setNotifMessage('Please choose a new Valid ID file to upload.');
-      setNotifType('error');
-      setNotifVisible(true);
-      return false;
-    }
-    return true;
-  };
+  // ============================================================================
+  // UPLOAD
+  // ============================================================================
 
   const handleUpload = async () => {
-    if (!validateDocument()) return;
+    if (!userId) {
+      return showNotification('User ID not found', 'error');
+    }
+    if (needsBrgyUpload && !brgyDoc.uri) {
+      return showNotification('Please choose a Barangay Clearance file to upload.', 'error');
+    }
+    if (needsValidUpload && !validIdDoc.uri) {
+      return showNotification('Please choose a Valid ID file to upload.', 'error');
+    }
+    if (!brgyDoc.uri && !validIdDoc.uri) {
+      return showNotification('Select at least one file to upload.', 'error');
+    }
 
     setUploading(true);
 
     try {
       const formData = new FormData();
-      formData.append('user_id', userId || '');
+      formData.append('user_id', userId);
 
-      // Add Valid ID (only when user selected a replacement)
-      if (validIdDoc.uri) {
+      const prepareDoc = async (doc: DocumentState, fieldName: string) => {
+        if (!doc.uri) return;
+
         if (Platform.OS === 'web') {
           try {
-            const response = await fetch(validIdDoc.uri);
-            const blob = await response.blob();
-            formData.append('valid_id', blob, validIdDoc.name || 'valid_id.jpg');
+            const res = await fetch(doc.uri);
+            const blob = await res.blob();
+            formData.append(fieldName, blob, doc.name || 'file');
           } catch (err) {
-            console.error('Error fetching document blob on web:', err);
+            console.error(`Error fetching blob for ${fieldName}:`, err);
             // @ts-ignore
-            formData.append('valid_id', {
-              uri: validIdDoc.uri,
-              name: validIdDoc.name || 'valid_id.jpg',
-              type: validIdDoc.type || 'application/octet-stream',
-            });
+            formData.append(fieldName, { uri: doc.uri, name: doc.name || 'file', type: doc.type || 'application/octet-stream' });
           }
         } else {
-          // MOBILE
           // @ts-ignore
-          formData.append('valid_id', {
-            uri: validIdDoc.uri,
-            name: validIdDoc.name || 'valid_id.jpg',
-            type: validIdDoc.type || 'application/octet-stream',
-          });
+          formData.append(fieldName, { uri: doc.uri, name: doc.name || 'file', type: doc.type || 'application/octet-stream' });
         }
-      }
+      };
 
-      // Add Barangay Clearance (only when user selected a replacement)
-      if (brgyClearanceDoc.uri) {
-        if (Platform.OS === 'web') {
-          try {
-            const response = await fetch(brgyClearanceDoc.uri);
-            const blob = await response.blob();
-            formData.append('barangay_clearance', blob, brgyClearanceDoc.name || 'brgy_clearance.jpg');
-          } catch (err) {
-            console.error('Error fetching document blob on web:', err);
-            // @ts-ignore
-            formData.append('barangay_clearance', {
-              uri: brgyClearanceDoc.uri,
-              name: brgyClearanceDoc.name || 'brgy_clearance.jpg',
-              type: brgyClearanceDoc.type || 'application/octet-stream',
-            });
-          }
-        } else {
-          // MOBILE
-          // @ts-ignore
-          formData.append('barangay_clearance', {
-            uri: brgyClearanceDoc.uri,
-            name: brgyClearanceDoc.name || 'brgy_clearance.jpg',
-            type: brgyClearanceDoc.type || 'application/octet-stream',
-          });
-        }
-      }
-
-      if (!validIdDoc.uri && !brgyClearanceDoc.uri) {
-        setUploading(false);
-        setNotifMessage('Please select at least one file to upload.');
-        setNotifType('error');
-        setNotifVisible(true);
-        return;
-      }
+      await prepareDoc(brgyDoc, 'barangay_clearance');
+      await prepareDoc(validIdDoc, 'valid_id');
 
       const response = await fetch(`${API_URL}/parent/upload_documents.php`, {
         method: 'POST',
@@ -281,498 +258,325 @@ export default function ParentDocumentModal({
       }
 
       if (data.success) {
-        setNotifMessage(data.message || "Documents uploaded successfully!");
-        setNotifType('success');
-        setNotifVisible(true);
+        showNotification(data.message || 'Documents uploaded successfully!', 'success');
 
-        // Reset selections
+        // Reset
+        setBrgyDoc({ uri: null, name: null, type: null });
         setValidIdDoc({ uri: null, name: null, type: null });
-        setBrgyClearanceDoc({ uri: null, name: null, type: null });
 
-        // Call success callback
         if (onSaveSuccess) {
-          setTimeout(() => onSaveSuccess(), 1500);
+          setTimeout(() => {
+            onSaveSuccess();
+            onClose(); // Close after success
+          }, 1500);
+        } else {
+          setTimeout(() => onClose(), 1500);
         }
       } else {
-        setNotifMessage(data.message || "Failed to upload document. Please try again.");
-        setNotifType('error');
-        setNotifVisible(true);
+        showNotification(data.message || 'Upload failed', 'error');
       }
     } catch (error: any) {
-      console.error('Upload error:', error);
-      setNotifMessage(error.message || "Network error occurred. Please try again.");
-      setNotifType('error');
-      setNotifVisible(true);
+      console.error('Upload Error:', error);
+      showNotification(`${error.message || 'An error occurred during upload'}`, 'error');
     } finally {
       setUploading(false);
     }
   };
 
-  const handleCloseNotification = () => {
-    setNotifVisible(false);
-    if (notifType === 'success') {
-      onClose();
-    }
-  };
+  // ============================================================================
+  // RENDER
+  // ============================================================================
 
   return (
     <>
       <FormModalLayout
         visible={visible}
         onClose={onClose}
-        title="Manage Documents"
-        subtitle="Upload ID and Barangay Clearance for verification"
+        title="Upload Documents"
+        subtitle="Required for PESO verification · JPG, PNG, or PDF"
         accent="parent"
         variant="wide"
         loading={loading}
         loadingText="Loading your documents..."
-        scrollContentStyle={{ paddingHorizontal: 20, paddingTop: 8 }}
+        scrollContentStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
         footer={
           !loading ? (
-            allSlotsSatisfied ? (
-              <View style={styles.footerInfo}>
-                <Ionicons name="checkmark-circle" size={22} color="#28a745" />
-                <Text style={styles.footerInfoText}>
-                  All required documents are on file (verified or pending review). You only need to return here if PESO asks for a new file.
+            nothingToSubmit ? (
+              <View style={styles.footerAllSet}>
+                <Ionicons name="checkmark-circle" size={22} color="#15803d" />
+                <Text style={styles.footerAllSetText}>
+                  All documents are on file. You only need to return here if PESO rejects a file or you want to add a replacement later.
                 </Text>
               </View>
             ) : (
               <TouchableOpacity
-                style={[
-                  styles.uploadButton,
-                  uploading && styles.uploadButtonDisabled,
-                  isWeb && styles.uploadButtonWeb,
-                ]}
+                style={[styles.submitBtn, uploading && styles.submitBtnDisabled]}
                 onPress={handleUpload}
                 disabled={uploading}
               >
                 {uploading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <>
-                    <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
-                    <Text style={styles.uploadButtonText}>
-                      {needsValidUpload && needsBrgyUpload
-                        ? 'Upload documents'
-                        : 'Upload selected document(s)'}
-                    </Text>
-                  </>
+                  <Text style={styles.submitText}>Submit upload</Text>
                 )}
               </TouchableOpacity>
             )
           ) : null
         }
       >
-              
-              {/* INSTRUCTIONS */}
-              <View style={styles.instructionCard}>
-                <Ionicons name="information-circle" size={24} color="#007AFF" />
-                <View style={styles.instructionText}>
-                  <Text style={styles.instructionTitle}>Required Documents</Text>
-                  <Text style={styles.instructionBody}>
-                    Please upload a valid government-issued ID and your Barangay Clearance. 
-                    These help us verify your account and ensure a safe community.
-                  </Text>
+            <View style={styles.infoCard}>
+              <Ionicons name="information-circle" size={20} color="#2563EB" />
+              <Text style={styles.infoText}>
+                {nothingToSubmit
+                  ? 'Your documents are on file (verified or pending). Upload only files PESO rejected.'
+                  : 'Upload clear photos. Accepted: JPG, PNG, PDF. You can submit only the document(s) that need replacing.'}
+              </Text>
+            </View>
+
+            {/* Barangay Clearance — on file or replace */}
+            {brgyRec && isLockedDocStatus(brgyRec.status) ? (
+              <LockedParentDocCard
+                title="Barangay Clearance"
+                subtitle="Required · on file"
+                status={brgyRec.status}
+                fileUrl={brgyRec.file_url}
+              />
+            ) : (
+              <View style={styles.docCard}>
+                <View style={styles.docHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.docTitle}>
+                      Barangay Clearance <Text style={styles.requiredMark}>*</Text>
+                    </Text>
+                    <Text style={styles.docSubtitle}>
+                      {brgyRec?.status === 'Rejected'
+                        ? 'PESO rejected this file — upload a replacement.'
+                        : 'Required by PESO'}
+                    </Text>
+                    {brgyRec?.status === 'Rejected' && brgyRec.rejection_reason ? (
+                      <Text style={styles.rejectHint}>{String(brgyRec.rejection_reason)}</Text>
+                    ) : null}
+                  </View>
+                  {!brgyDoc.uri ? (
+                    <TouchableOpacity
+                      style={styles.uploadBtn}
+                      onPress={() => pickDocument(setBrgyDoc)}
+                    >
+                      <Ionicons name="cloud-upload" size={18} color="#fff" />
+                      <Text style={styles.uploadBtnText}>Upload</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity onPress={() => removeDocument(setBrgyDoc)}>
+                      <Ionicons name="trash" size={20} color="#FF3B30" />
+                    </TouchableOpacity>
+                  )}
                 </View>
+                {brgyDoc.uri ? (
+                  <View style={styles.docPreview}>
+                    <Ionicons name="document" size={16} color="#007AFF" />
+                    <Text style={styles.docName} numberOfLines={1}>
+                      {brgyDoc.name}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
+            )}
 
-              {/* Documents on file (verified or pending — not rejected) */}
-              {(validRec && isLockedDocStatus(validRec.status)) ||
-              (brgyRec && isLockedDocStatus(brgyRec.status)) ? (
-                <View style={styles.existingDocsCard}>
-                  <Text style={styles.instructionTitle}>On file with PESO</Text>
-                  <Text style={[styles.instructionBody, { marginBottom: 12 }]}>
-                    These documents are set. You do not need to upload them again unless PESO rejects one below.
-                  </Text>
-                  {validRec && isLockedDocStatus(validRec.status) ? (
-                    <LockedDocumentRow
-                      title="Valid Government ID"
-                      status={validRec.status}
-                      fileUrl={validRec.file_url}
-                    />
-                  ) : null}
-                  {brgyRec && isLockedDocStatus(brgyRec.status) ? (
-                    <LockedDocumentRow
-                      title="Barangay Clearance"
-                      status={brgyRec.status}
-                      fileUrl={brgyRec.file_url}
-                    />
-                  ) : null}
-                </View>
-              ) : null}
-
-              {/* Replace rejected or add missing — Valid ID */}
-              {needsValidUpload ? (
-                <View style={styles.documentSection}>
-                  <Text style={styles.sectionLabel}>
-                    Valid Government ID <Text style={styles.required}>*</Text>
-                  </Text>
-                  <Text style={styles.sectionHelper}>
-                    {validRec?.status === 'Rejected'
-                      ? 'PESO rejected this document. Upload a clear replacement (photo or PDF).'
-                      : 'Upload a clear photo or PDF of your government-issued ID'}
-                  </Text>
-                  {validRec?.status === 'Rejected' && validRec.rejection_reason ? (
-                    <View style={styles.rejectReasonBox}>
-                      <Ionicons name="alert-circle" size={18} color="#dc3545" />
-                      <Text style={styles.rejectReasonText}>{String(validRec.rejection_reason)}</Text>
-                    </View>
-                  ) : null}
+            {/* Valid ID — on file or replace */}
+            {validRec && isLockedDocStatus(validRec.status) ? (
+              <LockedParentDocCard
+                title="Valid ID"
+                subtitle={validRec.id_type ? String(validRec.id_type) : 'Required · on file'}
+                status={validRec.status}
+                fileUrl={validRec.file_url}
+              />
+            ) : (
+              <View style={styles.docCard}>
+                <View style={styles.docHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.docTitle}>
+                      Valid ID <Text style={styles.requiredMark}>*</Text>
+                    </Text>
+                    <Text style={styles.docSubtitle}>
+                      {validRec?.status === 'Rejected'
+                        ? 'PESO rejected this file — upload a replacement.'
+                        : "PhilSys, Passport, Driver's License, etc."}
+                    </Text>
+                    {validRec?.status === 'Rejected' && validRec.rejection_reason ? (
+                      <Text style={styles.rejectHint}>{String(validRec.rejection_reason)}</Text>
+                    ) : null}
+                  </View>
                   {!validIdDoc.uri ? (
-                    <View style={styles.uploadButtons}>
-                      <TouchableOpacity style={styles.uploadBtn} onPress={() => pickDocument('validId')}>
-                        <Ionicons name="camera-outline" size={20} color="#007AFF" />
-                        <Text style={styles.uploadBtnText}>Choose File</Text>
-                      </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity
+                      style={styles.uploadBtn}
+                      onPress={() => pickDocument(setValidIdDoc)}
+                    >
+                      <Ionicons name="cloud-upload" size={18} color="#fff" />
+                      <Text style={styles.uploadBtnText}>Upload</Text>
+                    </TouchableOpacity>
                   ) : (
-                    <DocumentPreview doc={validIdDoc} onRemove={() => removeDocument('validId')} />
+                    <TouchableOpacity onPress={() => removeDocument(setValidIdDoc)}>
+                      <Ionicons name="trash" size={20} color="#FF3B30" />
+                    </TouchableOpacity>
                   )}
                 </View>
-              ) : null}
-
-              {/* Replace rejected or add missing — Barangay */}
-              {needsBrgyUpload ? (
-                <View style={styles.documentSection}>
-                  <Text style={styles.sectionLabel}>
-                    Barangay Clearance <Text style={styles.required}>*</Text>
-                  </Text>
-                  <Text style={styles.sectionHelper}>
-                    {brgyRec?.status === 'Rejected'
-                      ? 'PESO rejected this document. Upload a clear replacement (photo or PDF).'
-                      : 'Upload a clear photo or PDF of your recent Barangay Clearance'}
-                  </Text>
-                  {brgyRec?.status === 'Rejected' && brgyRec.rejection_reason ? (
-                    <View style={styles.rejectReasonBox}>
-                      <Ionicons name="alert-circle" size={18} color="#dc3545" />
-                      <Text style={styles.rejectReasonText}>{String(brgyRec.rejection_reason)}</Text>
-                    </View>
-                  ) : null}
-                  {!brgyClearanceDoc.uri ? (
-                    <View style={styles.uploadButtons}>
-                      <TouchableOpacity
-                        style={styles.uploadBtn}
-                        onPress={() => pickDocument('brgyClearance')}
-                      >
-                        <Ionicons name="document-outline" size={20} color="#007AFF" />
-                        <Text style={styles.uploadBtnText}>Choose File</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <DocumentPreview doc={brgyClearanceDoc} onRemove={() => removeDocument('brgyClearance')} />
-                  )}
-                </View>
-              ) : null}
-
-              {/* NOTE */}
-              <View style={styles.noteCard}>
-                <Ionicons name="shield-checkmark" size={20} color="#28a745" />
-                <Text style={styles.noteText}>
-                  Your documents are encrypted and securely stored. They will only be used for verification purposes.
-                </Text>
+                {validIdDoc.uri ? (
+                  <View style={styles.docPreview}>
+                    <Ionicons name="document" size={16} color="#007AFF" />
+                    <Text style={styles.docName} numberOfLines={1}>
+                      {validIdDoc.name}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
+            )}
 
-              <View style={{height: 40}} />
+            <View style={{ height: 48 }} />
       </FormModalLayout>
 
-      <LoadingSpinner visible={uploading} message="Uploading your documents..." />
-
-      <NotificationModal 
+      <NotificationModal
         visible={notifVisible}
         message={notifMessage}
         type={notifType}
-        onClose={handleCloseNotification}
+        onClose={() => {
+          setNotifVisible(false);
+          if (notifType === 'success') {
+            onClose();
+          }
+        }}
       />
     </>
   );
 }
 
-// HELPER COMPONENTS
-function LockedDocumentRow({
-  title,
-  status,
-  fileUrl,
-}: {
-  title: string;
-  status: string;
-  fileUrl?: string;
-}) {
-  const open = () => {
-    if (fileUrl) Linking.openURL(fileUrl).catch(() => {});
-  };
-  return (
-    <View style={styles.lockedRow}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.statusSummaryText}>{title}</Text>
-        <Text style={[styles.statusSummaryLabel, { color: '#28a745' }]}>{status}</Text>
-      </View>
-      {fileUrl ? (
-        <TouchableOpacity onPress={open} style={styles.openFileBtn}>
-          <Ionicons name="open-outline" size={18} color="#007AFF" />
-          <Text style={styles.openFileBtnText}>Open</Text>
-        </TouchableOpacity>
-      ) : null}
-    </View>
-  );
-}
-
-interface DocumentPreviewProps {
-  doc: DocumentState;
-  onRemove: () => void;
-}
-
-function DocumentPreview({ doc, onRemove }: DocumentPreviewProps) {
-  const isImage = doc.type?.startsWith('image/');
-
-  return (
-    <View style={styles.previewContainer}>
-      {isImage && doc.uri ? (
-        <Image source={{ uri: doc.uri }} style={styles.previewImage} />
-      ) : (
-        <View style={styles.previewPlaceholder}>
-          <Ionicons name="document-text" size={40} color="#007AFF" />
-          <Text style={styles.previewFileName}>{doc.name}</Text>
-        </View>
-      )}
-      
-      <TouchableOpacity style={styles.removeBtn} onPress={onRemove}>
-        <Ionicons name="close-circle" size={24} color="#FF3B30" />
-      </TouchableOpacity>
-    </View>
-  );
-}
-
+// ============================================================================
 // STYLES
+// ============================================================================
+
 const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+  infoCard: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    gap: 10,
   },
-  modalContainer: {
-    backgroundColor: '#fff',
-    width: '100%',
-    height: '95%',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: 'hidden',
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#1976D2',
   },
-  modalContainerWeb: {
-    width: 600,
-    height: '90%',
-    borderRadius: 16,
-    marginBottom: '2%',
+  lockedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    gap: 10,
   },
-  modalHeader: {
+  lockedStatus: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#15803d',
+  },
+  openLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    padding: 8,
+  },
+  openLinkText: { fontSize: 13, fontWeight: '600', color: '#007AFF' },
+  rejectHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#b91c1c',
+    lineHeight: 16,
+  },
+  footerAllSet: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#f0fdf4',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  footerAllSetText: { flex: 1, fontSize: 13, color: '#14532d', lineHeight: 18 },
+  docCard: {
+    backgroundColor: '#f8f8f8',
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  docHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    backgroundColor: '#F8F9FA',
+    alignItems: 'flex-start',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 20,
-  },
-  instructionCard: {
-    flexDirection: 'row',
-    backgroundColor: '#E3F2FD',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-    gap: 12,
-  },
-  instructionText: {
-    flex: 1,
-  },
-  instructionTitle: {
+  docTitle: {
     fontSize: 15,
     fontWeight: '600',
     color: '#333',
     marginBottom: 4,
   },
-  instructionBody: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 20,
-  },
-  existingDocsCard: {
-    backgroundColor: '#F8F9FA',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  lockedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    gap: 10,
-  },
-  openFileBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  openFileBtnText: { fontSize: 13, fontWeight: '600', color: '#007AFF' },
-  statusSummaryText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '600',
-  },
-  statusSummaryLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  rejectReasonBox: {
-    flexDirection: 'row',
-    gap: 8,
-    backgroundColor: '#fff5f5',
-    borderWidth: 1,
-    borderColor: '#fecaca',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  rejectReasonText: { flex: 1, fontSize: 13, color: '#b91c1c', lineHeight: 18 },
-  footerInfo: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    backgroundColor: '#E8F5E9',
-    padding: 14,
-    borderRadius: 12,
-  },
-  footerInfoText: { flex: 1, fontSize: 13, color: '#1b5e20', lineHeight: 18 },
-  documentSection: {
-    marginBottom: 30,
-  },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  required: {
+  requiredMark: {
     color: '#FF3B30',
+    fontWeight: '700',
   },
-  sectionHelper: {
-    fontSize: 13,
+  docSubtitle: {
+    fontSize: 12,
     color: '#666',
-    marginBottom: 12,
-    lineHeight: 18,
-  },
-  uploadButtons: {
-    flexDirection: 'row',
-    gap: 12,
   },
   uploadBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F8F9FA',
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#007AFF',
-    borderStyle: 'dashed',
-    gap: 8,
+    backgroundColor: '#007AFF',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    gap: 6,
   },
   uploadBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  previewContainer: {
-    position: 'relative',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#28a745',
-  },
-  previewImage: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'cover',
-  },
-  previewPlaceholder: {
-    height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F0F2F5',
-  },
-  previewFileName: {
-    marginTop: 8,
+    color: '#fff',
     fontSize: 13,
-    color: '#666',
+    fontWeight: '500',
   },
-  removeBtn: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
+  docPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    padding: 8,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  noteCard: {
-    flexDirection: 'row',
-    backgroundColor: '#E8F5E9',
-    padding: 14,
-    borderRadius: 10,
-    gap: 10,
-    alignItems: 'center',
-  },
-  noteText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#28a745',
-    lineHeight: 18,
-  },
-  modalFooter: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    backgroundColor: '#F8F9FA',
-  },
-  uploadButton: {
-    flexDirection: 'row',
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 6,
     gap: 8,
   },
-  uploadButtonWeb: {
-    maxWidth: 400,
-    alignSelf: 'center',
-    width: '100%',
+  docName: {
+    flex: 1,
+    fontSize: 13,
+    color: '#333',
   },
-  uploadButtonDisabled: {
+  submitBtn: {
+    alignSelf: 'stretch',
+    backgroundColor: theme.color.parent,
+    padding: 14,
+    borderRadius: theme.radius.md,
+    alignItems: 'center',
+  },
+  submitBtnDisabled: {
     backgroundColor: '#ccc',
   },
-  uploadButtonText: {
+  submitText: {
     color: '#fff',
+    fontWeight: '600',
     fontSize: 16,
-    fontWeight: 'bold',
   },
 });

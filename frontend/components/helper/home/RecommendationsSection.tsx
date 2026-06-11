@@ -1,112 +1,105 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useRecommendations } from '@/hooks/helper';
-import { CompactJobCard } from '@/components/helper/jobs';
+// components/helper/home/RecommendationsSection.tsx
+// "Recommended for you" horizontal scroll section.
+// PHP: helper/recommendations.php (via useRecommendations hook)
+
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FontFamily } from '@/constants/GlobalStyles';
+import { useRecommendations } from '@/hooks/helper';
+import { RecommendedJobCard } from './RecommendedJobCard';
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function RecommendationsSection() {
   const router = useRouter();
-  const { recommendations, loading } = useRecommendations();
+  const { recommendations, loading, toggleSaveJob } = useRecommendations();
 
-  if (loading || recommendations.length === 0) return null;
+  if (loading) {
+    return (
+      <View style={s.loadingWrap}>
+        <ActivityIndicator size="small" color="#E86019" />
+      </View>
+    );
+  }
+
+  if (recommendations.length === 0) return null;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Recommended for You</Text>
-          <Text style={styles.subtitle}>Based on your profile and preferences</Text>
-        </View>
-        <TouchableOpacity onPress={() => router.push('/(helper)/browse_jobs')}>
-          <Text style={styles.viewAllText}>View All</Text>
+    <View style={s.section}>
+
+      {/* Header */}
+      <View style={s.header}>
+        <Text style={s.title}>Recommended for you</Text>
+        <TouchableOpacity
+          style={s.seeAllBtn}
+          onPress={() => router.push('/(helper)/browse')}
+          activeOpacity={0.7}
+        >
+          <Text style={s.seeAllText}>See all</Text>
+          <Ionicons name="chevron-forward" size={13} color="#E86019" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        horizontal 
+      {/* Horizontal scroll of cards */}
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={s.scroll}
       >
-        {recommendations.slice(0, 3).map((job) => (
-          <View key={job.job_post_id} style={styles.card}>
-            <CompactJobCard
+        {recommendations.slice(0, 6).map((job, idx) => {
+          // Descending match percentages: 95 → 88 → 82 → 76 → 72 → 68
+          const pct = Math.max(68, 95 - idx * 6);
+          return (
+            <RecommendedJobCard
+              key={job.job_post_id}
               job={job}
-              onPress={() => {
-                // Navigate to job details
-              }}
+              isTopMatch={idx === 0}
+              matchPercentage={pct}
+              onPress={() => router.push('/(helper)/browse')}
+              onSave={() => toggleSaveJob(job.job_post_id)}
             />
-            {job.match_reasons && (
-              <View style={styles.reasonsContainer}>
-                <Text style={styles.reasonsTitle}>Why we recommend:</Text>
-                {job.match_reasons.slice(0, 2).map((reason, idx) => (
-                  <View key={idx} style={styles.reasonRow}>
-                    <Ionicons name="checkmark" size={14} color="#34C759" />
-                    <Text style={styles.reasonText}>{reason}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        ))}
+          );
+        })}
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 32,
-  },
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const s = StyleSheet.create({
+  section:     { marginBottom: 20 },
+  loadingWrap: { height: 60, justifyContent: 'center', alignItems: 'center' },
+
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1A1C1E',
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 18,
+    color: '#2A1608',
   },
-  subtitle: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 4,
-  },
-  viewAllText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  scrollContent: {
-    paddingRight: 16,
-    gap: 12,
-  },
-  card: {
-    width: 280,
-  },
-  reasonsContainer: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
-  },
-  reasonsTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#666',
-    marginBottom: 6,
-  },
-  reasonRow: {
+  seeAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
+    gap: 2,
   },
-  reasonText: {
-    fontSize: 12,
-    color: '#666',
-    flex: 1,
+  seeAllText: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 13,
+    color: '#E86019',
   },
+
+  scroll: {
+    paddingHorizontal: 16,
+    gap: 12,
+    paddingBottom: 4,
+  },
+
 });

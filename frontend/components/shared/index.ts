@@ -15,3 +15,4 @@ export { SubmitComplaintModal } from './SubmitComplaintModal';
 export { PlacementReviewModal } from './PlacementReviewModal';
 export { PendingPlacementReviewsBanner } from './PendingPlacementReviewsBanner';
 export { PostPlacementRenewalCard } from './PostPlacementRenewalCard';
+export { DateField } from './DateField';

@@ -105,7 +105,7 @@ export function LeaveRequestsPanel({ applicationId, parentId, helperName, onResp
         <TouchableOpacity
           onPress={() =>
             router.push({
-              pathname: '/(parent)/placement_leave_requests',
+              pathname: '/(parent)/hire/placement_leave_requests',
               params: {
                 application_id: String(applicationId),
                 helper_name: encodeURIComponent(helperName),

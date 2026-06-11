@@ -28,7 +28,7 @@ try {
 
     if (!$data) throw new Exception('Invalid JSON data');
 
-    $required = ['parent_id', 'description', 'salary_offered', 'municipality'];
+    $required = ['parent_id', 'description', 'municipality'];
     foreach ($required as $field) {
         if (!isset($data[$field]) || (is_string($data[$field]) && trim($data[$field]) === '')) {
             throw new Exception("Missing required field: $field");
@@ -37,9 +37,11 @@ try {
 
     $parent_id = intval($data['parent_id']);
     $category_id = isset($data['category_id']) ? intval($data['category_id']) : null;
-    $salary = floatval($data['salary_offered']);
-    
-    if ($salary < 6000) throw new Exception('Minimum salary is ₱6,000 as per PESO regulations.');
+    $salary_min = isset($data['salary_min']) ? floatval($data['salary_min']) : (isset($data['salary_offered']) ? floatval($data['salary_offered']) : 0);
+    $salary_max = isset($data['salary_max']) && $data['salary_max'] !== null ? floatval($data['salary_max']) : null;
+    $salary = $salary_min; // backward compat: salary_offered = salary_min
+
+    if ($salary < 7000) throw new Exception('Minimum salary is ₱7,000 as required by RA 10361 (Kasambahay Law).');
 
     $job_ids_json = json_encode(is_array($data['job_ids'] ?? null) ? $data['job_ids'] : []);
     $skill_ids_json = json_encode(is_array($data['skill_ids'] ?? null) ? $data['skill_ids'] : []);
@@ -99,40 +101,40 @@ try {
     $stmt = mysqli_prepare($conn, "
         INSERT INTO job_posts (
             parent_id, category_id, custom_category, job_ids, title,
-            description, employment_type, work_schedule, salary_offered, salary_period, 
+            description, employment_type, work_schedule, salary_offered, salary_min, salary_max, salary_period,
             benefits, province, municipality, barangay, latitude, longitude,
             preferred_religion, preferred_language_id, require_police_clearance, prefer_tesda_nc2,
-            skill_ids, custom_skills, min_age, max_age, min_experience_years, start_date, 
-            work_hours, days_off, contract_duration, 
-            provides_meals, provides_accommodation, provides_sss, 
-            provides_philhealth, provides_pagibig, vacation_days, sick_days, 
+            skill_ids, custom_skills, min_age, max_age, min_experience_years, start_date,
+            work_hours, days_off, contract_duration,
+            provides_meals, provides_accommodation, provides_sss,
+            provides_philhealth, provides_pagibig, vacation_days, sick_days,
             status, posted_at
         ) VALUES (
             ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, 
+            ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, 
-            ?, ?, ?, 
-            ?, ?, ?, 
-            ?, ?, ?, ?, 
-            'Pending', NOW() 
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?, ?,
+            'Pending', NOW()
         )
     ");
 
     if (!$stmt) throw new Exception('Database Error: ' . mysqli_error($conn));
 
-    $types = "iissssssdsssssddsiiissiiisssssiiiiii";
+    $types = "iissssssdddsssssddsiiissiiissssiiiiiii";
 
     mysqli_stmt_bind_param(
         $stmt, $types,
         $parent_id, $category_id, $custom_category, $job_ids_json, $final_title,
-        $description, $employment_type, $work_schedule, $salary, $salary_period, 
+        $description, $employment_type, $work_schedule, $salary, $salary_min, $salary_max, $salary_period,
         $benefits, $province, $municipality, $barangay, $latitude, $longitude,
         $preferred_religion, $preferred_language_id, $require_police_clearance, $prefer_tesda_nc2,
-        $skill_ids_json, $custom_skills, $min_age, $max_age, $min_experience_years, $start_date, 
-        $work_hours, $days_off_json, $contract_duration, 
-        $provides_meals, $provides_accommodation, $provides_sss, 
+        $skill_ids_json, $custom_skills, $min_age, $max_age, $min_experience_years, $start_date,
+        $work_hours, $days_off_json, $contract_duration,
+        $provides_meals, $provides_accommodation, $provides_sss,
         $provides_philhealth, $provides_pagibig, $vacation_days, $sick_days
     );
 

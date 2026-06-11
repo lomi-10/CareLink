@@ -61,7 +61,7 @@ $last = $row['last_name'] ?? '';
 // This creates a perfectly spaced full name, whether they have a middle name or not!
 $clean_full_name = trim($first . ' ' . $middle . $last);
 
-if (password_verify($password, $row["password"]) || $password === $row["password"]) { // This allows for both hashed and plain text passwords (for legacy support)
+if (password_verify($password, $row["password"])) { 
     
     if ($row['status'] !== 'approved') {
         // Log Failed Attempt

@@ -1,68 +1,49 @@
 // hooks/useParentStats.ts
-// Custom hook for fetching and managing parent statistics
-
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '../../constants/api';
 
 export interface ParentStats {
-  posted_jobs: number;
-  active_applications: number;
-  messages: number;
-  hired_helpers: number;
+  active_job_posts:     number;
+  total_applicants:     number;
+  active_placements:    number;
+  saved_helpers:        number;
+  pending_applications: number;
+  shortlisted_count:    number;
 }
 
+const DEFAULT: ParentStats = {
+  active_job_posts:     0,
+  total_applicants:     0,
+  active_placements:    0,
+  saved_helpers:        0,
+  pending_applications: 0,
+  shortlisted_count:    0,
+};
+
 export function useParentStats() {
-  const [stats, setStats] = useState<ParentStats>({
-    posted_jobs: 0,
-    active_applications: 0,
-    messages: 0,
-    hired_helpers: 0,
-  });
+  const [stats, setStats]   = useState<ParentStats>(DEFAULT);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]   = useState<string | null>(null);
 
   const fetchStats = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      const userData = await AsyncStorage.getItem('user_data');
-      if (!userData) {
-        throw new Error('No user data found');
-      }
-
-      const user = JSON.parse(userData);
-      const userId = user.user_id;
-
-      // TODO: Replace with actual API endpoint
-      const response = await fetch(`${API_URL}/parent/get_stats.php?user_id=${userId}`);
-      const data = await response.json();
-
-      // Uncomment when API is ready:
-      if (data.success) {
-        setStats(data.stats);
-      }
+      const raw = await AsyncStorage.getItem('user_data');
+      if (!raw) throw new Error('Not logged in');
+      const { user_id } = JSON.parse(raw);
+      const res  = await fetch(`${API_URL}/parent/get_stats.php?user_id=${user_id}`);
+      const data = await res.json();
+      if (data.success) setStats({ ...DEFAULT, ...data.stats });
     } catch (err: any) {
-      console.error('Error fetching stats:', err);
       setError(err.message || 'Failed to load statistics');
     } finally {
       setLoading(false);
     }
   };
 
-  const refresh = async () => {
-    await fetchStats();
-  };
+  useEffect(() => { fetchStats(); }, []);
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  return {
-    stats,
-    loading,
-    error,
-    refresh,
-  };
+  return { stats, loading, error, refresh: fetchStats };
 }

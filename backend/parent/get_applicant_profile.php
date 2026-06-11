@@ -92,12 +92,40 @@ try {
     }
     
     // 5. Data formatting (cleaning up the comma-separated string from SQL)
-    $applicant['helper_categories'] = $applicant['helper_categories'] 
-        ? explode(',', $applicant['helper_categories']) 
+    $applicant['helper_categories'] = $applicant['helper_categories']
+        ? explode(',', $applicant['helper_categories'])
         : [];
-    
+
+    // 5b. Documents the helper explicitly chose to share with this employer for this application
+    //     (consent-based — never expose documents the helper has not shared for this application)
+    $shared_documents = [];
+    $doc_base_url = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/documents/";
+    $docs_stmt = $conn->prepare("
+        SELECT ud.document_id, ud.document_type, ud.file_path, ud.status, ud.uploaded_at
+        FROM application_document_shares ads
+        INNER JOIN user_documents ud ON ud.document_id = ads.document_id
+        WHERE ads.application_id = ?
+        ORDER BY ud.document_type
+    ");
+    $docs_stmt->bind_param("i", $application_id);
+    $docs_stmt->execute();
+    $docs_result = $docs_stmt->get_result();
+    while ($doc = $docs_result->fetch_assoc()) {
+        $doc['file_url'] = $doc['file_path'] ? ($doc_base_url . $doc['file_path']) : null;
+        $shared_documents[] = $doc;
+    }
+    $docs_stmt->close();
+
+    // 5c. Count this as a profile view for the helper (parent looking at their profile)
+    $view_stmt = $conn->prepare("UPDATE helper_profiles SET profile_views = profile_views + 1 WHERE user_id = ?");
+    if ($view_stmt) {
+        $view_stmt->bind_param("i", $helper_id);
+        $view_stmt->execute();
+        $view_stmt->close();
+    }
+
     // 6. Sending response in your specific format
-    sendResponse(true, "Applicant profile retrieved", ['applicant' => $applicant]);
+    sendResponse(true, "Applicant profile retrieved", ['applicant' => $applicant, 'shared_documents' => $shared_documents]);
 
 } catch (Exception $e) {
     error_log("ERROR: " . $e->getMessage());

@@ -1,728 +1,589 @@
 // components/parent/browse/HelperProfileModal.tsx
-// Premium Modal to view full helper profile details and in-app documents
+// Tabbed helper profile modal — Overview / Experience / Skills / Documents
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  Modal,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  Platform,
-  SafeAreaView,
+  View, Text, Modal, StyleSheet, TouchableOpacity,
+  ScrollView, Image, Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import API_URL from '@/constants/api';
+import { FontFamily } from '@/constants/GlobalStyles';
+import {
+  BG, BROWN, CARAMEL, GOLD, DARK, MUTED, SUBTLE, DIVIDER, ICON_BG, SURFACE,
+  GREEN, SUCCESS_BG, WARNING_BG, DANGER, DANGER_BG, OVERLAY,
+} from '@/components/parent/home/parentWarmTheme';
 import type { HelperProfile } from '@/hooks/parent';
 import type { JobPost } from '@/hooks/parent/useParentJobs';
 import type { HelperJobMatch } from '@/lib/parentHelperMatch';
 
-interface HelperProfileModalProps {
+interface Props {
   visible: boolean;
   helper: HelperProfile | null;
   onInvite?: () => void;
   onSave?: () => void;
+  onMessage?: () => void;
   onClose: () => void;
-  /** Open job used for match copy (optional) */
   referenceJob?: JobPost | null;
   match?: HelperJobMatch | null;
 }
 
-export function HelperProfileModal({
-  visible,
-  helper,
-  onInvite,
-  onSave,
-  onClose,
-  referenceJob,
-  match,
-}: HelperProfileModalProps) {
-  // NEW STATE: Tracks which document is currently being viewed
-  const [docToView, setDocToView] = useState<{title: string, url: string} | null>(null);
+const TABS = [
+  { key: 'overview',   label: 'Overview',   icon: 'home-outline' as const },
+  { key: 'experience', label: 'Experience', icon: 'briefcase-outline' as const },
+  { key: 'skills',     label: 'Skills',     icon: 'star-outline' as const },
+  { key: 'documents',  label: 'Documents',  icon: 'document-text-outline' as const },
+] as const;
+type Tab = typeof TABS[number]['key'];
+
+const CARD_SHADOW = Platform.select({
+  ios:     { shadowColor: '#8B5A2B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 20 },
+  android: { elevation: 8 },
+  default: { boxShadow: '0 8px 32px rgba(139,90,43,0.14)' } as any,
+});
+
+function getInitials(name?: string) {
+  if (!name) return 'H';
+  const p = name.trim().split(/\s+/);
+  return p.length > 1 ? `${p[0][0]}${p[p.length - 1][0]}`.toUpperCase() : p[0][0].toUpperCase();
+}
+
+export function HelperProfileModal({ visible, helper, onInvite, onSave, onMessage, onClose, referenceJob, match }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
+
+  useEffect(() => {
+    if (visible) setActiveTab('overview');
+  }, [visible, helper?.profile_id]);
+
+  // Log profile view when parent opens a helper card (fire-and-forget, rate-limited server-side)
+  useEffect(() => {
+    if (!visible || !helper?.user_id) return;
+    AsyncStorage.getItem('user_data').then(raw => {
+      if (!raw) return;
+      const { user_id } = JSON.parse(raw);
+      fetch(`${API_URL}/parent/log_profile_view.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parent_id: user_id, helper_id: helper.user_id }),
+      }).catch(() => {});
+    });
+  }, [visible, helper?.user_id]);
 
   if (!helper) return null;
 
   const h = helper as any;
 
-  // Safely extract data whether it came from 'applications' or 'browse'
-  const bio = h.bio || h.helper_bio || '';
-  const education = h.education_level || h.helper_education_level || h.education || 'Not specified';
-  const religion = h.religion || h.helper_religion || 'Not specified';
-  const civilStatus = h.civil_status || h.helper_civil_status || 'Not specified';
-  const barangay = h.barangay || h.helper_barangay || '';
+  const bio          = h.bio || h.helper_bio || '';
+  const education    = h.education_level || h.helper_education_level || 'Not specified';
+  const religion     = h.religion || h.helper_religion || 'Not specified';
+  const civilStatus  = h.civil_status || h.helper_civil_status || 'Not specified';
+  const barangay     = h.barangay || h.helper_barangay || '';
   const municipality = h.municipality || h.helper_municipality || 'N/A';
-  const province = h.province || h.helper_province || 'N/A';
-  const fullAddress = `${barangay ? barangay + ', ' : ''}${municipality}, ${province}`;
+  const province     = h.province || h.helper_province || 'N/A';
+  const fullAddress  = `${barangay ? barangay + ', ' : ''}${municipality}, ${province}`;
+  const categories   = h.categories || h.helper_categories || [];
+  const jobs         = h.jobs || h.helper_jobs || [];
+  const skills       = h.skills || h.helper_skills || [];
+  const ratingAvg    = h.rating_average || h.helper_rating_average;
+  const ratingCount  = h.rating_count   || h.helper_rating_count;
+  const expYears     = h.experience_years || h.helper_experience_years;
+  const profileImage = h.profile_image
+    ? (String(h.profile_image).startsWith('http') ? h.profile_image : `http://localhost/carelink_api/uploads/profiles/${h.profile_image}`)
+    : null;
 
-  const categories = h.categories || h.helper_categories || [];
-  const jobs = h.jobs || h.helper_jobs || [];
-  const skills = h.skills || h.helper_skills || [];
-
-  const getInitials = (name: string) => {
-    if (!name) return 'H';
-    const names = name.split(' ');
-    return names.length > 1 ? `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase() : names[0][0].toUpperCase();
-  };
-
-  // --- URL FORMATTING FUNCTIONS ---
-  // Connects the raw database filename to your actual backend folder
-  const BASE_API_URL = 'http://localhost/carelink_api';
-
-  const getDocUrl = (filename: string | null | undefined) => {
-    if (!filename) return null;
-    if (filename.includes('http')) return filename; // Already a full URL
-    return `${BASE_API_URL}/uploads/documents/${filename}`;
-  };
-
-  const getProfileUrl = (filename: string | null | undefined) => {
-    if (!filename) return null;
-    if (filename.includes('http')) return filename;
-    return `${BASE_API_URL}/uploads/profiles/${filename}`;
-  };
-  // --------------------------------
-
-  // Format document URLs using the helper functions
-  const policeClearance = getDocUrl(h.police_clearance || h.helper_police_clearance);
-  const nbiClearance = getDocUrl(h.nbi_clearance || h.helper_nbi_clearance);
-  const medicalCert = getDocUrl(h.medical_certificate || h.helper_medical_certificate);
-  const tesdaNc2 = getDocUrl(h.tesda_nc2 || h.helper_tesda_nc2);
-  
-  const hasDocuments = policeClearance || nbiClearance || medicalCert || tesdaNc2;
-
-  // Render clickable document items
-  const DocumentItem = ({ title, url, icon }: { title: string, url: string | null, icon: string }) => {
-    if (!url) return null;
-    return (
-      <TouchableOpacity style={styles.docItem} onPress={() => setDocToView({ title, url })}>
-        <View style={styles.docIconBox}>
-          <Ionicons name={icon as any} size={20} color="#1D4ED8" />
-        </View>
-        <Text style={styles.docTitle}>{title}</Text>
-        <Ionicons name="eye-outline" size={20} color="#6B7280" />
-      </TouchableOpacity>
-    );
-  };
-
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <>
-      <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onClose}>
-        <View style={styles.overlay}>
-          <View style={styles.modalContainer}>
-            
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>Applicant Profile</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={st.overlay}>
+        <View style={st.modal}>
+
+          {/* Header bar */}
+          <View style={st.header}>
+            <Text style={st.headerTitle}>Helper Profile</Text>
+            <TouchableOpacity onPress={onClose} style={st.closeBtn}>
+              <Ionicons name="close" size={20} color={MUTED} />
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Hero ──────────────────────────────────────────────────────── */}
+          <View style={st.hero}>
+            <View style={st.avatarWrap}>
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={st.avatar} />
+              ) : (
+                <View style={[st.avatar, st.avatarFallback]}>
+                  <Text style={st.avatarInitials}>{getInitials(h.full_name || h.helper_name)}</Text>
+                </View>
+              )}
+              {h.verification_status === 'Verified' && (
+                <View style={st.verifiedDot}>
+                  <Ionicons name="checkmark-circle" size={22} color={GREEN} />
+                </View>
+              )}
             </View>
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-              
-              {/* HERO SECTION */}
-              <View style={styles.heroSection}>
-                <View style={styles.avatarWrapper}>
-                  {h.profile_image ? (
-                    // USED getProfileUrl() HERE
-                    <Image source={{ uri: getProfileUrl(h.profile_image) as string }} style={styles.avatar} />
-                  ) : (
-                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                      <Text style={styles.avatarInitials}>{getInitials(h.full_name || h.helper_name)}</Text>
-                    </View>
-                  )}
-                  {h.verification_status === 'Verified' && (
-                    <View style={styles.verifiedBadgeIcon}>
-                      <Ionicons name="checkmark-circle" size={28} color="#059669" />
-                    </View>
-                  )}
-                </View>
-
-                <Text style={styles.helperName}>{h.full_name || h.helper_name}</Text>
-                
-                <View style={styles.heroBadges}>
-                  {h.verification_status === 'Verified' && (
-                    <View style={[styles.badge, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
-                      <Ionicons name="shield-checkmark" size={12} color="#059669" />
-                      <Text style={[styles.badgeText, { color: '#059669' }]}>PESO Verified</Text>
-                    </View>
-                  )}
-                  {h.availability_status === 'Available' && (
-                    <View style={[styles.badge, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
-                      <Ionicons name="briefcase" size={12} color="#1D4ED8" />
-                      <Text style={[styles.badgeText, { color: '#1D4ED8' }]}>Available to Work</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              {referenceJob && match && match.score > 0 && (
-                <View style={styles.matchCard}>
-                  <View style={styles.matchCardHead}>
-                    <Ionicons name="analytics-outline" size={20} color="#1D4ED8" />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.matchCardTitle}>Match for your open role</Text>
-                      <Text style={styles.matchCardJob} numberOfLines={2}>
-                        {referenceJob.title || referenceJob.custom_job_title || 'Open job'}
-                      </Text>
-                    </View>
-                    <Text style={styles.matchScoreBig}>{match.score}%</Text>
-                  </View>
-                  <Text style={styles.matchCardSub}>
-                    Based on category fit, experience, distance, ratings, and verification — not a guarantee of hire.
-                  </Text>
-                  {match.reasons.map((line, idx) => (
-                    <View key={idx} style={styles.matchReasonRow}>
-                      <Ionicons name="checkmark-circle" size={16} color="#059669" />
-                      <Text style={styles.matchReasonText}>{line}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* CONTACT INFO */}
-              {(h.email || h.phone || h.helper_email || h.helper_phone) && (
-                <View style={styles.contactCard}>
-                  <Text style={styles.sectionSubtitle}>Contact Information</Text>
-                  {(h.email || h.helper_email) && (
-                    <View style={styles.contactRow}>
-                      <View style={styles.contactIconBox}><Ionicons name="mail" size={16} color="#1D4ED8" /></View>
-                      <Text style={styles.contactText}>{h.email || h.helper_email}</Text>
-                    </View>
-                  )}
-                  {(h.phone || h.helper_phone) && (
-                    <View style={styles.contactRow}>
-                      <View style={styles.contactIconBox}><Ionicons name="call" size={16} color="#1D4ED8" /></View>
-                      <Text style={styles.contactText}>{h.phone || h.helper_phone}</Text>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {/* QUICK STATS */}
-              <View style={styles.statsGrid}>
-                <View style={styles.statBox}>
-                  <Ionicons name="person-outline" size={20} color="#6B7280" />
-                  <Text style={styles.statValue}>{h.age || h.helper_age || '--'} yrs</Text>
-                  <Text style={styles.statLabel}>Age</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Ionicons name="male-female-outline" size={20} color="#6B7280" />
-                  <Text style={styles.statValue}>{h.gender || h.helper_gender || 'Any'}</Text>
-                  <Text style={styles.statLabel}>Gender</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Ionicons name="briefcase-outline" size={20} color="#6B7280" />
-                  <Text style={styles.statValue}>{h.experience_years || h.helper_experience_years ? `${h.experience_years || h.helper_experience_years} yrs` : 'New'}</Text>
-                  <Text style={styles.statLabel}>Experience</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Ionicons name="star-outline" size={20} color="#D97706" />
-                  <Text style={[styles.statValue, { color: '#D97706' }]}>{h.rating_average || h.helper_rating_average ? Number(h.rating_average || h.helper_rating_average).toFixed(1) : 'No'}</Text>
-                  <Text style={styles.statLabel}>Rating</Text>
-                </View>
-              </View>
-
-              {/* BIO / ABOUT */}
-              {bio ? (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>About Me</Text>
-                  <View style={styles.bioBox}>
-                    <Text style={styles.bioText}>{bio}</Text>
-                  </View>
-                </View>
-              ) : null}
-
-              {/* BACKGROUND DETAILS */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Background & Details</Text>
-                <View style={styles.detailsList}>
-                  <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>Education Level</Text>
-                    <Text style={styles.detailValue}>{education}</Text>
-                  </View>
-                  <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>Religion</Text>
-                    <Text style={styles.detailValue}>{religion}</Text>
-                  </View>
-                  <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>Civil Status</Text>
-                    <Text style={styles.detailValue}>{civilStatus}</Text>
-                  </View>
-                  <View style={[styles.detailItem, { borderBottomWidth: 0 }]}>
-                    <Text style={styles.detailLabel}>Location</Text>
-                    <Text style={[styles.detailValue, { flex: 1, textAlign: 'right', marginLeft: 16 }]} numberOfLines={2}>
-                      {fullAddress}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* DOCUMENTS */}
-              {hasDocuments ? (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Verified Documents</Text>
-                  <View style={styles.docsContainer}>
-                    <DocumentItem title="Police Clearance" url={policeClearance} icon="shield-checkmark" />
-                    <DocumentItem title="NBI Clearance" url={nbiClearance} icon="document-text" />
-                    <DocumentItem title="Medical Certificate" url={medicalCert} icon="medkit" />
-                    <DocumentItem title="TESDA NC II" url={tesdaNc2} icon="school" />
-                  </View>
-                </View>
-              ) : null}
-
-              {/* SKILLS */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Professional Profile</Text>
-                
-                {categories.length > 0 && (
-                  <View style={styles.skillGroup}>
-                    <Text style={styles.skillGroupLabel}>Categories</Text>
-                    <View style={styles.categoriesContainer}>
-                      {categories.map((item: string, idx: number) => (
-                        <View key={`cat-${idx}`} style={[styles.categoryChip, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
-                          <Text style={[styles.categoryText, { color: '#1D4ED8' }]}>{item}</Text>
-                        </View>
-                      ))}
-                    </View>
+            <View style={st.heroRight}>
+              <Text style={st.heroName}>{h.full_name || h.helper_name}</Text>
+              <View style={st.heroBadgesRow}>
+                {h.verification_status === 'Verified' && (
+                  <View style={[st.pill, st.pillGreen]}>
+                    <Ionicons name="shield-checkmark" size={11} color={GREEN} />
+                    <Text style={[st.pillText, { color: GREEN }]}>PESO Verified</Text>
                   </View>
                 )}
+                {h.availability_status === 'Available' && (
+                  <View style={[st.pill, st.pillBlue]}>
+                    <Ionicons name="briefcase" size={11} color="#1D4ED8" />
+                    <Text style={[st.pillText, { color: '#1D4ED8' }]}>Available to Work</Text>
+                  </View>
+                )}
+              </View>
+              {match && match.score > 0 && (
+                <View style={st.matchBadgeHero}>
+                  <Text style={st.matchBadgeHeroText}>{match.score}%{'\n'}Match</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* ── Quick stats tiles ──────────────────────────────────────────── */}
+          <View style={st.tilesRow}>
+            <View style={st.tile}>
+              <Ionicons name="person-outline" size={18} color={MUTED} />
+              <Text style={st.tileValue}>{h.age || h.helper_age || '--'} yrs</Text>
+              <Text style={st.tileLabel}>Age</Text>
+            </View>
+            <View style={st.tileDivider} />
+            <View style={st.tile}>
+              <Ionicons name="male-female-outline" size={18} color={MUTED} />
+              <Text style={st.tileValue}>{h.gender || h.helper_gender || 'Any'}</Text>
+              <Text style={st.tileLabel}>Gender</Text>
+            </View>
+            <View style={st.tileDivider} />
+            <View style={st.tile}>
+              <Ionicons name="briefcase-outline" size={18} color={MUTED} />
+              <Text style={st.tileValue}>{expYears ? `${expYears} yrs` : 'New'}</Text>
+              <Text style={st.tileLabel}>Experience</Text>
+            </View>
+            <View style={st.tileDivider} />
+            <View style={st.tile}>
+              <Ionicons name="location-outline" size={18} color={MUTED} />
+              <Text style={st.tileValue} numberOfLines={1}>
+                {h.distance != null
+                  ? (h.distance < 1 ? `${(h.distance * 1000).toFixed(0)}m` : `${h.distance.toFixed(1)} km`)
+                  : municipality}
+              </Text>
+              <Text style={st.tileLabel}>Location</Text>
+            </View>
+          </View>
+
+          {/* ── Tabs ──────────────────────────────────────────────────────── */}
+          <View style={st.tabsRow}>
+            {TABS.map((tab) => (
+              <TouchableOpacity
+                key={tab.key}
+                style={[st.tabBtn, activeTab === tab.key && st.tabBtnActive]}
+                onPress={() => setActiveTab(tab.key)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name={tab.icon} size={14} color={activeTab === tab.key ? BROWN : MUTED} />
+                <Text style={[st.tabText, activeTab === tab.key && st.tabTextActive]}>{tab.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* ── Tab content ────────────────────────────────────────────────── */}
+          <ScrollView style={st.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={st.scrollContent}>
+
+            {/* OVERVIEW */}
+            {activeTab === 'overview' && (
+              <>
+                {referenceJob && match && match.score > 0 && (
+                  <View style={st.matchCard}>
+                    <View style={st.matchCardHead}>
+                      <View style={st.matchCardIcon}>
+                        <Ionicons name="analytics-outline" size={18} color={BROWN} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={st.matchCardTitle}>Match for your open role</Text>
+                        <Text style={st.matchCardJob} numberOfLines={1}>
+                          {referenceJob.title || referenceJob.custom_job_title || 'Open job'}
+                        </Text>
+                      </View>
+                      <Text style={st.matchScore}>{match.score}%</Text>
+                    </View>
+                    {match.reasons.map((line, i) => (
+                      <View key={i} style={st.matchReason}>
+                        <Ionicons name="checkmark-circle" size={14} color={GREEN} />
+                        <Text style={st.matchReasonText}>{line}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {bio ? (
+                  <View style={st.section}>
+                    <View style={st.sectionHeader}>
+                      <Ionicons name="chatbubble-ellipses-outline" size={16} color={CARAMEL} />
+                      <Text style={st.sectionTitle}>About Me</Text>
+                    </View>
+                    <View style={st.bioBox}>
+                      <Text style={st.bioText}>{bio}</Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                <View style={st.section}>
+                  <View style={st.sectionHeader}>
+                    <Ionicons name="information-circle-outline" size={16} color={CARAMEL} />
+                    <Text style={st.sectionTitle}>Background</Text>
+                  </View>
+                  <View style={st.detailsCard}>
+                    <DetailRow label="Education" value={education} />
+                    <DetailRow label="Religion" value={religion} />
+                    <DetailRow label="Civil Status" value={civilStatus} />
+                    <DetailRow label="Location" value={fullAddress} last />
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* EXPERIENCE */}
+            {activeTab === 'experience' && (
+              <View style={st.section}>
+                <View style={st.sectionHeader}>
+                  <Ionicons name="briefcase-outline" size={16} color={CARAMEL} />
+                  <Text style={st.sectionTitle}>Work Preferences</Text>
+                </View>
+                <View style={st.detailsCard}>
+                  <DetailRow label="Years of Experience" value={expYears ? `${expYears} years` : 'New helper'} />
+                  <DetailRow label="Preferred Job Type" value={h.employment_type || h.helper_employment_type || 'Any'} />
+                  <DetailRow label="Work Schedule" value={h.work_schedule || h.helper_work_schedule || 'Any'} />
+                  <DetailRow
+                    label="Expected Salary"
+                    value={(h.expected_salary || h.helper_expected_salary)
+                      ? `₱${Number(h.expected_salary || h.helper_expected_salary).toLocaleString()} / ${(h.salary_period || h.helper_salary_period || 'month').toLowerCase()}`
+                      : 'Not specified'}
+                    last={jobs.length === 0}
+                  />
+                </View>
 
                 {jobs.length > 0 && (
-                  <View style={styles.skillGroup}>
-                    <Text style={styles.skillGroupLabel}>Specific Roles</Text>
-                    <View style={styles.categoriesContainer}>
-                      {jobs.map((item: string, idx: number) => (
-                        <View key={`job-${idx}`} style={[styles.categoryChip, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
-                          <Text style={[styles.categoryText, { color: '#059669' }]}>{item}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {skills.length > 0 && (
-                  <View style={styles.skillGroup}>
-                    <Text style={styles.skillGroupLabel}>Skills & Abilities</Text>
-                    <View style={styles.categoriesContainer}>
-                      {skills.map((item: string, idx: number) => (
-                        <View key={`skill-${idx}`} style={styles.categoryChip}>
-                          <Text style={styles.categoryText}>{item}</Text>
+                  <View style={{ marginTop: 20 }}>
+                    <Text style={st.chipGroupLabel}>Roles Worked Before</Text>
+                    <View style={st.chipsWrap}>
+                      {jobs.map((j: string, i: number) => (
+                        <View key={i} style={[st.chip, st.chipGreen]}>
+                          <Text style={[st.chipText, { color: GREEN }]}>{j}</Text>
                         </View>
                       ))}
                     </View>
                   </View>
                 )}
               </View>
+            )}
 
-            </ScrollView>
+            {/* SKILLS */}
+            {activeTab === 'skills' && (
+              <View style={st.section}>
+                <View style={st.sectionHeader}>
+                  <Ionicons name="star-outline" size={16} color={CARAMEL} />
+                  <Text style={st.sectionTitle}>Top Skills</Text>
+                </View>
 
-            <View style={styles.footer}>
-              {onSave && (
-                <TouchableOpacity style={styles.saveButton} onPress={onSave}>
-                  <Ionicons name="bookmark-outline" size={20} color="#4B5563" />
-                  <Text style={styles.saveButtonText}>Save</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity style={styles.primaryButton} onPress={onInvite ? onInvite : onClose}>
-                {onInvite && <Ionicons name="paper-plane-outline" size={18} color="#fff" />}
-                <Text style={styles.primaryButtonText}>{onInvite ? "Invite to Apply" : "Close Profile"}</Text>
+                {categories.length === 0 && jobs.length === 0 && skills.length === 0 ? (
+                  <Text style={st.emptyTab}>No skills or roles listed yet.</Text>
+                ) : (
+                  <>
+                    {categories.length > 0 && (
+                      <>
+                        <Text style={st.chipGroupLabel}>Categories</Text>
+                        <View style={st.chipsWrap}>
+                          {categories.map((c: string, i: number) => (
+                            <View key={i} style={[st.chip, st.chipBlue]}>
+                              <Text style={[st.chipText, { color: '#1D4ED8' }]}>{c}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </>
+                    )}
+                    {jobs.length > 0 && (
+                      <>
+                        <Text style={[st.chipGroupLabel, { marginTop: 16 }]}>Specific Roles</Text>
+                        <View style={st.chipsWrap}>
+                          {jobs.map((j: string, i: number) => (
+                            <View key={i} style={[st.chip, st.chipGreen]}>
+                              <Text style={[st.chipText, { color: GREEN }]}>{j}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </>
+                    )}
+                    {skills.length > 0 && (
+                      <>
+                        <Text style={[st.chipGroupLabel, { marginTop: 16 }]}>Skills & Abilities</Text>
+                        <View style={st.chipsWrap}>
+                          {skills.map((sk: string, i: number) => (
+                            <View key={i} style={st.chip}>
+                              <Text style={st.chipText}>{sk}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </>
+                    )}
+                  </>
+                )}
+              </View>
+            )}
+
+            {/* DOCUMENTS */}
+            {activeTab === 'documents' && (
+              <View style={st.section}>
+                <View style={st.sectionHeader}>
+                  <Ionicons name="document-text-outline" size={16} color={CARAMEL} />
+                  <Text style={st.sectionTitle}>Verification Documents</Text>
+                </View>
+                <View style={st.docsLocked}>
+                  <Ionicons name="lock-closed-outline" size={30} color={MUTED} />
+                  <Text style={st.docsLockedTitle}>Documents are private</Text>
+                  <Text style={st.docsLockedText}>
+                    {h.full_name || h.helper_name}'s documents are only shared once they apply to one of your jobs and choose to share them with you.
+                  </Text>
+                </View>
+              </View>
+            )}
+
+          </ScrollView>
+
+          {/* ── Footer ────────────────────────────────────────────────────── */}
+          <View style={st.footer}>
+            <TouchableOpacity
+              style={st.msgBtn}
+              onPress={() => { onMessage ? onMessage() : onClose(); }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="chatbubble-outline" size={18} color={BROWN} />
+              <Text style={st.msgBtnText}>Message</Text>
+            </TouchableOpacity>
+            {onSave && (
+              <TouchableOpacity style={st.shortlistBtn} onPress={onSave} activeOpacity={0.8}>
+                <Ionicons name="star-outline" size={18} color={BROWN} />
+                <Text style={st.shortlistBtnText}>Shortlist</Text>
               </TouchableOpacity>
-            </View>
-
+            )}
+            <TouchableOpacity style={st.inviteBtn} onPress={onInvite ?? onClose} activeOpacity={0.8}>
+              <Ionicons name="paper-plane-outline" size={18} color="#fff" />
+              <Text style={st.inviteBtnText}>{onInvite ? 'Invite to Apply' : 'Close'}</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
 
-      {/* NEW: IN-APP DOCUMENT VIEWER MODAL */}
-      {docToView && (
-        <Modal visible={!!docToView} animationType="fade" transparent={true} onRequestClose={() => setDocToView(null)}>
-          <SafeAreaView style={styles.docViewerOverlay}>
-            <View style={styles.docViewerHeader}>
-              <Text style={styles.docViewerTitle}>{docToView.title}</Text>
-              <TouchableOpacity onPress={() => setDocToView(null)} style={styles.docViewerCloseBtn}>
-                <Ionicons name="close" size={28} color="#fff" />
-              </TouchableOpacity>
-            </View>
-            {/* Renders the document as a contained image */}
-            <Image 
-              source={{ uri: docToView.url }} 
-              style={styles.docViewerImage} 
-              resizeMode="contain" 
-            />
-          </SafeAreaView>
-        </Modal>
-      )}
-    </>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
-const styles = StyleSheet.create({
+// Small helper row component
+function DetailRow({ label, value, last = false }: { label: string; value: string; last?: boolean }) {
+  return (
+    <View style={[dr.row, !last && dr.rowBorder]}>
+      <Text style={dr.label}>{label}</Text>
+      <Text style={dr.value} numberOfLines={2}>{value}</Text>
+    </View>
+  );
+}
+const dr = StyleSheet.create({
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: DIVIDER },
+  label: { fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: MUTED },
+  value: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK, flex: 1, textAlign: 'right', marginLeft: 16 },
+});
+
+const st = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
+    backgroundColor: OVERLAY,
+    justifyContent: 'flex-end',
   },
-  modalContainer: {
-    width: '100%',
-    maxWidth: 560,
-    alignSelf: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 24,
+  modal: {
+    backgroundColor: BG,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '92%',
     overflow: 'hidden',
-    maxHeight: '90%',
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20 },
-      android: { elevation: 10 },
-      web: { boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }
-    }),
+    ...CARD_SHADOW,
   },
+
+  // Header
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    backgroundColor: '#fff',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 16,
+    backgroundColor: '#F1DDBE',
+    borderBottomWidth: 1, borderBottomColor: DIVIDER,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.3,
-  },
-  closeButton: {
-    padding: 4,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 20,
-  },
-  content: {
-    flex: 1,
-  },
-  
-  // Hero Section
-  heroSection: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    backgroundColor: '#F9FAFB',
-  },
-  avatarWrapper: {
-    position: 'relative',
-    marginBottom: 16,
-  },
-  avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 4,
-    borderColor: '#fff',
-  },
-  avatarPlaceholder: {
-    backgroundColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#1D4ED8',
-  },
-  verifiedBadgeIcon: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 2,
-  },
-  helperName: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 12,
-    letterSpacing: -0.5,
-  },
-  heroBadges: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  matchCard: {
-    marginHorizontal: 24,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: '#F0F9FF',
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  matchCardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
-  matchCardTitle: { fontSize: 13, fontWeight: '800', color: '#0C4A6E' },
-  matchCardJob: { fontSize: 12, color: '#0369A1', marginTop: 2 },
-  matchScoreBig: { fontSize: 22, fontWeight: '900', color: '#1D4ED8' },
-  matchCardSub: { fontSize: 11, color: '#64748B', marginBottom: 10, lineHeight: 16 },
-  matchReasonRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
-  matchReasonText: { flex: 1, fontSize: 13, color: '#334155', lineHeight: 18 },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  badgeText: {
-    fontSize: 13,
-    fontWeight: '700',
+  headerTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 17, color: DARK },
+  closeBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center',
   },
 
-  contactCard: {
-    margin: 24,
-    marginBottom: 0,
-    backgroundColor: '#EFF6FF',
+  // Hero
+  hero: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingHorizontal: 20, paddingVertical: 18,
+    backgroundColor: '#FFF4E6',
+    borderBottomWidth: 1, borderBottomColor: DIVIDER,
+  },
+  avatarWrap: { position: 'relative' },
+  avatar: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, borderColor: DIVIDER },
+  avatarFallback: { backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center' },
+  avatarInitials: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 24, color: BROWN },
+  verifiedDot: {
+    position: 'absolute', bottom: 0, right: 0,
+    backgroundColor: SURFACE, borderRadius: 12, padding: 1,
+  },
+  heroRight: { flex: 1, gap: 8 },
+  heroName: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 20, color: DARK },
+  heroBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  pill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#DBEAFE',
-    borderRadius: 16,
-    padding: 16,
   },
-  sectionSubtitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1D4ED8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  contactRow: {
-    flexDirection: 'row',
+  pillGreen: { backgroundColor: SUCCESS_BG, borderColor: '#A7F3D0' },
+  pillBlue:  { backgroundColor: '#EFF6FF',  borderColor: '#DBEAFE' },
+  pillText:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11.5 },
+  matchBadgeHero: {
+    backgroundColor: SUCCESS_BG, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8,
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 8,
+    borderWidth: 1, borderColor: '#A7F3D0',
   },
-  contactIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  contactText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1E3A8A',
+  matchBadgeHeroText: {
+    fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: GREEN, textAlign: 'center',
   },
 
-  statsGrid: {
-    flexDirection: 'row',
-    padding: 24,
-    gap: 12,
+  // Tiles
+  tilesRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: SURFACE,
+    paddingVertical: 14, paddingHorizontal: 16,
+    borderBottomWidth: 1, borderBottomColor: DIVIDER,
   },
-  statBox: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    borderRadius: 16,
-    padding: 12,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
-    marginTop: 8,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
+  tile: { flex: 1, alignItems: 'center', gap: 4 },
+  tileDivider: { width: 1, height: 32, backgroundColor: DIVIDER },
+  tileValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK },
+  tileLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED },
 
-  section: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  
-  detailsList: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    overflow: 'hidden',
-  },
-  detailItem: {
+  // Tabs
+  tabsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    backgroundColor: SURFACE,
+    borderBottomWidth: 1, borderBottomColor: DIVIDER,
+    paddingHorizontal: 4,
   },
-  detailLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
+  tabBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 5, paddingVertical: 12,
+    borderBottomWidth: 2.5, borderBottomColor: 'transparent',
   },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
+  tabBtnActive: { borderBottomColor: CARAMEL },
+  tabText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },
+  tabTextActive: { fontFamily: FontFamily.fredokaSemiBold, color: BROWN },
 
-  docsContainer: {
-    gap: 12,
-  },
-  docItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 12,
-    borderRadius: 12,
-  },
-  docIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#EFF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  docTitle: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#374151',
-  },
+  // Scroll
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 24 },
 
-  skillGroup: {
-    marginBottom: 16,
-  },
-  skillGroupLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
-  categoriesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  categoryChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  categoryText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
+  // Sections
+  section: { paddingHorizontal: 16, paddingTop: 20 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  sectionTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: DARK },
+
+  detailsCard: {
+    backgroundColor: SURFACE, borderRadius: 14,
+    borderWidth: 1, borderColor: DIVIDER, overflow: 'hidden',
   },
 
   bioBox: {
-    backgroundColor: '#F9FAFB',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: SURFACE, borderRadius: 14,
+    borderWidth: 1, borderColor: DIVIDER,
+    padding: 14,
   },
-  bioText: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: '#4B5563',
-  },
+  bioText: { fontFamily: FontFamily.fredokaRegular, fontSize: 14.5, color: DARK, lineHeight: 22 },
 
+  // Match card
+  matchCard: {
+    marginHorizontal: 16, marginTop: 20,
+    backgroundColor: '#FFF9EF',
+    borderRadius: 14, borderWidth: 1, borderColor: '#F5D797',
+    padding: 14,
+  },
+  matchCardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  matchCardIcon: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center',
+  },
+  matchCardTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: DARK },
+  matchCardJob:   { fontFamily: FontFamily.fredokaRegular,  fontSize: 12.5, color: MUTED, marginTop: 1 },
+  matchScore:     { fontFamily: FontFamily.fredokaSemiBold, fontSize: 22, color: CARAMEL },
+  matchReason: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
+  matchReasonText: { fontFamily: FontFamily.fredokaRegular, flex: 1, fontSize: 13, color: DARK, lineHeight: 18 },
+
+  // Chips
+  chipGroupLabel: {
+    fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: MUTED,
+    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
+  },
+  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    backgroundColor: ICON_BG, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderWidth: 1, borderColor: DIVIDER,
+  },
+  chipGreen: { backgroundColor: SUCCESS_BG, borderColor: '#A7F3D0' },
+  chipBlue:  { backgroundColor: '#EFF6FF',  borderColor: '#DBEAFE' },
+  chipText:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: BROWN },
+
+  emptyTab: { fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: MUTED, textAlign: 'center', paddingVertical: 24 },
+
+  // Documents locked
+  docsLocked: {
+    alignItems: 'center', gap: 10,
+    backgroundColor: SURFACE, borderRadius: 14,
+    borderWidth: 1, borderColor: DIVIDER,
+    paddingVertical: 32, paddingHorizontal: 20,
+  },
+  docsLockedTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: DARK },
+  docsLockedText:  { fontFamily: FontFamily.fredokaRegular,  fontSize: 13, color: MUTED, textAlign: 'center', lineHeight: 19 },
+
+  // Footer
   footer: {
-    flexDirection: 'row',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    backgroundColor: '#fff',
-    gap: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    padding: 16,
+    backgroundColor: SURFACE,
+    borderTopWidth: 1, borderTopColor: DIVIDER,
   },
-  saveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+  msgBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 13, paddingHorizontal: 16,
+    borderRadius: 12, borderWidth: 1.5, borderColor: DIVIDER,
+    backgroundColor: SURFACE,
+  },
+  msgBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: BROWN },
+  shortlistBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 13, paddingHorizontal: 16,
+    borderRadius: 12, borderWidth: 1.5, borderColor: CARAMEL,
+    backgroundColor: SURFACE,
+  },
+  shortlistBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: BROWN },
+  inviteBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 13,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: BROWN,
   },
-  saveButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#4B5563',
-  },
-  primaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#1D4ED8',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#fff',
-  },
-
-  // NEW: DOCUMENT VIEWER STYLES
-  docViewerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-    justifyContent: 'center',
-  },
-  docViewerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 40 : 20,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-  },
-  docViewerTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  docViewerCloseBtn: {
-    padding: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 20,
-  },
-  docViewerImage: {
-    width: '100%',
-    height: '80%',
-    marginTop: 60,
-  },
+  inviteBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#fff' },
 });

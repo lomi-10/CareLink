@@ -89,23 +89,17 @@ export default function HelperLayout() {
         <RoleScreenBackground role="helper">
           <View style={styles.container}>
             {/* Pending Status Banner */}
-            <View style={styles.pendingBanner}>
-              <Ionicons name="time-outline" size={20} color={theme.color.warning} />
-              <View style={styles.bannerText}>
-                <Text style={styles.bannerTitle}>Account pending verification</Text>
-                <Text style={styles.bannerSubtitle}>
-                  Complete your profile, upload documents, and wait for PESO to approve your account.
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.bannerCta}
-                onPress={() => router.push("/(helper)/profile")}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.bannerCtaText}>Complete profile</Text>
-                <Ionicons name="chevron-forward" size={16} color={theme.color.warning} />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.pendingBanner}
+              onPress={() => router.push("/(helper)/profile")}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="time-outline" size={16} color={theme.color.warning} />
+              <Text style={styles.bannerText} numberOfLines={1}>
+                Pending verification — complete your profile to get approved
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.color.warning} />
+            </TouchableOpacity>
             <View style={styles.content}>
               <Slot />
             </View>
@@ -196,26 +190,15 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   pendingBanner: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    padding: 16,
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     backgroundColor: "#FEF3C7",
-    gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#FDE68A",
   },
-  bannerText: { flex: 1, minWidth: 0 },
-  bannerTitle: { fontSize: 16, fontWeight: "800", color: "#0F172A" },
-  bannerSubtitle: { fontSize: 13, color: "#64748B", marginTop: 4, lineHeight: 18 },
-  bannerCta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: "#FFFBEB",
-  },
-  bannerCtaText: { fontSize: 13, fontWeight: "800", color: theme.color.warning },
+  bannerText: { flex: 1, fontSize: 12.5, fontWeight: "700", color: theme.color.warning },
   content: { flex: 1 },
   errorContainer: {
     flex: 1,

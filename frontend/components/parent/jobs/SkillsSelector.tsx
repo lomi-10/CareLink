@@ -1,8 +1,9 @@
 // components/parent/jobs/SkillsSelector.tsx
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BROWN, CARAMEL, ICON_BG, DARK, MUTED, DIVIDER } from '../home/parentWarmTheme';
 
 interface Skill {
   skill_id: string | number;
@@ -40,18 +41,14 @@ export function SkillsSelector({
   return (
     <View style={styles.container}>
       <Text style={styles.label}>
-        Step 3: Preferred Skills (Optional)
+        Recommended Skills (Optional)
       </Text>
       <Text style={styles.hint}>
         Select skills or specify your own to help us match the right helper.
       </Text>
 
       {availableSkills.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.skillsContainer}
-        >
+        <View style={styles.skillsContainer}>
           {availableSkills.map((skill) => {
             const isSelected = selectedSkills.includes(skill.skill_id.toString());
             return (
@@ -76,12 +73,12 @@ export function SkillsSelector({
                   {skill.skill_name}
                 </Text>
                 {isSelected && (
-                  <Ionicons name="checkmark-circle" size={16} color="#2563EB" />
+                  <Ionicons name="checkmark-circle" size={16} color={BROWN} />
                 )}
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
       )}
 
       <TouchableOpacity
@@ -89,13 +86,13 @@ export function SkillsSelector({
         onPress={() => setShowCustom(!showCustom)}
         disabled={disabled}
       >
-        <Ionicons 
-          name={showCustom ? "remove-circle-outline" : "add-circle-outline"} 
-          size={18} 
-          color="#2563EB" 
+        <Ionicons
+          name={showCustom ? "remove-circle-outline" : "add-circle-outline"}
+          size={18}
+          color={BROWN}
         />
         <Text style={styles.customToggleText}>
-          {showCustom ? "Hide custom skills" : "Add other specific skills"}
+          {showCustom ? "Hide custom skills" : "+ Add other skills"}
         </Text>
       </TouchableOpacity>
 
@@ -140,7 +137,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A1C1E',
+    color: DARK,
     marginBottom: 4,
   },
   asterisk: {
@@ -153,7 +150,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   skillsContainer: {
-    paddingVertical: 4,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
     marginBottom: 8,
   },
   skillChip: {
@@ -162,15 +161,14 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: '#fff',
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderColor: DIVIDER,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    marginRight: 10,
   },
   skillChipActive: {
-    backgroundColor: '#F0F8FF',
-    borderColor: '#2563EB',
+    backgroundColor: ICON_BG,
+    borderColor: CARAMEL,
   },
   skillChipDisabled: {
     opacity: 0.5,
@@ -182,7 +180,7 @@ const styles = StyleSheet.create({
     color: '#4B5563',
   },
   skillTextActive: {
-    color: '#2563EB',
+    color: BROWN,
   },
   skillTextDisabled: {
     color: '#9CA3AF',
@@ -195,7 +193,7 @@ const styles = StyleSheet.create({
   },
   customToggleText: {
     fontSize: 14,
-    color: '#2563EB',
+    color: BROWN,
     fontWeight: '600',
   },
   customInputWrapper: {
@@ -230,21 +228,21 @@ const styles = StyleSheet.create({
   selectedContainer: {
     marginTop: 16,
     padding: 12,
-    backgroundColor: '#F0F9FF',
+    backgroundColor: ICON_BG,
     borderRadius: 10,
     borderLeftWidth: 4,
-    borderLeftColor: '#2563EB',
+    borderLeftColor: CARAMEL,
   },
   selectedLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#0369A1',
+    color: BROWN,
     marginBottom: 4,
     textTransform: 'uppercase',
   },
   selectedSkills: {
     fontSize: 13,
-    color: '#0C4A6E',
+    color: MUTED,
     lineHeight: 20,
     fontWeight: '500',
   },

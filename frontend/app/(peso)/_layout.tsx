@@ -23,11 +23,11 @@ import { styles } from "@/constants/pesoLayout.styles";
 const NAV_LINKS = [
   { icon: "grid" as const, label: "Dashboard", path: "/(peso)/home" },
   { icon: "notifications" as const, label: "Notifications", path: "/(peso)/notifications" },
-  { icon: "people" as const, label: "User verification", path: "/(peso)/user_verification" },
-  { icon: "briefcase" as const, label: "Job verification", path: "/(peso)/job_verification" },
-  { icon: "document-text" as const, label: "Signed contracts", path: "/(peso)/signed_contracts" },
+  { icon: "people" as const, label: "User verification", path: "/(peso)/users" },
+  { icon: "briefcase" as const, label: "Job verification", path: "/(peso)/jobs" },
+  { icon: "document-text" as const, label: "Signed contracts", path: "/(peso)/contracts" },
   { icon: "analytics" as const, label: "Analytics", path: "/(peso)/analytics" },
-  { icon: "person-add" as const, label: "Create PESO user", path: "/(peso)/create_peso_user" },
+  { icon: "person-add" as const, label: "Create PESO user", path: "/(peso)/users/create" },
   { icon: "bar-chart" as const, label: "Reports", path: "/(peso)/reports" },
 ];
 

@@ -4,6 +4,7 @@ import type { Category } from '@/hooks/shared';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { BROWN, CARAMEL, ICON_BG } from '../home/parentWarmTheme';
 
 // Mapping database categories to specific icons
 const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -54,7 +55,7 @@ export function CategorySelector({
   return (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>
-        Step 1: Select Work Category <Text style={styles.asterisk}>*</Text>
+        Select Work Category <Text style={styles.asterisk}>*</Text>
       </Text>
       
       <View style={styles.gridContainer}>
@@ -81,7 +82,7 @@ export function CategorySelector({
                 </View>
               )}
               <View style={[styles.iconContainer, selected && styles.iconContainerActive]}>
-                <Ionicons name={iconName} size={24} color={selected ? "#2563EB" : "#666"} />
+                <Ionicons name={iconName} size={24} color={selected ? CARAMEL : "#666"} />
               </View>
               <Text style={[styles.categoryName, selected && styles.categoryNameActive]}>
                 {category.name}
@@ -150,8 +151,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   categoryCardActive: {
-    borderColor: '#2563EB',
-    backgroundColor: '#F0F8FF',
+    borderColor: CARAMEL,
+    backgroundColor: ICON_BG,
   },
   categoryCardDisabled: {
     opacity: 0.6,
@@ -167,7 +168,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   iconContainerActive: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: ICON_BG,
   },
   categoryName: {
     fontSize: 14,
@@ -176,14 +177,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   categoryNameActive: {
-    color: '#2563EB',
+    color: BROWN,
     fontWeight: '700',
   },
   checkBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#2563EB',
+    backgroundColor: BROWN,
     borderRadius: 12,
     width: 20,
     height: 20,

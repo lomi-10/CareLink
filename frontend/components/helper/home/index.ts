@@ -11,3 +11,6 @@ export { SectionHeader } from './SectionHeader';
 export { MobileMenu } from './MobileMenu';
 export { HelperTabBar } from './HelperTabBar';
 export { RecommendationsSection } from './RecommendationsSection';
+export { HelperStatsCard } from './HelperStatsCard';
+export { HelperQuickActions } from './HelperQuickActions';
+export { RecommendedJobCard } from './RecommendedJobCard';

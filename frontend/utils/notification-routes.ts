@@ -8,18 +8,18 @@ export function getHelperNotificationRoute(n: Notification): string | null {
   switch(n.type) {
     case 'job_invite':
       return id
-        ? `/(helper)/my_applications?openApplication=${id}&source=invite` 
-        : '/(helper)/my_applications';
+        ? `/(helper)/applications?openApplication=${id}&source=invite` 
+        : '/(helper)/applications';
 
     case 'status_changed':
       return id
-        ? `/(helper)/my_applications?openApplication=${id}`
-        : '/(helper)/my_applications';
+        ? `/(helper)/applications?openApplication=${id}`
+        : '/(helper)/applications';
 
     case 'application_received':
       return id
-        ? `/(helper)/my_applications?openApplication=${id}`
-        : '/(helper)/my_applications';
+        ? `/(helper)/applications?openApplication=${id}`
+        : '/(helper)/applications';
 
     case 'account_verified':
     case 'account_rejected':
@@ -30,7 +30,7 @@ export function getHelperNotificationRoute(n: Notification): string | null {
 
     case 'job_verified':
     case 'job_rejected':
-      return '/(helper)/browse_jobs';
+      return '/(helper)/browse';
 
     case 'new_message':
     case 'message_received':
@@ -41,15 +41,15 @@ export function getHelperNotificationRoute(n: Notification): string | null {
     case 'interview_declined':
     case 'interview_request':
       return id
-        ? `/(helper)/my_applications?openApplication=${id}`
-        : '/(helper)/my_applications';
+        ? `/(helper)/applications?openApplication=${id}`
+        : '/(helper)/applications';
 
     case 'task_completed':
     case 'attendance_checkin':
     case 'leave_request_submitted':
     case 'leave_request_responded':
     case 'contract_terminated':
-      return '/(helper)/work_schedule';
+      return '/(helper)/work';
 
     default:
       return null;
@@ -99,7 +99,7 @@ export function getParentNotificationRoute(n: Notification): string | null {
     case 'leave_request_submitted':
     case 'leave_request_responded':
     case 'contract_terminated':
-      return '/(parent)/active_helpers';
+      return '/(parent)/hire';
 
     default:
       return null;
@@ -113,19 +113,19 @@ export function getPesoNotificationRoute(n: Notification): string | null {
   switch(n.type) {
     case 'peso_queue_user':
       return id
-        ? `/(peso)/view_user_profile?user_id=${id}`
-        : '/(peso)/user_verification';
+        ? `/(peso)/users/view_profile?user_id=${id}`
+        : '/(peso)/users';
 
     case 'peso_queue_job':
-      return '/(peso)/job_verification';
+      return '/(peso)/jobs';
 
     case 'contract_signed':
     case 'contract_terminated':
-      return '/(peso)/signed_contracts';
+      return '/(peso)/contracts';
 
     case 'account_verified':
     case 'account_rejected':
-      return '/(peso)/user_verification';
+      return '/(peso)/users';
 
     case 'new_message':
       return null;

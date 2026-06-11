@@ -337,20 +337,20 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
       )}
 
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.chip} onPress={() => go('/(parent)/placement_tasks')}>
+        <TouchableOpacity style={styles.chip} onPress={() => go('/(parent)/hire/placement_tasks')}>
           <Ionicons name="list-outline" size={16} color={t.parent} />
           <Text style={styles.chipText}>Tasks</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.chip}
-          onPress={() => go('/(parent)/placement_attendance')}
+          onPress={() => go('/(parent)/hire/placement_attendance')}
         >
           <Ionicons name="calendar-outline" size={16} color={t.parent} />
           <Text style={styles.chipText}>Attendance</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.chip}
-          onPress={() => go('/(parent)/placement_leave_requests')}
+          onPress={() => go('/(parent)/hire/placement_leave_requests')}
         >
           <Ionicons name="calendar-number-outline" size={16} color={t.parent} />
           <Text style={styles.chipText}>Leave</Text>

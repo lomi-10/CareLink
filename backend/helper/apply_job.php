@@ -21,6 +21,33 @@ $job_post_id = isset($input['job_post_id']) ? intval($input['job_post_id']) : 0;
 $helper_id = isset($input['helper_id']) ? intval($input['helper_id']) : 0;
 $cover_letter = isset($input['cover_letter']) ? trim($input['cover_letter']) : '';
 
+// Documents the helper explicitly chose to share with this employer (consent is per-application)
+$shared_document_ids = [];
+if (isset($input['shared_document_ids']) && is_array($input['shared_document_ids'])) {
+    $shared_document_ids = array_values(array_unique(array_map('intval', $input['shared_document_ids'])));
+}
+
+// Replaces this application's shared-document list with the helper's current selection.
+// Only the helper's own VERIFIED documents can be shared — never pending/rejected ones.
+function syncSharedDocuments($conn, $application_id, $helper_id, $document_ids) {
+    $del = $conn->prepare("DELETE FROM application_document_shares WHERE application_id = ?");
+    $del->bind_param("i", $application_id);
+    $del->execute();
+
+    if (empty($document_ids)) return;
+
+    $ins = $conn->prepare("
+        INSERT INTO application_document_shares (application_id, document_id)
+        SELECT ?, document_id FROM user_documents
+        WHERE document_id = ? AND user_id = ? AND status = 'Verified'
+    ");
+    foreach ($document_ids as $doc_id) {
+        if ($doc_id <= 0) continue;
+        $ins->bind_param("iii", $application_id, $doc_id, $helper_id);
+        $ins->execute();
+    }
+}
+
 // Validation
 if ($job_post_id === 0) {
     echo json_encode([
@@ -126,6 +153,8 @@ try {
         ");
         $update_stmt->bind_param("si", $cover_letter, $existing_application['application_id']);
         if($update_stmt->execute()) {
+            syncSharedDocuments($conn, (int)$existing_application['application_id'], $helper_id, $shared_document_ids);
+
             // Notify the parent about re-application
             require_once '../shared/create_notification.php';
             $jobRow = $conn->query("SELECT title, parent_id FROM job_posts WHERE job_post_id = $job_post_id")->fetch_assoc();
@@ -201,6 +230,8 @@ try {
 
     if ($insert_stmt->execute()) {
         $application_id = $conn->insert_id;
+
+        syncSharedDocuments($conn, $application_id, $helper_id, $shared_document_ids);
 
         echo json_encode([
             'success' => true,

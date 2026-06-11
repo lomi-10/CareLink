@@ -1,111 +1,127 @@
 // components/parent/jobs/SalaryInputCard.tsx
-// Component for salary input with period and benefits
 
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { BROWN, CARAMEL, ICON_BG, DARK, MUTED, DIVIDER } from '../home/parentWarmTheme';
+
+// Suggested monthly salary range per category (PHP), keyed by ref_categories.category_id
+const SUGGESTED_RANGES: Record<string, { min: number; max: number }> = {
+  '1': { min: 7000, max: 10000 }, // General Househelp
+  '2': { min: 8000, max: 12000 }, // Yaya
+  '3': { min: 8000, max: 12000 }, // Cook
+  '4': { min: 7000, max: 9000 },  // Gardening
+  '5': { min: 7000, max: 9000 },  // Laundry Person
+  '6': { min: 7000, max: 12000 }, // Others
+};
+
+function getSuggestedRange(categoryIds: string[]) {
+  const ranges = categoryIds.map((id) => SUGGESTED_RANGES[id]).filter(Boolean);
+  if (ranges.length === 0) return null;
+  return {
+    min: Math.min(...ranges.map((r) => r.min)),
+    max: Math.max(...ranges.map((r) => r.max)),
+  };
+}
 
 interface SalaryInputCardProps {
-  salaryOffered: string;
+  salaryMin: string;
+  salaryMax: string;
   salaryPeriod: 'Daily' | 'Weekly' | 'Monthly';
-  onSalaryChange: (value: string) => void;
+  onSalaryMinChange: (value: string) => void;
+  onSalaryMaxChange: (value: string) => void;
   onPeriodChange: (period: 'Daily' | 'Weekly' | 'Monthly') => void;
-  error?: string; 
+  categoryIds?: string[];
+  error?: string;
+  errorMax?: string;
   disabled?: boolean;
 }
 
 export function SalaryInputCard({
-  salaryOffered,
+  salaryMin,
+  salaryMax,
   salaryPeriod,
-  onSalaryChange,
+  onSalaryMinChange,
+  onSalaryMaxChange,
   onPeriodChange,
+  categoryIds = [],
   error,
+  errorMax,
   disabled,
 }: SalaryInputCardProps) {
+  const suggested = getSuggestedRange(categoryIds);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="cash-outline" size={22} color="#34C759" />
-        <Text style={styles.title}>Salary <Text style={{ color: '#EF4444' }}>*</Text></Text>
+        <Ionicons name="cash-outline" size={22} color={BROWN} />
+        <Text style={styles.title}>Monthly Salary Range <Text style={{ color: '#EF4444' }}>*</Text></Text>
       </View>
 
-      {/* Salary Amount */}
-      <Text style={styles.label}>Salary Offered</Text>
-      <View style={styles.salaryInputRow}>
-        <View style={styles.currencySymbol}>
-          <Text style={styles.currencyText}>₱</Text>
+      <View style={styles.rangeRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.label}>Minimum</Text>
+          <View style={styles.inputRow}>
+            <View style={styles.currencySymbol}>
+              <Text style={styles.currencyText}>₱</Text>
+            </View>
+            <TextInput
+              style={[styles.salaryInput, disabled && styles.inputDisabled]}
+              placeholder="7,000"
+              value={salaryMin}
+              onChangeText={onSalaryMinChange}
+              keyboardType="numeric"
+              editable={!disabled}
+              placeholderTextColor="#999"
+            />
+          </View>
         </View>
-        <TextInput
-          style={[styles.salaryInput, disabled && { backgroundColor: '#f99c9cff' }]}
-          placeholder="e.g., 8000"
-          value={salaryOffered}
-          onChangeText={onSalaryChange}
-          keyboardType="numeric"
-          editable={!disabled}
-          placeholderTextColor="#999"
-        />
-      </View>
-      
-      <Text style={styles.minimumNote}>Minimum: ₱6,000 (PESO requirement)</Text>
-      {error && <Text style={styles.errorText}>{error}</Text>}
 
-      {/* Salary Period */}
-      <Text style={[styles.label, { marginTop: 16 }]}>Payment Period</Text>
+        <View style={styles.rangeSep}>
+          <Text style={styles.rangeSepText}>–</Text>
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.label}>Maximum (optional)</Text>
+          <View style={styles.inputRow}>
+            <View style={styles.currencySymbol}>
+              <Text style={styles.currencyText}>₱</Text>
+            </View>
+            <TextInput
+              style={[styles.salaryInput, disabled && styles.inputDisabled]}
+              placeholder="e.g. 12,000"
+              value={salaryMax}
+              onChangeText={onSalaryMaxChange}
+              keyboardType="numeric"
+              editable={!disabled}
+              placeholderTextColor="#999"
+            />
+          </View>
+        </View>
+      </View>
+
+      <Text style={styles.minimumNote}>Minimum: ₱7,000/month (RA 10361 — Kasambahay Law)</Text>
+      {suggested && (
+        <Text style={styles.suggestedText}>
+          Suggested range for this role: ₱{suggested.min.toLocaleString()} - ₱{suggested.max.toLocaleString()} / month
+        </Text>
+      )}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {errorMax ? <Text style={styles.errorText}>{errorMax}</Text> : null}
+
+      <Text style={styles.periodLabel}>Payment Period</Text>
       <View style={styles.periodRow}>
-        <TouchableOpacity
-          style={[
-            styles.periodButton,
-            salaryPeriod === 'Daily' && styles.periodButtonActive,
-            disabled && { backgroundColor: '#f99c9cff' },
-          ]}
-          onPress={() => onPeriodChange('Daily')} 
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.periodText,
-              salaryPeriod === 'Daily' && styles.periodTextActive,
-            ]}
+        {(['Daily', 'Weekly', 'Monthly'] as const).map((p) => (
+          <TouchableOpacity
+            key={p}
+            style={[styles.periodButton, salaryPeriod === p && styles.periodButtonActive]}
+            onPress={() => onPeriodChange(p)}
+            activeOpacity={0.7}
+            disabled={disabled}
           >
-            Daily
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.periodButton,
-            salaryPeriod === 'Weekly' && styles.periodButtonActive,
-            disabled && { backgroundColor: '#f99c9cff' },
-          ]}
-          onPress={() => onPeriodChange('Weekly')}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.periodText,
-              salaryPeriod === 'Weekly' && styles.periodTextActive,
-            ]}
-          >
-            Weekly
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.periodButton,
-            salaryPeriod === 'Monthly' && styles.periodButtonActive,
-            disabled && { backgroundColor: '#f99c9cff' },
-          ]}
-          onPress={() => onPeriodChange('Monthly')}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.periodText,
-              salaryPeriod === 'Monthly' && styles.periodTextActive,
-            ]}
-          >
-            Monthly
-          </Text>
-        </TouchableOpacity>
+            <Text style={[styles.periodText, salaryPeriod === p && styles.periodTextActive]}>{p}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   );
@@ -131,38 +147,52 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A1C1E',
+    color: DARK,
+  },
+  rangeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  rangeSep: {
+    paddingBottom: 14,
+    alignItems: 'center',
+  },
+  rangeSepText: {
+    fontSize: 18,
+    color: MUTED,
+    fontWeight: '600',
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: MUTED,
     marginBottom: 8,
   },
-  salaryInputRow: {
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   currencySymbol: {
     backgroundColor: '#F8F9FA',
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: DIVIDER,
     borderTopLeftRadius: 12,
     borderBottomLeftRadius: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 14,
     borderRightWidth: 0,
   },
   currencyText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#1A1C1E',
+    color: DARK,
   },
   salaryInput: {
     flex: 1,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: DIVIDER,
     borderTopRightRadius: 12,
     borderBottomRightRadius: 12,
     padding: 14,
@@ -170,16 +200,33 @@ const styles = StyleSheet.create({
     color: '#1A1C1E',
     borderLeftWidth: 0,
   },
+  inputDisabled: {
+    backgroundColor: '#F0F0F0',
+    color: '#999',
+  },
   minimumNote: {
     fontSize: 12,
-    color: '#666',
+    color: MUTED,
     marginTop: 6,
     fontStyle: 'italic',
+  },
+  suggestedText: {
+    fontSize: 12,
+    color: BROWN,
+    fontWeight: '600',
+    marginTop: 4,
   },
   errorText: {
     fontSize: 13,
     color: '#FF3B30',
-    marginTop: 6,
+    marginTop: 4,
+  },
+  periodLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: MUTED,
+    marginTop: 16,
+    marginBottom: 8,
   },
   periodRow: {
     flexDirection: 'row',
@@ -187,35 +234,24 @@ const styles = StyleSheet.create({
   },
   periodButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#E5E5EA',
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: DIVIDER,
     backgroundColor: '#fff',
     alignItems: 'center',
   },
   periodButtonActive: {
-    borderColor: '#34C759',
-    backgroundColor: '#E8F5E9',
+    borderColor: CARAMEL,
+    backgroundColor: ICON_BG,
   },
   periodText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: MUTED,
   },
   periodTextActive: {
-    color: '#34C759',
+    color: BROWN,
     fontWeight: '700',
-  },
-  benefitsInput: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-    color: '#1A1C1E',
-    minHeight: 80,
-    textAlignVertical: 'top',
   },
 });

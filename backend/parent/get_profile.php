@@ -154,18 +154,38 @@ try {
     // QUERY 5: DOCUMENTS DATA
     // ========================================================================
     $documents = array();
-    $docsSql = "SELECT document_id, document_type, file_path, status, uploaded_at FROM user_documents WHERE user_id = ?";
+    $docsSql = "SELECT
+                    ud.document_id,
+                    ud.document_type,
+                    ud.file_path,
+                    ud.id_type,
+                    ud.status,
+                    ud.expiry_date,
+                    ud.rejection_reason,
+                    ud.verified_by,
+                    ud.verified_at,
+                    ud.uploaded_at,
+                    CONCAT(v.first_name, ' ', IFNULL(v.last_name, '')) AS verified_by_name
+                FROM user_documents ud
+                LEFT JOIN users v ON v.user_id = ud.verified_by
+                WHERE ud.user_id = ?
+                ORDER BY FIELD(ud.document_type, 'Barangay Clearance', 'Valid ID', 'Police Clearance', 'TESDA NC2')";
     $docsStmt = $conn->prepare($docsSql);
     $docsStmt->bind_param("i", $user_id);
     $docsStmt->execute();
     $docsResult = $docsStmt->get_result();
-    
+
     $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'];
-    
+
     while ($row = $docsResult->fetch_assoc()) {
         $row['document_id'] = intval($row['document_id']);
         $row['file_url'] = "$protocol://$host/carelink_api/uploads/documents/" . $row['file_path'];
+        $row['uploaded_at'] = $row['uploaded_at'] ? date('Y-m-d H:i:s', strtotime($row['uploaded_at'])) : null;
+        $row['expiry_date'] = $row['expiry_date'] ? date('Y-m-d', strtotime($row['expiry_date'])) : null;
+        $row['verified_at'] = $row['verified_at'] ? date('Y-m-d H:i:s', strtotime($row['verified_at'])) : null;
+        $row['verified_by'] = trim((string) $row['verified_by_name']) !== '' ? trim($row['verified_by_name']) : null;
+        unset($row['verified_by_name']);
         $documents[] = $row;
     }
     $docsStmt->close();

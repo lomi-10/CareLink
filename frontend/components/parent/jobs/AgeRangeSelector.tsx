@@ -4,6 +4,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
+import { BROWN, CARAMEL, ICON_BG, DARK, MUTED, DIVIDER } from '../home/parentWarmTheme';
+
+const MIN_AGE_BOUND = 18;
+const MAX_AGE_BOUND = 65;
 
 interface AgeRangeSelectorProps {
   minAge: number;
@@ -20,7 +24,7 @@ export function AgeRangeSelector({
   onMaxAgeChange,
   disabled = false,
 }: AgeRangeSelectorProps) {
-  
+
   const handleMinChange = (value: number) => {
     const rounded = Math.round(value);
     // Ensure min doesn't exceed max
@@ -41,65 +45,55 @@ export function AgeRangeSelector({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Preferred Age Range (Optional)</Text>
+      <Text style={styles.label}>Preferred Age (Optional)</Text>
       <Text style={styles.hint}>
         Select the age range you prefer for your helper
       </Text>
 
       {/* Age Range Display */}
       <View style={styles.rangeDisplay}>
-        <View style={styles.ageBox}>
-          <Text style={styles.ageLabel}>Min Age</Text>
-          <Text style={styles.ageValue}>{minAge}</Text>
-        </View>
-        <View style={styles.separator}>
-          <Text style={styles.separatorText}>to</Text>
-        </View>
-        <View style={styles.ageBox}>
-          <Text style={styles.ageLabel}>Max Age</Text>
-          <Text style={styles.ageValue}>{maxAge}</Text>
-        </View>
+        <Text style={styles.rangeText}>{minAge} - {maxAge} years old</Text>
       </View>
 
       {/* Minimum Age Slider */}
       <View style={styles.sliderContainer}>
-        <Text style={styles.sliderLabel}>Minimum Age</Text>
+        <Text style={styles.sliderLabel}>Minimum Age: {minAge}</Text>
         <View style={styles.sliderRow}>
-          <Text style={styles.sliderValue}>18</Text>
+          <Text style={styles.sliderEndpoint}>{MIN_AGE_BOUND} yrs</Text>
           <Slider
             style={styles.slider}
-            minimumValue={18}
-            maximumValue={70}
+            minimumValue={MIN_AGE_BOUND}
+            maximumValue={MAX_AGE_BOUND}
             value={minAge}
             onValueChange={handleMinChange}
             step={1}
-            minimumTrackTintColor="#2563EB"
-            maximumTrackTintColor="#E5E5EA"
-            thumbTintColor="#2563EB"
+            minimumTrackTintColor={CARAMEL}
+            maximumTrackTintColor={DIVIDER}
+            thumbTintColor={BROWN}
             disabled={disabled}
           />
-          <Text style={styles.sliderValue}>70</Text>
+          <Text style={styles.sliderEndpoint}>{MAX_AGE_BOUND} yrs</Text>
         </View>
       </View>
 
       {/* Maximum Age Slider */}
       <View style={styles.sliderContainer}>
-        <Text style={styles.sliderLabel}>Maximum Age</Text>
+        <Text style={styles.sliderLabel}>Maximum Age: {maxAge}</Text>
         <View style={styles.sliderRow}>
-          <Text style={styles.sliderValue}>18</Text>
+          <Text style={styles.sliderEndpoint}>{MIN_AGE_BOUND} yrs</Text>
           <Slider
             style={styles.slider}
-            minimumValue={18}
-            maximumValue={70}
+            minimumValue={MIN_AGE_BOUND}
+            maximumValue={MAX_AGE_BOUND}
             value={maxAge}
             onValueChange={handleMaxChange}
             step={1}
-            minimumTrackTintColor="#2563EB"
-            maximumTrackTintColor="#E5E5EA"
-            thumbTintColor="#2563EB"
+            minimumTrackTintColor={CARAMEL}
+            maximumTrackTintColor={DIVIDER}
+            thumbTintColor={BROWN}
             disabled={disabled}
           />
-          <Text style={styles.sliderValue}>70</Text>
+          <Text style={styles.sliderEndpoint}>{MAX_AGE_BOUND} yrs</Text>
         </View>
       </View>
 
@@ -119,69 +113,50 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A1C1E',
+    color: DARK,
     marginBottom: 4,
   },
   hint: {
     fontSize: 13,
-    color: '#666',
+    color: MUTED,
     marginBottom: 16,
   },
   rangeDisplay: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E3F2FD',
-    padding: 16,
+    backgroundColor: ICON_BG,
+    paddingVertical: 12,
     borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  ageBox: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  ageLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1976D2',
-    marginBottom: 4,
-  },
-  ageValue: {
-    fontSize: 28,
+  rangeText: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#1976D2',
-  },
-  separator: {
-    paddingHorizontal: 16,
-  },
-  separatorText: {
-    fontSize: 14,
-    color: '#1976D2',
-    fontWeight: '600',
+    color: BROWN,
   },
   sliderContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   sliderLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   sliderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   slider: {
     flex: 1,
-    height: 40,
+    height: 32,
   },
-  sliderValue: {
-    fontSize: 13,
-    color: '#666',
+  sliderEndpoint: {
+    fontSize: 12,
+    color: MUTED,
     fontWeight: '600',
-    width: 24,
+    width: 36,
     textAlign: 'center',
   },
   disabledNote: {

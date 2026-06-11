@@ -1,15 +1,11 @@
 // components/parent/browse/FilterBar.tsx
-// Updated: Added onOpenAdvanced prop for filter modal
-
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { FontFamily } from '@/constants/GlobalStyles';
+import {
+  BG, BROWN, CARAMEL, DARK, MUTED, DIVIDER, ICON_BG, SURFACE,
+} from '@/components/parent/home/parentWarmTheme';
 import type { BrowseFilters } from '@/hooks/parent';
 import type { Category } from '@/hooks/shared';
 
@@ -19,170 +15,194 @@ interface FilterBarProps {
   onReset: () => void;
   categories: Category[];
   activeFilterCount: number;
-  onOpenAdvanced?: () => void; // NEW: Opens filter modal
+  onOpenAdvanced?: () => void;
 }
 
-export function FilterBar({
-  filters,
-  onFilterChange,
-  onReset,
-  categories,
-  activeFilterCount,
-  onOpenAdvanced,
-}: FilterBarProps) {
-  const CategoryPill = ({ 
-    id, 
-    name, 
-    selected 
-  }: { 
-    id: string; 
-    name: string; 
-    selected: boolean;
-  }) => (
-    <TouchableOpacity
-      style={[styles.pill, selected && styles.pillSelected]}
-      onPress={() => onFilterChange('category', id)}
-      activeOpacity={0.7}
-    >
-      <Text style={[styles.pillText, selected && styles.pillTextSelected]}>
-        {name}
-      </Text>
-    </TouchableOpacity>
-  );
+export function FilterBar({ filters, onFilterChange, onReset, categories, activeFilterCount, onOpenAdvanced }: FilterBarProps) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const options = [
+    { id: 'all', name: 'All Categories' },
+    ...categories.map((c) => ({ id: c.category_id.toString(), name: c.name })),
+  ];
+  const selected = options.find((o) => o.id === filters.category) ?? options[0];
 
   return (
     <View style={styles.container}>
-      {/* Category Pills (Quick Filter) */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <CategoryPill
-          id="all"
-          name="All"
-          selected={filters.category === 'all'}
-        />
-        {categories.map((cat) => (
-          <CategoryPill
-            key={cat.category_id}
-            id={cat.category_id.toString()}
-            name={cat.name}
-            selected={filters.category === cat.category_id.toString()}
-          />
-        ))}
-      </ScrollView>
+      <View style={styles.row}>
+        {/* Category dropdown */}
+        <TouchableOpacity style={styles.dropdown} onPress={() => setPickerOpen(true)} activeOpacity={0.7}>
+          <Ionicons name="grid-outline" size={16} color={MUTED} />
+          <Text style={styles.dropdownText} numberOfLines={1}>{selected.name}</Text>
+          <Ionicons name="chevron-down" size={15} color={MUTED} />
+        </TouchableOpacity>
 
-      {/* Advanced Filters Button */}
-      <View style={styles.actionsRow}>
+        {/* Advanced filters */}
         {onOpenAdvanced && (
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={onOpenAdvanced}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="options-outline" size={20} color="#007AFF" />
-            <Text style={styles.filterButtonText}>Filters</Text>
+          <TouchableOpacity style={styles.filterBtn} onPress={onOpenAdvanced} activeOpacity={0.7}>
+            <Ionicons name="options-outline" size={18} color={BROWN} />
+            <Text style={styles.filterBtnText}>Filters</Text>
             {activeFilterCount > 0 && (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{activeFilterCount}</Text>
               </View>
             )}
           </TouchableOpacity>
         )}
 
         {activeFilterCount > 0 && (
-          <TouchableOpacity
-            style={styles.resetButton}
-            onPress={onReset}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.resetButtonText}>Reset</Text>
+          <TouchableOpacity style={styles.resetBtn} onPress={onReset} activeOpacity={0.7}>
+            <Text style={styles.resetBtnText}>Reset</Text>
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Category picker modal */}
+      <Modal visible={pickerOpen} animationType="fade" transparent onRequestClose={() => setPickerOpen(false)}>
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setPickerOpen(false)}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>Filter by category</Text>
+            <FlatList
+              data={options}
+              keyExtractor={(item) => item.id}
+              style={{ maxHeight: 380 }}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const active = item.id === filters.category;
+                return (
+                  <TouchableOpacity
+                    style={[styles.option, active && styles.optionActive]}
+                    onPress={() => { onFilterChange('category', item.id); setPickerOpen(false); }}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.optionText, active && styles.optionTextActive]}>{item.name}</Text>
+                    {active && <Ionicons name="checkmark" size={17} color={BROWN} />}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: BG,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: DIVIDER,
   },
-  scrollContent: {
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8,
   },
-  pill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    backgroundColor: '#fff',
-  },
-  pillSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  pillText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  pillTextSelected: {
-    color: '#fff',
-  },
-  actionsRow: {
+  dropdown: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    alignItems: 'center',
     gap: 8,
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: DIVIDER,
+    backgroundColor: SURFACE,
   },
-  filterButton: {
+  dropdownText: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 14,
+    color: DARK,
+    flex: 1,
+  },
+  filterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: CARAMEL,
+    backgroundColor: SURFACE,
   },
-  filterButtonText: {
+  filterBtnText: {
+    fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 14,
-    fontWeight: '600',
-    color: '#007AFF',
+    color: BROWN,
   },
-  filterBadge: {
-    backgroundColor: '#FF3B30',
+  badge: {
+    backgroundColor: CARAMEL,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
   },
-  filterBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
+  badgeText: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 11,
     color: '#fff',
   },
-  resetButton: {
+  resetBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
-    backgroundColor: '#fff',
+    borderColor: DIVIDER,
+    backgroundColor: SURFACE,
   },
-  resetButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
+  resetBtnText: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 13,
+    color: MUTED,
+  },
+
+  // Picker
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(59,42,24,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  sheet: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: SURFACE,
+    borderRadius: 18,
+    padding: 12,
+  },
+  sheetTitle: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 15,
+    color: DARK,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 13,
+    borderRadius: 10,
+  },
+  optionActive: {
+    backgroundColor: ICON_BG,
+  },
+  optionText: {
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 14.5,
+    color: DARK,
+  },
+  optionTextActive: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    color: BROWN,
   },
 });

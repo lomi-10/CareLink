@@ -1,35 +1,39 @@
 // components/helper/jobs/ParentProfileModal.tsx
+
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+  ActivityIndicator, Modal, Platform, SafeAreaView,
+  ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import API_URL from '@/constants/api';
-import { theme } from '@/constants/theme';
+import { FontFamily } from '@/constants/GlobalStyles';
 import { formatParentHouseholdType } from '@/constants/parentHousehold';
 import type { JobPost } from '@/hooks/helper';
-import { CompactJobCard } from './CompactJobCard';
 
+// ── Palette ───────────────────────────────────────────────────────────────────
+const DARK    = '#2A1608';
+const MUTED   = '#7A5C3E';
+const ORANGE  = '#E86019';
+const GREEN   = '#059669';
+const DIVIDER = '#EDE0D0';
+const ICON_BG = '#F5E6CC';
+
+type Tab = 'overview' | 'jobs' | 'reviews';
+
+// ── Props ─────────────────────────────────────────────────────────────────────
 interface ParentProfileModalProps {
   visible: boolean;
   onClose: () => void;
-  parentData: any; // job object — used for parent_id
-  /** When set (e.g. from Browse Jobs), lists open roles for this employer */
+  parentData: any;
   browseJobs?: JobPost[];
   onOpenJob?: (job: JobPost) => void;
   onToggleSaveJob?: (jobId: string) => void;
 }
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const initials = (name: string) => {
   if (!name) return 'E';
   const parts = name.trim().split(' ');
@@ -40,66 +44,282 @@ const initials = (name: string) => {
 
 const isTrue = (v: any) => v === 1 || v === '1' || v === true || v === 'true';
 
-function Section({ icon, title, children }: { icon: React.ComponentProps<typeof Ionicons>['name']; title: string; children: React.ReactNode }) {
+function fmtPeriod(p: string) {
+  const l = (p ?? '').toLowerCase();
+  if (l.startsWith('month')) return 'mo';
+  if (l.startsWith('day'))   return 'day';
+  if (l.startsWith('week'))  return 'wk';
+  return p;
+}
+
+// ── Shared sub-components ─────────────────────────────────────────────────────
+function SectionHead({ icon, title }: { icon: React.ComponentProps<typeof Ionicons>['name']; title: string }) {
   return (
-    <View style={s.section}>
-      <View style={s.sectionHeader}>
-        <View style={s.sectionIconWrap}>
-          <Ionicons name={icon} size={14} color={theme.color.parent} />
-        </View>
-        <Text style={s.sectionTitle}>{title}</Text>
+    <View style={ot.sectionHeader}>
+      <View style={ot.sectionIconWrap}>
+        <Ionicons name={icon} size={14} color={DARK} />
       </View>
-      {children}
+      <Text style={ot.sectionTitle}>{title}</Text>
     </View>
   );
 }
 
-function InfoRow({ label, value, icon }: { label: string; value: string | number | null | undefined; icon?: React.ComponentProps<typeof Ionicons>['name'] }) {
-  if (!value && value !== 0) return null;
+function InfoRow({ icon, label, value, last = false }: {
+  icon: React.ComponentProps<typeof Ionicons>['name']; label: string; value: string; last?: boolean;
+}) {
   return (
-    <View style={s.infoRow}>
-      {icon && <Ionicons name={icon} size={14} color={theme.color.parent} style={{ marginRight: 6 }} />}
-      <Text style={s.infoLabel}>{label}</Text>
-      <Text style={s.infoValue}>{String(value)}</Text>
+    <View style={[ot.infoRow, last && { borderBottomWidth: 0 }]}>
+      <Ionicons name={icon} size={14} color={MUTED} style={{ marginTop: 2 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={ot.infoLabel}>{label}</Text>
+        <Text style={ot.infoValue}>{value}</Text>
+      </View>
     </View>
   );
 }
 
-function Tag({ label, color = theme.color.parent, bg = theme.color.parentSoft }: { label: string; color?: string; bg?: string }) {
+// ── Overview Tab ──────────────────────────────────────────────────────────────
+function OverviewTab({ profile, household, children, elderly, documents, setDocViewing }: {
+  profile: any; household: any; children: any[]; elderly: any[];
+  documents: any[]; setDocViewing: (v: { title: string; url: string } | null) => void;
+}) {
+  const fullAddress = [profile.barangay, profile.municipality, profile.province]
+    .filter(Boolean).join(', ') || null;
+
   return (
-    <View style={[s.tag, { backgroundColor: bg, borderColor: color + '33' }]}>
-      <Text style={[s.tagText, { color }]}>{label}</Text>
+    <View style={ot.root}>
+      {profile.bio ? (
+        <View style={ot.section}>
+          <SectionHead icon="person-outline" title="About" />
+          <Text style={ot.bioText}>{profile.bio}</Text>
+        </View>
+      ) : null}
+
+      {(fullAddress || profile.address) ? (
+        <View style={ot.section}>
+          <SectionHead icon="location-outline" title="Location" />
+          <View style={ot.card}>
+            {fullAddress ? <InfoRow icon="map-outline" label="Area" value={fullAddress} last={!profile.address} /> : null}
+            {profile.address ? <InfoRow icon="home-outline" label="Address" value={profile.address} last /> : null}
+          </View>
+        </View>
+      ) : null}
+
+      {household && (
+        <View style={ot.section}>
+          <SectionHead icon="people-outline" title="Household" />
+          <View style={ot.card}>
+            {household.household_type ? (
+              <InfoRow icon="home-outline" label="Housing Type" value={formatParentHouseholdType(household.household_type)} />
+            ) : null}
+            {household.household_size ? (
+              <InfoRow icon="people-outline" label="Size" value={`${household.household_size} Members`} />
+            ) : null}
+            <InfoRow
+              icon="paw-outline"
+              label="Pets"
+              value={isTrue(household.has_pets) ? (household.pet_details ? `Yes — ${household.pet_details}` : 'Yes') : 'No pets'}
+              last
+            />
+          </View>
+
+          {children.length > 0 && (
+            <View style={{ marginTop: 12 }}>
+              <Text style={ot.subLabel}>Children ({children.length})</Text>
+              {children.map((child: any, i: number) => (
+                <View key={child.child_id ?? i} style={ot.memberCard}>
+                  <View style={ot.memberAvatar}>
+                    <Ionicons name="happy-outline" size={15} color={DARK} />
+                  </View>
+                  <Text style={ot.memberText}>
+                    {child.gender ?? 'Unknown'} · {child.age != null ? `${child.age} yrs` : 'Age N/A'}
+                    {child.special_needs ? ` · ${child.special_needs}` : ''}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {elderly.length > 0 && (
+            <View style={{ marginTop: 12 }}>
+              <Text style={ot.subLabel}>Elderly Members ({elderly.length})</Text>
+              {elderly.map((el: any, i: number) => (
+                <View key={el.elderly_id ?? i} style={ot.memberCard}>
+                  <View style={[ot.memberAvatar, { backgroundColor: '#FEF3C7' }]}>
+                    <Ionicons name="heart-outline" size={15} color="#D97706" />
+                  </View>
+                  <Text style={ot.memberText}>
+                    {el.gender ?? 'Unknown'} · {el.age != null ? `${el.age} yrs` : 'Age N/A'}
+                    {el.condition ? ` · ${el.condition}` : ''}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      {documents.length > 0 && (
+        <View style={ot.section}>
+          <SectionHead icon="shield-checkmark-outline" title="Verified Documents" />
+          <View style={{ gap: 8 }}>
+            {documents.map((doc: any, i: number) => (
+              <TouchableOpacity
+                key={i}
+                style={ot.docRow}
+                onPress={() => setDocViewing({ title: doc.document_type, url: doc.file_url })}
+                activeOpacity={0.8}
+              >
+                <View style={ot.docIconWrap}>
+                  <Ionicons name="document-text" size={16} color={GREEN} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={ot.docName}>{doc.document_type}</Text>
+                  <Text style={ot.docStatus}>✓ Verified by PESO</Text>
+                </View>
+                <Ionicons name="eye-outline" size={16} color={MUTED} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+      <View style={{ height: 24 }} />
     </View>
   );
 }
 
-function StarRating({ rating }: { rating: number }) {
+// ── Jobs Tab ──────────────────────────────────────────────────────────────────
+function JobsTab({ browseJobs, onOpenJob }: {
+  browseJobs?: JobPost[];
+  onOpenJob?: (job: JobPost) => void;
+}) {
+  if (!browseJobs || browseJobs.length === 0) {
+    return (
+      <View style={jt.empty}>
+        <Ionicons name="briefcase-outline" size={36} color={MUTED} />
+        <Text style={jt.emptyText}>No active job posts right now</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={s.starRow}>
-      {[1, 2, 3, 4, 5].map(i => (
-        <Ionicons
-          key={i}
-          name={rating >= i ? 'star' : rating >= i - 0.5 ? 'star-half' : 'star-outline'}
-          size={16}
-          color={rating >= i - 0.4 ? theme.color.warning : theme.color.subtle}
-        />
-      ))}
+    <View style={jt.root}>
+      <Text style={jt.count}>Active Positions ({browseJobs.length})</Text>
+      {browseJobs.map(job => {
+        const matchPct = Math.round(Number(job.match_score ?? 0));
+        const salary   = Number(job.salary_offered);
+        return (
+          <TouchableOpacity
+            key={job.job_post_id}
+            style={jt.card}
+            onPress={() => onOpenJob?.(job)}
+            activeOpacity={0.85}
+          >
+            <View style={jt.iconCircle}>
+              <Ionicons name="briefcase-outline" size={18} color={DARK} />
+            </View>
+            <View style={jt.cardBody}>
+              <View style={jt.titleRow}>
+                <Text style={jt.cardTitle} numberOfLines={1}>{job.title}</Text>
+                {matchPct > 0 && (
+                  <View style={jt.matchBadge}>
+                    <Text style={jt.matchText}>{matchPct}% Match</Text>
+                  </View>
+                )}
+              </View>
+              {job.employment_type ? <Text style={jt.cardSub}>• {job.employment_type}</Text> : null}
+              {salary > 0 && (
+                <Text style={jt.salary}>₱{salary.toLocaleString()}/{fmtPeriod(job.salary_period)}</Text>
+              )}
+              {(job.municipality || job.province) && (
+                <View style={jt.locRow}>
+                  <Ionicons name="location-outline" size={11} color={MUTED} />
+                  <Text style={jt.locText}>{[job.municipality, job.province].filter(Boolean).join(', ')}</Text>
+                </View>
+              )}
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#C4A882" />
+          </TouchableOpacity>
+        );
+      })}
+      <View style={{ height: 24 }} />
     </View>
   );
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ── Reviews Tab ───────────────────────────────────────────────────────────────
+function ReviewsTab({ recentReviews, avgRating, reviewCount }: {
+  recentReviews: { rating: number; review_text: string; reviewer_name: string }[];
+  avgRating: number;
+  reviewCount: number;
+}) {
+  if (reviewCount === 0) {
+    return (
+      <View style={rt.empty}>
+        <Ionicons name="chatbubbles-outline" size={36} color={MUTED} />
+        <Text style={rt.emptyText}>No reviews yet</Text>
+      </View>
+    );
+  }
 
+  return (
+    <View style={rt.root}>
+      <View style={rt.ratingSummary}>
+        <Text style={rt.ratingBig}>{avgRating > 0 ? Number(avgRating).toFixed(1) : '—'}</Text>
+        <View>
+          <View style={{ flexDirection: 'row', gap: 3, marginBottom: 4 }}>
+            {[1, 2, 3, 4, 5].map(i => (
+              <Ionicons
+                key={i}
+                name={avgRating >= i ? 'star' : avgRating >= i - 0.5 ? 'star-half' : 'star-outline'}
+                size={18}
+                color={avgRating >= i - 0.4 ? '#F59E0B' : DIVIDER}
+              />
+            ))}
+          </View>
+          <Text style={rt.reviewCount}>{reviewCount} review{reviewCount !== 1 ? 's' : ''}</Text>
+        </View>
+      </View>
+
+      {recentReviews.length > 0 ? (
+        recentReviews.map((r, i) => (
+          <View key={`${r.reviewer_name}-${i}`} style={rt.card}>
+            <View style={rt.cardHead}>
+              <View style={rt.avatar}>
+                <Text style={rt.avatarText}>{r.reviewer_name?.[0]?.toUpperCase() ?? '?'}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={rt.name}>{r.reviewer_name}</Text>
+                <View style={{ flexDirection: 'row', gap: 3 }}>
+                  {[1, 2, 3, 4, 5].map(j => (
+                    <Ionicons key={j} name={Number(r.rating) >= j ? 'star' : 'star-outline'} size={12} color="#F59E0B" />
+                  ))}
+                </View>
+              </View>
+            </View>
+            {r.review_text ? (
+              <Text style={rt.body}>{r.review_text}</Text>
+            ) : (
+              <Text style={rt.noComment}>No written comment.</Text>
+            )}
+          </View>
+        ))
+      ) : (
+        <Text style={rt.noComment}>Ratings only — no written reviews to show yet.</Text>
+      )}
+      <View style={{ height: 24 }} />
+    </View>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export function ParentProfileModal({
-  visible,
-  onClose,
-  parentData,
-  browseJobs,
-  onOpenJob,
-  onToggleSaveJob,
+  visible, onClose, parentData, browseJobs, onOpenJob, onToggleSaveJob,
 }: ParentProfileModalProps) {
   const [data,       setData]       = useState<any>(null);
   const [loading,    setLoading]    = useState(false);
+  const [activeTab,  setActiveTab]  = useState<Tab>('overview');
   const [docViewing, setDocViewing] = useState<{ title: string; url: string } | null>(null);
 
   const parentId = parentData?.parent_id;
@@ -110,6 +330,7 @@ export function ParentProfileModal({
     } else if (!visible) {
       setData(null);
       setDocViewing(null);
+      setActiveTab('overview');
     }
   }, [visible, parentId]);
 
@@ -128,290 +349,137 @@ export function ParentProfileModal({
 
   if (!parentData) return null;
 
-  const profile    = data?.profile   ?? {};
-  const user       = data?.user      ?? {};
-  const household  = data?.household ?? null;
-  const children   = data?.children  ?? [];
-  const elderly    = data?.elderly   ?? [];
-  const documents  = data?.documents ?? [];
-  const avgRating  = data?.avg_rating  ?? 0;
-  const reviewCount= data?.review_count ?? 0;
-  const activeJobs = data?.active_jobs  ?? 0;
+  const profile      = data?.profile      ?? {};
+  const user         = data?.user         ?? {};
+  const household    = data?.household    ?? null;
+  const children     = data?.children     ?? [];
+  const elderly      = data?.elderly      ?? [];
+  const documents    = data?.documents    ?? [];
+  const avgRating    = data?.avg_rating   ?? 0;
+  const reviewCount  = data?.review_count ?? 0;
+  const activeJobs   = data?.active_jobs  ?? 0;
+  const hiredCount   = data?.hired_count  ?? 0;
   const recentReviews = (data?.recent_reviews ?? []) as {
-    rating: number;
-    review_text: string;
-    reviewer_name: string;
+    rating: number; review_text: string; reviewer_name: string;
   }[];
 
-  const name         = user.first_name ? `${user.first_name} ${user.last_name}` : (parentData.parent_name ?? 'Employer');
+  const name         = user.first_name
+    ? `${user.first_name} ${user.last_name}`
+    : (parentData.parent_name ?? 'Employer');
   const profileImage = profile.profile_image ?? null;
   const isVerified   = user.status === 'approved';
 
-  const fullAddress = [profile.barangay, profile.municipality, profile.province]
-    .filter(Boolean).join(', ') || 'Not specified';
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'overview', label: 'Overview' },
+    { key: 'jobs',     label: browseJobs && browseJobs.length > 0 ? `Jobs (${browseJobs.length})` : 'Jobs' },
+    { key: 'reviews',  label: 'Reviews' },
+  ];
 
   return (
     <>
-      <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+      <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
         <View style={s.overlay}>
           <View style={s.card}>
 
-            {/* ── Header bar ── */}
-            <View style={s.headerBar}>
-              <Text style={s.headerTitle}>Employer Profile</Text>
-              <TouchableOpacity onPress={onClose} style={s.closeBtn} hitSlop={8}>
-                <Ionicons name="close" size={22} color={theme.color.muted} />
+            {/* ── Gradient header ── */}
+            <LinearGradient colors={['#1A0B05', '#2A1608', '#3A1E0A']} style={s.header}>
+              <TouchableOpacity onPress={onClose} style={s.backBtn} hitSlop={8}>
+                <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.85)" />
               </TouchableOpacity>
+
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={s.avatar} contentFit="cover" />
+              ) : (
+                <View style={[s.avatar, s.avatarFallback]}>
+                  <Text style={s.avatarInitials}>{initials(name)}</Text>
+                </View>
+              )}
+
+              <Text style={s.headerName}>{name}</Text>
+
+              <View style={isVerified ? s.pesoBadge : s.pesoUnverified}>
+                <Ionicons name={isVerified ? 'shield-checkmark' : 'warning'} size={12} color={isVerified ? '#fff' : '#FFB3B3'} />
+                <Text style={[s.pesoBadgeText, { color: isVerified ? '#fff' : '#FFB3B3' }]}>
+                  {isVerified ? 'PESO Verified Employer' : 'Unverified Employer'}
+                </Text>
+              </View>
+
+              <View style={s.ratingRow}>
+                {[1, 2, 3, 4, 5].map(i => (
+                  <Ionicons
+                    key={i}
+                    name={avgRating >= i ? 'star' : avgRating >= i - 0.5 ? 'star-half' : 'star-outline'}
+                    size={14}
+                    color={avgRating >= i - 0.4 ? '#F59E0B' : 'rgba(255,255,255,0.3)'}
+                  />
+                ))}
+                <Text style={s.ratingText}>
+                  {avgRating > 0 ? `${Number(avgRating).toFixed(1)} ★` : 'No ratings yet'}
+                  {reviewCount > 0 ? `, ${reviewCount} reviews` : ''}
+                </Text>
+              </View>
+
+              <View style={s.statsStrip}>
+                <View style={s.statItem}>
+                  <Text style={s.statValue}>{activeJobs}</Text>
+                  <Text style={s.statLabel}>Active Jobs</Text>
+                </View>
+                <View style={s.statDivider} />
+                <View style={s.statItem}>
+                  <Text style={s.statValue}>{hiredCount}</Text>
+                  <Text style={s.statLabel}>Hired Helpers</Text>
+                </View>
+              </View>
+            </LinearGradient>
+
+            {/* ── Tab bar ── */}
+            <View style={s.tabBar}>
+              {tabs.map(tab => (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={s.tab}
+                  onPress={() => setActiveTab(tab.key)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[s.tabText, activeTab === tab.key && s.tabTextActive]}>
+                    {tab.label}
+                  </Text>
+                  {activeTab === tab.key && <View style={s.tabIndicator} />}
+                </TouchableOpacity>
+              ))}
             </View>
 
+            {/* ── Content ── */}
             {loading || !data ? (
               <View style={s.center}>
-                <ActivityIndicator size="large" color={theme.color.parent} />
+                <ActivityIndicator size="large" color={ORANGE} />
                 <Text style={s.loadingText}>Loading profile…</Text>
               </View>
             ) : (
               <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
-
-                {/* ── Hero ── */}
-                <View style={s.hero}>
-                  {profileImage ? (
-                    <Image source={{ uri: profileImage }} style={s.avatar} />
-                  ) : (
-                    <View style={[s.avatar, s.avatarFallback]}>
-                      <Text style={s.avatarInitials}>{initials(name)}</Text>
-                    </View>
-                  )}
-
-                  <Text style={s.heroName}>{name}</Text>
-
-                  {/* Verified badge */}
-                  <View style={[s.badge, isVerified ? s.badgeVerified : s.badgeUnverified]}>
-                    <Ionicons
-                      name={isVerified ? 'shield-checkmark' : 'warning'}
-                      size={13}
-                      color={isVerified ? theme.color.success : theme.color.danger}
-                    />
-                    <Text style={[s.badgeText, { color: isVerified ? theme.color.success : theme.color.danger }]}>
-                      {isVerified ? 'PESO Verified Employer' : 'Unverified Employer'}
-                    </Text>
-                  </View>
-
-                  {/* Quick stats strip */}
-                  <View style={s.heroStats}>
-                    <View style={s.heroStat}>
-                      <StarRating rating={avgRating} />
-                      <Text style={s.heroStatLabel}>
-                        {avgRating > 0 ? `${avgRating} (${reviewCount} review${reviewCount !== 1 ? 's' : ''})` : 'No reviews yet'}
-                      </Text>
-                    </View>
-                    <View style={s.heroStatDivider} />
-                    <View style={s.heroStat}>
-                      <Ionicons name="briefcase" size={16} color={theme.color.parent} />
-                      <Text style={s.heroStatLabel}>{activeJobs} Active Job{activeJobs !== 1 ? 's' : ''}</Text>
-                    </View>
-                    {household?.household_size && (
-                      <>
-                        <View style={s.heroStatDivider} />
-                        <View style={s.heroStat}>
-                          <Ionicons name="people" size={16} color={theme.color.parent} />
-                          <Text style={s.heroStatLabel}>{household.household_size} Members</Text>
-                        </View>
-                      </>
-                    )}
-                  </View>
-                </View>
-
-                {/* ── Open roles (browse context) ── */}
-                {browseJobs && browseJobs.length > 0 && (
-                  <Section icon="briefcase-outline" title="Open roles">
-                    {browseJobs.map((job) => (
-                      <CompactJobCard
-                        key={job.job_post_id}
-                        job={job}
-                        onPress={() => onOpenJob?.(job)}
-                        onToggleSave={onToggleSaveJob}
-                      />
-                    ))}
-                  </Section>
+                {activeTab === 'overview' && (
+                  <OverviewTab
+                    profile={profile}
+                    household={household}
+                    children={children}
+                    elderly={elderly}
+                    documents={documents}
+                    setDocViewing={setDocViewing}
+                  />
                 )}
-
-                {/* ── Bio ── */}
-                {profile.bio ? (
-                  <Section icon="chatbubble-ellipses-outline" title="About the Employer">
-                    <View style={s.bioBox}>
-                      <Text style={s.bioText}>{profile.bio}</Text>
-                    </View>
-                  </Section>
-                ) : null}
-
-                {/* ── Contact ── */}
-                <Section icon="call-outline" title="Contact Information">
-                  <View style={s.infoCard}>
-                    <InfoRow icon="mail-outline"   label="Email"   value={user.email} />
-                    <InfoRow icon="call-outline"   label="Phone"   value={profile.contact_number} />
-                  </View>
-                </Section>
-
-                {/* ── Location ── */}
-                <Section icon="location-outline" title="Household Location">
-                  <View style={s.infoCard}>
-                    <InfoRow icon="map-outline"       label="Area"     value={fullAddress} />
-                    <InfoRow icon="home-outline"      label="Address"  value={profile.address} />
-                    <InfoRow icon="flag-outline"      label="Landmark" value={profile.landmark} />
-                  </View>
-                </Section>
-
-                {/* ── Household Info ── */}
-                {household && (
-                  <Section icon="people-outline" title="Household Information">
-                    <View style={s.infoCard}>
-                      <InfoRow icon="home-outline"      label="Housing Type"      value={formatParentHouseholdType(household.household_type)} />
-                      <InfoRow icon="people-outline"  label="Household Size"  value={household.household_size} />
-                      <InfoRow icon="paw-outline"     label="Has Pets"        value={isTrue(household.has_pets) ? 'Yes' : 'No'} />
-                      {isTrue(household.has_pets) && household.pet_details && (
-                        <InfoRow icon="paw-outline"   label="Pet Details"     value={household.pet_details} />
-                      )}
-                    </View>
-
-                    {/* Children */}
-                    {children.length > 0 && (
-                      <View style={{ marginTop: 10 }}>
-                        <Text style={s.subLabel}>
-                          <Ionicons name="happy-outline" size={13} color={theme.color.parent} />
-                          {'  '}Children ({children.length})
-                        </Text>
-                        {children.map((child: any, i: number) => (
-                          <View key={child.child_id ?? i} style={s.memberCard}>
-                            <View style={s.memberAvatar}>
-                              <Ionicons name="happy-outline" size={16} color={theme.color.parent} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={s.memberPrimary}>
-                                {child.gender ?? 'Unknown'} · {child.age != null ? `${child.age} yrs old` : 'Age N/A'}
-                              </Text>
-                              {child.special_needs ? (
-                                <Text style={s.memberSub}>Special needs: {child.special_needs}</Text>
-                              ) : null}
-                            </View>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-
-                    {/* Elderly */}
-                    {elderly.length > 0 && (
-                      <View style={{ marginTop: 10 }}>
-                        <Text style={s.subLabel}>
-                          <Ionicons name="heart-outline" size={13} color={theme.color.parent} />
-                          {'  '}Elderly Members ({elderly.length})
-                        </Text>
-                        {elderly.map((el: any, i: number) => (
-                          <View key={el.elderly_id ?? i} style={s.memberCard}>
-                            <View style={[s.memberAvatar, { backgroundColor: theme.color.warningSoft }]}>
-                              <Ionicons name="heart-outline" size={16} color={theme.color.warning} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={s.memberPrimary}>
-                                {el.gender ?? 'Unknown'} · {el.age != null ? `${el.age} yrs old` : 'Age N/A'}
-                              </Text>
-                              {el.condition ? (
-                                <Text style={s.memberSub}>Condition: {el.condition}</Text>
-                              ) : null}
-                              {el.care_level ? (
-                                <Text style={s.memberSub}>Care level: {el.care_level}</Text>
-                              ) : null}
-                            </View>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                  </Section>
+                {activeTab === 'jobs' && (
+                  <JobsTab browseJobs={browseJobs} onOpenJob={onOpenJob} />
                 )}
-
-                {/* ── Work Preferences ── */}
-                {(profile.preferred_employment_type || profile.religion || profile.languages) && (
-                  <Section icon="options-outline" title="Work Preferences">
-                    <View style={s.tagRow}>
-                      {profile.preferred_employment_type && (
-                        <Tag label={`Employment: ${profile.preferred_employment_type}`} />
-                      )}
-                      {profile.religion && (
-                        <Tag label={`Religion: ${profile.religion}`} color={theme.color.info} bg={theme.color.infoSoft} />
-                      )}
-                    </View>
-                  </Section>
+                {activeTab === 'reviews' && (
+                  <ReviewsTab
+                    recentReviews={recentReviews}
+                    avgRating={avgRating}
+                    reviewCount={reviewCount}
+                  />
                 )}
-
-                {/* ── Verified Documents ── */}
-                {documents.length > 0 && (
-                  <Section icon="document-text-outline" title="Verified Documents">
-                    <View style={s.docsWrap}>
-                      {documents.map((doc: any, i: number) => (
-                        <TouchableOpacity
-                          key={i}
-                          style={s.docRow}
-                          onPress={() => setDocViewing({ title: doc.document_type, url: doc.file_url })}
-                          activeOpacity={0.8}
-                        >
-                          <View style={s.docIconWrap}>
-                            <Ionicons name="document-text" size={18} color={theme.color.parent} />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={s.docName}>{doc.document_type}</Text>
-                            <Text style={s.docStatus}>✓ Verified by PESO</Text>
-                          </View>
-                          <Ionicons name="eye-outline" size={18} color={theme.color.muted} />
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </Section>
-                )}
-
-                {/* ── Written reviews ── */}
-                {recentReviews.length > 0 ? (
-                  <Section icon="chatbubbles-outline" title="What helpers say">
-                    {recentReviews.map((r, i) => (
-                      <View key={`${r.reviewer_name}-${i}`} style={s.reviewCard}>
-                        <View style={s.reviewHead}>
-                          <Text style={s.reviewName} numberOfLines={1}>
-                            {r.reviewer_name}
-                          </Text>
-                          <StarRating rating={Number(r.rating) || 0} />
-                        </View>
-                        {r.review_text ? (
-                          <Text style={s.reviewBody}>{r.review_text}</Text>
-                        ) : (
-                          <Text style={s.reviewMeta}>No written comment.</Text>
-                        )}
-                      </View>
-                    ))}
-                  </Section>
-                ) : reviewCount > 0 ? (
-                  <Section icon="chatbubbles-outline" title="What helpers say">
-                    <Text style={s.reviewMeta}>Ratings only — no written reviews to show yet.</Text>
-                  </Section>
-                ) : null}
-
-                {/* ── Member since ── */}
-                <View style={s.metaFooter}>
-                  <Ionicons name="calendar-outline" size={13} color={theme.color.subtle} />
-                  <Text style={s.metaText}>
-                    Member since {user.created_at ? new Date(user.created_at).toLocaleDateString('en-PH', { dateStyle: 'medium' }) : 'N/A'}
-                  </Text>
-                </View>
-
-                <View style={{ height: 24 }} />
               </ScrollView>
             )}
 
-            {/* ── Footer ── */}
-            {!loading && data && (
-              <View style={s.footer}>
-                <TouchableOpacity style={s.closeFullBtn} onPress={onClose}>
-                  <Text style={s.closeFullBtnText}>Close Profile</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
         </View>
       </Modal>
@@ -429,7 +497,7 @@ export function ParentProfileModal({
             <Image
               source={{ uri: docViewing.url }}
               style={s.docViewerImage}
-              resizeMode="contain"
+              contentFit="contain"
             />
           </SafeAreaView>
         </Modal>
@@ -438,98 +506,111 @@ export function ParentProfileModal({
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
+// ── Main styles ───────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: theme.color.overlay, justifyContent: 'center', alignItems: 'center', padding: 16 },
-  card:    { width: '100%', maxWidth: 600, maxHeight: '92%', backgroundColor: theme.color.surfaceElevated, borderRadius: 24, overflow: 'hidden', ...theme.shadow.card },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  card:    {
+    backgroundColor: '#FBF5EC',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '95%',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 16 },
+      android: { elevation: 24 },
+    }),
+  },
 
-  headerBar:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: theme.color.line },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: theme.color.ink },
-  closeBtn:    { padding: 6, backgroundColor: theme.color.surface, borderRadius: 14 },
+  // header (dark brown)
+  header:         { backgroundColor: DARK, alignItems: 'center', paddingTop: 24, paddingBottom: 24, paddingHorizontal: 24, position: 'relative' },
+  backBtn:        { position: 'absolute', top: 18, left: 16, padding: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 12 },
+  avatar:         { width: 86, height: 86, borderRadius: 43, borderWidth: 3, borderColor: 'rgba(255,255,255,0.28)', marginBottom: 12 },
+  avatarFallback: { backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
+  avatarInitials: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 30, color: '#fff' },
+  headerName:     { fontFamily: FontFamily.fredokaSemiBold, fontSize: 22, color: '#fff', marginBottom: 8, textAlign: 'center' },
+  pesoBadge:      { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', marginBottom: 10 },
+  pesoUnverified: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,80,80,0.15)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,100,100,0.35)', marginBottom: 10 },
+  pesoBadgeText:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12 },
+  ratingRow:      { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 16 },
+  ratingText:     { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: 'rgba(255,255,255,0.75)' },
+  statsStrip:     { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28, gap: 28 },
+  statItem:       { alignItems: 'center', gap: 2 },
+  statValue:      { fontFamily: FontFamily.fredokaSemiBold, fontSize: 20, color: '#fff' },
+  statLabel:      { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: 'rgba(255,255,255,0.65)' },
+  statDivider:    { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.2)' },
 
-  center:      { padding: 60, alignItems: 'center', gap: 12 },
-  loadingText: { color: theme.color.muted, fontSize: 14 },
+  // tab bar
+  tabBar:       { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: DIVIDER },
+  tab:          { flex: 1, alignItems: 'center', paddingVertical: 14, position: 'relative' },
+  tabText:      { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: MUTED },
+  tabTextActive:{ color: DARK },
+  tabIndicator: { position: 'absolute', bottom: 0, left: '20%', right: '20%', height: 2.5, backgroundColor: DARK, borderRadius: 2 },
 
-  scroll: { flex: 1 },
+  // content
+  center:      { paddingVertical: 60, alignItems: 'center', gap: 12 },
+  loadingText: { fontFamily: FontFamily.fredokaRegular, color: MUTED, fontSize: 14 },
+  scroll:      { flex: 1 },
 
-  // ── hero ──
-  hero: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 24, borderBottomWidth: 1, borderBottomColor: theme.color.line, backgroundColor: 'transparent' },
-  avatar:        { width: 100, height: 100, borderRadius: 50, borderWidth: 4, borderColor: theme.color.surfaceElevated, marginBottom: 14 },
-  avatarFallback:{ backgroundColor: theme.color.parentSoft, alignItems: 'center', justifyContent: 'center' },
-  avatarInitials:{ fontSize: 34, fontWeight: '800', color: theme.color.parent },
-  heroName:      { fontSize: 22, fontWeight: '800', color: theme.color.ink, marginBottom: 10, textAlign: 'center' },
-
-  badge:         { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, marginBottom: 16 },
-  badgeVerified: { backgroundColor: theme.color.successSoft, borderColor: theme.color.success + '44' },
-  badgeUnverified:{ backgroundColor: theme.color.dangerSoft, borderColor: theme.color.danger + '44' },
-  badgeText:     { fontSize: 13, fontWeight: '700' },
-
-  heroStats:      { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: theme.color.surfaceElevated, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line },
-  heroStat:       { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  heroStatLabel:  { fontSize: 12, color: theme.color.muted, fontWeight: '600' },
-  heroStatDivider:{ width: 1, height: 18, backgroundColor: theme.color.line },
-  starRow:        { flexDirection: 'row', gap: 2 },
-
-  // ── sections ──
-  section:      { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 4 },
-  sectionHeader:{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line },
-  sectionIconWrap:{ width: 26, height: 26, borderRadius: 7, backgroundColor: theme.color.parentSoft, alignItems: 'center', justifyContent: 'center' },
-  sectionTitle: { fontSize: 13, fontWeight: '800', color: theme.color.ink, textTransform: 'uppercase', letterSpacing: 0.5 },
-
-  infoCard: { backgroundColor: theme.color.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line, overflow: 'hidden' },
-  infoRow:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.color.line },
-  infoLabel:{ flex: 1, fontSize: 13, color: theme.color.muted, fontWeight: '500' },
-  infoValue:{ flex: 2, fontSize: 13, fontWeight: '700', color: theme.color.ink, textAlign: 'right' },
-
-  bioBox: { backgroundColor: theme.color.surface, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: theme.color.line },
-  bioText:{ fontSize: 14, lineHeight: 22, color: theme.color.inkMuted },
-
-  // ── household ──
-  subLabel:    { fontSize: 12, fontWeight: '800', color: theme.color.inkMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8, marginTop: 4 },
-  memberCard:  { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: theme.color.surface, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.color.line, marginBottom: 6 },
-  memberAvatar:{ width: 34, height: 34, borderRadius: 17, backgroundColor: theme.color.parentSoft, alignItems: 'center', justifyContent: 'center' },
-  memberPrimary:{ fontSize: 13, fontWeight: '700', color: theme.color.ink },
-  memberSub:   { fontSize: 12, color: theme.color.muted, marginTop: 2 },
-
-  // ── tags ──
-  tagRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tag:     { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
-  tagText: { fontSize: 12, fontWeight: '700' },
-
-  // ── documents ──
-  docsWrap:   { gap: 8 },
-  docRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: theme.color.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.color.line },
-  docIconWrap:{ width: 38, height: 38, borderRadius: 10, backgroundColor: theme.color.parentSoft, alignItems: 'center', justifyContent: 'center' },
-  docName:    { fontSize: 14, fontWeight: '700', color: theme.color.ink },
-  docStatus:  { fontSize: 12, color: theme.color.success, fontWeight: '600', marginTop: 2 },
-
-  // ── meta footer ──
-  metaFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 22, paddingTop: 8 },
-  metaText:   { fontSize: 12, color: theme.color.subtle },
-
-  // ── footer btn ──
-  footer:         { padding: 18, borderTopWidth: 1, borderTopColor: theme.color.line },
-  closeFullBtn:   { backgroundColor: theme.color.parent, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  closeFullBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-
-  // ── document viewer ──
+  // doc viewer
   docViewerRoot:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)' },
   docViewerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 50 : 24, paddingBottom: 12 },
-  docViewerTitle:  { color: '#fff', fontSize: 17, fontWeight: '700', flex: 1 },
+  docViewerTitle:  { color: '#fff', fontSize: 17, fontFamily: FontFamily.fredokaSemiBold, flex: 1 },
   docViewerClose:  { padding: 8, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 16 },
   docViewerImage:  { flex: 1, marginHorizontal: 16, marginBottom: 40 },
+});
 
-  reviewCard: {
-    backgroundColor: theme.color.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    padding: 12,
-    marginBottom: 8,
-  },
-  reviewHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 },
-  reviewName: { fontSize: 13, fontWeight: '800', color: theme.color.ink, flex: 1 },
-  reviewBody: { fontSize: 13, lineHeight: 19, color: theme.color.inkMuted },
-  reviewMeta: { fontSize: 12, color: theme.color.muted, fontStyle: 'italic' },
+// ── Tab-specific styles ───────────────────────────────────────────────────────
+const ot = StyleSheet.create({
+  root:           { paddingHorizontal: 18, paddingTop: 16 },
+  section:        { marginBottom: 20 },
+  sectionHeader:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  sectionIconWrap:{ width: 26, height: 26, borderRadius: 8, backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center' },
+  sectionTitle:   { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: DARK, textTransform: 'uppercase', letterSpacing: 0.6 },
+  bioText:        { fontFamily: FontFamily.fredokaRegular, fontSize: 14, lineHeight: 21, color: MUTED },
+  card:           { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: DIVIDER, overflow: 'hidden' },
+  infoRow:        { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: DIVIDER },
+  infoLabel:      { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginBottom: 2 },
+  infoValue:      { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, flex: 1 },
+  subLabel:       { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: MUTED, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
+  memberCard:     { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: DIVIDER, marginBottom: 6 },
+  memberAvatar:   { width: 30, height: 30, borderRadius: 15, backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center' },
+  memberText:     { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: DARK, flex: 1 },
+  docRow:         { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: DIVIDER },
+  docIconWrap:    { width: 36, height: 36, borderRadius: 10, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center' },
+  docName:        { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK },
+  docStatus:      { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: GREEN, marginTop: 2 },
+});
+
+const jt = StyleSheet.create({
+  root:       { paddingHorizontal: 18, paddingTop: 16 },
+  count:      { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: MUTED, marginBottom: 12 },
+  empty:      { paddingVertical: 48, alignItems: 'center', gap: 12 },
+  emptyText:  { fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: MUTED },
+  card:       { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: DIVIDER },
+  iconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center' },
+  cardBody:   { flex: 1, gap: 4 },
+  titleRow:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardTitle:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK, flex: 1 },
+  matchBadge: { backgroundColor: '#ECFDF5', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: GREEN + '44' },
+  matchText:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: GREEN },
+  cardSub:    { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },
+  salary:     { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: ORANGE },
+  locRow:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  locText:    { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED },
+});
+
+const rt = StyleSheet.create({
+  root:          { paddingHorizontal: 18, paddingTop: 16 },
+  empty:         { paddingVertical: 48, alignItems: 'center', gap: 12 },
+  emptyText:     { fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: MUTED },
+  ratingSummary: { flexDirection: 'row', alignItems: 'center', gap: 16, backgroundColor: '#fff', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: DIVIDER, marginBottom: 16 },
+  ratingBig:     { fontFamily: FontFamily.fredokaSemiBold, fontSize: 40, color: DARK },
+  reviewCount:   { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, marginTop: 4 },
+  card:          { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: DIVIDER, padding: 14, marginBottom: 10 },
+  cardHead:      { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  avatar:        { width: 36, height: 36, borderRadius: 18, backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center' },
+  avatarText:    { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: DARK },
+  name:          { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, marginBottom: 4 },
+  body:          { fontFamily: FontFamily.fredokaRegular, fontSize: 13, lineHeight: 19, color: MUTED },
+  noComment:     { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, fontStyle: 'italic', textAlign: 'center', paddingVertical: 8 },
 });

@@ -4,6 +4,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BROWN, CARAMEL, ICON_BG, DARK, MUTED, DIVIDER } from '../home/parentWarmTheme';
+
+// Display-only label overrides — underlying value/state is unchanged
+const DISPLAY_LABELS: Record<string, string> = {
+  Any: 'Either',
+};
 
 interface WorkArrangementCardProps {
   employmentType: 'Stay-in' | 'Stay-out' | 'Any';
@@ -47,13 +53,13 @@ export function WorkArrangementCard({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="briefcase-outline" size={22} color="#2563EB" />
+        <Ionicons name="briefcase-outline" size={22} color={BROWN} />
         <Text style={styles.title}>Work Arrangement *</Text>
       </View>
 
       {/* Employment Type */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Stay-in or Stay-out?</Text>
+        <Text style={styles.sectionLabel}>Living Arrangement</Text>
         <View style={styles.optionsRow}>
           {employmentOptions.map((option) => (
             <TouchableOpacity
@@ -72,7 +78,7 @@ export function WorkArrangementCard({
                   employmentType === option && styles.optionTextActive,
                 ]}
               >
-                {option}
+                {DISPLAY_LABELS[option] ?? option}
               </Text>
             </TouchableOpacity>
           ))}
@@ -81,7 +87,7 @@ export function WorkArrangementCard({
 
       {/* Work Schedule */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Full-time or Part-time?</Text>
+        <Text style={styles.sectionLabel}>Working Schedule</Text>
         <View style={styles.optionsRow}>
           {scheduleOptions.map((option) => {
             const isPartTimeOrAny = option === 'Part-time' || option === 'Any';
@@ -115,7 +121,7 @@ export function WorkArrangementCard({
                     shouldDisable && styles.optionTextDisabled,
                   ]}
                 >
-                  {option}
+                  {DISPLAY_LABELS[option] ?? option}
                 </Text>
               </TouchableOpacity>
             );
@@ -146,7 +152,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A1C1E',
+    color: DARK,
   },
   section: {
     marginBottom: 16,
@@ -154,7 +160,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: MUTED,
     marginBottom: 10,
   },
   optionsRow: {
@@ -167,16 +173,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#E5E5EA',
+    borderColor: DIVIDER,
     backgroundColor: '#fff',
     alignItems: 'center',
   },
   optionButtonActive: {
-    borderColor: '#2563EB',
-    backgroundColor: '#F0F8FF',
+    borderColor: CARAMEL,
+    backgroundColor: ICON_BG,
   },
   optionButtonDisabled: {
-    borderColor: '#E5E5EA',
+    borderColor: DIVIDER,
     backgroundColor: '#F3F4F6',
     opacity: 0.5,
   },
@@ -186,7 +192,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   optionTextActive: {
-    color: '#2563EB',
+    color: BROWN,
     fontWeight: '700',
   },
   optionTextDisabled: {

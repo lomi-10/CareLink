@@ -4,6 +4,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { BROWN, CARAMEL, ICON_BG, DARK, MUTED, DIVIDER } from '../home/parentWarmTheme';
+
+const MAX_DESCRIPTION_LENGTH = 1000;
 
 interface DescriptionInputProps {
   value: string;
@@ -31,7 +34,7 @@ export function DescriptionInput({ value, onChange, onGenerateDescription, error
         disabled={disabled}
         activeOpacity={0.7}
       >
-        <Ionicons name="sparkles-outline" size={18} color="#FF9500" />
+        <Ionicons name="sparkles-outline" size={18} color={BROWN} />
         <Text style={styles.generateButtonText}>Generate Description</Text>
       </TouchableOpacity>
 
@@ -42,10 +45,13 @@ export function DescriptionInput({ value, onChange, onGenerateDescription, error
         onChangeText={onChange}
         multiline
         numberOfLines={10}
+        maxLength={MAX_DESCRIPTION_LENGTH}
         textAlignVertical="top"
         placeholderTextColor="#999"
         editable={!disabled}
       />
+
+      <Text style={styles.charCount}>{value.length}/{MAX_DESCRIPTION_LENGTH}</Text>
 
       {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -80,7 +86,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A1C1E',
+    color: DARK,
   },
   hint: {
     fontSize: 13,
@@ -91,29 +97,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FFF4E5',
+    backgroundColor: ICON_BG,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FF9500',
+    borderColor: CARAMEL,
     marginBottom: 12,
     alignSelf: 'flex-start',
   },
   generateButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FF9500',
+    color: BROWN,
   },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: DIVIDER,
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
     color: '#1A1C1E',
     minHeight: 200,
+  },
+  charCount: {
+    fontSize: 12,
+    color: MUTED,
+    textAlign: 'right',
+    marginTop: 6,
   },
   errorText: {
     fontSize: 13,
@@ -123,15 +135,15 @@ const styles = StyleSheet.create({
   tips: {
     marginTop: 16,
     padding: 14,
-    backgroundColor: '#FFF4E5',
+    backgroundColor: ICON_BG,
     borderRadius: 10,
     borderLeftWidth: 4,
-    borderLeftColor: '#FF9500',
+    borderLeftColor: CARAMEL,
   },
   tipsTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1A1C1E',
+    color: DARK,
     marginBottom: 8,
   },
   tipItem: {

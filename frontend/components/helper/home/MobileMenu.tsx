@@ -1,4 +1,4 @@
-// Helper mobile drawer — theme-aware; omits items on the bottom tab bar (non-work).
+// Helper mobile drawer — warm helper-portal theme; omits items on the bottom tab bar (non-work).
 
 import React, { useEffect, useRef, useMemo } from 'react';
 import {
@@ -15,8 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 import { CareLinkLogoMark } from '@/components/branding/CareLinkLogoMark';
-import type { ThemeColor } from '@/constants/theme';
-import { useHelperTheme } from '@/contexts/HelperThemeContext';
+import { FontFamily } from '@/constants/GlobalStyles';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { useNotifications } from '@/hooks/shared';
 import {
@@ -26,99 +25,99 @@ import {
   isHelperNavActive,
   type HelperNavItem,
 } from './helperPortalNav';
+import { DARK, MUTED, SUBTLE, ORANGE, ICON_BG, DIVIDER, SURFACE, OVERLAY, DANGER, DANGER_BG } from './helperWarmTheme';
 
 const { width } = Dimensions.get('window');
 
-function createMobileMenuStyles(c: ThemeColor) {
-  return StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: c.overlay, flexDirection: 'row' },
-    backgroundTap: { flex: 1 },
-    drawer: {
-      width: '85%',
-      maxWidth: 340,
-      backgroundColor: c.surfaceElevated,
-      height: '100%',
-      paddingTop: Platform.OS === 'ios' ? 8 : 16,
-      paddingHorizontal: 16,
-      paddingBottom: 24,
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      ...Platform.select({
-        web: { boxShadow: '4px 0 32px rgba(15, 23, 42, 0.12)' },
-        default: {},
-      }),
-    },
-    brandRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      marginBottom: 20,
-      paddingBottom: 16,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: c.line,
-    },
-    brandTitle: { fontSize: 18, fontWeight: '800', color: c.ink },
-    brandSub: { fontSize: 11, color: c.muted, fontWeight: '600', marginTop: 2 },
-    header: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 8 },
-    navLabel: {
-      fontSize: 10,
-      fontWeight: '700',
-      color: c.subtle,
-      marginBottom: 8,
-      marginLeft: 4,
-      letterSpacing: 1.2,
-      textTransform: 'uppercase',
-    },
-    drawerItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 12,
-      paddingHorizontal: 12,
-      marginBottom: 4,
-      borderRadius: 12,
-    },
-    drawerItemActive: {
-      backgroundColor: c.helperSoft,
-      borderWidth: 1,
-      borderColor: c.helper + '28',
-      borderLeftWidth: 3,
-      borderLeftColor: c.helper,
-    },
-    drawerItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-    drawerItemText: { fontSize: 15, fontWeight: '600', color: c.ink },
-    drawerItemTextActive: { color: c.helper, fontWeight: '800' },
-    hint: {
-      fontSize: 12,
-      color: c.muted,
-      lineHeight: 17,
-      marginBottom: 12,
-      paddingHorizontal: 4,
-    },
-    badge: {
-      backgroundColor: c.danger,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 10,
-      minWidth: 22,
-      alignItems: 'center',
-    },
-    badgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-    logoutButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      borderRadius: 12,
-      backgroundColor: c.dangerSoft,
-      gap: 10,
-      marginTop: 16,
-    },
-    logoutText: { color: c.danger, fontSize: 15, fontWeight: '700' },
-  });
-}
+const styles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: OVERLAY, flexDirection: 'row' },
+  backgroundTap: { flex: 1 },
+  drawer: {
+    width: '85%',
+    maxWidth: 340,
+    backgroundColor: SURFACE,
+    height: '100%',
+    paddingTop: Platform.OS === 'ios' ? 8 : 16,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    ...Platform.select({
+      web: { boxShadow: '4px 0 32px rgba(42, 22, 8, 0.18)' },
+      default: {},
+    }),
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: DIVIDER,
+  },
+  brandTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 18, color: DARK },
+  brandSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginTop: 2 },
+  header: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 8 },
+  navLabel: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 10,
+    color: SUBTLE,
+    marginBottom: 8,
+    marginLeft: 4,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginBottom: 4,
+    borderRadius: 12,
+  },
+  drawerItemActive: {
+    backgroundColor: ICON_BG,
+    borderWidth: 1,
+    borderColor: ORANGE + '28',
+    borderLeftWidth: 3,
+    borderLeftColor: ORANGE,
+  },
+  drawerItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  drawerItemText: { fontFamily: FontFamily.fredokaRegular, fontSize: 15, color: DARK },
+  drawerItemTextActive: { fontFamily: FontFamily.fredokaSemiBold, color: ORANGE },
+  hint: {
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 12,
+    color: MUTED,
+    lineHeight: 17,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  badge: {
+    backgroundColor: DANGER,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 22,
+    alignItems: 'center',
+  },
+  badgeText: { fontFamily: FontFamily.fredokaSemiBold, color: '#fff', fontSize: 11 },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: DANGER_BG,
+    gap: 10,
+    marginTop: 16,
+  },
+  logoutText: { fontFamily: FontFamily.fredokaSemiBold, color: DANGER, fontSize: 15 },
+});
 
 export function MobileMenu({
   isOpen,
@@ -135,8 +134,6 @@ export function MobileMenu({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { color: c } = useHelperTheme();
-  const styles = useMemo(() => createMobileMenuStyles(c), [c]);
   const { isWorkMode, activeHire } = useHelperWorkMode();
   const { unreadCount: hookUnread } = useNotifications('helper');
   const notif = notificationUnread ?? hookUnread;
@@ -164,7 +161,7 @@ export function MobileMenu({
         <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} hitSlop={12} accessibilityLabel="Close menu">
-              <Ionicons name="close" size={28} color={c.ink} />
+              <Ionicons name="close" size={28} color={DARK} />
             </TouchableOpacity>
           </View>
 
@@ -207,7 +204,7 @@ export function MobileMenu({
                     <Ionicons
                       name={helperNavIconName(item.baseIcon, active)}
                       size={22}
-                      color={active ? c.helper : c.muted}
+                      color={active ? ORANGE : MUTED}
                     />
                     <Text style={[styles.drawerItemText, active && styles.drawerItemTextActive]} numberOfLines={1}>
                       {item.label}
@@ -223,7 +220,7 @@ export function MobileMenu({
             })}
 
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
-              <Ionicons name="log-out-outline" size={22} color={c.danger} />
+              <Ionicons name="log-out-outline" size={22} color={DANGER} />
               <Text style={styles.logoutText}>Log out</Text>
             </TouchableOpacity>
           </ScrollView>

@@ -1,100 +1,86 @@
-// components/parent/browse/CompactHelperCard.tsx
-// Compact helper card for mobile 2-column grid
-
+// components/parent/browse/CompactHelperCard.tsx — Mobile 2-col grid card (warm palette)
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { FontFamily } from '@/constants/GlobalStyles';
+import {
+  BROWN, CARAMEL, GOLD, DARK, MUTED, DIVIDER, ICON_BG, SURFACE, GREEN, SUCCESS_BG,
+} from '@/components/parent/home/parentWarmTheme';
 import type { HelperProfile } from '@/hooks/parent';
-import { theme } from '@/constants/theme';
+
+const CARD_SHADOW = Platform.select({
+  ios:     { shadowColor: '#8B5A2B', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.07, shadowRadius: 8 },
+  android: { elevation: 2 },
+  default: { boxShadow: '0 3px 10px rgba(139,90,43,0.07)' } as any,
+});
 
 interface CompactHelperCardProps {
   helper: HelperProfile;
   onPress: () => void;
   matchScore?: number;
+  matchReason?: string;
 }
 
-export function CompactHelperCard({ helper, onPress, matchScore }: CompactHelperCardProps) {
-  const getVerificationBadge = () => {
-    switch (helper.verification_status) {
-      case 'Verified':
-        return { icon: 'checkmark-circle', color: '#34C759' };
-      case 'Pending':
-        return { icon: 'time', color: '#FF9500' };
-      default:
-        return null;
-    }
-  };
-
-  const badge = getVerificationBadge();
-
+export function CompactHelperCard({ helper, onPress, matchScore, matchReason }: CompactHelperCardProps) {
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
-      {/* Profile Image - Tappable */}
-      <View style={styles.imageContainer}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
+      {/* Photo */}
+      <View style={styles.imageWrap}>
         {helper.profile_image ? (
           <Image source={{ uri: helper.profile_image }} style={styles.image} />
         ) : (
-          <View style={styles.imagePlaceholder}>
-            <Ionicons name="person" size={40} color="#ccc" />
+          <View style={styles.imageFallback}>
+            <Ionicons name="person" size={30} color={CARAMEL} />
           </View>
         )}
-        
-        {/* Verification Badge */}
-        {badge && (
-          <View style={[styles.badge, { backgroundColor: badge.color }]}>
-            <Ionicons name={badge.icon as any} size={10} color="#fff" />
-          </View>
-        )}
-
-        {/* Availability Dot */}
         {helper.availability_status === 'Available' && (
-          <View style={styles.availableDot} />
+          <View style={styles.availDot} />
+        )}
+        {helper.verification_status === 'Verified' && (
+          <View style={styles.pesoBadge}>
+            <Ionicons name="shield-checkmark" size={10} color={GREEN} />
+          </View>
         )}
       </View>
 
-      {/* Minimal Info */}
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
-          {helper.first_name}
-        </Text>
+        <Text style={styles.name} numberOfLines={1}>{helper.first_name}</Text>
 
         {matchScore != null && matchScore > 0 && (
-          <View style={styles.matchPill}>
+          <View style={styles.matchBadge}>
             <Text style={styles.matchText}>{matchScore}% match</Text>
           </View>
         )}
 
-        {/* Primary Category Only */}
-        {helper.categories[0] && (
-          <Text style={styles.category} numberOfLines={1}>
-            {helper.categories[0]}
-          </Text>
+        {helper.experience_years != null && (
+          <View style={styles.metaRow}>
+            <Ionicons name="briefcase-outline" size={11} color={MUTED} />
+            <Text style={styles.metaText}>{helper.experience_years} yrs</Text>
+          </View>
         )}
 
-        {/* Rating or Experience */}
-        <View style={styles.statRow}>
-          {helper.rating_average !== undefined && helper.rating_count && helper.rating_count > 0 ? (
-            <>
-              <Ionicons name="star" size={11} color="#FF9500" />
-              <Text style={styles.statText}>{helper.rating_average.toFixed(1)}</Text>
-            </>
-          ) : helper.experience_years !== undefined ? (
-            <>
-              <Ionicons name="briefcase-outline" size={11} color="#666" />
-              <Text style={styles.statText}>{helper.experience_years}y</Text>
-            </>
-          ) : null}
-        </View>
+        {(helper.rating_count ?? 0) > 0 && (
+          <View style={styles.metaRow}>
+            <Ionicons name="star" size={11} color={GOLD} />
+            <Text style={styles.metaText}>{Number(helper.rating_average).toFixed(1)}</Text>
+          </View>
+        )}
 
-        {/* Distance */}
-        {helper.distance !== undefined && (
-          <View style={styles.distanceRow}>
-            <Ionicons name="location" size={10} color="#666" />
-            <Text style={styles.distanceText}>
-              {helper.distance < 1 
-                ? `${(helper.distance * 1000).toFixed(0)}m`
-                : `${helper.distance.toFixed(1)}km`}
-            </Text>
+        {helper.categories?.length > 0 && (
+          <View style={styles.chipsRow}>
+            {helper.categories.slice(0, 1).map((cat, i) => (
+              <View key={i} style={styles.chip}>
+                <Text style={styles.chipText} numberOfLines={1}>{cat}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Why this match */}
+        {matchScore != null && matchScore > 0 && matchReason && (
+          <View style={styles.reasonRow}>
+            <Ionicons name="sparkles-outline" size={11} color={CARAMEL} />
+            <Text style={styles.reasonText} numberOfLines={1}>{matchReason}</Text>
           </View>
         )}
       </View>
@@ -103,95 +89,50 @@ export function CompactHelperCard({ helper, onPress, matchScore }: CompactHelper
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 8,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+  card: {
+    backgroundColor: SURFACE,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: DIVIDER,
+    marginBottom: 4,
+    ...CARD_SHADOW,
   },
-  imageContainer: {
-    position: 'relative',
-    marginBottom: 8,
+  imageWrap: { position: 'relative' },
+  image: { width: '100%', height: 120 },
+  imageFallback: {
+    width: '100%', height: 120,
+    backgroundColor: ICON_BG,
+    alignItems: 'center', justifyContent: 'center',
   },
-  image: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 8,
+  availDot: {
+    position: 'absolute', bottom: 7, left: 7,
+    width: 9, height: 9, borderRadius: 5,
+    backgroundColor: GREEN, borderWidth: 2, borderColor: SURFACE,
   },
-  imagePlaceholder: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 8,
-    backgroundColor: '#F0F0F0',
-    alignItems: 'center',
-    justifyContent: 'center',
+  pesoBadge: {
+    position: 'absolute', top: 6, right: 6,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: SUCCESS_BG,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: GREEN,
   },
-  badge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
+
+  info: { padding: 10, gap: 5 },
+  name: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: DARK },
+  matchBadge: {
+    backgroundColor: SUCCESS_BG, borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start',
   },
-  availableDot: {
-    position: 'absolute',
-    bottom: 4,
-    left: 4,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#34C759',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  info: {
-    gap: 3,
-  },
-  name: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-  matchPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: theme.color.parentSoft,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginTop: 2,
-  },
-  matchText: { fontSize: 9, fontWeight: '800', color: theme.color.parent },
-  category: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  statRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  statText: {
-    fontSize: 11,
-    color: '#666',
-    fontWeight: '500',
-  },
-  distanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  distanceText: {
-    fontSize: 10,
-    color: '#666',
-  },
+  matchText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: GREEN },
+
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  metaText: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, color: MUTED },
+
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 },
+  chip: { backgroundColor: ICON_BG, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  chipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5, color: BROWN },
+
+  reasonRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  reasonText: { fontFamily: FontFamily.fredokaRegular, fontSize: 10.5, color: MUTED, flexShrink: 1, fontStyle: 'italic' },
 });

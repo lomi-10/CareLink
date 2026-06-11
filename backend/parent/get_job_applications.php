@@ -43,7 +43,8 @@ try {
             hp.profile_id, hp.profile_image, hp.birth_date, hp.gender,
             hp.experience_years, hp.barangay, hp.municipality, hp.province,
             hp.education_level, hp.religion, hp.civil_status, hp.bio,
-            hp.verification_status, hp.availability_status, hp.rating_average, hp.rating_count
+            hp.employment_type, hp.work_schedule, hp.expected_salary, hp.salary_period,
+            hp.verification_status, hp.rating_average, hp.rating_count
         FROM job_applications a
         JOIN job_posts jp ON a.job_post_id = jp.job_post_id
         LEFT JOIN ref_categories rc ON jp.category_id = rc.category_id
@@ -70,25 +71,12 @@ try {
             } catch (Exception $e) {}
         }
 
-        // 2. FETCH DOCUMENTS FOR THIS APPLICANT
-        $docs_query = "SELECT document_type, file_path FROM user_documents WHERE user_id = $helper_id";
-        $docs_result = $conn->query($docs_query);
-        
-        $police_clearance = null;
-        $nbi_clearance = null;
-        $medical_certificate = null;
-        $tesda_nc2 = null;
+        // NOTE: Documents are private by default and are never bundled into the generic applications
+        // list. A helper's verification documents only become visible to a parent when the helper
+        // explicitly shares them on that specific application — see application_document_shares
+        // and parent/get_applicant_profile.php (which returns `shared_documents`).
 
-        if ($docs_result) {
-            while ($doc = $docs_result->fetch_assoc()) {
-                if ($doc['document_type'] === 'Police Clearance') $police_clearance = $doc['file_path'];
-                if ($doc['document_type'] === 'NBI Clearance') $nbi_clearance = $doc['file_path'];
-                if ($doc['document_type'] === 'Medical Certificate') $medical_certificate = $doc['file_path'];
-                if ($doc['document_type'] === 'TESDA NC2') $tesda_nc2 = $doc['file_path'];
-            }
-        }
-
-        // 3. FETCH CATEGORIES/JOBS
+        // 2. FETCH CATEGORIES/JOBS
         $jobs_query = "
             SELECT rc.category_name, rj.job_title 
             FROM helper_jobs hj
@@ -106,7 +94,7 @@ try {
             }
         }
 
-        // 4. FETCH SKILLS
+        // 3. FETCH SKILLS
         $skills_query = "
             SELECT rs.skill_name 
             FROM helper_skills hs
@@ -159,21 +147,22 @@ try {
             'helper_religion' => $row['religion'],
             'helper_civil_status' => $row['civil_status'],
             'helper_bio' => $row['bio'],
-            
+
+            // Work preferences
+            'helper_employment_type' => $row['employment_type'],
+            'helper_work_schedule'   => $row['work_schedule'],
+            'helper_expected_salary' => $row['expected_salary'] !== null ? (float)$row['expected_salary'] : null,
+            'helper_salary_period'   => $row['salary_period'],
+
             // Address
             'helper_barangay' => $row['barangay'],
             'helper_municipality' => $row['municipality'],
             'helper_province' => $row['province'],
             
-            // Documents
-            'helper_police_clearance' => $police_clearance,
-            'helper_nbi_clearance' => $nbi_clearance,
-            'helper_medical_certificate' => $medical_certificate,
-            'helper_tesda_nc2' => $tesda_nc2,
-            
             // Meta Statuses
             'verification_status' => $row['verification_status'],
-            'availability_status' => $row['availability_status'],
+            // No dedicated availability column yet — helpers on the platform are assumed open to work
+            'availability_status' => 'Available',
             'helper_rating_average' => (float)$row['rating_average'],
             'helper_rating_count' => (int)$row['rating_count'],
         ];

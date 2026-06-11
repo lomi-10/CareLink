@@ -23,6 +23,7 @@ Thumbs.db
 *.swo
 *~
 frontend/.cursor/
+.claude/settings.local.json
 
 # OS
 .DS_Store

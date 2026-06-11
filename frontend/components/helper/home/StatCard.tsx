@@ -1,46 +1,48 @@
 // components/helper/home/StatCard.tsx
 // Desktop statistics card component
 
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { ThemeColor } from '@/constants/theme';
-import { useHelperTheme } from '@/contexts/HelperThemeContext';
+import { FontFamily } from '@/constants/GlobalStyles';
+import { DARK, MUTED, DIVIDER, SURFACE } from './helperWarmTheme';
 
-function createStatCardStyles(c: ThemeColor) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: c.surfaceElevated,
-      borderRadius: 16,
-      padding: 24,
-      borderWidth: 1,
-      borderColor: c.line,
-      shadowColor: '#000',
-      shadowOpacity: 0.05,
-      shadowRadius: 10,
-      elevation: 3,
-    },
-    iconContainer: {
-      width: 48,
-      height: 48,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 16,
-    },
-    value: {
-      fontSize: 32,
-      fontWeight: '700',
-      color: c.ink,
-      marginBottom: 4,
-    },
-    title: {
-      fontSize: 14,
-      color: c.muted,
-    },
-  });
-}
+const CARD_SHADOW = Platform.select({
+  ios:     { shadowColor: '#8B5E3C', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.07, shadowRadius: 10 },
+  android: { elevation: 2 },
+  default: { boxShadow: '0 3px 12px rgba(139,94,60,0.06)' } as any,
+});
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: SURFACE,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: DIVIDER,
+    ...CARD_SHADOW,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  value: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 32,
+    color: DARK,
+    marginBottom: 4,
+  },
+  title: {
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 14,
+    color: MUTED,
+  },
+});
 
 interface StatCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -59,9 +61,6 @@ export function StatCard({
   value,
   onPress,
 }: StatCardProps) {
-  const { color: c } = useHelperTheme();
-  const styles = useMemo(() => createStatCardStyles(c), [c]);
-
   const CardWrapper = onPress ? TouchableOpacity : View;
 
   return (

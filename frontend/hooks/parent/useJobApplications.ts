@@ -17,8 +17,22 @@ export interface JobApplication {
   helper_rating_average?: number;
   helper_rating_count?: number;
   helper_categories?: string[];
+  helper_jobs?: string[];
+  helper_skills?: string[];
+  helper_bio?: string;
+  helper_education_level?: string;
+  helper_religion?: string;
+  helper_civil_status?: string;
+  helper_barangay?: string;
   helper_municipality?: string;
   helper_province?: string;
+  helper_employment_type?: string;
+  helper_work_schedule?: string;
+  helper_expected_salary?: number | null;
+  helper_salary_period?: string;
+  category_name?: string;
+  verification_status?: string;
+  availability_status?: string;
   cover_letter?: string;
   status:
     | 'Pending'

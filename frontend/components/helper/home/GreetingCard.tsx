@@ -1,178 +1,260 @@
 // components/helper/home/GreetingCard.tsx
-// Recruitment-style hero banner for helpers
+// Hero banner shown on the helper dashboard (non-hired state).
+// PHP: none — purely presentational
 
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { ThemeColor } from '@/constants/theme';
-import { useHelperTheme } from '@/contexts/HelperThemeContext';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FontFamily } from '@/constants/GlobalStyles';
 
-function createGreetingStyles(c: ThemeColor) {
-  return StyleSheet.create({
-    card: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: c.helper,
-      borderRadius: 20,
-      padding: 22,
-      marginBottom: 24,
-      overflow: 'hidden',
-      position: 'relative',
-      minHeight: 150,
-    },
-    circle1: {
-      position: 'absolute',
-      right: -30,
-      top: -30,
-      width: 130,
-      height: 130,
-      borderRadius: 65,
-      backgroundColor: 'rgba(255,255,255,0.07)',
-    },
-    circle2: {
-      position: 'absolute',
-      right: 40,
-      bottom: -50,
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      backgroundColor: 'rgba(255,255,255,0.05)',
-    },
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-    content: { flex: 1, zIndex: 1 },
+const PILL_BORDER = 'rgba(255,255,255,0.5)';
+const TEXT_MUTED  = 'rgba(255,255,255,0.72)';
+const BROWSE_BG   = '#FDF0D0';
+const BROWSE_TEXT = '#3B1A08';
 
-    kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-    kickerBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
-      backgroundColor: 'rgba(255,255,255,0.18)',
-      paddingHorizontal: 9,
-      paddingVertical: 4,
-      borderRadius: 20,
-    },
-    kickerText: {
-      fontSize: 9,
-      fontWeight: '800',
-      color: '#fff',
-      letterSpacing: 1.2,
-      textTransform: 'uppercase',
-    },
-    verifiedPill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      backgroundColor: 'rgba(255,255,255,0.25)',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 20,
-    },
-    verifiedPillText: { fontSize: 9, fontWeight: '800', color: '#fff' },
+// Photo ring diameter — change this one constant to resize the circle
+const PHOTO_D = 100;
 
-    greeting: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 2 },
-    name: { fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: -0.5, marginBottom: 8 },
-    tagline: { fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 18, marginBottom: 14 },
-
-    statsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    statChip: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-    statChipText: { fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
-    dot: { width: 3, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.4)' },
-
-    illustration: {
-      width: 72,
-      height: 72,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginLeft: 12,
-      zIndex: 1,
-      position: 'relative',
-    },
-    iconRing: {
-      width: 58,
-      height: 58,
-      borderRadius: 29,
-      backgroundColor: 'rgba(255,255,255,0.18)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    iconRingSmall: {
-      position: 'absolute',
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: 'rgba(255,255,255,0.22)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-  });
-}
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface GreetingCardProps {
-  userName: string;
-  verifiedBadge?: boolean;
+  userName:      string;
+  profileImage?: string | null;
+  verified?:     boolean;
 }
 
-export function GreetingCard({ userName, verifiedBadge }: GreetingCardProps) {
-  const { color: c } = useHelperTheme();
-  const s = useMemo(() => createGreetingStyles(c), [c]);
+// ─── Component ────────────────────────────────────────────────────────────────
 
-  const getGreeting = () => {
+export function GreetingCard({
+  userName,
+  profileImage,
+  verified = true,
+}: GreetingCardProps) {
+  const router = useRouter();
+
+  const greeting = (() => {
     const h = new Date().getHours();
-    if (h < 12) return 'Good Morning';
-    if (h < 18) return 'Good Afternoon';
-    return 'Good Evening';
-  };
+    if (h < 12) return 'Good morning,';
+    if (h < 18) return 'Good afternoon,';
+    return 'Good evening,';
+  })();
 
   return (
-    <View style={s.card}>
-      <View style={s.circle1} />
-      <View style={s.circle2} />
-
+    <LinearGradient
+      colors={['#6B2E0A', '#3B1508', '#1E0A04']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={s.card}
+    >
+      {/* ── Left content ─────────────────────────────────────────────── */}
       <View style={s.content}>
-        <View style={s.kickerRow}>
-          <View style={s.kickerBadge}>
-            <Ionicons name="home-outline" size={10} color="#fff" />
-            <Text style={s.kickerText}>DOMESTIC SERVICES</Text>
-          </View>
-          {verifiedBadge && (
-            <View style={s.verifiedPill}>
-              <Ionicons name="shield-checkmark" size={11} color="#fff" />
-              <Text style={s.verifiedPillText}>PESO Verified</Text>
-            </View>
-          )}
-        </View>
 
-        <Text style={s.greeting}>{getGreeting()},</Text>
-        <Text style={s.name} numberOfLines={1}>
-          {userName}
+        {/* PESO-VERIFIED pill */}
+        {verified && (
+          <View style={s.pesoPill}>
+            <Ionicons name="shield-checkmark" size={11} color="#fff" />
+            <Text style={s.pesoPillText}>PESO-VERIFIED</Text>
+          </View>
+        )}
+
+        <Text style={s.greeting}>{greeting}</Text>
+        <Text style={s.name} numberOfLines={2}>{userName} 👋</Text>
+
+        <Text style={s.subtitle}>
+          Your next opportunity{'\n'}is just around the corner.
         </Text>
 
-        <Text style={s.tagline}>Your career in domestic{'\n'}services starts here.</Text>
+        {/* Browse Jobs CTA */}
+        <TouchableOpacity
+          style={s.browseBtn}
+          onPress={() => router.push('/(helper)/browse')}
+          activeOpacity={0.88}
+        >
+          <Ionicons name="briefcase-outline" size={14} color={BROWSE_TEXT} />
+          <Text style={s.browseTxt}>Browse Jobs</Text>
+          <Ionicons name="chevron-forward" size={13} color={BROWSE_TEXT} />
+        </TouchableOpacity>
+      </View>
 
-        <View style={s.statsRow}>
-          <View style={s.statChip}>
-            <Ionicons name="briefcase-outline" size={13} color="rgba(255,255,255,0.8)" />
-            <Text style={s.statChipText}>Browse Jobs</Text>
-          </View>
-          <View style={s.dot} />
-          <View style={s.statChip}>
-            <Ionicons name="shield-checkmark-outline" size={13} color="rgba(255,255,255,0.8)" />
-            <Text style={s.statChipText}>PESO-Verified</Text>
+      {/* ── Right side: circular profile photo ───────────────────────── */}
+      <View style={s.photoCol}>
+
+        {/* ============================================================
+            🌿  DECORATIVE LEAF / PLANT behind the photo
+            Uncomment + adjust s.leafDecor once you have the asset.
+            ============================================================
+        <Image
+          source={require("../../../assets/dashboard/leaf-decor.png")}
+          style={s.leafDecor}
+          contentFit="contain"
+          pointerEvents="none"
+        />
+        */}
+
+        {/* Soft warm glow behind the circle */}
+        <View style={s.photoGlow} pointerEvents="none" />
+
+        {/* Outer border ring */}
+        <View style={s.photoRingOuter}>
+          {/* Inner clipping circle */}
+          <View style={s.photoRingInner}>
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={s.photo}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={s.photoFallback}>
+                <Ionicons name="person" size={PHOTO_D * 0.4} color="rgba(255,255,255,0.45)" />
+              </View>
+            )}
           </View>
         </View>
       </View>
-
-      <View style={s.illustration}>
-        <View style={s.iconRing}>
-          <Ionicons name="home" size={28} color="#fff" />
-        </View>
-        <View style={[s.iconRingSmall, { top: -10, right: -10 }]}>
-          <Ionicons name="leaf" size={14} color="#fff" />
-        </View>
-        <View style={[s.iconRingSmall, { bottom: -8, left: -12 }]}>
-          <Ionicons name="star" size={12} color="#FBBF24" />
-        </View>
-      </View>
-    </View>
+    </LinearGradient>
   );
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const s = StyleSheet.create({
+  card: {
+    borderRadius: 22,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    minHeight: 200,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',   // vertically center both text and photo
+    paddingLeft: 22,
+    paddingRight: 18,
+    paddingVertical: 22,
+  },
+
+  content: { flex: 1, zIndex: 2 },
+
+  pesoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderColor: PILL_BORDER,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    alignSelf: 'flex-start',
+    marginBottom: 14,
+  },
+  pesoPillText: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 10,
+    color: '#FFFFFF',
+    letterSpacing: 1.2,
+  },
+
+  greeting: {
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 14,
+    color: TEXT_MUTED,
+    marginBottom: 2,
+  },
+  name: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 22,
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+    marginBottom: 8,
+    lineHeight: 28,
+  },
+  subtitle: {
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 13,
+    color: TEXT_MUTED,
+    lineHeight: 19,
+    marginBottom: 18,
+  },
+
+  browseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: BROWSE_BG,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+  },
+  browseTxt: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 13,
+    color: BROWSE_TEXT,
+  },
+
+  // ── Right side: circular photo ────────────────────────────────────────────
+  photoCol: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+    position: 'relative',
+  },
+
+  // Soft warm glow behind the circle (decorative, no interaction)
+  photoGlow: {
+    position: 'absolute',
+    width: PHOTO_D + 32,
+    height: PHOTO_D + 32,
+    borderRadius: (PHOTO_D + 32) / 2,
+    backgroundColor: 'rgba(255,180,80,0.14)',
+  },
+
+  // Outer ring (white semi-transparent border)
+  photoRingOuter: {
+    width: PHOTO_D + 6,
+    height: PHOTO_D + 6,
+    borderRadius: (PHOTO_D + 6) / 2,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.45)',
+    padding: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+
+  // Inner circle that clips the image
+  photoRingInner: {
+    width: PHOTO_D,
+    height: PHOTO_D,
+    borderRadius: PHOTO_D / 2,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+
+  photo: {
+    width: PHOTO_D,
+    height: PHOTO_D,
+  },
+
+  photoFallback: {
+    width: PHOTO_D,
+    height: PHOTO_D,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Decorator placeholder ──────────────────────────────────────────────────
+  leafDecor: {
+    position: 'absolute',
+    right: 80,
+    bottom: 0,
+    width: 60,
+    height: 90,
+    zIndex: 1,
+    opacity: 0.6,
+  },
+});

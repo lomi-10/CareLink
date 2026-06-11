@@ -22,10 +22,12 @@ if (!isset($_GET['user_id']) || empty($_GET['user_id'])) {
 $user_id = intval($_GET['user_id']);
 
 $stats = [
-    "active_job_posts" => 0,
-    "total_applicants" => 0,
-    "active_placements" => 0,
-    "saved_helpers" => 0
+    "active_job_posts"        => 0,
+    "total_applicants"        => 0,
+    "active_placements"       => 0,
+    "saved_helpers"           => 0,
+    "pending_applications"    => 0,
+    "shortlisted_count"       => 0,
 ];
 
 try {
@@ -74,6 +76,32 @@ try {
         $saved_stmt->execute();
         $stats["saved_helpers"] = (int)$saved_stmt->get_result()->fetch_assoc()['count'];
         $saved_stmt->close();
+    }
+
+    // 5. Pending (unreviewed) applications
+    $pend_sql = "SELECT COUNT(ja.application_id) as count
+                 FROM job_applications ja
+                 JOIN job_posts jp ON ja.job_post_id = jp.job_post_id
+                 WHERE jp.parent_id = ? AND ja.status = 'Pending'";
+    $pend_stmt = $conn->prepare($pend_sql);
+    if ($pend_stmt) {
+        $pend_stmt->bind_param("i", $user_id);
+        $pend_stmt->execute();
+        $stats["pending_applications"] = (int)$pend_stmt->get_result()->fetch_assoc()['count'];
+        $pend_stmt->close();
+    }
+
+    // 6. Shortlisted applicants
+    $short_sql = "SELECT COUNT(ja.application_id) as count
+                  FROM job_applications ja
+                  JOIN job_posts jp ON ja.job_post_id = jp.job_post_id
+                  WHERE jp.parent_id = ? AND ja.status IN ('Shortlisted','Interview Scheduled')";
+    $short_stmt = $conn->prepare($short_sql);
+    if ($short_stmt) {
+        $short_stmt->bind_param("i", $user_id);
+        $short_stmt->execute();
+        $stats["shortlisted_count"] = (int)$short_stmt->get_result()->fetch_assoc()['count'];
+        $short_stmt->close();
     }
 
     echo json_encode([

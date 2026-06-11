@@ -19,4 +19,5 @@ export { ContractDetailsCard } from './ContractDetailsCard';
 export { WorkScheduleCard } from './WorkScheduleCard';
 export { BenefitsCard } from './BenefitsCard';
 export { LocationSelector } from './LocationSelector';
+export { TrustBanner } from './TrustBanner';
  

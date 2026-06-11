@@ -66,7 +66,7 @@ try {
     $household_size = isset($_POST['household_size']) ? intval($_POST['household_size']) : NULL;
     $household_type = isset($_POST['household_type']) ? trim((string) $_POST['household_type']) : '';
     $allowed_household_types = array('house', 'apartment', 'condominium', 'townhouse', 'other');
-    if ($household_type === '' || !in_array($household_type, $allowed_household_types, true)) {
+    if ($household_type !== '' && !in_array($household_type, $allowed_household_types, true)) {
         throw new Exception("Please select a valid housing type (house, apartment, etc.)");
     }
     $has_children = isset($_POST['has_children']) ? intval($_POST['has_children']) : 0;
@@ -90,8 +90,10 @@ try {
         if (json_last_error() !== JSON_ERROR_NONE) $elderly = array();
     }
     
-    if (empty($contact_number)) throw new Exception("Contact number is required");
-    if (empty($province) || empty($municipality) || empty($barangay)) throw new Exception("Address is required");
+    // NOTE: Personal info, address, and household are edited as separate
+    // sections on the frontend, so this endpoint must not reject a save just
+    // because a *different* section hasn't been filled in yet. Overall
+    // completeness is tracked separately via profile_completed.
 
     // ========================================================================
     // HANDLE IMAGE UPLOAD
@@ -102,11 +104,15 @@ try {
         $uploadDir = dirname(__DIR__) . '/uploads/profiles/';
         if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
-        $allowedTypes = array('image/jpeg', 'image/png', 'image/jpg', 'image/gif');
-        $fileType = $_FILES['profile_image']['type'];
-        
-        if (in_array($fileType, $allowedTypes)) {
-            $fileExt = strtolower(pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION));
+        // Mobile/web pickers don't always send a filename with an extension
+        // (e.g. blob: URLs on web) - check EXTENSION and default to jpg if missing,
+        // otherwise move_uploaded_file() fails (Windows rejects filenames ending in ".").
+        $fileExt = strtolower(pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION));
+        if (empty($fileExt)) $fileExt = 'jpg';
+
+        $allowedExts = array('jpeg', 'jpg', 'png', 'gif');
+
+        if (in_array($fileExt, $allowedExts)) {
             $newFileName = "parentProfile_" . $user_id . "_" . time() . "." . $fileExt;
             $targetFilePath = $uploadDir . $newFileName;
 

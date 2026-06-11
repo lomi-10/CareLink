@@ -44,6 +44,37 @@ if (!function_exists('carelink_contract_full_name')) {
     }
 }
 
+if (!function_exists('carelink_contract_split_duties')) {
+    /**
+     * Split free-form job duties text into a list of labeled items (a, b, c, ...)
+     * for BK-1 item 4. Splits on newlines and strips bullet/number prefixes.
+     *
+     * @return string[] Non-empty, trimmed duty lines (raw, not yet HTML-escaped)
+     */
+    function carelink_contract_split_duties(string $text): array
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return ['Mga gawain sa tahanan ayon sa napagkasunduan.'];
+        }
+        $lines = preg_split('/\r\n|\r|\n/', $text);
+        $items = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            $line = preg_replace('/^[\-\*•]+\s*/u', '', $line);
+            $line = preg_replace('/^[a-zA-Z0-9]+[\.\)]\s*/u', '', $line);
+            $line = trim((string) $line);
+            if ($line !== '') {
+                $items[] = $line;
+            }
+        }
+        return !empty($items) ? $items : [$text];
+    }
+}
+
 if (!function_exists('carelink_contract_format_address')) {
     function carelink_contract_format_address(array $row, string $prefix = ''): string
     {

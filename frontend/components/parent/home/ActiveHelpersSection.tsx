@@ -73,7 +73,7 @@ export function ActiveHelpersSection({ compactCards }: Props) {
       <View style={styles.titleRow}>
         <SectionHeader title="My active helpers" />
         {placements.length > 0 ? (
-          <TouchableOpacity onPress={() => router.push('/(parent)/active_helpers')} hitSlop={8}>
+          <TouchableOpacity onPress={() => router.push('/(parent)/hire')} hitSlop={8}>
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         ) : null}
@@ -108,7 +108,7 @@ export function ActiveHelpersSection({ compactCards }: Props) {
       )}
 
       {placements.length > 3 ? (
-        <TouchableOpacity style={styles.moreBtn} onPress={() => router.push('/(parent)/active_helpers')}>
+        <TouchableOpacity style={styles.moreBtn} onPress={() => router.push('/(parent)/hire')}>
           <Text style={styles.moreBtnText}>
             View all {placements.length} active helpers
           </Text>

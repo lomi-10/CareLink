@@ -13,9 +13,9 @@ const TABS: {
   iconActive: React.ComponentProps<typeof Ionicons>['name'];
 }[] = [
   { path: '/(helper)/home', label: 'Home', icon: 'home-outline', iconActive: 'home' },
-  { path: '/(helper)/work_tasks', label: 'Tasks', icon: 'list-outline', iconActive: 'list' },
-  { path: '/(helper)/work_schedule', label: 'Schedule', icon: 'calendar-outline', iconActive: 'calendar' },
-  { path: '/(helper)/work_history', label: 'History', icon: 'time-outline', iconActive: 'time' },
+  { path: '/(helper)/work/tasks', label: 'Tasks', icon: 'list-outline', iconActive: 'list' },
+  { path: '/(helper)/work', label: 'Schedule', icon: 'calendar-outline', iconActive: 'calendar' },
+  { path: '/(helper)/work/history', label: 'History', icon: 'time-outline', iconActive: 'time' },
   { path: '/(helper)/messages', label: 'Messages', icon: 'chatbubbles-outline', iconActive: 'chatbubbles' },
   { path: '/(helper)/profile', label: 'Profile', icon: 'person-outline', iconActive: 'person' },
 ];

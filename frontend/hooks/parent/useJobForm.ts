@@ -6,11 +6,11 @@ export interface JobFormData {
   // STRICT 1-to-1: Category & Job
   category_id: string;
   job_ids: string[];
-  
+
   // MULTI-SELECT: Skills & Days off
   skill_ids: string[];
   days_off: string[];
-  
+
   custom_category: string;
   custom_job_title: string;
   custom_skills: string;
@@ -19,7 +19,8 @@ export interface JobFormData {
 
   employment_type: 'Stay-in' | 'Stay-out' | 'Any';
   work_schedule: 'Full-time' | 'Part-time' | 'Any';
-  salary_offered: string;
+  salary_min: string;
+  salary_max: string;
   salary_period: 'Daily' | 'Weekly' | 'Monthly';
   province: string;
   municipality: string;
@@ -164,7 +165,8 @@ const initialFormData: JobFormData = {
   description: '',
   employment_type: 'Any',
   work_schedule: 'Any',
-  salary_offered: '',
+  salary_min: '',
+  salary_max: '',
   salary_period: 'Monthly',
   province: 'Leyte',
   municipality: 'Ormoc City',
@@ -231,11 +233,17 @@ export function useJobForm() {
       newErrors.description = 'Job description is required — describe the responsibilities';
     }
     
-    const salary = parseFloat(formData.salary_offered);
-    if (!formData.salary_offered || isNaN(salary)) {
-      newErrors.salary = 'Salary is required — enter an amount';
-    } else if (salary < 6000) {
-      newErrors.salary = 'Salary is below minimum — must be at least ₱6,000';
+    const salaryMin = parseFloat(formData.salary_min);
+    if (!formData.salary_min || isNaN(salaryMin)) {
+      newErrors.salary = 'Minimum salary is required — enter an amount';
+    } else if (salaryMin < 7000) {
+      newErrors.salary = 'Salary is below minimum — must be at least ₱7,000 (RA 10361)';
+    }
+    if (formData.salary_max) {
+      const salaryMax = parseFloat(formData.salary_max);
+      if (!isNaN(salaryMax) && salaryMax < salaryMin) {
+        newErrors.salary_max = 'Maximum must be ≥ minimum salary';
+      }
     }
     
     if (!formData.municipality.trim()) {
@@ -275,7 +283,8 @@ export function useJobForm() {
       description: data.description || '',
       employment_type: data.employment_type || 'Any',
       work_schedule: data.work_schedule || 'Any',
-      salary_offered: data.salary_offered ? data.salary_offered.toString() : '',
+      salary_min: data.salary_min ? data.salary_min.toString() : (data.salary_offered ? data.salary_offered.toString() : ''),
+      salary_max: data.salary_max ? data.salary_max.toString() : '',
       salary_period: data.salary_period || 'Monthly',
       province: data.province || 'Leyte',
       municipality: data.municipality || 'Ormoc City',
@@ -319,7 +328,8 @@ export function useJobForm() {
       
       employment_type: formData.employment_type,
       work_schedule: formData.work_schedule,
-      salary_offered: parseFloat(formData.salary_offered),
+      salary_min: parseFloat(formData.salary_min),
+      salary_max: formData.salary_max ? parseFloat(formData.salary_max) : null,
       salary_period: formData.salary_period,
       province: formData.province,
       municipality: formData.municipality.trim(),

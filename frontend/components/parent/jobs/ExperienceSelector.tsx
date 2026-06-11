@@ -4,6 +4,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BROWN, CARAMEL, ICON_BG, DARK, MUTED, DIVIDER } from '../home/parentWarmTheme';
 
 interface ExperienceSelectorProps {
   minExperience: number;
@@ -12,7 +13,7 @@ interface ExperienceSelectorProps {
 }
 
 const EXPERIENCE_OPTIONS = [
-  { value: 0, label: 'No requirement' },
+  { value: 0, label: 'No experience' },
   { value: 1, label: '1+ year' },
   { value: 2, label: '2+ years' },
   { value: 3, label: '3+ years' },
@@ -32,16 +33,16 @@ export function ExperienceSelector({
         Select the minimum years of experience required
       </Text>
 
-      <View style={styles.optionsGrid}>
+      <View style={styles.chipRow}>
         {EXPERIENCE_OPTIONS.map((option) => {
           const isSelected = minExperience === option.value;
           return (
             <TouchableOpacity
               key={option.value}
               style={[
-                styles.optionCard,
-                isSelected && styles.optionCardActive,
-                disabled && styles.optionCardDisabled,
+                styles.chip,
+                isSelected && styles.chipActive,
+                disabled && styles.chipDisabled,
               ]}
               onPress={() => !disabled && onExperienceChange(option.value)}
               activeOpacity={disabled ? 1 : 0.7}
@@ -49,20 +50,15 @@ export function ExperienceSelector({
             >
               <Text
                 style={[
-                  styles.optionText,
-                  isSelected && styles.optionTextActive,
-                  disabled && styles.optionTextDisabled,
+                  styles.chipText,
+                  isSelected && styles.chipTextActive,
+                  disabled && styles.chipTextDisabled,
                 ]}
               >
                 {option.label}
               </Text>
               {isSelected && (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={20}
-                  color="#2563EB"
-                  style={styles.checkmark}
-                />
+                <Ionicons name="checkmark-circle" size={16} color={BROWN} />
               )}
             </TouchableOpacity>
           );
@@ -79,51 +75,48 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A1C1E',
+    color: DARK,
     marginBottom: 4,
   },
   hint: {
     fontSize: 13,
-    color: '#666',
+    color: MUTED,
     marginBottom: 12,
   },
-  optionsGrid: {
+  chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
   },
-  optionCard: {
-    width: '48%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 2,
-    borderColor: '#E5E5EA',
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 6,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: DIVIDER,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
-  optionCardActive: {
-    borderColor: '#2563EB',
-    backgroundColor: '#F0F8FF',
+  chipActive: {
+    borderColor: CARAMEL,
+    backgroundColor: ICON_BG,
   },
-  optionCardDisabled: {
+  chipDisabled: {
     opacity: 0.5,
     backgroundColor: '#F8F9FA',
   },
-  optionText: {
+  chipText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#666',
   },
-  optionTextActive: {
-    color: '#2563EB',
+  chipTextActive: {
+    color: BROWN,
     fontWeight: '700',
   },
-  optionTextDisabled: {
+  chipTextDisabled: {
     color: '#999',
-  },
-  checkmark: {
-    marginLeft: 4,
   },
 });

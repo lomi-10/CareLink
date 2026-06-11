@@ -34,9 +34,11 @@ try {
     $job_post_id = intval($data['job_post_id']);
     $parent_id = intval($data['parent_id']);
     $category_id = isset($data['category_id']) ? intval($data['category_id']) : null;
-    $salary = floatval($data['salary_offered'] ?? 0);
-    
-    if ($salary < 6000) throw new Exception('Minimum salary is ₱6,000 as per PESO regulations.');
+    $salary_min = isset($data['salary_min']) ? floatval($data['salary_min']) : (isset($data['salary_offered']) ? floatval($data['salary_offered']) : 0);
+    $salary_max = isset($data['salary_max']) && $data['salary_max'] !== null ? floatval($data['salary_max']) : null;
+    $salary = $salary_min;
+
+    if ($salary < 7000) throw new Exception('Minimum salary is ₱7,000 as required by RA 10361 (Kasambahay Law).');
 
     $job_ids_json = json_encode(is_array($data['job_ids'] ?? null) ? $data['job_ids'] : []);
     $skill_ids_json = json_encode(is_array($data['skill_ids'] ?? null) ? $data['skill_ids'] : []);
@@ -88,35 +90,35 @@ try {
     $prefer_tesda_nc2 = !empty($data['prefer_tesda_nc2']) ? 1 : 0;
 
     $stmt = mysqli_prepare($conn, "
-        UPDATE job_posts SET 
-            category_id = ?, custom_category = ?, job_ids = ?, skill_ids = ?, 
-            title = ?, description = ?, employment_type = ?, 
-            work_schedule = ?, salary_offered = ?, salary_period = ?, province = ?, 
-            municipality = ?, barangay = ?, min_age = ?, max_age = ?, 
-            min_experience_years = ?, start_date = ?, work_hours = ?, days_off = ?, 
-            contract_duration = ?, benefits = ?, custom_skills = ?, 
-            provides_meals = ?, provides_accommodation = ?, provides_sss = ?, provides_philhealth = ?, 
-            provides_pagibig = ?, vacation_days = ?, sick_days = ?, preferred_religion = ?, 
-            preferred_language_id = ?, require_police_clearance = ?, prefer_tesda_nc2 = ?, 
+        UPDATE job_posts SET
+            category_id = ?, custom_category = ?, job_ids = ?, skill_ids = ?,
+            title = ?, description = ?, employment_type = ?,
+            work_schedule = ?, salary_offered = ?, salary_min = ?, salary_max = ?, salary_period = ?, province = ?,
+            municipality = ?, barangay = ?, min_age = ?, max_age = ?,
+            min_experience_years = ?, start_date = ?, work_hours = ?, days_off = ?,
+            contract_duration = ?, benefits = ?, custom_skills = ?,
+            provides_meals = ?, provides_accommodation = ?, provides_sss = ?, provides_philhealth = ?,
+            provides_pagibig = ?, vacation_days = ?, sick_days = ?, preferred_religion = ?,
+            preferred_language_id = ?, require_police_clearance = ?, prefer_tesda_nc2 = ?,
             status = 'Pending', updated_at = NOW()
             WHERE job_post_id = ? AND parent_id = ?
     ");
 
     if (!$stmt) throw new Exception('Database Error: ' . mysqli_error($conn));
 
-    $types = "isssssssdssssiiisssssssiiiiiiisiiiii";
+    $types = "isssssssdddssssiiissssssiiiiiiisiiiii";
 
     mysqli_stmt_bind_param(
         $stmt, $types,
-        $category_id, $custom_category, $job_ids_json, $skill_ids_json, 
-        $final_title, $description, $employment_type, $work_schedule, 
-        $salary, $salary_period, $province, $municipality, $barangay, 
-        $min_age, $max_age, $min_experience_years, 
-        $start_date, $work_hours, $days_off_json, 
-        $contract_duration, $benefits, $custom_skills, 
-        $provides_meals, $provides_accommodation, $provides_sss, 
-        $provides_philhealth, $provides_pagibig, $vacation_days, $sick_days, 
-        $preferred_religion, $preferred_language_id, $require_police_clearance, $prefer_tesda_nc2, 
+        $category_id, $custom_category, $job_ids_json, $skill_ids_json,
+        $final_title, $description, $employment_type,
+        $work_schedule, $salary, $salary_min, $salary_max, $salary_period, $province,
+        $municipality, $barangay, $min_age, $max_age,
+        $min_experience_years, $start_date, $work_hours, $days_off_json,
+        $contract_duration, $benefits, $custom_skills,
+        $provides_meals, $provides_accommodation, $provides_sss, $provides_philhealth,
+        $provides_pagibig, $vacation_days, $sick_days, $preferred_religion,
+        $preferred_language_id, $require_police_clearance, $prefer_tesda_nc2,
         $job_post_id, $parent_id
     );
 

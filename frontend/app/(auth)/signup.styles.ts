@@ -1,196 +1,176 @@
 // app/(auth)/signup.styles.ts
-import { Platform, StyleSheet } from "react-native";
-import { theme } from "@/constants/theme";
+// Structural / layout styles for the signup screen.
+// Dynamic colours (card bg, input bg, etc.) are applied inline via the role theme from authThemes.ts.
 
-/** Match login + one consistent “auth control” system on mobile */
-const R = theme.radius.md;
-const H = 50;
-const CARD_R = theme.radius.lg;
+import { Platform, StyleSheet } from 'react-native';
+import { FontFamily } from '@/constants/GlobalStyles';
 
-export const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.color.surface },
-  keyboardView: { flex: 1, width: "100%" },
-  background: { flex: 1, width: "100%" },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    paddingHorizontal: theme.space.lg,
-    paddingTop: theme.space.md,
-    paddingBottom: theme.space.section * 2,
+export const s = StyleSheet.create({
+
+  // ── Page header (dark background area) ──────────────────────────────────────
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
-  scrollContainerCompact: {
-    paddingHorizontal: theme.space.md,
-    paddingTop: theme.space.sm,
-    paddingBottom: theme.space.section * 2.5,
+  backBtn:    { padding: 8, borderRadius: 8 },
+  headerLogo: { flex: 1, alignItems: 'center' },
+
+  titleSection: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 20,
+    gap: 4,
   },
-  card: {
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: CARD_R,
-    padding: theme.space.xxl,
-    paddingTop: theme.space.section + theme.space.sm,
-    width: "100%",
-    maxWidth: 440,
-    minWidth: 0,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    ...theme.shadow.card,
-  },
-  cardCompact: {
-    padding: theme.space.lg,
-    paddingTop: theme.space.xl + theme.space.md,
-  },
-  closeButton: {
-    position: "absolute",
-    top: theme.space.md,
-    right: theme.space.md,
-    width: 40,
-    height: 40,
-    zIndex: 10,
-    borderRadius: R,
-    backgroundColor: theme.color.surfaceElevated,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  closeText: { color: theme.color.muted, fontSize: 16, fontWeight: "600" },
-  kicker: {
-    fontSize: theme.font.caption,
-    fontWeight: "700",
-    color: theme.color.info,
-    letterSpacing: 1,
-    marginBottom: theme.space.sm,
-    textTransform: "uppercase",
+  eyebrow: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 12,
+    color: '#E96613',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   title: {
-    fontSize: theme.font.title,
-    fontWeight: "800",
-    color: theme.color.ink,
-    marginBottom: theme.space.sm,
-    lineHeight: 28,
-  },
-  titleCompact: {
-    fontSize: theme.font.subtitle,
-    lineHeight: 24,
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 26,
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: theme.font.small,
-    color: theme.color.muted,
-    marginBottom: theme.space.xl,
-    lineHeight: 20,
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.55)',
+    textAlign: 'center',
   },
-  subtitleCompact: {
-    marginBottom: theme.space.lg,
-    lineHeight: 19,
+
+  // ── Form card ───────────────────────────────────────────────────────────────
+  card: {
+    borderRadius: 24,
+    padding: 20,
   },
-  roleBadgeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: H,
-    paddingVertical: theme.space.sm,
-    paddingHorizontal: theme.space.lg,
-    borderRadius: R,
+
+  // ── Role pill ───────────────────────────────────────────────────────────────
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
     borderWidth: 1,
-    marginBottom: theme.space.xl,
-    gap: theme.space.sm,
-    flexWrap: "wrap",
+    marginBottom: 18,
   },
-  roleBadgeText: { fontSize: theme.font.body, fontWeight: "700", flexShrink: 1, textAlign: "center" },
+  pillText: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 14,
+  },
+
+  // ── Picker fallback ─────────────────────────────────────────────────────────
+  pickerWrap: {
+    borderWidth: 1,
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+
+  // ── Form fields ─────────────────────────────────────────────────────────────
+  nameRow: {
+    flexDirection: 'row',
+  },
   label: {
-    fontSize: theme.font.caption,
-    fontWeight: "600",
-    color: theme.color.inkMuted,
-    marginBottom: theme.space.xs,
-    marginLeft: 2,
-  },
-  required: {
-    color: theme.color.danger,
-    fontWeight: "700",
-  },
-  optional: {
-    color: theme.color.muted,
-    fontWeight: "500",
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 13,
+    marginBottom: 6,
+    marginTop: 12,
   },
   input: {
-    height: H,
-    borderColor: theme.color.line,
+    fontFamily: FontFamily.fredokaRegular,
     borderWidth: 1,
-    borderRadius: R,
-    paddingHorizontal: theme.space.lg,
-    marginBottom: theme.space.md,
-    backgroundColor: theme.color.surfaceElevated,
-    color: theme.color.ink,
-    fontSize: theme.font.body,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 11,
+    fontSize: 15,
   },
-  inputRow: { flexDirection: "row", width: "100%", alignItems: "flex-start" },
-  inputRowStack: { flexDirection: "column" },
-  inputRowField: { flex: 1, minWidth: 0 },
-  inputRowFieldFull: { flex: 0, width: "100%" },
-  inputRowGap: { width: theme.space.md },
-  passwordContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: H,
-    borderColor: theme.color.line,
+
+  // ── Password row ────────────────────────────────────────────────────────────
+  pwRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderRadius: R,
-    paddingHorizontal: theme.space.lg,
-    marginBottom: theme.space.md,
-    backgroundColor: theme.color.surfaceElevated,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 11,
+    gap: 8,
   },
-  inputPassword: { flex: 1, height: "100%", color: theme.color.ink, fontSize: theme.font.body },
-  eyeIcon: { paddingLeft: theme.space.sm },
-  passwordRequirement: {
-    paddingVertical: theme.space.md,
-    marginBottom: theme.space.md,
-    backgroundColor: theme.color.surface,
-    borderRadius: R,
-    paddingHorizontal: theme.space.lg,
+  pwInput: {
+    fontFamily: FontFamily.fredokaRegular,
+    flex: 1,
+    fontSize: 15,
+    padding: 0,
+  },
+
+  // ── Password requirements box ───────────────────────────────────────────────
+  pwReqs: {
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: theme.color.line,
+    padding: 12,
+    marginTop: 12,
+    gap: 3,
   },
-  passwordRequirementText: { fontSize: 12, fontWeight: "500", lineHeight: 18 },
-  button: {
-    backgroundColor: theme.color.ink,
-    height: H,
-    borderRadius: R,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: theme.space.sm,
-    overflow: "hidden",
+  pwReqsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 5,
   },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  loginText: {
-    color: theme.color.muted,
-    fontSize: theme.font.small,
-    textAlign: "center",
-    marginTop: theme.space.xl,
-    lineHeight: 20,
+  pwReqsTitle: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 12,
   },
-  link: { color: theme.color.parent, fontWeight: "700" },
-  pickerContainer: { marginBottom: theme.space.md },
-  pickerLabel: {
-    color: theme.color.inkMuted,
-    marginBottom: theme.space.xs,
-    fontWeight: "600",
-    fontSize: theme.font.caption,
+  pwReqItem: {
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 12,
+    lineHeight: 18,
+    paddingLeft: 4,
   },
-  pickerWrapper: {
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: R,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    overflow: "hidden",
-    minWidth: 0,
-    width: "100%",
-    height: H,
-    justifyContent: "center",
+
+  // ── Submit button ────────────────────────────────────────────────────────────
+  btn: {
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 14,
   },
-  picker: {
-    width: "100%",
-    color: theme.color.ink,
-    ...(Platform.OS === "ios" ? { height: H } : { minHeight: H }),
+  btnText: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 16,
+  },
+
+  // ── Footer ──────────────────────────────────────────────────────────────────
+  footerTxt: {
+    fontFamily: FontFamily.fredokaRegular,
+    textAlign: 'center',
+    fontSize: 13,
+  },
+
+  // ── Mobile shell ────────────────────────────────────────────────────────────
+  mobileScroll:   { flexGrow: 1, paddingBottom: 32 },
+  mobileCardWrap: { paddingHorizontal: 16 },
+
+  // ── Desktop shell ────────────────────────────────────────────────────────────
+  webScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+  },
+  webContainer: {
+    width: '100%',
+    maxWidth: 480,
   },
 });

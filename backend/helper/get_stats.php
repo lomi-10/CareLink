@@ -144,8 +144,8 @@ $user_id = intval($_GET['user_id']);
 // Initialize stats array based strictly on your React Native hook expectations
 $stats = [
     "applications" => 0,
-    "saved_jobs" => 0,     // Returns 0 (Feature not yet in DB)
-    "profile_views" => 0   // Returns 0 (Feature not yet in DB)
+    "saved_jobs" => 0,
+    "profile_views" => 0
 ];
 
 try {
@@ -156,19 +156,46 @@ try {
     // 1. Get total Job Applications using your existing 'job_applications' table
     $app_sql = "SELECT COUNT(*) as count FROM job_applications WHERE helper_id = ?";
     $app_stmt = $conn->prepare($app_sql);
-    
+
     if ($app_stmt) {
         $app_stmt->bind_param("i", $user_id);
         $app_stmt->execute();
         $app_result = $app_stmt->get_result();
-        
+
         if ($row = $app_result->fetch_assoc()) {
             $stats["applications"] = (int)$row['count'];
         }
         $app_stmt->close();
     }
 
-    // 2 & 3. saved_jobs and profile_views remain 0 automatically based on the array initialization above.
+    // 2. Get total Saved Jobs for this helper
+    $saved_sql = "SELECT COUNT(*) as count FROM saved_jobs WHERE helper_id = ?";
+    $saved_stmt = $conn->prepare($saved_sql);
+    if ($saved_stmt) {
+        $saved_stmt->bind_param("i", $user_id);
+        if ($saved_stmt->execute()) {
+            $saved_result = $saved_stmt->get_result();
+            if ($row = $saved_result->fetch_assoc()) {
+                $stats["saved_jobs"] = (int)$row['count'];
+            }
+        }
+        $saved_stmt->close();
+    }
+
+    // 3. Get total Profile Views (column added via migration in database/current.sql)
+    $views_sql = "SELECT profile_views FROM helper_profiles WHERE user_id = ?";
+    $views_stmt = $conn->prepare($views_sql);
+    if ($views_stmt) {
+        $views_stmt->bind_param("i", $user_id);
+        if ($views_stmt->execute()) {
+            $views_result = $views_stmt->get_result();
+            $row = $views_result->fetch_assoc();
+            if ($row && isset($row['profile_views'])) {
+                $stats["profile_views"] = (int)$row['profile_views'];
+            }
+        }
+        $views_stmt->close();
+    }
 
     // Return the successful JSON response
     echo json_encode([

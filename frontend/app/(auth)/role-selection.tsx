@@ -9,7 +9,7 @@ import {
   ScrollView,
   Pressable,
   useWindowDimensions,
-  Platform, // 👈 Added Platform for safe web transitions
+  Platform,
 } from "react-native";
 import { Image } from "expo-image";
 import Logo from "@/components/branding/Logo";

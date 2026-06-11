@@ -1,307 +1,262 @@
 // components/helper/applications/ApplicationCard.tsx
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { ThemeColor } from '@/constants/theme';
-import { theme } from '@/constants/theme';
-import { useHelperTheme } from '@/contexts/HelperThemeContext';
+import React from 'react';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FontFamily } from '@/constants/GlobalStyles';
 import type { Application } from '@/hooks/helper';
 
-function buildStatusConfig(c: ThemeColor) {
-  return {
-    Pending: {
-      color: c.warning,
-      bg: c.warningSoft,
-      icon: 'time-outline' as const,
-      label: 'Pending Review',
-    },
-    Reviewed: { color: c.info, bg: c.infoSoft, icon: 'eye-outline' as const, label: 'Reviewed' },
-    Shortlisted: {
-      color: c.parent,
-      bg: c.parentSoft,
-      icon: 'star-outline' as const,
-      label: 'Shortlisted',
-    },
-    'Interview Scheduled': {
-      color: c.helper,
-      bg: c.helperSoft,
-      icon: 'calendar-outline' as const,
-      label: 'Interview',
-    },
-    Accepted: {
-      color: c.success,
-      bg: c.successSoft,
-      icon: 'checkmark-circle' as const,
-      label: 'Hired!',
-    },
-    contract_pending: {
-      color: c.warning,
-      bg: c.warningSoft,
-      icon: 'document-text-outline' as const,
-      label: 'Contract',
-    },
-    hired: {
-      color: c.success,
-      bg: c.successSoft,
-      icon: 'checkmark-done-outline' as const,
-      label: 'Hired',
-    },
-    Rejected: {
-      color: c.danger,
-      bg: c.dangerSoft,
-      icon: 'close-circle-outline' as const,
-      label: 'Not Selected',
-    },
-    auto_rejected: {
-      color: c.muted,
-      bg: c.surface,
-      icon: 'briefcase-outline' as const,
-      label: 'Closed (other role)',
-    },
-    Withdrawn: {
-      color: c.muted,
-      bg: c.surface,
-      icon: 'arrow-undo-outline' as const,
-      label: 'Withdrawn',
-    },
-  } as const;
+// ── Palette ────────────────────────────────────────────────────────────────────
+const DARK    = '#2A1608';
+const MUTED   = '#7A5C3E';
+const ORANGE  = '#E86019';
+const GREEN   = '#059669';
+const DIVIDER = '#EDE0D0';
+const ICON_BG = '#F5E6CC';
+const PAGE_BG = '#FBF5EC';
+
+// ── Status config ─────────────────────────────────────────────────────────────
+const STATUS_MAP: Record<string, { color: string; bg: string; label: string }> = {
+  Pending:               { color: '#D97706', bg: '#FEF3C7', label: 'Pending Review' },
+  Reviewed:              { color: '#2563EB', bg: '#EFF6FF', label: 'Reviewed' },
+  Shortlisted:           { color: '#7C3AED', bg: '#EDE9FE', label: 'Shortlisted' },
+  'Interview Scheduled': { color: ORANGE,    bg: ICON_BG,   label: 'Interview' },
+  Accepted:              { color: GREEN,     bg: '#ECFDF5', label: 'Hired!' },
+  contract_pending:      { color: '#D97706', bg: '#FEF3C7', label: 'Contract' },
+  hired:                 { color: GREEN,     bg: '#ECFDF5', label: 'Hired' },
+  Rejected:              { color: '#DC2626', bg: '#FEF2F2', label: 'Not Selected' },
+  auto_rejected:         { color: MUTED,     bg: PAGE_BG,   label: 'Position Closed' },
+  Withdrawn:             { color: MUTED,     bg: PAGE_BG,   label: 'Withdrawn' },
+};
+
+// ── Progress stepper steps ────────────────────────────────────────────────────
+const STEPS = [
+  { icon: 'paper-plane-outline' as const },
+  { icon: 'eye-outline' as const },
+  { icon: 'star-outline' as const },
+  { icon: 'calendar-outline' as const },
+  { icon: 'checkmark-circle' as const },
+];
+
+function getStepIndex(status: string): number {
+  switch (status) {
+    case 'Pending': return 0;
+    case 'Reviewed': return 1;
+    case 'Shortlisted': return 2;
+    case 'Interview Scheduled': return 3;
+    case 'Accepted': case 'contract_pending': case 'hired': return 4;
+    default: return 0;
+  }
 }
 
-function buildLeftAccent(c: ThemeColor): Record<string, string> {
-  return {
-    Accepted: c.success,
-    hired: c.success,
-    contract_pending: c.warning,
-    Shortlisted: c.parent,
-    Rejected: c.danger,
-    auto_rejected: c.subtle,
-    Withdrawn: c.subtle,
-  };
+function initials(name?: string) {
+  if (!name?.trim()) return 'E';
+  const parts = name.trim().split(/\s+/);
+  return parts.length > 1
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    : parts[0][0].toUpperCase();
 }
 
-function createApplicationCardStyles(c: ThemeColor) {
-  return StyleSheet.create({
-    card: {
-      backgroundColor: c.surfaceElevated,
-      borderRadius: 18,
-      padding: 18,
-      marginBottom: 14,
-      borderWidth: 1,
-      borderColor: c.line,
-      ...theme.shadow.card,
-    },
-    topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-    titleWrap: { flex: 1, paddingRight: 10 },
-    jobTitle: { fontSize: 17, fontWeight: '800', color: c.ink, marginBottom: 5, letterSpacing: -0.3 },
-    employerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    employerDot: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      backgroundColor: c.parentSoft,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    employerDotText: { fontSize: 10, fontWeight: '800', color: c.parent },
-    employerName: { fontSize: 13, color: c.inkMuted, fontWeight: '600' },
-
-    badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10 },
-    badgeText: { fontSize: 11, fontWeight: '700' },
-
-    catJobRow: { flexDirection: 'column', gap: 3, marginBottom: 8 },
-    catJobItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-    catJobLabel: {
-      fontSize: 10,
-      fontWeight: '700',
-      color: c.subtle,
-      textTransform: 'uppercase',
-      letterSpacing: 0.3,
-    },
-    catJobValue: { flex: 1, fontSize: 12, fontWeight: '600', color: c.inkMuted },
-
-    strip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: c.surface,
-      padding: 10,
-      borderRadius: 10,
-      marginBottom: 10,
-      gap: 8,
-    },
-    stripItem: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
-    stripText: { fontSize: 12, fontWeight: '600', color: c.inkMuted },
-    stripDivider: { width: 1, height: 14, backgroundColor: c.line },
-
-    dateText: { fontSize: 12, color: c.subtle, marginBottom: 14, fontWeight: '500' },
-
-    footer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      borderTopWidth: 1,
-      borderTopColor: c.line,
-      paddingTop: 14,
-      gap: 10,
-    },
-    withdrawBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
-      paddingVertical: 9,
-      paddingHorizontal: 14,
-      borderRadius: 9,
-      backgroundColor: c.dangerSoft,
-      borderWidth: 1,
-      borderColor: c.danger + '30',
-    },
-    withdrawText: { color: c.danger, fontSize: 13, fontWeight: '700' },
-    detailsBtn: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      gap: 4,
-      paddingVertical: 9,
-    },
-    detailsBtnText: { color: c.helper, fontSize: 13, fontWeight: '700' },
-  });
-}
-
+// ── Props ─────────────────────────────────────────────────────────────────────
 interface Props {
   application: Application;
   onPress: () => void;
   onWithdraw: () => void;
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function ApplicationCard({ application, onPress, onWithdraw }: Props) {
-  const { color: c } = useHelperTheme();
-  const s = useMemo(() => createApplicationCardStyles(c), [c]);
-  const STATUS_CONFIG = useMemo(() => buildStatusConfig(c), [c]);
-  const LEFT_ACCENT = useMemo(() => buildLeftAccent(c), [c]);
-
-  const st = application.status as keyof typeof STATUS_CONFIG;
-  const cfg =
-    STATUS_CONFIG[st] ?? {
-      color: c.muted,
-      bg: c.surface,
-      icon: 'information-circle-outline' as const,
-      label: application.status,
-    };
-  const accent = LEFT_ACCENT[application.status];
+  const isTerminal  = ['Rejected', 'auto_rejected', 'Withdrawn'].includes(application.status);
   const canWithdraw = ['Pending', 'Reviewed', 'Shortlisted'].includes(application.status);
+  const stepIdx     = getStepIndex(application.status);
 
-  const salary = Number(application.salary_offered ?? 0).toLocaleString();
-  const PERIOD_LABEL: Record<string, string> = { Monthly: 'mo', Daily: 'day', Weekly: 'wk' };
+  const cfg    = STATUS_MAP[application.status] ?? { color: MUTED, bg: PAGE_BG, label: application.status };
+  const salary = Number(application.salary_offered ?? 0);
+  const PERIOD: Record<string, string> = { Monthly: 'mo', Daily: 'day', Weekly: 'wk' };
   const period = application.salary_period
-    ? `/${PERIOD_LABEL[application.salary_period] ?? application.salary_period.toLowerCase()}`
+    ? `/${PERIOD[application.salary_period] ?? application.salary_period.toLowerCase()}`
     : '';
   const location =
     application.location ||
     [application.municipality, application.province].filter(Boolean).join(', ') ||
-    'Location N/A';
+    '';
 
   return (
-    <TouchableOpacity
-      style={[s.card, accent ? { borderLeftColor: accent, borderLeftWidth: 4 } : {}]}
-      onPress={onPress}
-      activeOpacity={0.92}
-    >
+    <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.92}>
+
+      {/* ── Top row: avatar + job info + status badge ── */}
       <View style={s.topRow}>
+        <View style={s.avatar}>
+          <Text style={s.avatarText}>{initials(application.parent_name)}</Text>
+        </View>
         <View style={s.titleWrap}>
-          <Text style={s.jobTitle} numberOfLines={1}>
-            {application.job_title}
-          </Text>
+          <Text style={s.jobTitle} numberOfLines={1}>{application.job_title}</Text>
           <View style={s.employerRow}>
-            <View style={s.employerDot}>
-              <Text style={s.employerDotText}>{application.parent_name?.charAt(0).toUpperCase() ?? 'E'}</Text>
-            </View>
-            <Text style={s.employerName} numberOfLines={1}>
-              {application.parent_name}
-            </Text>
+            <Text style={s.employerName} numberOfLines={1}>{application.parent_name}</Text>
             {application.parent_verified && (
-              <Ionicons name="shield-checkmark" size={13} color={c.helper} />
+              <Ionicons name="shield-checkmark" size={13} color={GREEN} />
             )}
           </View>
         </View>
-        <View style={[s.badge, { backgroundColor: cfg.bg }]}>
-          <Ionicons name={cfg.icon} size={12} color={cfg.color} />
-          <Text style={[s.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
+        <View style={[s.statusBadge, { backgroundColor: cfg.bg }]}>
+          <Text style={[s.statusText, { color: cfg.color }]}>{cfg.label}</Text>
         </View>
       </View>
 
-      {(application.category_name || (application.job_names && application.job_names.length > 0)) && (
-        <View style={s.catJobRow}>
-          {application.category_name && (
-            <View style={s.catJobItem}>
-              <Ionicons name="grid-outline" size={11} color={c.muted} />
-              <Text style={s.catJobLabel}>Category:</Text>
-              <Text style={s.catJobValue}>{application.category_name}</Text>
-            </View>
-          )}
-          {application.job_names && application.job_names.length > 0 && (
-            <View style={s.catJobItem}>
-              <Ionicons name="briefcase-outline" size={11} color={c.muted} />
-              <Text style={s.catJobLabel}>Job:</Text>
-              <Text style={s.catJobValue} numberOfLines={1}>
-                {application.job_names.join(', ')}
-              </Text>
-            </View>
-          )}
+      {/* ── Details strip ── */}
+      <View style={s.strip}>
+        {salary > 0 && (
+          <View style={s.stripItem}>
+            <Ionicons name="cash-outline" size={12} color={MUTED} />
+            <Text style={s.stripText}>₱{salary.toLocaleString()}{period}</Text>
+          </View>
+        )}
+        {!!location && (
+          <View style={s.stripItem}>
+            <Ionicons name="location-outline" size={12} color={MUTED} />
+            <Text style={s.stripText} numberOfLines={1}>{location}</Text>
+          </View>
+        )}
+        {application.employment_type && (
+          <View style={s.stripItem}>
+            <Ionicons name="briefcase-outline" size={12} color={MUTED} />
+            <Text style={s.stripText}>{application.employment_type}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* ── Applied date ── */}
+      <Text style={s.dateText}>Applied {application.applied_at}</Text>
+
+      {/* ── Mini progress stepper (non-terminal only) ── */}
+      {!isTerminal && (
+        <View style={s.stepper}>
+          {STEPS.map((step, idx) => {
+            const done    = idx < stepIdx;
+            const current = idx === stepIdx;
+            return (
+              <React.Fragment key={idx}>
+                {idx > 0 && (
+                  <View style={[s.stepLine, done && s.stepLineDone]} />
+                )}
+                <View style={[s.stepCircle, done && s.stepCircleDone, current && s.stepCircleCurrent]}>
+                  <Ionicons
+                    name={done ? 'checkmark' : step.icon}
+                    size={9}
+                    color={done || current ? '#fff' : MUTED}
+                  />
+                </View>
+              </React.Fragment>
+            );
+          })}
         </View>
       )}
 
-      <View style={s.strip}>
-        <View style={s.stripItem}>
-          <Ionicons name="cash-outline" size={13} color={c.helper} />
-          <Text style={s.stripText}>
-            ₱{salary}
-            {period}
-          </Text>
-        </View>
-        <View style={s.stripDivider} />
-        <View style={s.stripItem}>
-          <Ionicons name="location-outline" size={13} color={c.muted} />
-          <Text style={s.stripText} numberOfLines={1}>
-            {location}
-          </Text>
-        </View>
-        {application.employment_type ? (
-          <>
-            <View style={s.stripDivider} />
-            <View style={s.stripItem}>
-              <Ionicons name="briefcase-outline" size={13} color={c.muted} />
-              <Text style={s.stripText}>{application.employment_type}</Text>
-            </View>
-          </>
-        ) : null}
-      </View>
-
-      <Text style={s.dateText}>Applied {application.applied_at}</Text>
-
+      {/* ── Footer ── */}
       <View style={s.footer}>
         {canWithdraw && (
           <TouchableOpacity
             style={s.withdrawBtn}
-            onPress={(e) => {
-              e.stopPropagation();
-              onWithdraw();
-            }}
+            onPress={(e) => { e.stopPropagation(); onWithdraw(); }}
             hitSlop={4}
           >
-            <Ionicons name="arrow-undo-outline" size={14} color={c.danger} />
+            <Ionicons name="arrow-undo-outline" size={13} color="#DC2626" />
             <Text style={s.withdrawText}>Withdraw</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity
           style={s.detailsBtn}
-          onPress={(e) => {
-            e.stopPropagation();
-            onPress();
-          }}
+          onPress={(e) => { e.stopPropagation(); onPress(); }}
         >
           <Text style={s.detailsBtnText}>View Details</Text>
-          <Ionicons name="chevron-forward" size={14} color={c.helper} />
+          <Ionicons name="chevron-forward" size={13} color={ORANGE} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 }
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: DIVIDER,
+    ...Platform.select({
+      ios:     { shadowColor: '#8B5E3C', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10 },
+      android: { elevation: 2 },
+      default: { boxShadow: '0 3px 12px rgba(139,94,60,0.08)' } as any,
+    }),
+  },
+
+  topRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
+  avatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: ICON_BG,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: DIVIDER,
+    flexShrink: 0,
+  },
+  avatarText:   { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: DARK },
+  titleWrap:    { flex: 1, minWidth: 0 },
+  jobTitle:     { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: DARK, marginBottom: 3 },
+  employerRow:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  employerName: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },
+  statusBadge:  { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, flexShrink: 0 },
+  statusText:   { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11 },
+
+  strip:     { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
+  stripItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  stripText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },
+
+  dateText: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: '#B0A090', marginBottom: 14 },
+
+  stepper:           { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  stepLine:          { flex: 1, height: 2, backgroundColor: DIVIDER },
+  stepLineDone:      { backgroundColor: DARK },
+  stepCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: ICON_BG,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: DIVIDER,
+  },
+  stepCircleDone:    { backgroundColor: DARK,   borderColor: DARK },
+  stepCircleCurrent: { backgroundColor: ORANGE, borderColor: ORANGE },
+
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: DIVIDER,
+    paddingTop: 12,
+    gap: 10,
+  },
+  withdrawBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+  },
+  withdrawText:   { fontFamily: FontFamily.fredokaSemiBold, color: '#DC2626', fontSize: 12 },
+  detailsBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 3,
+  },
+  detailsBtnText: { fontFamily: FontFamily.fredokaSemiBold, color: ORANGE, fontSize: 13 },
+});

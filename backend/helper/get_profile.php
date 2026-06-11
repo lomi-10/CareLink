@@ -284,79 +284,97 @@ try {
     }
 
     // ========================================================================
+    // QUERY 10: User's uploaded documents
+    // ========================================================================
+
+    $documentsSql = "SELECT
+                        ud.document_id,
+                        ud.document_type,
+                        ud.file_path,
+                        ud.id_type,
+                        ud.status,
+                        ud.expiry_date,
+                        ud.rejection_reason,
+                        ud.verified_by,
+                        ud.verified_at,
+                        ud.uploaded_at,
+                        CONCAT(v.first_name, ' ', IFNULL(v.last_name, '')) AS verified_by_name
+                    FROM user_documents ud
+                    LEFT JOIN users v ON v.user_id = ud.verified_by
+                    WHERE ud.user_id = ?
+                    ORDER BY FIELD(ud.document_type, 'Barangay Clearance', 'Valid ID', 'Police Clearance', 'TESDA NC2')";
+
+    $documentsStmt = $conn->prepare($documentsSql);
+    $documentsStmt->bind_param("i", $user_id);
+    $documentsStmt->execute();
+    $documentsResult = $documentsStmt->get_result();
+
+    $documents = array();
+    $base_url = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/documents/";
+
+    while ($row = $documentsResult->fetch_assoc()) {
+        $row['document_id'] = intval($row['document_id']);
+        $row['file_url'] = $base_url . $row['file_path'];
+        $row['uploaded_at'] = $row['uploaded_at'] ? date('Y-m-d H:i:s', strtotime($row['uploaded_at'])) : null;
+        $row['expiry_date'] = $row['expiry_date'] ? date('Y-m-d', strtotime($row['expiry_date'])) : null;
+        $row['verified_at'] = $row['verified_at'] ? date('Y-m-d H:i:s', strtotime($row['verified_at'])) : null;
+        $row['verified_by'] = trim((string)$row['verified_by_name']) !== '' ? trim($row['verified_by_name']) : null;
+        unset($row['verified_by_name']);
+        $documents[] = $row;
+    }
+    $documentsStmt->close();
+
+    error_log("Found " . count($documents) . " documents");
+
+    // ========================================================================
     // Calculate profile completeness
     // ========================================================================
-    
+
     $completeness = 0;
     if ($profile !== null) {
         $total = 0;
         $completed = 0;
-        
-        // Required fields (50 points)
+
+        // Required fields (8 points each)
         $requiredFields = ['contact_number', 'birth_date', 'gender', 'province', 'municipality', 'barangay'];
         foreach ($requiredFields as $field) {
             $total += 8;
             if (!empty($profile[$field])) $completed += 8;
         }
-        
-        // Optional profile fields (20 points)
+
+        // Optional profile fields (5 points each)
         $optionalFields = ['bio', 'education_level', 'religion', 'landmark'];
         foreach ($optionalFields as $field) {
             $total += 5;
             if (!empty($profile[$field])) $completed += 5;
         }
-        
+
         // Profile image (10 points)
         $total += 10;
         if (!empty($profile['profile_image'])) $completed += 10;
-        
+
         // Jobs (10 points)
         $total += 10;
         if (count($selected_jobs) > 0) $completed += 10;
-        
+
         // Skills (10 points)
         $total += 10;
         if (count($selected_skills) > 0) $completed += 10;
-        
+
         // Languages (10 points)
         $total += 10;
         if (count($selected_languages) > 0) $completed += 10;
-        
+
+        // Documents — required for PESO verification (Barangay Clearance, Valid ID): 10 points each
+        $uploadedDocTypes = array_column($documents, 'document_type');
+        $requiredDocs = ['Barangay Clearance', 'Valid ID'];
+        foreach ($requiredDocs as $docType) {
+            $total += 10;
+            if (in_array($docType, $uploadedDocTypes, true)) $completed += 10;
+        }
+
         $completeness = $total > 0 ? round(($completed / $total) * 100) : 0;
     }
-
-    // ========================================================================
-    // QUERY 10: User's uploaded documents
-    // ========================================================================
-    
-    $documentsSql = "SELECT 
-                        document_id,
-                        document_type,
-                        file_path,
-                        id_type,
-                        status,
-                        uploaded_at
-                    FROM user_documents
-                    WHERE user_id = ?
-                    ORDER BY FIELD(document_type, 'Barangay Clearance', 'Valid ID', 'Police Clearance', 'TESDA NC2')";
-    
-    $documentsStmt = $conn->prepare($documentsSql);
-    $documentsStmt->bind_param("i", $user_id);
-    $documentsStmt->execute();
-    $documentsResult = $documentsStmt->get_result();
-    
-    $documents = array();
-    $base_url = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/documents/";
-    
-    while ($row = $documentsResult->fetch_assoc()) {
-        $row['document_id'] = intval($row['document_id']);
-        $row['file_url'] = $base_url . $row['file_path'];
-        $row['uploaded_at'] = $row['uploaded_at'] ? date('Y-m-d H:i:s', strtotime($row['uploaded_at'])) : null;
-        $documents[] = $row;
-    }
-    $documentsStmt->close();
-    
-    error_log("Found " . count($documents) . " documents");
 
     // ========================================================================
     // Send response

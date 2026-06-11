@@ -27,7 +27,7 @@ export function PlacementEmptyPanel({ title, message }: Props) {
         <Text style={styles.message}>{message}</Text>
         <AnimatedPressable
           style={styles.primaryBtn}
-          onPress={() => router.push('/(parent)/active_helpers' as never)}>
+          onPress={() => router.push('/(parent)/hire' as never)}>
           <Text style={styles.primaryBtnText}>Active helpers</Text>
           <Ionicons name="arrow-forward" size={18} color="#fff" />
         </AnimatedPressable>

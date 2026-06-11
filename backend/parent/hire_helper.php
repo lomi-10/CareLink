@@ -100,9 +100,31 @@ try {
         throw new Exception('Application does not match this job or helper');
     }
 
-    $contract_end_raw = isset($input['contract_end_date']) ? trim((string) $input['contract_end_date']) : '';
-    $contract_start_raw = isset($input['contract_start_date']) ? trim((string) $input['contract_start_date']) : '';
-    $contract_notes_raw = isset($input['contract_terms_notes']) ? trim((string) $input['contract_terms_notes']) : '';
+    $contract_end_raw    = isset($input['contract_end_date'])    ? trim((string) $input['contract_end_date'])    : '';
+    $contract_start_raw  = isset($input['contract_start_date'])  ? trim((string) $input['contract_start_date'])  : '';
+    $contract_notes_raw  = isset($input['contract_terms_notes']) ? trim((string) $input['contract_terms_notes']) : '';
+    $contract_duration   = isset($input['contract_duration'])    ? trim((string) $input['contract_duration'])    : null;
+    $confirmed_salary    = isset($input['confirmed_salary'])     ? floatval($input['confirmed_salary'])          : null;
+    $work_hours          = isset($input['work_hours'])           ? trim((string) $input['work_hours'])           : null;
+    $rest_days_input     = isset($input['rest_days']) && is_array($input['rest_days']) ? $input['rest_days'] : [];
+    $rest_days           = !empty($rest_days_input) ? json_encode($rest_days_input) : null;
+    $vacation_leave_days = isset($input['vacation_leave_days'])  ? intval($input['vacation_leave_days'])         : 5;
+    $sick_leave_days     = isset($input['sick_leave_days'])      ? intval($input['sick_leave_days'])             : 5;
+    $special_conditions  = isset($input['special_conditions'])   ? trim((string) $input['special_conditions'])  : null;
+    $overtime_rate          = isset($input['overtime_rate'])          ? trim((string) $input['overtime_rate'])          : null;
+    $payment_schedule       = isset($input['payment_schedule'])       ? trim((string) $input['payment_schedule'])       : null;
+    $other_benefits         = isset($input['other_benefits'])         ? trim((string) $input['other_benefits'])         : null;
+    $debt_agreement         = isset($input['debt_agreement'])         ? trim((string) $input['debt_agreement'])         : null;
+    $deployment_agreement   = isset($input['deployment_agreement'])   ? trim((string) $input['deployment_agreement'])   : null;
+    $termination_conditions = isset($input['termination_conditions']) ? trim((string) $input['termination_conditions']) : null;
+
+    if ($confirmed_salary !== null && $confirmed_salary < 7000) {
+        throw new Exception('Confirmed salary must be at least ₱7,000 (RA 10361).');
+    }
+
+    if (empty($rest_days_input)) {
+        throw new Exception('Select at least one rest day for the contract.');
+    }
 
     $endDt = carelink_hire_parse_ymd($contract_end_raw);
     if ($endDt === null) {
@@ -174,9 +196,22 @@ try {
     $pre = carelink_generate_employment_contract($conn, $application_id, $parent_id, $helper_id, [
         'application_status_required' => 'hireable',
         'skip_persist' => true,
-        'contract_end_date' => $contract_end_raw,
-        'contract_start_date' => $contract_start_raw,
+        'contract_end_date'    => $contract_end_raw,
+        'contract_start_date'  => $contract_start_raw,
         'contract_terms_notes' => ($notesDb !== null && $notesDb !== '') ? $notesDb : '',
+        'contract_duration'    => $contract_duration,
+        'confirmed_salary'     => $confirmed_salary,
+        'work_hours'           => $work_hours,
+        'rest_days'            => $rest_days,
+        'vacation_leave_days'  => $vacation_leave_days,
+        'sick_leave_days'      => $sick_leave_days,
+        'special_conditions'   => $special_conditions,
+        'overtime_rate'          => $overtime_rate,
+        'payment_schedule'       => $payment_schedule,
+        'other_benefits'         => $other_benefits,
+        'debt_agreement'         => $debt_agreement,
+        'deployment_agreement'   => $deployment_agreement,
+        'termination_conditions' => $termination_conditions,
     ]);
 
     $conn->begin_transaction();
@@ -234,7 +269,20 @@ try {
         $templateVer,
         $startDb,
         $contract_end_raw,
-        $notesDb
+        $notesDb,
+        $contract_duration,
+        $confirmed_salary,
+        $work_hours,
+        $rest_days,
+        $vacation_leave_days,
+        $sick_leave_days,
+        $special_conditions,
+        $overtime_rate,
+        $payment_schedule,
+        $other_benefits,
+        $debt_agreement,
+        $deployment_agreement,
+        $termination_conditions
     );
 
     $conn->commit();

@@ -24,9 +24,8 @@ try {
 
     // 1. Get helper's profile and location
     $helperStmt = $conn->prepare("
-        SELECT hp.*, u.province, u.municipality, u.latitude, u.longitude
+        SELECT hp.*
         FROM helper_profiles hp
-        JOIN users u ON hp.user_id = u.user_id
         WHERE hp.user_id = ?
     ");
     $helperStmt->bind_param("i", $helper_id);
@@ -79,25 +78,26 @@ try {
 
     // 4. Main query - Get ONLY the helper's saved jobs
     $jobQuery = "
-        SELECT 
+        SELECT
             jp.*,
             u.first_name as parent_first_name,
             u.last_name as parent_last_name,
-            u.province as parent_province,
-            u.municipality as parent_municipality,
+            pp.province as parent_province,
+            pp.municipality as parent_municipality,
             u.status as parent_account_status,
-            u.latitude as parent_lat,
-            u.longitude as parent_lng,
+            pp.latitude as parent_lat,
+            pp.longitude as parent_lng,
             COALESCE(pr.rating, 0) as parent_rating,
             sj.saved_at
         FROM saved_jobs sj
         JOIN job_posts jp ON sj.job_post_id = jp.job_post_id
         JOIN users u ON jp.parent_id = u.user_id
+        LEFT JOIN parent_profiles pp ON pp.user_id = u.user_id
         LEFT JOIN (
-            SELECT ratee_id, AVG(overall_rating) as rating
-            FROM ratings
-            GROUP BY ratee_id
-        ) pr ON jp.parent_id = pr.ratee_id
+            SELECT reviewee_id, AVG(rating) as rating
+            FROM placement_reviews
+            GROUP BY reviewee_id
+        ) pr ON jp.parent_id = pr.reviewee_id
         WHERE sj.helper_id = ?
         ORDER BY sj.saved_at DESC
     ";

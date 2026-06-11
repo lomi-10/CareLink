@@ -44,6 +44,35 @@ export function useRecommendations() {
     }
   };
 
+  // Toggle saved status for a recommendation (mirrors useBrowseJobs.toggleSaveJob)
+  const toggleSaveJob = async (jobId: string) => {
+    try {
+      const userData = await AsyncStorage.getItem('user_data');
+      if (!userData) return;
+      const user = JSON.parse(userData);
+
+      const job = recommendations.find(j => j.job_post_id === jobId);
+      if (!job) return;
+
+      const newSavedStatus = !job.is_saved;
+      setRecommendations(prev =>
+        prev.map(j => j.job_post_id === jobId ? { ...j, is_saved: newSavedStatus } : j)
+      );
+
+      const endpoint = newSavedStatus ? '/helper/save_job.php' : '/helper/unsave_job.php';
+      await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_post_id: jobId, helper_id: user.user_id }),
+      });
+    } catch (err) {
+      console.error('Error toggling save job:', err);
+      setRecommendations(prev =>
+        prev.map(j => j.job_post_id === jobId ? { ...j, is_saved: !j.is_saved } : j)
+      );
+    }
+  };
+
   // Mark recommendation as not interested
   const markNotInterested = async (jobId: string) => {
     try {
@@ -91,6 +120,7 @@ export function useRecommendations() {
     recommendations,
     loading,
     error,
+    toggleSaveJob,
     markNotInterested,
     getMoreLikeThis,
     refresh: refreshRecommendations,

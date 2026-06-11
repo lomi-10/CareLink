@@ -83,23 +83,17 @@ export default function ParentLayout() {
       <ParentThemeProvider>
         <RoleScreenBackground role="parent">
           <View style={styles.container}>
-            <View style={styles.pendingBanner}>
-              <Ionicons name="time-outline" size={20} color="#007AFF" />
-              <View style={styles.bannerText}>
-                <Text style={styles.bannerTitle}>Account pending verification</Text>
-                <Text style={styles.bannerSubtitle}>
-                  Complete your profile, upload documents, and wait for PESO to approve your account.
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.bannerCta}
-                onPress={() => router.push("/(parent)/profile" as never)}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.bannerCtaText}>Complete profile</Text>
-                <Ionicons name="chevron-forward" size={16} color="#1D4ED8" />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.pendingBanner}
+              onPress={() => router.push("/(parent)/profile" as never)}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="time-outline" size={16} color="#1D4ED8" />
+              <Text style={styles.bannerText} numberOfLines={1}>
+                Pending verification — complete your profile to get approved
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="#1D4ED8" />
+            </TouchableOpacity>
             <View style={styles.content}>
               <Slot />
             </View>

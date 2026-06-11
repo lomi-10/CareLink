@@ -1,138 +1,131 @@
-// components/parent/browse/HelperCard.tsx
-// Individual helper card in browse grid
-
+// components/parent/browse/HelperCard.tsx — Desktop 3-col grid card (warm palette)
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { FontFamily } from '@/constants/GlobalStyles';
+import {
+  BG, BROWN, CARAMEL, GOLD, DARK, MUTED, DIVIDER, ICON_BG, SURFACE, GREEN, SUCCESS_BG,
+} from '@/components/parent/home/parentWarmTheme';
 import type { HelperProfile } from '@/hooks/parent';
-import { theme } from '@/constants/theme';
+
+const CARD_SHADOW = Platform.select({
+  ios:     { shadowColor: '#8B5A2B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
+  android: { elevation: 2 },
+  default: { boxShadow: '0 4px 14px rgba(139,90,43,0.08)' } as any,
+});
 
 interface HelperCardProps {
   helper: HelperProfile;
   onPress: () => void;
   onInvite?: () => void;
-  /** 0–100 when an open job is used for ranking */
   matchScore?: number;
   matchReasons?: string[];
 }
 
 export function HelperCard({ helper, onPress, onInvite, matchScore, matchReasons }: HelperCardProps) {
-  const getVerificationBadge = () => {
-    switch (helper.verification_status) {
-      case 'Verified':
-        return { icon: 'checkmark-circle', color: '#34C759', text: 'Verified' };
-      case 'Pending':
-        return { icon: 'time', color: '#FF9500', text: 'Pending' };
-      default:
-        return null;
-    }
-  };
-
-  const badge = getVerificationBadge();
-
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
-      {/* Profile Image */}
-      <View style={styles.imageContainer}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
+      {/* Photo */}
+      <View style={styles.imageWrap}>
         {helper.profile_image ? (
           <Image source={{ uri: helper.profile_image }} style={styles.image} />
         ) : (
-          <View style={styles.imagePlaceholder}>
-            <Ionicons name="person" size={40} color="#ccc" />
-          </View>
-        )}
-        
-        {/* Verification Badge */}
-        {badge && (
-          <View style={[styles.badge, { backgroundColor: badge.color }]}>
-            <Ionicons name={badge.icon as any} size={12} color="#fff" />
+          <View style={styles.imageFallback}>
+            <Ionicons name="person" size={38} color={CARAMEL} />
           </View>
         )}
 
-        {/* Availability Indicator */}
+        {/* Availability dot */}
         {helper.availability_status === 'Available' && (
-          <View style={styles.availableBadge}>
-            <View style={styles.availableDot} />
-            <Text style={styles.availableText}>Available</Text>
+          <View style={styles.availDot} />
+        )}
+
+        {/* PESO badge */}
+        {helper.verification_status === 'Verified' && (
+          <View style={styles.pesoBadge}>
+            <Ionicons name="shield-checkmark" size={11} color={GREEN} />
           </View>
         )}
       </View>
 
-      {/* Helper Info */}
+      {/* Info */}
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
-          {helper.full_name}
-        </Text>
-
-        {matchScore != null && matchScore > 0 && (
-          <View style={styles.matchRow}>
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>{helper.full_name}</Text>
+          {matchScore != null && matchScore > 0 && (
             <View style={styles.matchBadge}>
-              <Ionicons name="analytics" size={12} color={theme.color.parent} />
-              <Text style={styles.matchBadgeText}>Match {matchScore}%</Text>
+              <Text style={styles.matchText}>{matchScore}%</Text>
             </View>
-            {matchReasons?.[0] ? (
-              <Text style={styles.matchHint} numberOfLines={2}>
-                {matchReasons[0]}
-              </Text>
-            ) : null}
-          </View>
-        )}
-
-        {/* Categories */}
-        <View style={styles.categoryRow}>
-          {helper.categories.slice(0, 2).map((cat, index) => (
-            <View key={index} style={styles.categoryPill}>
-              <Text style={styles.categoryText}>{cat}</Text>
-            </View>
-          ))}
-          {helper.categories.length > 2 && (
-            <Text style={styles.moreText}>+{helper.categories.length - 2}</Text>
           )}
         </View>
 
-        {/* Experience & Rating */}
-        <View style={styles.statsRow}>
-          {helper.experience_years !== undefined && (
-            <View style={styles.stat}>
-              <Ionicons name="briefcase-outline" size={12} color="#666" />
-              <Text style={styles.statText}>{helper.experience_years} yrs</Text>
+        {/* Exp + distance */}
+        <View style={styles.metaRow}>
+          {helper.experience_years != null && (
+            <View style={styles.metaItem}>
+              <Ionicons name="briefcase-outline" size={12} color={MUTED} />
+              <Text style={styles.metaText}>{helper.experience_years} yrs exp</Text>
             </View>
           )}
-          
-          {helper.rating_average !== undefined && helper.rating_count && helper.rating_count > 0 && (
-            <View style={styles.stat}>
-              <Ionicons name="star" size={12} color="#FF9500" />
-              <Text style={styles.statText}>
-                {helper.rating_average.toFixed(1)} ({helper.rating_count})
+          {helper.distance != null && (
+            <View style={styles.metaItem}>
+              <Ionicons name="location-outline" size={12} color={MUTED} />
+              <Text style={styles.metaText}>
+                {helper.distance < 1
+                  ? `${(helper.distance * 1000).toFixed(0)}m`
+                  : `${helper.distance.toFixed(1)} km`} away
               </Text>
             </View>
           )}
         </View>
 
-        {/* Distance */}
-        {helper.distance !== undefined && (
-          <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={14} color="#666" />
-            <Text style={styles.locationText}>
-              {helper.distance < 1
-                ? `${(helper.distance * 1000).toFixed(0)}m away`
-                : `${helper.distance.toFixed(1)} km away`}
+        {/* Rating */}
+        {(helper.rating_count ?? 0) > 0 && (
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={13} color={GOLD} />
+            <Text style={styles.ratingText}>
+              {Number(helper.rating_average).toFixed(1)}
+              <Text style={styles.ratingCount}> ({helper.rating_count})</Text>
             </Text>
           </View>
         )}
 
-        {/* Quick Action Button */}
+        {/* Category chips */}
+        {helper.categories?.length > 0 && (
+          <View style={styles.chipsRow}>
+            {helper.categories.slice(0, 2).map((cat, i) => (
+              <View key={i} style={styles.chip}>
+                <Text style={styles.chipText}>{cat}</Text>
+              </View>
+            ))}
+            {helper.categories.length > 2 && (
+              <Text style={styles.moreChips}>+{helper.categories.length - 2}</Text>
+            )}
+          </View>
+        )}
+
+        {/* Why this match */}
+        {matchScore != null && matchScore > 0 && matchReasons?.[0] && (
+          <View style={styles.reasonRow}>
+            <Ionicons name="sparkles-outline" size={12} color={CARAMEL} />
+            <Text style={styles.reasonText} numberOfLines={1}>{matchReasons[0]}</Text>
+          </View>
+        )}
+
+        {/* Availability text */}
+        {helper.availability_status === 'Available' && (
+          <Text style={styles.availText}>Available: Immediately</Text>
+        )}
+
+        {/* Invite button */}
         {onInvite && (
           <TouchableOpacity
-            style={styles.inviteButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              onInvite();
-            }}
-            activeOpacity={0.7}
+            style={styles.inviteBtn}
+            onPress={(e) => { e.stopPropagation(); onInvite(); }}
+            activeOpacity={0.8}
           >
-            <Ionicons name="paper-plane-outline" size={14} color={theme.color.parent} />
-            <Text style={styles.inviteButtonText}>Invite to Apply</Text>
+            <Ionicons name="paper-plane-outline" size={14} color={BROWN} />
+            <Text style={styles.inviteBtnText}>Invite to Apply</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -141,148 +134,72 @@ export function HelperCard({ helper, onPress, onInvite, matchScore, matchReasons
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+  card: {
+    backgroundColor: SURFACE,
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: DIVIDER,
+    marginBottom: 4,
+    ...CARD_SHADOW,
   },
-  imageContainer: {
-    position: 'relative',
-    marginBottom: 12,
+  imageWrap: { position: 'relative' },
+  image: { width: '100%', height: 160 },
+  imageFallback: {
+    width: '100%', height: 160,
+    backgroundColor: ICON_BG,
+    alignItems: 'center', justifyContent: 'center',
   },
-  image: {
-    width: '100%',
-    height: 160,
-    borderRadius: 12,
+  availDot: {
+    position: 'absolute', bottom: 10, left: 10,
+    width: 10, height: 10, borderRadius: 5,
+    backgroundColor: GREEN,
+    borderWidth: 2, borderColor: SURFACE,
   },
-  imagePlaceholder: {
-    width: '100%',
-    height: 160,
-    borderRadius: 12,
-    backgroundColor: '#F0F0F0',
-    alignItems: 'center',
-    justifyContent: 'center',
+  pesoBadge: {
+    position: 'absolute', top: 8, right: 8,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: SUCCESS_BG,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: GREEN,
   },
-  badge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  availableBadge: {
-    position: 'absolute',
-    bottom: 8,
-    left: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(52, 199, 89, 0.9)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  availableDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#fff',
-  },
-  availableText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  info: {
-    gap: 8,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1C1E',
-  },
-  matchRow: { gap: 4 },
+
+  info: { padding: 14, gap: 8 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  name: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15.5, color: DARK, flex: 1 },
   matchBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 4,
-    backgroundColor: theme.color.parentSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: SUCCESS_BG,
     borderRadius: 8,
+    paddingHorizontal: 9, paddingVertical: 3,
   },
-  matchBadgeText: { fontSize: 11, fontWeight: '800', color: theme.color.parent },
-  matchHint: { fontSize: 11, color: '#666', lineHeight: 15 },
-  categoryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 4,
+  matchText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: GREEN },
+
+  metaRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: MUTED },
+
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ratingText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK },
+  ratingCount: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },
+
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: {
+    backgroundColor: ICON_BG, borderRadius: 8,
+    paddingHorizontal: 9, paddingVertical: 4,
   },
-  categoryPill: {
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+  chipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11.5, color: BROWN },
+  moreChips: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, alignSelf: 'center' },
+
+  reasonRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  reasonText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, flexShrink: 1, fontStyle: 'italic' },
+
+  availText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: GREEN },
+
+  inviteBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, marginTop: 4,
+    borderWidth: 1.5, borderColor: CARAMEL,
+    borderRadius: 10, paddingVertical: 9,
   },
-  categoryText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  moreText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#666',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  stat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  locationText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  inviteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#F0F8FF',
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginTop: 4,
-  },
-  inviteButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#007AFF',
-  },
+  inviteBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: BROWN },
 });

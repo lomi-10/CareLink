@@ -1,18 +1,20 @@
 // components/helper/jobs/SearchBar.tsx
-// Search bar with suggestions and recent searches
+// Search bar with suggestions and recent searches.
+// Pass `helperTheme` from the helper browse screen to get the warm brown palette.
 
-import React, { useState, useRef } from 'react';
-import {
-  View,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  FlatList,
-  Modal,
-  Platform,
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import React, { useRef, useState } from 'react';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { FontFamily } from '@/constants/GlobalStyles';
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface SearchBarProps {
   value: string;
@@ -23,7 +25,10 @@ interface SearchBarProps {
   onSelectSuggestion: (suggestion: string) => void;
   onClearRecent: () => void;
   placeholder?: string;
+  helperTheme?: boolean;   // true → warm brown/orange palette
 }
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function SearchBar({
   value,
@@ -33,7 +38,8 @@ export function SearchBar({
   recentSearches,
   onSelectSuggestion,
   onClearRecent,
-  placeholder = "Search jobs, skills, or locations...",
+  placeholder = 'Search jobs, skills, or locations...',
+  helperTheme = false,
 }: SearchBarProps) {
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -45,23 +51,73 @@ export function SearchBar({
     inputRef.current?.focus();
   };
 
-  const handleSelectSuggestion = (text: string) => {
+  const handleSelect = (text: string) => {
     onSelectSuggestion(text);
     setIsFocused(false);
     inputRef.current?.blur();
   };
 
+  // ── Palette ──
+  const c = helperTheme ? {
+    inputBg:          '#F5E6CC',
+    inputBgFocused:   '#FFFFFF',
+    inputBorder:      '#D4B896',
+    inputBorderFocus: '#E86019',
+    inputText:        '#2A1608',
+    placeholder:      '#B0A090',
+    iconColor:        '#7A5C3E',
+    clearColor:       '#B0A090',
+    dropdownBg:       '#FFFFFF',
+    dropdownBorder:   '#EDE0D0',
+    headerText:       '#7A5C3E',
+    clearText:        '#E86019',
+    itemText:         '#2A1608',
+    itemBorder:       '#F5E6CC',
+    shadowColor:      '#8B5E3C',
+  } : {
+    inputBg:          '#F5F5F5',
+    inputBgFocused:   '#FFFFFF',
+    inputBorder:      'transparent',
+    inputBorderFocus: '#007AFF',
+    inputText:        '#1A1C1E',
+    placeholder:      '#999999',
+    iconColor:        '#666666',
+    clearColor:       '#999999',
+    dropdownBg:       '#FFFFFF',
+    dropdownBorder:   '#F0F0F0',
+    headerText:       '#666666',
+    clearText:        '#007AFF',
+    itemText:         '#1A1C1E',
+    itemBorder:       '#F5F5F5',
+    shadowColor:      '#000000',
+  };
+
+  const fontRegular  = helperTheme ? FontFamily.fredokaRegular  : 'System';
+  const fontSemiBold = helperTheme ? FontFamily.fredokaSemiBold : 'System';
+
   return (
     <View style={styles.container}>
-      {/* Search Input */}
-      <View style={[styles.searchContainer, isFocused && styles.searchContainerFocused]}>
-        <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-        
+      {/* ── Input ── */}
+      <View
+        style={[
+          styles.inputWrap,
+          {
+            backgroundColor: isFocused ? c.inputBgFocused : c.inputBg,
+            borderColor:     isFocused ? c.inputBorderFocus : c.inputBorder,
+          },
+          isFocused && Platform.select({
+            ios:     { shadowColor: c.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6 },
+            android: { elevation: 4 },
+          }),
+        ]}
+      >
+        <Ionicons name="search" size={20} color={c.iconColor} style={styles.icon} />
+
         <TextInput
           ref={inputRef}
-          style={styles.input}
+          style={[styles.input, { color: c.inputText, fontFamily: fontRegular }]}
           placeholder={placeholder}
-          placeholderTextColor="#999"
+          placeholderTextColor={c.placeholder}
           value={value}
           onChangeText={onChangeText}
           onFocus={() => setIsFocused(true)}
@@ -71,52 +127,65 @@ export function SearchBar({
         />
 
         {value.length > 0 && (
-          <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
-            <Ionicons name="close-circle" size={20} color="#999" />
+          <TouchableOpacity onPress={handleClear} style={styles.clearBtn}>
+            <Ionicons name="close-circle" size={20} color={c.clearColor} />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Suggestions Dropdown */}
+      {/* ── Suggestions dropdown ── */}
       {showSuggestions && (
-        <View style={styles.suggestionsContainer}>
-          {/* Recent Searches */}
+        <View
+          style={[
+            styles.dropdown,
+            { backgroundColor: c.dropdownBg },
+            Platform.select({
+              ios:     { shadowColor: c.shadowColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 },
+              android: { elevation: 8 },
+            }),
+          ]}
+        >
+          {/* Recent searches */}
           {recentSearches.length > 0 && value.length === 0 && (
             <>
-              <View style={styles.suggestionHeader}>
-                <Text style={styles.suggestionHeaderText}>Recent Searches</Text>
+              <View style={[styles.dropdownHeader, { borderBottomColor: c.dropdownBorder }]}>
+                <Text style={[styles.dropdownHeaderText, { color: c.headerText, fontFamily: fontSemiBold }]}>
+                  Recent Searches
+                </Text>
                 <TouchableOpacity onPress={onClearRecent}>
-                  <Text style={styles.clearRecentText}>Clear</Text>
+                  <Text style={[styles.dropdownClear, { color: c.clearText, fontFamily: fontSemiBold }]}>Clear</Text>
                 </TouchableOpacity>
               </View>
-              {recentSearches.map((search, index) => (
+              {recentSearches.map((s, i) => (
                 <TouchableOpacity
-                  key={`recent-${index}`}
-                  style={styles.suggestionItem}
-                  onPress={() => handleSelectSuggestion(search)}
+                  key={`recent-${i}`}
+                  style={[styles.dropdownItem, { borderBottomColor: c.itemBorder }]}
+                  onPress={() => handleSelect(s)}
                 >
-                  <Ionicons name="time-outline" size={18} color="#666" />
-                  <Text style={styles.suggestionText}>{search}</Text>
+                  <Ionicons name="time-outline" size={18} color={c.iconColor} />
+                  <Text style={[styles.itemText, { color: c.itemText, fontFamily: fontRegular }]}>{s}</Text>
                 </TouchableOpacity>
               ))}
             </>
           )}
 
-          {/* Search Suggestions */}
+          {/* Search suggestions */}
           {suggestions.length > 0 && value.length > 0 && (
             <>
-              <View style={styles.suggestionHeader}>
-                <Text style={styles.suggestionHeaderText}>Suggestions</Text>
+              <View style={[styles.dropdownHeader, { borderBottomColor: c.dropdownBorder }]}>
+                <Text style={[styles.dropdownHeaderText, { color: c.headerText, fontFamily: fontSemiBold }]}>
+                  Suggestions
+                </Text>
               </View>
-              {suggestions.map((suggestion, index) => (
+              {suggestions.map((s, i) => (
                 <TouchableOpacity
-                  key={`suggestion-${index}`}
-                  style={styles.suggestionItem}
-                  onPress={() => handleSelectSuggestion(suggestion)}
+                  key={`sug-${i}`}
+                  style={[styles.dropdownItem, { borderBottomColor: c.itemBorder }]}
+                  onPress={() => handleSelect(s)}
                 >
-                  <Ionicons name="search" size={18} color="#666" />
-                  <Text style={styles.suggestionText}>{suggestion}</Text>
-                  <Ionicons name="arrow-forward" size={16} color="#ccc" style={{ marginLeft: 'auto' }} />
+                  <Ionicons name="search" size={18} color={c.iconColor} />
+                  <Text style={[styles.itemText, { color: c.itemText, fontFamily: fontRegular }]}>{s}</Text>
+                  <Ionicons name="arrow-forward" size={16} color={c.clearColor} style={{ marginLeft: 'auto' }} />
                 </TouchableOpacity>
               ))}
             </>
@@ -127,100 +196,49 @@ export function SearchBar({
   );
 }
 
+// ─── Layout styles (colors applied inline) ────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
-    zIndex: 100,
-  },
-  searchContainer: {
+  container: { zIndex: 100 },
+  inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 48,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    borderWidth: 1.5,
   },
-  searchContainerFocused: {
-    backgroundColor: '#fff',
-    borderColor: '#007AFF',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#007AFF',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1A1C1E',
-    paddingVertical: 0,
-  },
-  clearButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  suggestionsContainer: {
+  icon:     { marginRight: 8 },
+  input:    { flex: 1, fontSize: 15, paddingVertical: 0 },
+  clearBtn: { padding: 4, marginLeft: 8 },
+
+  dropdown: {
     position: 'absolute',
-    top: 52,
+    top: 54,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
     borderRadius: 12,
     maxHeight: 300,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    overflow: 'hidden',
+    zIndex: 200,
   },
-  suggestionHeader: {
+  dropdownHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
-  suggestionHeaderText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#666',
-    textTransform: 'uppercase',
-  },
-  clearRecentText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  suggestionItem: {
+  dropdownHeaderText: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4 },
+  dropdownClear:      { fontSize: 13 },
+  dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
   },
-  suggestionText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1A1C1E',
-  },
+  itemText: { flex: 1, fontSize: 15 },
 });

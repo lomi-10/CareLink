@@ -21,11 +21,33 @@ function carelink_contract_upsert_row(
     string $templateVer,
     ?string $employmentStart = null,
     ?string $employmentEnd = null,
-    ?string $termsNotes = null
+    ?string $termsNotes = null,
+    ?string $contractDuration = null,
+    ?float $confirmedSalary = null,
+    ?string $workHours = null,
+    ?string $restDays = null,
+    ?int $vacationLeaveDays = null,
+    ?int $sickLeaveDays = null,
+    ?string $specialConditions = null,
+    ?string $overtimeRate = null,
+    ?string $paymentSchedule = null,
+    ?string $otherBenefits = null,
+    ?string $debtAgreement = null,
+    ?string $deploymentAgreement = null,
+    ?string $terminationConditions = null
 ): void {
     $ins = $conn->prepare("
-        INSERT INTO contracts (application_id, job_post_id, employer_id, helper_id, pdf_file_path, template_version, employment_start_date, employment_end_date, terms_notes, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        INSERT INTO contracts (
+            application_id, job_post_id, employer_id, helper_id,
+            pdf_file_path, template_version,
+            employment_start_date, employment_end_date, terms_notes,
+            contract_duration, confirmed_salary, work_hours, rest_days,
+            vacation_leave_days, sick_leave_days, special_conditions,
+            overtime_rate, payment_schedule, other_benefits, debt_agreement,
+            deployment_agreement, termination_conditions,
+            created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE
             pdf_file_path = VALUES(pdf_file_path),
             template_version = VALUES(template_version),
@@ -35,13 +57,26 @@ function carelink_contract_upsert_row(
             employment_start_date = VALUES(employment_start_date),
             employment_end_date = VALUES(employment_end_date),
             terms_notes = VALUES(terms_notes),
+            contract_duration = VALUES(contract_duration),
+            confirmed_salary = VALUES(confirmed_salary),
+            work_hours = VALUES(work_hours),
+            rest_days = VALUES(rest_days),
+            vacation_leave_days = VALUES(vacation_leave_days),
+            sick_leave_days = VALUES(sick_leave_days),
+            special_conditions = VALUES(special_conditions),
+            overtime_rate = VALUES(overtime_rate),
+            payment_schedule = VALUES(payment_schedule),
+            other_benefits = VALUES(other_benefits),
+            debt_agreement = VALUES(debt_agreement),
+            deployment_agreement = VALUES(deployment_agreement),
+            termination_conditions = VALUES(termination_conditions),
             created_at = NOW()
     ");
     if (!$ins) {
         throw new Exception('Failed to prepare insert: ' . $conn->error);
     }
     $ins->bind_param(
-        'iiiisssss',
+        'iiiissssssdssiisssssss',
         $application_id,
         $job_post_id,
         $employer_id,
@@ -50,7 +85,20 @@ function carelink_contract_upsert_row(
         $templateVer,
         $employmentStart,
         $employmentEnd,
-        $termsNotes
+        $termsNotes,
+        $contractDuration,
+        $confirmedSalary,
+        $workHours,
+        $restDays,
+        $vacationLeaveDays,
+        $sickLeaveDays,
+        $specialConditions,
+        $overtimeRate,
+        $paymentSchedule,
+        $otherBenefits,
+        $debtAgreement,
+        $deploymentAgreement,
+        $terminationConditions
     );
     if (!$ins->execute()) {
         $err = $ins->error;
@@ -119,7 +167,22 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
             jp.provides_accommodation,
             c.employment_start_date,
             c.employment_end_date,
-            c.terms_notes
+            c.terms_notes,
+            c.contract_duration,
+            c.confirmed_salary,
+            c.work_hours,
+            c.rest_days,
+            c.vacation_leave_days,
+            c.sick_leave_days,
+            c.special_conditions,
+            c.overtime_rate,
+            c.payment_schedule,
+            c.other_benefits,
+            c.debt_agreement,
+            c.deployment_agreement,
+            c.termination_conditions,
+            ja.employer_signed_at,
+            ja.helper_signed_at
         FROM job_applications ja
         INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
         LEFT JOIN contracts c ON c.application_id = ja.application_id
@@ -205,11 +268,6 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     $employerName = carelink_contract_escape(carelink_contract_full_name($employerUser));
     $helperName   = carelink_contract_escape(carelink_contract_full_name($helperUser));
 
-    $employerCivil = 'N/A';
-    if (is_array($pp) && isset($pp['civil_status']) && trim((string) $pp['civil_status']) !== '') {
-        $employerCivil = carelink_contract_escape(trim((string) $pp['civil_status']));
-    }
-
     $helperCivil = 'N/A';
     if (is_array($hp) && isset($hp['civil_status']) && trim((string) $hp['civil_status']) !== '') {
         $helperCivil = carelink_contract_escape(trim((string) $hp['civil_status']));
@@ -233,21 +291,20 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
         ? carelink_contract_escape(trim((string) $hp['contact_number']))
         : 'N/A';
 
+    $employerAddrPhone = $employerAddr . ($employerPhone !== 'N/A' ? ' / Tel: ' . $employerPhone : '');
+    $helperAddrPhone = $helperAddr . ($helperPhone !== 'N/A' ? ' / Tel: ' . $helperPhone : '');
+
     $birth = (is_array($hp) && isset($hp['birth_date'])) ? (string) $hp['birth_date'] : null;
-    $helperAge = carelink_contract_escape(carelink_contract_age_from_birth($birth));
+    $helperAgeRaw = carelink_contract_age_from_birth($birth);
+    $helperAge = carelink_contract_escape($helperAgeRaw);
+    $helperAgeNum = is_numeric($helperAgeRaw) ? (int) $helperAgeRaw : null;
+    $isMinor = ($helperAgeNum !== null && $helperAgeNum >= 15 && $helperAgeNum <= 17);
 
     $jobTitle = carelink_contract_escape(trim((string) ($row['job_title'] ?? 'Kasambahay')));
     $desc = isset($row['description']) ? trim((string) $row['description']) : '';
     $custSk = isset($row['custom_skills']) ? trim((string) $row['custom_skills']) : '';
-    $jobDuties = trim($desc . ($custSk !== '' ? "\n\nMga kasanayan / tungkulin: " . $custSk : ''));
-    if ($jobDuties === '') {
-        $jobDuties = 'Mga gawain sa tahanan ayon sa napagkasunduan.';
-    }
-    $jobDuties = carelink_contract_escape($jobDuties);
-
-    $employmentWork = carelink_contract_escape(
-        trim((string) ($row['employment_type'] ?? 'N/A')) . ' / ' . trim((string) ($row['work_schedule'] ?? 'N/A'))
-    );
+    $jobDutiesRaw = trim($desc . ($custSk !== '' ? "\nMga kasanayan / tungkulin: " . $custSk : ''));
+    $jobDutiesItems = array_map('carelink_contract_escape', carelink_contract_split_duties($jobDutiesRaw));
 
     $jobPostStartRaw = isset($row['start_date']) ? (string) $row['start_date'] : '';
     $storedStartRaw = isset($row['employment_start_date']) && $row['employment_start_date'] !== null && trim((string) $row['employment_start_date']) !== ''
@@ -264,28 +321,114 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     $effectiveEndRaw = $optEndRaw !== '' ? $optEndRaw : $storedEndRaw;
     $endDate = $effectiveEndRaw !== '' ? carelink_contract_escape(substr($effectiveEndRaw, 0, 32)) : 'N/A';
 
-    $storedNotesRaw = isset($row['contract_terms_notes']) ? trim((string) $row['contract_terms_notes']) : '';
+    $storedNotesRaw = isset($row['terms_notes']) ? trim((string) $row['terms_notes']) : '';
     $optNotesRaw = isset($opts['contract_terms_notes']) ? trim((string) $opts['contract_terms_notes']) : '';
     $effectiveNotesRaw = $optNotesRaw !== '' ? $optNotesRaw : $storedNotesRaw;
     $contractNotesEsc = $effectiveNotesRaw !== '' ? carelink_contract_escape($effectiveNotesRaw) : 'N/A';
 
-    $salaryAmt = carelink_contract_escape(trim((string) ($row['salary_offered'] ?? '')) . ' (' . trim((string) ($row['salary_period'] ?? '')) . ')');
+    // Confirmed salary: prefer opt > contracts row > job_posts fallback
+    $optSalary = isset($opts['confirmed_salary']) && $opts['confirmed_salary'] !== null ? floatval($opts['confirmed_salary']) : null;
+    $storedSalary = isset($row['confirmed_salary']) && $row['confirmed_salary'] !== null ? floatval($row['confirmed_salary']) : null;
+    $effectiveSalary = $optSalary ?? $storedSalary ?? floatval($row['salary_offered'] ?? 0);
+    $salaryPeriodRaw = trim((string) ($row['salary_period'] ?? 'Monthly'));
+    $salaryAmt = carelink_contract_escape('₱' . number_format($effectiveSalary, 2) . ' / ' . $salaryPeriodRaw . ' (cash)');
 
-    $daysOffRaw = isset($row['days_off']) ? $row['days_off'] : '';
-    $daysOffStr = 'N/A';
-    if ($daysOffRaw !== null && $daysOffRaw !== '') {
-        if (is_string($daysOffRaw) && strlen($daysOffRaw) > 0 && ($daysOffRaw[0] === '[' || $daysOffRaw[0] === '{')) {
-            $dec = json_decode($daysOffRaw, true);
-            if (is_array($dec)) {
-                $daysOffStr = implode(', ', array_map('strval', $dec));
-            } else {
-                $daysOffStr = (string) $daysOffRaw;
-            }
+    // Work hours
+    $optWorkHours = isset($opts['work_hours']) ? trim((string) $opts['work_hours']) : '';
+    $workHoursEsc = $optWorkHours !== '' ? carelink_contract_escape($optWorkHours)
+        : (isset($row['work_hours']) && $row['work_hours'] !== null && trim((string) $row['work_hours']) !== ''
+            ? carelink_contract_escape(trim((string) $row['work_hours'])) : 'N/A');
+
+    // Rest days (from opts or contracts row)
+    $optRestDays = isset($opts['rest_days']) ? $opts['rest_days'] : null;
+    $storedRestDays = isset($row['rest_days']) ? $row['rest_days'] : null;
+    $effectiveRestRaw = $optRestDays !== null ? $optRestDays : $storedRestDays;
+    $restDaysStr = 'N/A';
+    if ($effectiveRestRaw !== null && $effectiveRestRaw !== '') {
+        if (is_array($effectiveRestRaw)) {
+            $restDaysStr = implode(', ', array_map('strval', $effectiveRestRaw));
+        } elseif (is_string($effectiveRestRaw) && strlen($effectiveRestRaw) > 0 && $effectiveRestRaw[0] === '[') {
+            $dec = json_decode($effectiveRestRaw, true);
+            $restDaysStr = is_array($dec) ? implode(', ', array_map('strval', $dec)) : $effectiveRestRaw;
         } else {
-            $daysOffStr = (string) $daysOffRaw;
+            $restDaysStr = (string) $effectiveRestRaw;
         }
     }
-    $daysOffStr = carelink_contract_escape($daysOffStr);
+    $restDaysEsc = carelink_contract_escape($restDaysStr);
+
+    // Leave days
+    $optVacation = isset($opts['vacation_leave_days']) ? intval($opts['vacation_leave_days']) : null;
+    $vacationDays = $optVacation ?? (isset($row['vacation_leave_days']) ? intval($row['vacation_leave_days']) : 5);
+    $optSick = isset($opts['sick_leave_days']) ? intval($opts['sick_leave_days']) : null;
+    $sickDays = $optSick ?? (isset($row['sick_leave_days']) ? intval($row['sick_leave_days']) : 5);
+
+    // Contract duration
+    $optDuration = isset($opts['contract_duration']) ? trim((string) $opts['contract_duration']) : '';
+    $contractDurationEsc = $optDuration !== '' ? carelink_contract_escape($optDuration)
+        : (isset($row['contract_duration']) && $row['contract_duration'] !== null && trim((string) $row['contract_duration']) !== ''
+            ? carelink_contract_escape(trim((string) $row['contract_duration'])) : 'N/A');
+
+    // BK-1 item 2: "Hanggang sa" — show "Walang takdang panahon" for indefinite contracts
+    $endDateDisplay = ($contractDurationEsc === 'Indefinite' || $endDate === 'N/A')
+        ? 'Walang takdang panahon'
+        : $endDate;
+
+    // Special conditions
+    $optSpecial = isset($opts['special_conditions']) ? trim((string) $opts['special_conditions']) : '';
+    $specialCondEsc = $optSpecial !== '' ? carelink_contract_escape($optSpecial)
+        : (isset($row['special_conditions']) && $row['special_conditions'] !== null && trim((string) $row['special_conditions']) !== ''
+            ? carelink_contract_escape(trim((string) $row['special_conditions'])) : 'N/A');
+
+    // BK-1 item 7b: overtime rate (opts > stored > default)
+    $optOvertimeRate = isset($opts['overtime_rate']) ? trim((string) $opts['overtime_rate']) : '';
+    $storedOvertimeRate = isset($row['overtime_rate']) && $row['overtime_rate'] !== null ? trim((string) $row['overtime_rate']) : '';
+    $effectiveOvertimeRate = $optOvertimeRate !== '' ? $optOvertimeRate : $storedOvertimeRate;
+    if ($effectiveOvertimeRate !== '') {
+        $overtimeRateEsc = is_numeric($effectiveOvertimeRate)
+            ? carelink_contract_escape('₱' . number_format((float) $effectiveOvertimeRate, 2) . ' kada oras (per hour)')
+            : carelink_contract_escape($effectiveOvertimeRate);
+    } else {
+        $overtimeRateEsc = 'Ayon sa kasunduan ng dalawang panig';
+    }
+
+    // BK-1 item 7c: salary payment schedule (opts > stored > default)
+    $optPaymentSchedule = isset($opts['payment_schedule']) ? trim((string) $opts['payment_schedule']) : '';
+    $storedPaymentSchedule = isset($row['payment_schedule']) && $row['payment_schedule'] !== null ? trim((string) $row['payment_schedule']) : '';
+    $effectivePaymentSchedule = $optPaymentSchedule !== '' ? $optPaymentSchedule : $storedPaymentSchedule;
+    $paymentScheduleEsc = $effectivePaymentSchedule !== '' ? carelink_contract_escape($effectivePaymentSchedule) : 'Buwanang pagbabayad';
+
+    // BK-1 item 10: other benefits (opts > stored > default "Wala")
+    $optOtherBenefits = isset($opts['other_benefits']) ? trim((string) $opts['other_benefits']) : '';
+    $storedOtherBenefits = isset($row['other_benefits']) && $row['other_benefits'] !== null ? trim((string) $row['other_benefits']) : '';
+    $effectiveOtherBenefits = $optOtherBenefits !== '' ? $optOtherBenefits : $storedOtherBenefits;
+    $otherBenefitsEsc = $effectiveOtherBenefits !== '' ? carelink_contract_escape($effectiveOtherBenefits) : 'Wala';
+
+    // BK-1 item 11: debt agreement (opts > stored > default "Wala")
+    $optDebtAgreement = isset($opts['debt_agreement']) ? trim((string) $opts['debt_agreement']) : '';
+    $storedDebtAgreement = isset($row['debt_agreement']) && $row['debt_agreement'] !== null ? trim((string) $row['debt_agreement']) : '';
+    $effectiveDebtAgreement = $optDebtAgreement !== '' ? $optDebtAgreement : $storedDebtAgreement;
+    $debtAgreementEsc = $effectiveDebtAgreement !== '' ? carelink_contract_escape($effectiveDebtAgreement) : 'Wala';
+
+    // BK-1 item 12: deployment cost agreement (opts > stored > default "Wala")
+    $optDeploymentAgreement = isset($opts['deployment_agreement']) ? trim((string) $opts['deployment_agreement']) : '';
+    $storedDeploymentAgreement = isset($row['deployment_agreement']) && $row['deployment_agreement'] !== null ? trim((string) $row['deployment_agreement']) : '';
+    $effectiveDeploymentAgreement = $optDeploymentAgreement !== '' ? $optDeploymentAgreement : $storedDeploymentAgreement;
+    $deploymentAgreementEsc = $effectiveDeploymentAgreement !== '' ? carelink_contract_escape($effectiveDeploymentAgreement) : 'Wala';
+
+    // BK-1 item 13: termination conditions (opts > stored > default)
+    $optTerminationConditions = isset($opts['termination_conditions']) ? trim((string) $opts['termination_conditions']) : '';
+    $storedTerminationConditions = isset($row['termination_conditions']) && $row['termination_conditions'] !== null ? trim((string) $row['termination_conditions']) : '';
+    $effectiveTerminationConditions = $optTerminationConditions !== '' ? $optTerminationConditions : $storedTerminationConditions;
+    $terminationConditionsEsc = $effectiveTerminationConditions !== '' ? carelink_contract_escape($effectiveTerminationConditions) : 'Ayon sa RA 10361';
+
+    // BK-1 item 14: termination pay = salary / 26 * 15
+    $terminationPayEsc = '₱' . number_format($effectiveSalary / 26 * 15, 2);
+
+    // BK-1 employer/helper signature dates (from job_applications, when already signed)
+    $employerSignedRaw = isset($row['employer_signed_at']) ? (string) $row['employer_signed_at'] : '';
+    $employerSignedDate = $employerSignedRaw !== '' ? carelink_contract_escape(substr($employerSignedRaw, 0, 10)) : '';
+    $helperSignedRaw = isset($row['helper_signed_at']) ? (string) $row['helper_signed_at'] : '';
+    $helperSignedDate = $helperSignedRaw !== '' ? carelink_contract_escape(substr($helperSignedRaw, 0, 10)) : '';
 
     $benefitsNotes = '';
     if (isset($row['benefits']) && trim((string) $row['benefits']) !== '') {
@@ -306,33 +449,60 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     $signedDate = carelink_contract_escape(date('Y-m-d'));
     $docRef = carelink_contract_escape('APP-' . $application_id . '-' . date('YmdHis'));
 
-    $salaryPeriodEsc = carelink_contract_escape(trim((string) ($row['salary_period'] ?? '')));
+    // BK-1 item 10: combine job-post benefits (meals/accommodation/etc.) with hire-time other benefits
+    $otherBenefitsParts = [];
+    if ($benefitsNotes !== 'N/A' && $benefitsNotes !== '') {
+        $otherBenefitsParts[] = $benefitsNotes;
+    }
+    if ($otherBenefitsEsc !== 'Wala' && $otherBenefitsEsc !== '') {
+        $otherBenefitsParts[] = $otherBenefitsEsc;
+    }
+    $otherBenefitsEsc = !empty($otherBenefitsParts) ? implode("\n\n", $otherBenefitsParts) : 'Wala';
+
+    // BK-1 item 15: other agreements = special conditions + free-form notes
+    $otherAgreementsParts = [];
+    if ($specialCondEsc !== 'N/A' && $specialCondEsc !== '') {
+        $otherAgreementsParts[] = $specialCondEsc;
+    }
+    if ($contractNotesEsc !== 'N/A' && $contractNotesEsc !== '') {
+        $otherAgreementsParts[] = $contractNotesEsc;
+    }
+    $otherAgreementsEsc = !empty($otherAgreementsParts) ? implode("\n\n", $otherAgreementsParts) : 'Wala';
 
     $data = [
-        'doc_ref' => $docRef,
-        'employer_name' => $employerName,
-        'employer_civil' => $employerCivil,
-        'employer_address' => $employerAddr,
-        'employer_phone' => $employerPhone,
-        'helper_name' => $helperName,
-        'helper_age' => $helperAge,
-        'helper_civil' => $helperCivil,
-        'helper_address' => $helperAddr,
-        'helper_phone' => $helperPhone,
-        'job_title' => $jobTitle,
-        'job_duties' => $jobDuties,
-        'employment_work' => $employmentWork,
-        'start_date' => $startDate,
-        'end_date' => $endDate,
-        'contract_notes' => $contractNotesEsc,
-        'salary_amount' => $salaryAmt,
-        'salary_period' => $salaryPeriodEsc,
-        'days_off' => $daysOffStr,
-        'prov_sss' => $provSss,
-        'prov_ph' => $provPh,
-        'prov_pi' => $provPi,
-        'benefits_notes' => $benefitsNotes,
-        'signed_date' => $signedDate,
+        'doc_ref'                => $docRef,
+        'application_id'         => $application_id,
+        'employer_name'          => $employerName,
+        'employer_addr_phone'    => $employerAddrPhone,
+        'place_of_work'          => $employerAddr,
+        'helper_name'            => $helperName,
+        'helper_civil'           => $helperCivil,
+        'helper_age'             => $helperAge,
+        'is_minor'               => $isMinor,
+        'helper_addr_phone'      => $helperAddrPhone,
+        'job_title'              => $jobTitle,
+        'job_duties_items'       => $jobDutiesItems,
+        'start_date'             => $startDate,
+        'end_date_display'       => $endDateDisplay,
+        'work_hours'             => $workHoursEsc,
+        'rest_days'              => $restDaysEsc,
+        'salary_amount'          => $salaryAmt,
+        'overtime_rate'          => $overtimeRateEsc,
+        'payment_schedule'       => $paymentScheduleEsc,
+        'prov_sss'               => $provSss,
+        'prov_ph'                => $provPh,
+        'prov_pi'                => $provPi,
+        'vacation_leave_days'    => $vacationDays,
+        'sick_leave_days'        => $sickDays,
+        'other_benefits'         => $otherBenefitsEsc,
+        'debt_agreement'         => $debtAgreementEsc,
+        'deployment_agreement'   => $deploymentAgreementEsc,
+        'termination_conditions' => $terminationConditionsEsc,
+        'termination_pay'        => $terminationPayEsc,
+        'other_agreements'       => $otherAgreementsEsc,
+        'employer_signed_date'   => $employerSignedDate,
+        'helper_signed_date'     => $helperSignedDate,
+        'signed_date'            => $signedDate,
     ];
 
     $html = carelink_bk1_build_html($data);
@@ -384,6 +554,19 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     $persistStart = $effectiveStartRaw !== '' ? substr($effectiveStartRaw, 0, 32) : null;
     $persistEnd = $effectiveEndRaw !== '' ? substr($effectiveEndRaw, 0, 32) : null;
     $persistNotes = $effectiveNotesRaw !== '' ? $effectiveNotesRaw : null;
+    $persistDuration   = $contractDurationEsc !== 'N/A' ? (isset($opts['contract_duration']) ? $opts['contract_duration'] : (isset($row['contract_duration']) ? $row['contract_duration'] : null)) : null;
+    $persistSalary     = $optSalary ?? $storedSalary ?? null;
+    $persistWorkHours  = $optWorkHours !== '' ? $optWorkHours : (isset($row['work_hours']) ? $row['work_hours'] : null);
+    $persistRestDays   = ($optRestDays !== null && $optRestDays !== '') ? (is_array($optRestDays) ? json_encode($optRestDays) : $optRestDays) : (isset($row['rest_days']) ? $row['rest_days'] : null);
+    $persistVacation   = $vacationDays;
+    $persistSick       = $sickDays;
+    $persistSpecial    = $optSpecial !== '' ? $optSpecial : (isset($row['special_conditions']) ? $row['special_conditions'] : null);
+    $persistOvertimeRate    = $optOvertimeRate !== '' ? $optOvertimeRate : ($storedOvertimeRate !== '' ? $storedOvertimeRate : null);
+    $persistPaymentSchedule = $optPaymentSchedule !== '' ? $optPaymentSchedule : ($storedPaymentSchedule !== '' ? $storedPaymentSchedule : null);
+    $persistOtherBenefits   = $optOtherBenefits !== '' ? $optOtherBenefits : ($storedOtherBenefits !== '' ? $storedOtherBenefits : null);
+    $persistDebtAgreement   = $optDebtAgreement !== '' ? $optDebtAgreement : ($storedDebtAgreement !== '' ? $storedDebtAgreement : null);
+    $persistDeploymentAgreement   = $optDeploymentAgreement !== '' ? $optDeploymentAgreement : ($storedDeploymentAgreement !== '' ? $storedDeploymentAgreement : null);
+    $persistTerminationConditions = $optTerminationConditions !== '' ? $optTerminationConditions : ($storedTerminationConditions !== '' ? $storedTerminationConditions : null);
     carelink_contract_upsert_row(
         $conn,
         $application_id,
@@ -394,7 +577,20 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
         $templateVer,
         $persistStart,
         $persistEnd,
-        $persistNotes
+        $persistNotes,
+        $persistDuration,
+        $persistSalary,
+        $persistWorkHours,
+        $persistRestDays,
+        $persistVacation,
+        $persistSick,
+        $persistSpecial,
+        $persistOvertimeRate,
+        $persistPaymentSchedule,
+        $persistOtherBenefits,
+        $persistDebtAgreement,
+        $persistDeploymentAgreement,
+        $persistTerminationConditions
     );
 
     return [

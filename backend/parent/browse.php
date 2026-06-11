@@ -23,7 +23,7 @@ try {
             hp.experience_years, hp.employment_type, hp.work_schedule,
             hp.expected_salary, hp.barangay, hp.municipality, hp.province,
             hp.education_level, hp.religion, hp.civil_status,
-            hp.verification_status, hp.availability_status,
+            hp.verification_status,
             hp.rating_average, hp.rating_count, hp.bio
         FROM users u
         JOIN helper_profiles hp ON u.user_id = hp.user_id
@@ -97,26 +97,10 @@ try {
             }
         }
 
-        // --- FETCH DOCUMENTS (FROM DOCUMENTS TABLE) ---
-        $docs_query = "SELECT document_type, file_path FROM user_documents WHERE user_id = $user_id";
-        $docs_result = $conn->query($docs_query);
-        
-        $police_clearance = null;
-        $nbi_clearance = null;
-        $medical_certificate = null;
-        $tesda_nc2 = null;
-
-        if ($docs_result) {
-            while ($doc = $docs_result->fetch_assoc()) {
-                $type = $doc['document_type'];
-                $path = $doc['file_path'];
-                
-                if ($type === 'Police Clearance') $police_clearance = $path;
-                if ($type === 'NBI Clearance') $nbi_clearance = $path;
-                if ($type === 'Medical Certificate') $medical_certificate = $path;
-                if ($type === 'TESDA NC2') $tesda_nc2 = $path;
-            }
-        }
+        // NOTE: Documents are private by default. A helper's verification documents are only ever
+        // exposed to a parent when the helper explicitly shares them on a specific job application
+        // (see application_document_shares / parent/get_applicant_profile.php). Public browsing must
+        // never return document file paths.
 
         // Build the JSON object exactly how your React app expects it
         $helpers[] = [
@@ -148,12 +132,6 @@ try {
             'education_level' => $row['education_level'],
             'religion' => $row['religion'],
             'civil_status' => $row['civil_status'],
-            
-            // Documents
-            'police_clearance' => $police_clearance,
-            'nbi_clearance' => $nbi_clearance,
-            'medical_certificate' => $medical_certificate,
-            'tesda_nc2' => $tesda_nc2,
             
             // Location
             'barangay' => $row['barangay'],

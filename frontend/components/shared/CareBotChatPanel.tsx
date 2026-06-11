@@ -4,17 +4,66 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Platform, ActivityIndicator, Alert, FlatList, TextInput, KeyboardAvoidingView, type TextStyle, type ListRenderItemInfo } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import API_URL from '@/constants/api';
 import { theme } from '@/constants/theme';
 
 export type CareBotAccent = 'parent' | 'helper';
+
+/** Warm orange accent for the helper portal — matches the helper portal's warm theme
+ *  (overrides the green `theme.color.helper` locally, without touching the global constant). */
+const HELPER_ACCENT = '#E86019';
+
+type ChatAction = {
+  label: string;
+  route: string;
+};
 
 type ChatLine = {
   id: string;
   text: string;
   createdAt: number;
   side: 'user' | 'bot';
+  actions?: ChatAction[];
 };
+
+/** Keyword → screen redirects, like a website chatbot suggesting where to go next.
+ *  Matched against the user's message; the first 1-2 hits become quick-nav buttons on the reply. */
+const HELPER_INTENTS: { keywords: string[]; label: string; route: string }[] = [
+  { keywords: ['how to apply', 'apply', 'application form', 'find job', 'find work', 'browse job'], label: 'Find Jobs', route: '/(helper)/browse' },
+  { keywords: ['my application', 'applied', 'application status'], label: 'My Applications', route: '/(helper)/applications' },
+  { keywords: ['document', 'verify', 'verification', 'upload', 'clearance', 'valid id', 'tesda', 'rejected'], label: 'My Documents', route: '/(helper)/profile/documents' },
+  { keywords: ['message', 'chat', 'inbox', 'conversation'], label: 'Messages', route: '/(helper)/messages' },
+  { keywords: ['notification'], label: 'Notifications', route: '/(helper)/notifications' },
+  { keywords: ['schedule', 'task', 'attendance', 'work hour'], label: 'Work Schedule', route: '/(helper)/work' },
+  { keywords: ['saved job', 'bookmark'], label: 'Saved Jobs', route: '/(helper)/browse/saved_jobs' },
+  { keywords: ['profile', 'account', 'bio'], label: 'My Profile', route: '/(helper)/profile' },
+  { keywords: ['setting'], label: 'Settings', route: '/(helper)/settings' },
+];
+
+const PARENT_INTENTS: { keywords: string[]; label: string; route: string }[] = [
+  { keywords: ['hire', 'find helper', 'browse helper', 'look for helper'], label: 'Find Helpers', route: '/(parent)/browse' },
+  { keywords: ['post a job', 'create job', 'job post', 'job listing', 'how to post'], label: 'My Job Posts', route: '/(parent)/jobs' },
+  { keywords: ['applicant', 'application'], label: 'Applications', route: '/(parent)/jobs' },
+  { keywords: ['active helper', 'hired helper', 'my helper'], label: 'Active Helpers', route: '/(parent)/hire' },
+  { keywords: ['message', 'chat', 'inbox', 'conversation'], label: 'Messages', route: '/(parent)/messages' },
+  { keywords: ['notification'], label: 'Notifications', route: '/(parent)/notifications' },
+  { keywords: ['profile', 'account'], label: 'My Profile', route: '/(parent)/profile' },
+  { keywords: ['setting'], label: 'Settings', route: '/(parent)/settings' },
+];
+
+function matchIntentActions(userLine: string, accent: CareBotAccent): ChatAction[] {
+  const t = userLine.toLowerCase();
+  const intents = accent === 'helper' ? HELPER_INTENTS : PARENT_INTENTS;
+  const matches: ChatAction[] = [];
+  for (const intent of intents) {
+    if (intent.keywords.some((k) => t.includes(k))) {
+      if (!matches.some((m) => m.route === intent.route)) matches.push({ label: intent.label, route: intent.route });
+      if (matches.length >= 2) break;
+    }
+  }
+  return matches;
+}
 
 function appendLines(prev: ChatLine[], more: ChatLine[]): ChatLine[] {
   return [...prev, ...more];
@@ -172,7 +221,16 @@ export function CareBotChatPanel({
     setDraft('');
   }, [booting, userId, sessionKey]);
 
-  const accentColor = accent === 'helper' ? theme.color.helper : theme.color.parent;
+  const router = useRouter();
+  const accentColor = accent === 'helper' ? HELPER_ACCENT : theme.color.parent;
+
+  const goToAction = useCallback(
+    (route: string) => {
+      onRequestClose?.();
+      router.push(route as never);
+    },
+    [onRequestClose, router],
+  );
 
   const submitDraft = useCallback(async () => {
     const trimmed = draftRef.current.trim();
@@ -218,6 +276,7 @@ export function CareBotChatPanel({
 
       const serverMsg = typeof data.message === 'string' ? data.message : '';
       const notConfigured = isNotConfiguredPayload(data, rawBody);
+      const intentActions = matchIntentActions(trimmed, accent);
 
       if (data.code === 'rate_limited' || data.code === 'invalid_user') {
         const botLine: ChatLine = {
@@ -249,6 +308,7 @@ export function CareBotChatPanel({
           text: errText,
           createdAt: Date.now(),
           side: 'bot',
+          actions: intentActions.length ? intentActions : undefined,
         };
         setLines((prev) => appendLines(prev, [botLine]));
         return;
@@ -259,21 +319,24 @@ export function CareBotChatPanel({
         text: data.reply.trim(),
         createdAt: Date.now(),
         side: 'bot',
+        actions: intentActions.length ? intentActions : undefined,
       };
       setLines((prev) => appendLines(prev, [botLine]));
     } catch {
       const hint = `Could not reach ${endpoint}. If you are on a phone, confirm ${API_URL} uses your PC’s LAN IP and Laragon is running.`;
+      const intentActions = matchIntentActions(trimmed, accent);
       const botLine: ChatLine = {
         id: `e-${Date.now()}`,
         text: networkFallbackReply(trimmed, hint),
         createdAt: Date.now(),
         side: 'bot',
+        actions: intentActions.length ? intentActions : undefined,
       };
       setLines((prev) => appendLines(prev, [botLine]));
     } finally {
       setIsTyping(false);
     }
-  }, [userId]);
+  }, [userId, accent]);
 
   const renderItem = useCallback(
     ({ item, index }: ListRenderItemInfo<ChatLine>) => {
@@ -291,10 +354,25 @@ export function CareBotChatPanel({
               <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{item.text}</Text>
             </View>
           </View>
+          {!mine && item.actions?.length ? (
+            <View style={[styles.actionsRow, styles.bubbleRowBot]}>
+              {item.actions.map((action) => (
+                <AnimatedPressable
+                  key={action.route}
+                  style={[styles.actionChip, { borderColor: accentColor }]}
+                  onPress={() => goToAction(action.route)}
+                  accessibilityLabel={`Go to ${action.label}`}
+                >
+                  <Text style={[styles.actionChipText, { color: accentColor }]}>{action.label}</Text>
+                  <Ionicons name="arrow-forward" size={14} color={accentColor} />
+                </AnimatedPressable>
+              ))}
+            </View>
+          ) : null}
         </FadeInView>
       );
     },
-    [accentColor],
+    [accentColor, goToAction],
   );
 
   return (
@@ -438,6 +516,28 @@ const styles = StyleSheet.create({
   },
   bubbleRowMine: { justifyContent: 'flex-end' },
   bubbleRowBot: { justifyContent: 'flex-start' },
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: -2,
+    marginBottom: 10,
+    paddingLeft: 4,
+  },
+  actionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: theme.color.surface,
+  },
+  actionChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   bubble: {
     maxWidth: '88%',
     borderRadius: 16,

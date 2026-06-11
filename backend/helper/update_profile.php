@@ -70,7 +70,7 @@ try {
     
     // Required fields
     $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
-    $birth_date = isset($_POST['birth_date']) ? trim($_POST['birth_date']) : '';
+    $birth_date = isset($_POST['birth_date']) && trim($_POST['birth_date']) !== '' ? trim($_POST['birth_date']) : null;
     $gender = isset($_POST['gender']) ? $_POST['gender'] : 'Female';
     $province = isset($_POST['province']) ? trim($_POST['province']) : '';
     $municipality = isset($_POST['municipality']) ? trim($_POST['municipality']) : '';
@@ -94,26 +94,15 @@ try {
     $salary_period = isset($_POST['salary_period']) ? $_POST['salary_period'] : 'Monthly';
     
     // Validate required fields
+    // NOTE: Other profile fields (contact, birth date, address, salary) are
+    // validated per-section on the frontend (EditHelperProfileModal). Each
+    // section can be saved independently, so this endpoint must not reject
+    // a save just because a *different* section hasn't been filled in yet.
+    // Overall completeness is tracked separately via profile_completed.
     if (empty($first_name) || empty($last_name)) {
         throw new Exception("First name and last name are required");
     }
-    
-    if (empty($contact_number)) {
-        throw new Exception("Contact number is required");
-    }
-    
-    if (empty($birth_date)) {
-        throw new Exception("Birth date is required");
-    }
-    
-    if (empty($province) || empty($municipality) || empty($barangay)) {
-        throw new Exception("Complete address (province, municipality, barangay) is required");
-    }
-    
-    if ($expected_salary < 6000) {
-        throw new Exception("Salary must be at least ₱6,000 (PESO minimum wage)");
-    }
-    
+
     error_log("Data validated successfully");
 
     // ========================================================================

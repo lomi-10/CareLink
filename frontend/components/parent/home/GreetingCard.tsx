@@ -1,121 +1,161 @@
 // components/parent/home/GreetingCard.tsx
-// Recruitment-style hero banner for parents
+// Hero banner for the parent dashboard — warm caramel gradient (family-focused,
+// the opposite of the helper portal's dark-brown hero), with a rounded family
+// photo frame and dual "Post a Job" / "Browse Helpers" CTAs (per reference mockup).
 
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useParentTheme } from '@/contexts/ParentThemeContext';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FontFamily } from '@/constants/GlobalStyles';
+import { BROWN, DARK, CREAM } from './parentWarmTheme';
 
 interface GreetingCardProps {
   userName: string;
+  profileImage?: string | null;
 }
 
-export function GreetingCard({ userName }: GreetingCardProps) {
-  const { color: c } = useParentTheme();
-  const s = useMemo(
-    () =>
-      StyleSheet.create({
-        card: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          backgroundColor: c.parent,
-          borderRadius: 20,
-          padding: 22,
-          marginBottom: 24,
-          overflow: 'hidden',
-          position: 'relative',
-          minHeight: 150,
-        },
-        circle1: {
-          position: 'absolute', right: -30, top: -30,
-          width: 130, height: 130, borderRadius: 65,
-          backgroundColor: 'rgba(255,255,255,0.07)',
-        },
-        circle2: {
-          position: 'absolute', right: 40, bottom: -50,
-          width: 100, height: 100, borderRadius: 50,
-          backgroundColor: 'rgba(255,255,255,0.05)',
-        },
-        content: { flex: 1, zIndex: 1 },
-        kickerBadge: {
-          flexDirection: 'row', alignItems: 'center', gap: 5,
-          backgroundColor: 'rgba(255,255,255,0.18)',
-          paddingHorizontal: 9, paddingVertical: 4,
-          borderRadius: 20, alignSelf: 'flex-start', marginBottom: 10,
-        },
-        kickerText: {
-          fontSize: 9, fontWeight: '800', color: '#fff',
-          letterSpacing: 1.2, textTransform: 'uppercase',
-        },
-        greeting: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 2 },
-        name: { fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: -0.5, marginBottom: 8 },
-        tagline: { fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 18, marginBottom: 14 },
-        statsRow:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
-        statChip:   { flexDirection: 'row', alignItems: 'center', gap: 5 },
-        statChipText: { fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
-        dot: { width: 3, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.4)' },
-        illustration: {
-          width: 72, height: 72,
-          alignItems: 'center', justifyContent: 'center',
-          marginLeft: 12, zIndex: 1, position: 'relative',
-        },
-        iconRing: {
-          width: 58, height: 58, borderRadius: 29,
-          backgroundColor: 'rgba(255,255,255,0.18)',
-          alignItems: 'center', justifyContent: 'center',
-        },
-        iconRingSmall: {
-          position: 'absolute',
-          width: 28, height: 28, borderRadius: 14,
-          backgroundColor: 'rgba(255,255,255,0.22)',
-          alignItems: 'center', justifyContent: 'center',
-        },
-      }),
-    [c],
-  );
+// Deeper, more saturated caramel gradient — reads warm against the cream
+// canvas instead of blending into it.
+const HERO_GRADIENT: [string, string, string] = ['#F6D9AE', '#E2A968', '#C5853E'];
+const PHOTO_W = 104;
+const PHOTO_H = 124;
 
-  const getGreeting = () => {
+export function GreetingCard({ userName, profileImage }: GreetingCardProps) {
+  const router = useRouter();
+  const greeting = (() => {
     const h = new Date().getHours();
-    if (h < 12) return 'Good Morning';
-    if (h < 18) return 'Good Afternoon';
-    return 'Good Evening';
-  };
+    if (h < 12) return 'Good morning,';
+    if (h < 18) return 'Good afternoon,';
+    return 'Good evening,';
+  })();
 
   return (
-    <View style={s.card}>
+    <LinearGradient colors={HERO_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.card}>
       <View style={s.circle1} />
       <View style={s.circle2} />
+
       <View style={s.content}>
         <View style={s.kickerBadge}>
-          <Ionicons name="heart-outline" size={10} color="rgba(255,255,255,0.95)" />
-          <Text style={s.kickerText}>HOME & FAMILY CARE</Text>
+          <Ionicons name="shield-checkmark" size={11} color="#FFFFFF" />
+          <Text style={s.kickerText}>FAMILY FIRST</Text>
         </View>
-        <Text style={s.greeting}>{getGreeting()},</Text>
-        <Text style={s.name} numberOfLines={1}>{userName}</Text>
-        <Text style={s.tagline}>Find trusted helpers{'\n'}for your family's needs.</Text>
-        <View style={s.statsRow}>
-          <View style={s.statChip}>
-            <Ionicons name="shield-checkmark-outline" size={13} color="rgba(255,255,255,0.8)" />
-            <Text style={s.statChipText}>PESO-Verified Helpers</Text>
-          </View>
-          <View style={s.dot} />
-          <View style={s.statChip}>
-            <Ionicons name="star-outline" size={13} color="rgba(255,255,255,0.8)" />
-            <Text style={s.statChipText}>Rated & Trusted</Text>
-          </View>
-        </View>
-      </View>
-      <View style={s.illustration}>
-        <View style={s.iconRing}>
-          <Ionicons name="people" size={28} color="rgba(255,255,255,0.95)" />
-        </View>
-        <View style={[s.iconRingSmall, { top: -10, right: -10 }]}>
-          <Ionicons name="heart" size={13} color="#F43F5E" />
-        </View>
-        <View style={[s.iconRingSmall, { bottom: -8, left: -12 }]}>
-          <Ionicons name="checkmark-circle" size={13} color="#22C55E" />
+
+        <Text style={s.greeting}>{greeting}</Text>
+        <Text style={s.name} numberOfLines={1}>{userName} 👋</Text>
+        <Text style={s.tagline}>Let's find trusted and verified{'\n'}helpers for your family.</Text>
+
+        <View style={s.ctaRow}>
+          <TouchableOpacity style={s.ctaPrimary} onPress={() => router.push('/(parent)/jobs')} activeOpacity={0.88}>
+            <Ionicons name="add-circle" size={15} color="#FFFFFF" />
+            <Text style={s.ctaPrimaryText}>Post a Job</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.ctaSecondary} onPress={() => router.push('/(parent)/browse')} activeOpacity={0.88}>
+            <Ionicons name="search" size={15} color={BROWN} />
+            <Text style={s.ctaSecondaryText}>Browse Helpers</Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </View>
+
+      <View style={s.photoCol}>
+        <View style={s.photoFrame}>
+          {profileImage ? (
+            <Image source={{ uri: profileImage }} style={s.photo} contentFit="cover" />
+          ) : (
+            <View style={s.photoFallback}>
+              <Ionicons name="people" size={PHOTO_W * 0.4} color={BROWN} />
+            </View>
+          )}
+        </View>
+        <View style={[s.iconBadge, { top: -10, right: -10 }]}>
+          <Ionicons name="people" size={14} color={BROWN} />
+        </View>
+        <View style={[s.iconBadge, { bottom: -10, right: 14 }]}>
+          <Ionicons name="heart" size={14} color="#F43F5E" />
+        </View>
+      </View>
+    </LinearGradient>
   );
 }
+
+const s = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 22,
+    marginHorizontal: 10,
+    marginBottom: 16,
+    minHeight: 196,
+    paddingLeft: 20,
+    paddingRight: 16,
+    paddingVertical: 20,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  circle1: {
+    position: 'absolute', right: -34, top: -34,
+    width: 140, height: 140, borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  circle2: {
+    position: 'absolute', right: 70, bottom: -64,
+    width: 110, height: 110, borderRadius: 55,
+    backgroundColor: 'rgba(139,90,43,0.10)',
+  },
+
+  content: { flex: 1, zIndex: 2, paddingRight: 8 },
+  kickerBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: BROWN,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 999, alignSelf: 'flex-start', marginBottom: 12,
+  },
+  kickerText: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 9, color: '#FFFFFF',
+    letterSpacing: 1.2, textTransform: 'uppercase',
+  },
+  greeting: { fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: DARK, marginBottom: 2 },
+  name:     { fontFamily: FontFamily.fredokaSemiBold, fontSize: 21, color: DARK, letterSpacing: -0.3, marginBottom: 8 },
+  tagline:  { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: '#5A4327', lineHeight: 18, marginBottom: 16 },
+
+  ctaRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  ctaPrimary: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#1E2A4A',
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 999,
+  },
+  ctaPrimaryText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: '#FFFFFF' },
+  ctaSecondary: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1, borderColor: 'rgba(139,90,43,0.18)',
+  },
+  ctaSecondaryText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: BROWN },
+
+  photoCol: { alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  photoFrame: {
+    width: PHOTO_W, height: PHOTO_H, borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 3, borderColor: 'rgba(255,255,255,0.65)',
+    backgroundColor: CREAM,
+  },
+  photo: { width: PHOTO_W, height: PHOTO_H },
+  photoFallback: { width: PHOTO_W, height: PHOTO_H, alignItems: 'center', justifyContent: 'center' },
+
+  iconBadge: {
+    position: 'absolute',
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(139,90,43,0.14)',
+    ...({
+      shadowColor: '#3B2A18', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4,
+    } as any),
+  },
+});

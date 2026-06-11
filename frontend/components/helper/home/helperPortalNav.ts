@@ -34,14 +34,11 @@ export function isHelperNavActive(pathname: string | null | undefined, href: str
     }
     if (prefixOk) return true;
   }
-  if (href.includes('browse_jobs')) {
-    return pl.includes('browse_jobs');
+  if (href.includes('browse')) {
+    return pl.includes('browse');
   }
-  if (href.includes('my_applications')) {
-    return pl.includes('my_applications');
-  }
-  if (href.includes('saved_jobs')) {
-    return pl.includes('saved_jobs');
+  if (href.includes('applications')) {
+    return pl.includes('applications');
   }
   if (href.includes('notifications')) {
     return pl.includes('notifications') && !pl.includes('messages');
@@ -55,19 +52,10 @@ export function isHelperNavActive(pathname: string | null | undefined, href: str
   if (href.includes('settings')) {
     return pl.includes('settings');
   }
-  if (href.includes('work_tasks')) {
-    return pl.includes('work_tasks');
-  }
-  if (href.includes('work_schedule')) {
-    return pl.includes('work_schedule');
-  }
-  if (href.includes('work_history')) {
-    return pl.includes('work_history');
-  }
   if (href.includes('/home') && !href.includes('work')) {
     if (!pl.includes('home')) return false;
-    if (pl.includes('browse_jobs')) return false;
-    if (pl.includes('work_')) return false;
+    if (pl.includes('browse')) return false;
+    if (pl.includes('work')) return false;
     return true;
   }
   return false;
@@ -82,7 +70,7 @@ export function helperNavIconName(
 
 /** Only shown in the drawer (plus logout). */
 const HELPER_NON_WORK_DRAWER_ONLY: HelperNavItem[] = [
-  { baseIcon: 'bookmark', label: 'Saved jobs', path: '/(helper)/saved_jobs' },
+  { baseIcon: 'bookmark', label: 'Saved jobs', path: '/(helper)/browse/saved_jobs' },
   { baseIcon: 'notifications', label: 'Notifications', path: '/(helper)/notifications', useNotificationBadge: true },
   { baseIcon: 'settings', label: 'Appearance & settings', path: '/(helper)/settings' },
 ];

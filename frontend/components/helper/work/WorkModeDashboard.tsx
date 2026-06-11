@@ -328,7 +328,7 @@ export function WorkModeDashboard({
         </View>
       )}
       {todayTasks.length > 6 ? (
-        <TouchableOpacity onPress={() => router.push('/(helper)/work_tasks')}>
+        <TouchableOpacity onPress={() => router.push('/(helper)/work/tasks')}>
           <Text style={styles.link}>View all tasks</Text>
         </TouchableOpacity>
       ) : null}

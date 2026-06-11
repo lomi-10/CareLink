@@ -18,6 +18,10 @@ import { CareBotChatPanel } from './CareBotChatPanel';
 
 const FAB_SIZE = 56;
 
+/** Warm orange accent for the helper portal — overrides the green `theme.color.helper`
+ *  so CareBot matches the helper portal's warm theme without changing the global constant. */
+const HELPER_ACCENT = '#E86019';
+
 /** Slide duration for native bottom-sheet; must match dismiss timeout in requestClose(). */
 const MOBILE_SHEET_TRANSITION_MS = 280;
 const MOBILE_SHEET_TRANSITION = {
@@ -240,7 +244,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.35)',
   },
   fabHelper: {
-    backgroundColor: theme.color.helper,
+    backgroundColor: HELPER_ACCENT,
   },
   modalRoot: {
     flex: 1,

@@ -24,7 +24,7 @@ function routeSegments(path: string) {
 
 /**
  * True when the current URL is under the same parent section as `href`.
- * Handles jobs/post_job, active_helpers + placement_*, applications + applicant_profile, etc.
+ * Handles jobs/post_job, hire + placement_*, applications + applicant_profile, etc.
  */
 export function isParentNavActive(pathname: string | null | undefined, href: string): boolean {
   const p = (pathname || '').trim();
@@ -43,18 +43,18 @@ export function isParentNavActive(pathname: string | null | undefined, href: str
     if (prefixOk) return true;
   }
 
-  if (href.includes('browse_helpers')) {
-    return pl.includes('browse_helpers');
+  if (href.includes('browse')) {
+    return pl.includes('browse');
   }
-  if (href.includes('active_helpers')) {
-    return pl.includes('active_helpers') || pl.includes('placement_');
+  if (href.includes('hire')) {
+    return pl.includes('hire') || pl.includes('placement_');
   }
   if (href.includes('applications')) {
     return pl.includes('applications') || pl.includes('applicant_profile');
   }
   if (href.includes('/jobs') && !href.includes('browse')) {
     if (pl.includes('post_job')) return true;
-    if (pl.includes('jobs') && !pl.includes('browse_helpers')) return true;
+    if (pl.includes('jobs') && !pl.includes('browse')) return true;
   }
   if (href.includes('notifications')) {
     return pl.includes('notifications') && !pl.includes('messages');
@@ -65,8 +65,8 @@ export function isParentNavActive(pathname: string | null | undefined, href: str
   if (href.includes('/home')) {
     const onHome = pl.includes('/home') || pl.endsWith('home') || a[0] === 'home' || a.includes('home');
     if (!onHome) return false;
-    if (pl.includes('browse_helpers')) return false;
-    if (pl.includes('active_helpers') || pl.includes('placement_')) return false;
+    if (pl.includes('browse')) return false;
+    if (pl.includes('hire') || pl.includes('placement_')) return false;
     return true;
   }
   if (href.includes('profile') && !href.includes('applicant')) {
@@ -88,10 +88,9 @@ export function parentNavIconName(
 
 export const PARENT_PORTAL_NAV: ParentNavItem[] = [
   { baseIcon: 'home', label: 'Home', path: '/(parent)/home' },
-  { baseIcon: 'search', label: 'Find Helpers', path: '/(parent)/browse_helpers' },
-  { baseIcon: 'briefcase', label: 'My Job Posts', path: '/(parent)/jobs' },
-  { baseIcon: 'people', label: 'Applications', path: '/(parent)/applications' },
-  { baseIcon: 'heart', label: 'Active Helpers', path: '/(parent)/active_helpers' },
+  { baseIcon: 'search', label: 'Find Helpers', path: '/(parent)/browse' },
+  { baseIcon: 'briefcase', label: 'Work Management', path: '/(parent)/jobs' },
+  { baseIcon: 'heart', label: 'Active Helpers', path: '/(parent)/hire' },
   { baseIcon: 'notifications', label: 'Notifications', path: '/(parent)/notifications', useNotificationBadge: true },
   { baseIcon: 'chatbubbles', label: 'Messages', path: '/(parent)/messages' },
   { baseIcon: 'person', label: 'Profile', path: '/(parent)/profile' },
@@ -115,9 +114,8 @@ export function getParentNavRowsForShell(): ParentNavRow[] {
 /** Mobile bottom bar — do not repeat these in the hamburger. */
 export const PARENT_TAB_BAR_PATHS = new Set<string>([
   '/(parent)/home',
-  '/(parent)/browse_helpers',
+  '/(parent)/browse',
   '/(parent)/jobs',
-  '/(parent)/applications',
   '/(parent)/messages',
   '/(parent)/profile',
 ]);

@@ -1,10 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, View, Platform } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 
 import LandingPage from "@/components/landing/LandingPage";
-import { LandingScreen } from "@/components/landing/LandingScreen";
 import API_URL from "@/constants/api";
 import { isProfileCompleted } from "@/hooks/auth/authProfile";
 
@@ -70,9 +69,6 @@ export default function Index() {
   }
 
   if (phase === "land") {
-    if (Platform.OS === "web") {
-      return <LandingPage />;
-    }
     return <LandingPage />;
   }
 

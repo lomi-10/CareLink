@@ -1,15 +1,25 @@
 import type { ThemeColor } from '@/constants/theme';
 import { theme } from '@/constants/theme';
 
-/** Immutable default palette — do not depend on any runtime `theme.color` mutation. */
-const PARENT_THEME_COLOR_BASE: ThemeColor = { ...theme.color } as ThemeColor;
+/**
+ * Immutable default palette — do not depend on any runtime `theme.color` mutation.
+ * Overrides the brand "parent" accent from the original blue to a warm caramel/brown
+ * identity (family-focused, distinct from the helper portal's orange). This is the
+ * brand accent — it stays consistent across every appearance preset below (the
+ * "cocoa night" dark preset overrides it again locally for contrast on its dark canvas).
+ */
+const PARENT_THEME_COLOR_BASE: ThemeColor = {
+  ...theme.color,
+  parent: '#8B5A2B',
+  parentSoft: '#F3E3CF',
+} as unknown as ThemeColor;
 
 export const PARENT_PORTAL_APPEARANCE_KEY = 'parent_portal_appearance_v1' as const;
 
 export type ParentThemeId = 'default' | 'warm' | 'sage' | 'dusk' | 'cocoa';
 
 export const PARENT_THEME_OPTIONS: { id: ParentThemeId; label: string; hint: string }[] = [
-  { id: 'default', label: 'CareLink (default)', hint: 'Soft blue-tinted light — original look' },
+  { id: 'default', label: 'Caramel cream (default)', hint: 'Warm cream and caramel — the new CareLink parent look' },
   { id: 'warm', label: 'Warm paper', hint: 'Cream and warm neutrals, less cold white' },
   { id: 'sage', label: 'Sage mist', hint: 'Calm green-gray, easy on the eyes' },
   { id: 'dusk', label: 'Cloud gray', hint: 'Cool gray canvas with soft cards' },
@@ -23,7 +33,22 @@ export const PARENT_THEME_OPTIONS: { id: ParentThemeId; label: string; hint: str
 type Palette = Partial<Record<keyof ThemeColor, string>>;
 
 const PALETTES: Record<ParentThemeId, Palette> = {
-  default: {},
+  /** New family-focused warm look: cream canvas, caramel-tinted cards. */
+  default: {
+    canvasParent: '#FFF9F2',
+    surface: '#FFF4E6',
+    surfaceElevated: '#FFFDF8',
+    modalTintParent: '#FDF7EE',
+    // Warm brown-toned text & dividers — cool slate grays from the base theme
+    // read as washed-out/pale against this cream canvas, so shift them warm
+    // (mirrors how the helper portal uses brown-tinted text on its cream pages).
+    ink: '#3B2A18',
+    inkMuted: '#6B5640',
+    muted: '#8A7257',
+    subtle: '#B8A186',
+    line: '#EDE0D0',
+    lineStrong: '#E0CFB8',
+  },
   warm: {
     canvasParent: '#F4EFE6',
     surface: '#FAF6EF',
