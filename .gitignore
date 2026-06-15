@@ -13,6 +13,9 @@ frontend/android/
 backend/uploads/
 backend/error.log
 backend/vendor/
+
+# User-uploaded content (chat attachments, etc.)
+uploads/
 .DS_Store
 Thumbs.db
 
