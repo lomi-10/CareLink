@@ -3,6 +3,7 @@
   "description": "CareLink API (Dompdf for employment contracts)",
   "require": {
     "php": ">=8.1",
+    "ext-mysqli": "*",
     "dompdf/dompdf": "^3.1"
   },
   "config": {
