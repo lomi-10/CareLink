@@ -334,13 +334,10 @@ export default function PlacementAttendanceScreen() {
 
   const legend = (
     <View style={styles.legendRow}>
-      <LegendDot color="#22C55E" label="Present" />
-      <LegendDot color="#A855F7" label="Rest" />
-      <LegendDot color="#EAB308" label="Leave" />
-      <LegendDot color="#9CA3AF" label="Absent" />
-      <LegendDot color="#EA580C" label="Holiday" />
-      <LegendDot color="#6B7280" label="No work" />
-      <LegendDot color={theme.color.surface} label="Outside contract" />
+      <LegendDot color="#22C55E" label="Checked In" />
+      <LegendDot color="#DC2626" label="Absent" />
+      <LegendDot color="#78350F" label="Day Off" />
+      <LegendDot color="#2563EB" label="Today" outline />
     </View>
   );
 
@@ -375,7 +372,7 @@ export default function PlacementAttendanceScreen() {
             <Text style={styles.td} numberOfLines={1}>
               {d.weekday} {d.date.slice(5)}
             </Text>
-            <View style={[styles.tableDot, { backgroundColor: st.backgroundColor }]} />
+            <View style={[styles.tableDot, { backgroundColor: st.shadeColor ?? theme.color.line }]} />
             <Text style={styles.td}>{d.check_in_at ? formatAttendanceTime(d.check_in_at) : '—'}</Text>
             <Text style={styles.td}>{d.check_out_at ? formatAttendanceTime(d.check_out_at) : '—'}</Text>
           </TouchableOpacity>
@@ -648,10 +645,16 @@ function labelForDay(d: AttendanceDay): string {
   }
 }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
+function LegendDot({ color, label, outline }: { color: string; label: string; outline?: boolean }) {
   return (
     <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <View
+        style={[
+          styles.legendDot,
+          { backgroundColor: color },
+          outline && { borderWidth: 2, borderColor: color },
+        ]}
+      />
       <Text style={styles.legendText}>{label}</Text>
     </View>
   );

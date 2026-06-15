@@ -1,68 +1,144 @@
 import { Platform, StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { DARK, MUTED, ORANGE, GREEN, BLUE, DIVIDER, ICON_BG, SURFACE, OVERLAY } from '@/components/helper/home/helperWarmTheme';
+import {
+  DARK, MUTED, SUBTLE, ORANGE, GREEN, DIVIDER, ICON_BG, SURFACE, OVERLAY,
+  SUCCESS_BG, WARNING_BG, DANGER, DANGER_BG, INFO_BG,
+} from '@/components/helper/home/helperWarmTheme';
 
 const WARNING = '#D97706';
 
 const CARD_SHADOW = Platform.select({
-  ios:     { shadowColor: '#8B5E3C', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 18 },
-  android: { elevation: 4 },
-  default: { boxShadow: '0 6px 24px rgba(139,94,60,0.1)' } as any,
+  ios:     { shadowColor: '#8B5E3C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
+  android: { elevation: 2 },
+  default: { boxShadow: '0 4px 16px rgba(139,94,60,0.08)' } as any,
+});
+
+const HERO_SHADOW = Platform.select({
+  ios:     { shadowColor: '#1E0A04', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 16 },
+  android: { elevation: 6 },
+  default: { boxShadow: '0 8px 24px rgba(30,10,4,0.25)' } as any,
 });
 
 export function createHelperWorkScheduleStyles() {
   return StyleSheet.create({
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    scroll: { paddingBottom: 16 },
-    requestBtn: {
+    scroll: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 16 },
+
+    // ── Leave Balance hero ─────────────────────────────────────────────────
+    hero: { borderRadius: 22, padding: 18, marginBottom: 16, ...HERO_SHADOW },
+    heroSection: {},
+    heroDivider: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', marginVertical: 14 },
+    heroHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+    heroIconWrap: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      backgroundColor: 'rgba(255,255,255,0.10)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    heroLabel: {
+      fontFamily: FontFamily.fredokaSemiBold,
+      fontSize: 12,
+      color: SUBTLE,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    heroBigValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 26, color: '#fff' },
+    heroSubtitle: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: SUBTLE, marginTop: 4, lineHeight: 18 },
+    heroInfoTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: '#fff', marginBottom: 4 },
+    heroInfoText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: SUBTLE, lineHeight: 18 },
+    heroCta: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
-      backgroundColor: ORANGE,
-      paddingVertical: 14,
-      borderRadius: 14,
-      marginTop: 20,
+      backgroundColor: '#fff',
+      paddingVertical: 13,
+      borderRadius: 12,
     },
-    requestBtnText: { fontFamily: FontFamily.fredokaSemiBold, color: '#fff', fontSize: 16 },
-    weekNav: {
+    heroCtaText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: ORANGE },
+
+    // ── Preview banner (before employment start) ───────────────────────────
+    previewBanner: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 16,
+      gap: 12,
+      backgroundColor: INFO_BG,
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 14,
+      ...CARD_SHADOW,
     },
-    navBtn: {
-      width: 40,
-      height: 40,
+    previewBannerIconWrap: {
+      width: 36,
+      height: 36,
       borderRadius: 12,
-      backgroundColor: ICON_BG,
+      backgroundColor: SURFACE,
       alignItems: 'center',
       justifyContent: 'center',
     },
+    previewBannerText: { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, lineHeight: 18 },
+
+    // ── Generic white card ────────────────────────────────────────────────
+    card: { backgroundColor: SURFACE, borderRadius: 18, padding: 16, marginBottom: 14, ...CARD_SHADOW },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+    cardHeaderIconWrap: { width: 30, height: 30, borderRadius: 10, backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center' },
+    cardHeaderTitle: { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: DARK },
+    todayBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: ICON_BG },
+    todayBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: ORANGE },
+
+    // ── Month nav ────────────────────────────────────────────────────────
+    weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+    navBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center' },
     navBtnDisabled: { opacity: 0.35 },
     weekLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: DARK },
-    cardList: { gap: 10 },
-    dayCard: {
-      borderRadius: 14,
-      backgroundColor: SURFACE,
-      borderWidth: 1,
-      borderColor: DIVIDER,
-      padding: 14,
+
+    // ── Calendar legend ──────────────────────────────────────────────────
+    calLegendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 14, justifyContent: 'center' },
+    calLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    calLegendDot: { width: 10, height: 10, borderRadius: 5 },
+    calLegendText: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED },
+
+    // ── Leave Requests / Upcoming rows ──────────────────────────────────────
+    listRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: DIVIDER,
     },
-    dayHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    dayHeadLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    statusDot: { width: 10, height: 10, borderRadius: 5 },
-    dayName: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: DARK },
-    dayDate: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED },
-    dayBody: { gap: 4 },
-    ok: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: GREEN },
-    time: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: DARK },
-    timeOut: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED },
-    pendingOut: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: WARNING },
-    muted: { fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: MUTED },
-    statusLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14 },
-    statusLeave: { color: WARNING },
-    statusHoliday: { color: BLUE },
+    listRowLast: { borderBottomWidth: 0, paddingBottom: 0 },
+    rowIconWrap: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    rowTextCol: { flex: 1, gap: 2 },
+    rowTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK },
+    rowSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },
+    upcomingList: { gap: 10 },
+    upcomingRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    pill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+    pillText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11 },
+    emptyText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED, textAlign: 'center', paddingVertical: 8 },
+
+    // ── Attendance summary (this week) ──────────────────────────────────────
+    weekRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+    dayCol: { alignItems: 'center', gap: 6 },
+    dayLbl: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: MUTED },
+    weekDot: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+    weekDotPresent: { backgroundColor: GREEN },
+    weekDotScheduled: { backgroundColor: 'transparent', borderWidth: 2, borderColor: SUBTLE },
+    weekDotMissed: { backgroundColor: DANGER },
+    daysWorkedText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: DARK, marginBottom: 2 },
+    encourageText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, marginBottom: 14 },
+    weekLegendRow: { flexDirection: 'row', gap: 16 },
+    weekLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    weekLegendText: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED },
+
+    // ── History link ─────────────────────────────────────────────────────
+    historyLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14 },
+    historyLinkText: { fontFamily: FontFamily.fredokaSemiBold, color: ORANGE, fontSize: 14 },
+
+    // ── Leave-request modal ──────────────────────────────────────────────
     modalOverlay: {
       flex: 1,
       alignItems: 'center',
@@ -130,26 +206,6 @@ export function createHelperWorkScheduleStyles() {
     },
     modalSubmitDisabled: { opacity: 0.6 },
     modalSubmitText: { fontFamily: FontFamily.fredokaSemiBold, color: '#fff', fontSize: 16 },
-    balanceText: {
-      fontFamily: FontFamily.fredokaSemiBold,
-      fontSize: 15,
-      color: DARK,
-      marginBottom: 12,
-      textAlign: 'center',
-    },
-    legendRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 10,
-      marginBottom: 12,
-      justifyContent: 'center',
-    },
-    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    legendDot: { width: 10, height: 10, borderRadius: 5 },
-    legendText: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED },
-    sheetSection: { marginTop: 12, gap: 4 },
-    sheetLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: MUTED, textTransform: 'uppercase' },
-    sheetValue: { fontFamily: FontFamily.fredokaRegular, fontSize: 16, color: DARK },
     pickerWrap: {
       borderWidth: 1,
       borderColor: DIVIDER,
@@ -172,6 +228,71 @@ export function createHelperWorkScheduleStyles() {
       color: WARNING,
       lineHeight: 18,
     },
+
+    // ── Selected-date modal ──────────────────────────────────────────────
+    detailOverlay: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: OVERLAY,
+      padding: 20,
+    },
+    detailCard: {
+      width: '100%',
+      maxWidth: 420,
+      alignSelf: 'center',
+      borderRadius: 22,
+      overflow: 'hidden',
+      ...HERO_SHADOW,
+    },
+    detailHero: { padding: 20 },
+    detailHeroRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 },
+    detailWeekday: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: SUBTLE, textTransform: 'uppercase', letterSpacing: 0.5 },
+    detailDateText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 19, color: '#fff', marginTop: 2 },
+    detailCloseBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'rgba(255,255,255,0.10)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    detailStatusPill: {
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      backgroundColor: 'rgba(255,255,255,0.10)',
+      marginBottom: 16,
+    },
+    detailStatusPillText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12 },
+    detailInfoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+    detailInfoCol: { flexBasis: '45%', gap: 2 },
+    detailInfoLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: SUBTLE, textTransform: 'uppercase', letterSpacing: 0.5 },
+    detailInfoValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#fff' },
+    detailNote: {
+      fontFamily: FontFamily.fredokaRegular,
+      fontSize: 13,
+      color: SUBTLE,
+      lineHeight: 18,
+      marginTop: 14,
+      paddingTop: 14,
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(255,255,255,0.08)',
+    },
+    detailCheckBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingVertical: 14,
+      borderRadius: 14,
+      marginTop: 18,
+    },
+    detailCheckBtnIn: { backgroundColor: ORANGE },
+    detailCheckBtnOut: { backgroundColor: GREEN },
+    detailCheckBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.10)' },
+    detailCheckBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: '#fff' },
   });
 }
 

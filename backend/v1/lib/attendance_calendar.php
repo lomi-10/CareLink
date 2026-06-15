@@ -2,6 +2,9 @@
 
 require_once __DIR__ . '/placement_task_table.php';
 
+/** RA 10361 caps annual paid service incentive leave; we cap paid leave at 5 days/year. */
+const CARELINK_LEAVE_PAID_CAP = 5;
+
 /**
  * @return list<array{date:string,type:string,note:?string}>
  */
@@ -349,6 +352,8 @@ function carelink_attendance_merge_week(mysqli $conn, int $application_id, strin
     $extras = carelink_attendance_load_contract_extras($conn, $application_id);
     $specialFull = $extras['special_days'];
     $restCsv = $extras['rest_day'];
+    $cStart = $extras['employment_start_date'] ?? null;
+    $cEnd = $extras['employment_end_date'] ?? null;
 
     $sunday = date('Y-m-d', strtotime($mondayYmd . ' +6 days'));
     $st = $conn->prepare("
@@ -490,8 +495,8 @@ function carelink_attendance_leave_balance(mysqli $conn, int $application_id, in
     }
     $st->close();
     $used = $row ? (int) $row['c'] : 0;
-    $limit = max(0, $vacationLimit);
-    $rem = $limit > 0 ? max(0, $limit - $used) : null;
+    $limit = $vacationLimit > 0 ? min($vacationLimit, CARELINK_LEAVE_PAID_CAP) : CARELINK_LEAVE_PAID_CAP;
+    $rem = max(0, $limit - $used);
 
     return ['used' => $used, 'limit' => $limit, 'remaining' => $rem];
 }

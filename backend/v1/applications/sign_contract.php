@@ -142,6 +142,23 @@ try {
 
     $conn->commit();
 
+    // Regenerate the contract PDF so the digital signature block reflects the
+    // freshly-recorded employer/helper confirmation timestamps.
+    try {
+        $vendorAutoload = __DIR__ . '/../../vendor/autoload.php';
+        if (is_readable($vendorAutoload)) {
+            require_once $vendorAutoload;
+            require_once __DIR__ . '/../../contracts/contract_helpers.php';
+            require_once __DIR__ . '/../../contracts/bk1_template.php';
+            require_once __DIR__ . '/../../contracts/contract_generator.inc.php';
+            carelink_generate_employment_contract($conn, $application_id, $parent_id, $helper_id, [
+                'application_status_required' => 'contract_ready',
+            ]);
+        }
+    } catch (Exception $ex) {
+        error_log('sign_contract regen: ' . $ex->getMessage());
+    }
+
     require_once __DIR__ . '/../../shared/create_notification.php';
 
     if ($finalized) {

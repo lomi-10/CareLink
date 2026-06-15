@@ -132,10 +132,11 @@ function carelink_contract_write_pdf_file(string $relativePath, string $pdfBinar
 }
 
 /**
- * @param array{application_status_required?:'accepted'|'hireable'|'contract_ready',skip_persist?:bool,contract_end_date?:string,contract_start_date?:string,contract_terms_notes?:string} $opts
+ * @param array{application_status_required?:'accepted'|'hireable'|'contract_ready'|'editable',skip_persist?:bool,contract_end_date?:string,contract_start_date?:string,contract_terms_notes?:string} $opts
  *        hireable = can start contract (not contract_pending, hired, Accepted, Rejected, Withdrawn)
  *        contract_ready = PDF allowed for contract_pending, hired, or legacy Accepted
  *        accepted = legacy alias: same as contract_ready
+ *        editable = contract can still be edited/regenerated (contract_pending only, before both signatures finalize)
  *        skip_persist = build PDF only (no DB row, no file) — use before committing hire
  * @throws Exception on hard failures (caller may catch)
  */
@@ -225,6 +226,13 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
                 . ($status !== '' ? $status : '(empty)')
             );
         }
+    } elseif ($statusMode === 'editable') {
+        if ($status !== 'contract_pending') {
+            throw new Exception(
+                'This contract can no longer be edited (application status: '
+                . ($status !== '' ? $status : '(empty)') . ').'
+            );
+        }
     } else {
         throw new Exception('Invalid application_status_required');
     }
@@ -312,14 +320,14 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
         : '';
     $optStartRaw = isset($opts['contract_start_date']) ? trim((string) $opts['contract_start_date']) : '';
     $effectiveStartRaw = $optStartRaw !== '' ? $optStartRaw : ($storedStartRaw !== '' ? $storedStartRaw : $jobPostStartRaw);
-    $startDate = $effectiveStartRaw !== '' ? carelink_contract_escape(substr($effectiveStartRaw, 0, 32)) : 'N/A';
+    $startDate = carelink_fmt_date($effectiveStartRaw);
 
     $storedEndRaw = isset($row['employment_end_date']) && $row['employment_end_date'] !== null && trim((string) $row['employment_end_date']) !== ''
         ? (string) $row['employment_end_date']
         : '';
     $optEndRaw = isset($opts['contract_end_date']) ? trim((string) $opts['contract_end_date']) : '';
     $effectiveEndRaw = $optEndRaw !== '' ? $optEndRaw : $storedEndRaw;
-    $endDate = $effectiveEndRaw !== '' ? carelink_contract_escape(substr($effectiveEndRaw, 0, 32)) : 'N/A';
+    $endDate = carelink_fmt_date($effectiveEndRaw);
 
     $storedNotesRaw = isset($row['terms_notes']) ? trim((string) $row['terms_notes']) : '';
     $optNotesRaw = isset($opts['contract_terms_notes']) ? trim((string) $opts['contract_terms_notes']) : '';
@@ -369,7 +377,7 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
             ? carelink_contract_escape(trim((string) $row['contract_duration'])) : 'N/A');
 
     // BK-1 item 2: "Hanggang sa" — show "Walang takdang panahon" for indefinite contracts
-    $endDateDisplay = ($contractDurationEsc === 'Indefinite' || $endDate === 'N/A')
+    $endDateDisplay = ($contractDurationEsc === 'Indefinite' || $effectiveEndRaw === '')
         ? 'Walang takdang panahon'
         : $endDate;
 
@@ -426,9 +434,9 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
 
     // BK-1 employer/helper signature dates (from job_applications, when already signed)
     $employerSignedRaw = isset($row['employer_signed_at']) ? (string) $row['employer_signed_at'] : '';
-    $employerSignedDate = $employerSignedRaw !== '' ? carelink_contract_escape(substr($employerSignedRaw, 0, 10)) : '';
+    $employerSignedDate = carelink_fmt_datetime($employerSignedRaw);
     $helperSignedRaw = isset($row['helper_signed_at']) ? (string) $row['helper_signed_at'] : '';
-    $helperSignedDate = $helperSignedRaw !== '' ? carelink_contract_escape(substr($helperSignedRaw, 0, 10)) : '';
+    $helperSignedDate = carelink_fmt_datetime($helperSignedRaw);
 
     $benefitsNotes = '';
     if (isset($row['benefits']) && trim((string) $row['benefits']) !== '') {
@@ -442,12 +450,36 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     }
     $benefitsNotes = $benefitsNotes !== '' ? carelink_contract_escape($benefitsNotes) : 'N/A';
 
-    $provSss = !empty($row['provides_sss']);
-    $provPh = !empty($row['provides_philhealth']);
-    $provPi = !empty($row['provides_pagibig']);
+    // BK-1 item 8: SSS/PhilHealth/Pag-IBIG deductions are mandatory under RA 10361
+    // once the salary thresholds are met, regardless of the job post's toggles.
+    // Pag-IBIG is always mandatory for kasambahay. SSS applies at >= P1,000/mo,
+    // PhilHealth applies at >= P5,000/mo.
+    $provSss = !empty($row['provides_sss']) || $effectiveSalary >= 1000;
+    $provPh = !empty($row['provides_philhealth']) || $effectiveSalary >= 5000;
+    $provPi = true;
 
     $signedDate = carelink_contract_escape(date('Y-m-d'));
     $docRef = carelink_contract_escape('APP-' . $application_id . '-' . date('YmdHis'));
+
+    // Brown-theme PDF: logo, status badge, contract ID, and other display-only fields
+    // derived from values already computed above (additive — existing $data keys are unchanged).
+    $logoPath = dirname(__DIR__) . '/assets/images/carelink_logo.png';
+    $logoSrc = is_readable($logoPath)
+        ? 'data:image/png;base64,' . base64_encode((string) file_get_contents($logoPath))
+        : '';
+
+    $workArrangementMap = ['Stay-in' => 'Stay-in (Live-in)', 'Stay-out' => 'Stay-out (Live-out)', 'Any' => 'Flexible'];
+    $workArrangementRaw = trim((string) ($row['employment_type'] ?? 'Any'));
+    $workArrangementEsc = carelink_contract_escape($workArrangementMap[$workArrangementRaw] ?? $workArrangementRaw);
+    $workScheduleEsc = carelink_contract_escape(trim((string) ($row['work_schedule'] ?? 'N/A')));
+
+    $salaryBigEsc = carelink_contract_escape('₱' . number_format($effectiveSalary, 2));
+    $salaryPeriodEsc = carelink_contract_escape($salaryPeriodRaw);
+
+    $contractStatus = ($employerSignedDate !== 'Pending' && $helperSignedDate !== 'Pending') ? 'SIGNED' : 'PENDING';
+    $contractIdDisplay = 'CL-' . date('Y') . '-' . $application_id;
+    $dateCreated = carelink_fmt_date(date('Y-m-d'));
+    $verifyUrl = 'carelink.app/verify/' . $contractIdDisplay;
 
     // BK-1 item 10: combine job-post benefits (meals/accommodation/etc.) with hire-time other benefits
     $otherBenefitsParts = [];
@@ -503,6 +535,19 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
         'employer_signed_date'   => $employerSignedDate,
         'helper_signed_date'     => $helperSignedDate,
         'signed_date'            => $signedDate,
+        'logo_src'               => $logoSrc,
+        'employer_phone'         => $employerPhone,
+        'employer_address'       => $employerAddr,
+        'helper_phone'           => $helperPhone,
+        'helper_address'         => $helperAddr,
+        'work_arrangement'       => $workArrangementEsc,
+        'work_schedule'          => $workScheduleEsc,
+        'salary_big'             => $salaryBigEsc,
+        'salary_period_label'    => $salaryPeriodEsc,
+        'contract_status'        => $contractStatus,
+        'contract_id_display'    => $contractIdDisplay,
+        'date_created'           => $dateCreated,
+        'verify_url'             => $verifyUrl,
     ];
 
     $html = carelink_bk1_build_html($data);
@@ -516,6 +561,11 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     $dompdf->loadHtml($html, 'UTF-8');
     $dompdf->setPaper('A4', 'portrait');
     $dompdf->render();
+
+    // Brown-theme PDF: running "Page X of Y" footer (content-length-independent).
+    $canvas = $dompdf->getCanvas();
+    $canvas->page_text($canvas->get_width() / 2 - 30, $canvas->get_height() - 28, 'Page {PAGE_NUM} of {PAGE_COUNT}', 'DejaVu Sans', 9, [0.42, 0.42, 0.42]);
+
     $pdfBinary = $dompdf->output();
 
     $templateVer = 'BK-1-v1';

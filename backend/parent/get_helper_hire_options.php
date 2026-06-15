@@ -35,7 +35,11 @@ try {
             ja.status,
             ja.applied_at,
             jp.title AS job_title,
-            jp.start_date AS job_start_date
+            jp.start_date AS job_start_date,
+            jp.salary_offered,
+            jp.salary_period,
+            jp.employment_type,
+            jp.work_schedule
         FROM job_applications ja
         INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
         WHERE jp.parent_id = ?
@@ -60,6 +64,10 @@ try {
             'status' => $row['status'],
             'applied_at' => $row['applied_at'],
             'job_start_date' => $row['job_start_date'],
+            'salary_offered' => $row['salary_offered'] !== null ? (float) $row['salary_offered'] : null,
+            'salary_period' => $row['salary_period'],
+            'employment_type' => $row['employment_type'],
+            'work_schedule' => $row['work_schedule'],
         ];
     }
     $st->close();

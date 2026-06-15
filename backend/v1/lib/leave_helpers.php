@@ -2,9 +2,6 @@
 
 require_once __DIR__ . '/attendance_calendar.php';
 
-/** RA 10361 caps annual paid service incentive leave; we cap paid leave at 5 days/year. */
-const CARELINK_LEAVE_PAID_CAP = 5;
-
 /**
  * Paid leave entitlement for this hire: min(job_posts.vacation_days, 5), minimum 1 day if post says 0 (treat 0 as use statutory default 5).
  *

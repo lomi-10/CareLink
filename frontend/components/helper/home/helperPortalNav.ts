@@ -24,6 +24,14 @@ export function isHelperNavActive(pathname: string | null | undefined, href: str
   const pl = p.toLowerCase();
   const a = routeSegments(p);
   const b = routeSegments(href);
+
+  // "/work" (Schedule) is a path-prefix of "/work/tasks", "/work/history", etc.
+  // Only treat it as active on an exact match so those nested screens don't
+  // also light up the Schedule tab.
+  if (b.length === 1 && b[0] === 'work') {
+    return a.length === 1 && a[0] === 'work';
+  }
+
   if (b.length > 0 && a.length >= b.length) {
     let prefixOk = true;
     for (let i = 0; i < b.length; i += 1) {

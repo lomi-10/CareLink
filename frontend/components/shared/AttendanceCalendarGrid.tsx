@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { theme } from '@/constants/theme';
 import type { AttendanceDay } from '@/lib/attendanceApi';
@@ -63,20 +64,19 @@ export function AttendanceCalendarGrid({ year, month, days, todayYmd, onDayPress
             <View
               style={[
                 styles.cellInner,
-                {
-                  backgroundColor: st.backgroundColor,
-                  borderColor: st.borderColor,
-                  borderWidth: st.borderWidth,
-                },
+                { borderColor: st.borderColor, borderWidth: st.borderWidth },
               ]}
             >
-              <Text
-                style={[
-                  styles.dayNum,
-                  (cellType === 'future' || cellType === 'leave') && styles.dayNumDark,
-                ]}
-                numberOfLines={1}
-              >
+              {st.shadeColor ? (
+                <LinearGradient
+                  colors={[st.shadeColor, st.shadeColor, 'transparent', 'transparent']}
+                  locations={[0, 0.5, 0.5, 1]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+              ) : null}
+              <Text style={styles.dayNum} numberOfLines={1}>
                 {label}
               </Text>
             </View>
@@ -129,15 +129,15 @@ const styles = StyleSheet.create({
   cellInner: {
     flex: 1,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    paddingTop: 4,
+    paddingLeft: 6,
   },
   dayNum: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  dayNumDark: {
     color: theme.color.ink,
   },
 });

@@ -411,6 +411,9 @@ const st = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: '92%',
+    // On native, the `flex: 1` ScrollView below can collapse to 0px height inside a
+    // container that only has `maxHeight` (no `height`) — give it a definite height.
+    height: Platform.OS === 'web' ? undefined : '92%',
     overflow: 'hidden',
     ...CARD_SHADOW,
   },

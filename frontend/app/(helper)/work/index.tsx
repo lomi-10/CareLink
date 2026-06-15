@@ -16,38 +16,63 @@ import {
   Pressable,
   StyleSheet,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth, useResponsive } from '@/hooks/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { WorkModeShell } from '@/components/helper/work';
-import { MUTED, SUBTLE, ORANGE, DIVIDER, SURFACE } from '@/components/helper/home/helperWarmTheme';
+import {
+  DARK,
+  MUTED,
+  SUBTLE,
+  ORANGE,
+  GREEN,
+  DIVIDER,
+  ICON_BG,
+  SURFACE,
+  SUCCESS_BG,
+  WARNING_BG,
+  DANGER,
+  DANGER_BG,
+  INFO,
+} from '@/components/helper/home/helperWarmTheme';
 
 import {
   createHelperWorkScheduleStyles,
   type HelperWorkScheduleStyles,
 } from './work_schedule.styles';
-import { ymdLocal } from '@/lib/helperWorkApi';
+import { ymdLocal, fetchWeekAttendance, postAttendance, type WeekDayAttendance } from '@/lib/helperWorkApi';
 import { monthOverlapsContract } from '@/lib/contractAttendanceNav';
 import {
   fetchAttendanceMonth,
   formatAttendanceTime,
   type AttendanceDay,
 } from '@/lib/attendanceApi';
-import { attendanceDayCellType } from '@/lib/attendanceUi';
+import { attendanceDayCellType, weekDotState, nextRestDayYmd, type WeekDotState } from '@/lib/attendanceUi';
 import { AttendanceCalendarGrid } from '@/components/shared/AttendanceCalendarGrid';
 import {
   fetchLeaveBalance,
   submitLeaveRequest,
+  fetchLeaveRequests,
+  labelForLeaveReasonCode,
   LEAVE_REASON_OPTIONS,
   type LeaveBalanceData,
   type LeaveReasonCode,
+  type LeaveRequestRow,
 } from '@/lib/leaveRequestsApi';
 import { Picker } from '@react-native-picker/picker';
 
+const HERO_GRADIENT = ['#6B2E0A', '#3B1508', '#1E0A04'] as const;
+const WARNING = '#D97706';
+const GREEN_ON_DARK = '#4ADE80';
+const AMBER_ON_DARK = '#FCD34D';
+const RED_ON_DARK = '#F87171';
+
 export default function WorkScheduleScreen() {
   const router = useRouter();
+  const { action } = useLocalSearchParams<{ action?: string }>();
   const styles = useMemo(() => createHelperWorkScheduleStyles(), []);
   const { isDesktop } = useResponsive();
   const { userData, loading: authLoading } = useAuth();
@@ -60,7 +85,10 @@ export default function WorkScheduleScreen() {
   const [leaveBalance, setLeaveBalance] = useState<{ used: number; limit: number; remaining: number | null } | null>(
     null,
   );
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequestRow[]>([]);
+  const [weekDays, setWeekDays] = useState<WeekDayAttendance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionBusy, setActionBusy] = useState(false);
 
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [leaveDate, setLeaveDate] = useState(() => ymdLocal());
@@ -89,7 +117,11 @@ export default function WorkScheduleScreen() {
     if (!activeHire || !helperId) return;
     setLoading(true);
     try {
-      const res = await fetchAttendanceMonth(activeHire.application_id, helperId, 'helper', year, month);
+      const [res, leaveRes, weekRes] = await Promise.all([
+        fetchAttendanceMonth(activeHire.application_id, helperId, 'helper', year, month),
+        fetchLeaveRequests(activeHire.application_id, helperId, 'helper'),
+        fetchWeekAttendance(helperId, activeHire.application_id),
+      ]);
       if (res.success && res.days) {
         setDays(res.days);
         if (res.leave_balance) {
@@ -106,6 +138,8 @@ export default function WorkScheduleScreen() {
         if (res.employment_start_date !== undefined) setContractStart(res.employment_start_date ?? null);
         if (res.employment_end_date !== undefined) setContractEnd(res.employment_end_date ?? null);
       }
+      if (leaveRes.success && leaveRes.data) setLeaveRequests(leaveRes.data);
+      if (weekRes.success && weekRes.days) setWeekDays(weekRes.days);
     } catch (e) {
       console.error(e);
     } finally {
@@ -116,6 +150,15 @@ export default function WorkScheduleScreen() {
   useEffect(() => {
     if (isWorkMode && activeHire && helperId) void load();
   }, [isWorkMode, activeHire, helperId, load]);
+
+  // Keep an open detail modal in sync after a check-in/out or month reload.
+  useEffect(() => {
+    setDetailDay((prev) => {
+      if (!prev) return prev;
+      const fresh = days.find((d) => d.date === prev.date);
+      return fresh ?? prev;
+    });
+  }, [days]);
 
   useEffect(() => {
     if (!contractStart && !contractEnd) return;
@@ -184,6 +227,13 @@ export default function WorkScheduleScreen() {
     setLeaveOpen(true);
   };
 
+  // Deep link from the Work dashboard's "Request Leave" quick action.
+  useEffect(() => {
+    if (action === 'request-leave') {
+      openLeaveModal();
+    }
+  }, [action]);
+
   useEffect(() => {
     if (!leaveOpen || !activeHire || !helperId) return;
     let cancelled = false;
@@ -245,6 +295,36 @@ export default function WorkScheduleScreen() {
     }
   };
 
+  const onCheckIn = async () => {
+    if (!activeHire || !helperId) return;
+    setActionBusy(true);
+    try {
+      const res = await postAttendance(helperId, activeHire.application_id, 'check_in');
+      if (!res.success) {
+        Alert.alert('Check in', res.message || 'Failed to check in.');
+        return;
+      }
+      await load();
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const onCheckOut = async () => {
+    if (!activeHire || !helperId) return;
+    setActionBusy(true);
+    try {
+      const res = await postAttendance(helperId, activeHire.application_id, 'check_out');
+      if (!res.success) {
+        Alert.alert('Check out', res.message || 'Failed to check out.');
+        return;
+      }
+      await load();
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
   const todayYmd = ymdLocal();
 
   const goPrevMonth = () => {
@@ -267,6 +347,11 @@ export default function WorkScheduleScreen() {
     }
   };
 
+  const goToday = () => {
+    setYear(now.getFullYear());
+    setMonth(now.getMonth() + 1);
+  };
+
   if (!ready || authLoading || !isWorkMode || !activeHire) {
     return (
       <View style={styles.centered}>
@@ -275,30 +360,107 @@ export default function WorkScheduleScreen() {
     );
   }
 
-  const balanceText =
-    leaveBalance && leaveBalance.limit > 0
-      ? `${leaveBalance.remaining ?? 0} of ${leaveBalance.limit} days remaining`
-      : leaveBalance
-        ? `${leaveBalance.used} approved leave day${leaveBalance.used === 1 ? '' : 's'} this year`
-        : '—';
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
 
-  const legend = (
-    <View style={styles.legendRow}>
-      <LegendItem styles={styles} color="#22C55E" label="Present" />
-      <LegendItem styles={styles} color="#A855F7" label="Rest" />
-      <LegendItem styles={styles} color="#EAB308" label="Leave" />
-      <LegendItem styles={styles} color="#9CA3AF" label="Absent" />
-      <LegendItem styles={styles} color="#FFFFFF" label="Future" />
-      <LegendItem styles={styles} color="#2563EB" label="Today" outline />
-    </View>
+  // ── Derived data for the new cards ──────────────────────────────────────
+  const recentLeaveRequests = [...leaveRequests].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+
+  const beforeStart = !!contractStart && todayYmd < contractStart;
+
+  const upcomingRestDayYmd = (() => {
+    if (beforeStart) {
+      return nextRestDayYmd(activeHire.rest_days, contractStart as string);
+    }
+    const fromWeek = weekDays.find((d) => d.date >= todayYmd && attendanceDayCellType(d) === 'rest');
+    if (fromWeek) return fromWeek.date;
+    return nextRestDayYmd(activeHire.rest_days, todayYmd);
+  })();
+
+  const upcomingLeave =
+    leaveRequests
+      .filter((l) => l.status === 'approved' && l.date >= todayYmd)
+      .sort((a, b) => a.date.localeCompare(b.date))[0] ?? null;
+
+  const presentCount = weekDays.filter((d) => weekDotState(d) === 'present').length;
+  const scheduledWorkdays = weekDays.filter((d) => attendanceDayCellType(d) !== 'rest').length;
+  const attendanceEncouragement =
+    scheduledWorkdays === 0
+      ? 'No work days scheduled this week.'
+      : presentCount >= scheduledWorkdays
+        ? "Great job — you're on track this week!"
+        : 'Keep it up — check in on your scheduled work days.';
+
+  // ── Selected-date modal derived state ───────────────────────────────────
+  const detailCellType = detailDay ? attendanceDayCellType(detailDay) : 'future';
+  const detailIsToday = detailDay?.date === todayYmd;
+  const detailCheckedIn = !!detailDay?.checked_in;
+  const detailCheckedOut = !!detailDay?.check_out_at;
+  const detailIsRestNoCheckIn = detailCellType === 'rest' && !detailCheckedIn;
+  const detailStatusColor =
+    detailCellType === 'present'
+      ? GREEN_ON_DARK
+      : detailCellType === 'leave' || detailCellType === 'unpaid_leave' || detailCellType === 'holiday'
+        ? AMBER_ON_DARK
+        : detailCellType === 'absent'
+          ? RED_ON_DARK
+          : SUBTLE;
+
+  // ── Leave Balance hero ───────────────────────────────────────────────────
+  const hero = (
+    <LinearGradient colors={HERO_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+      <View style={styles.heroSection}>
+        <View style={styles.heroHeaderRow}>
+          <View style={styles.heroIconWrap}>
+            <Ionicons name="calendar-outline" size={16} color={SUBTLE} />
+          </View>
+          <Text style={styles.heroLabel}>Leave Balance</Text>
+        </View>
+
+        {leaveBalance ? (
+          <>
+            <Text style={styles.heroBigValue}>{leaveBalance.remaining ?? 0} Days Remaining</Text>
+            <Text style={styles.heroSubtitle}>of {leaveBalance.limit} days this year</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.heroBigValue}>Need a day off?</Text>
+            <Text style={styles.heroSubtitle}>Request leave from your employer anytime.</Text>
+          </>
+        )}
+      </View>
+
+      <View style={styles.heroDivider} />
+
+      <View style={styles.heroSection}>
+        <Text style={styles.heroInfoTitle}>Need a time off?</Text>
+        <Text style={styles.heroInfoText}>
+          Request a leave and your employer will be notified right away.
+        </Text>
+      </View>
+
+      <View style={styles.heroDivider} />
+
+      <TouchableOpacity style={styles.heroCta} onPress={openLeaveModal} activeOpacity={0.88}>
+        <Ionicons name="sunny-outline" size={18} color={ORANGE} />
+        <Text style={styles.heroCtaText}>Request Leave</Text>
+      </TouchableOpacity>
+    </LinearGradient>
   );
 
-  const body = (
-    <ScrollView
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
-      contentContainerStyle={[styles.scroll, !isDesktop && { paddingBottom: 24 }]}
-    >
-      <Text style={styles.balanceText}>Leave balance: {balanceText}</Text>
+  // ── Schedule Calendar card ──────────────────────────────────────────────
+  const calendarCard = (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderIconWrap}>
+          <Ionicons name="calendar-outline" size={16} color={ORANGE} />
+        </View>
+        <Text style={styles.cardHeaderTitle}>Schedule Calendar</Text>
+        {!isCurrentMonth ? (
+          <TouchableOpacity style={styles.todayBtn} onPress={goToday} activeOpacity={0.85}>
+            <Text style={styles.todayBtnText}>Today</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
       <View style={styles.weekNav}>
         <TouchableOpacity
@@ -320,8 +482,6 @@ export default function WorkScheduleScreen() {
         </TouchableOpacity>
       </View>
 
-      {legend}
-
       {loading && days.length === 0 ? (
         <ActivityIndicator color={ORANGE} style={{ marginTop: 24 }} />
       ) : (
@@ -334,9 +494,173 @@ export default function WorkScheduleScreen() {
         />
       )}
 
-      <TouchableOpacity style={styles.requestBtn} onPress={openLeaveModal} activeOpacity={0.88}>
-        <Ionicons name="calendar-outline" size={20} color="#fff" />
-        <Text style={styles.requestBtnText}>Request day off</Text>
+      <View style={styles.calLegendRow}>
+        <CalLegendItem styles={styles} color="#22C55E" label="Checked In" />
+        <CalLegendItem styles={styles} color="#DC2626" label="Absent" />
+        <CalLegendItem styles={styles} color="#78350F" label="Day Off" />
+        <CalLegendItem styles={styles} color="#2563EB" label="Today" outline />
+      </View>
+    </View>
+  );
+
+  // ── Leave Requests card ──────────────────────────────────────────────────
+  const leaveRequestsCard = (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderIconWrap}>
+          <Ionicons name="document-text-outline" size={16} color={ORANGE} />
+        </View>
+        <Text style={styles.cardHeaderTitle}>Leave Requests</Text>
+      </View>
+
+      {recentLeaveRequests.length === 0 ? (
+        <Text style={styles.emptyText}>No leave requests yet.</Text>
+      ) : (
+        recentLeaveRequests.map((req, i) => {
+          const pill =
+            req.status === 'approved'
+              ? { bg: SUCCESS_BG, fg: GREEN, label: 'Approved' }
+              : req.status === 'declined'
+                ? { bg: DANGER_BG, fg: DANGER, label: 'Declined' }
+                : { bg: WARNING_BG, fg: WARNING, label: 'Pending' };
+          return (
+            <View
+              key={req.id}
+              style={[styles.listRow, i === recentLeaveRequests.length - 1 && styles.listRowLast]}
+            >
+              <View style={[styles.rowIconWrap, { backgroundColor: ICON_BG }]}>
+                <Ionicons name="sunny-outline" size={18} color={ORANGE} />
+              </View>
+              <View style={styles.rowTextCol}>
+                <Text style={styles.rowTitle}>{labelForLeaveReasonCode(req.reason_code)}</Text>
+                <Text style={styles.rowSub}>{formatDisplayYmd(req.date)}</Text>
+              </View>
+              <View style={[styles.pill, { backgroundColor: pill.bg }]}>
+                <Text style={[styles.pillText, { color: pill.fg }]}>{pill.label}</Text>
+              </View>
+            </View>
+          );
+        })
+      )}
+    </View>
+  );
+
+  // ── Attendance Summary card ─────────────────────────────────────────────
+  const attendanceSummaryCard = (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderIconWrap}>
+          <Ionicons name="stats-chart-outline" size={16} color={ORANGE} />
+        </View>
+        <Text style={styles.cardHeaderTitle}>Attendance Summary</Text>
+      </View>
+
+      <View style={styles.weekRow}>
+        {weekDays.map((d) => {
+          const state = weekDotState(d);
+          return (
+            <View key={d.date} style={styles.dayCol}>
+              <Text style={styles.dayLbl}>{d.weekday.slice(0, 1)}</Text>
+              <WeekDot state={state} styles={styles} />
+            </View>
+          );
+        })}
+      </View>
+
+      <Text style={styles.daysWorkedText}>
+        {presentCount}/{scheduledWorkdays} Days Worked
+      </Text>
+      <Text style={styles.encourageText}>{attendanceEncouragement}</Text>
+
+      <View style={styles.weekLegendRow}>
+        <WeekLegendItem styles={styles} state="present" label="Present" />
+        <WeekLegendItem styles={styles} state="scheduled" label="Scheduled" />
+        <WeekLegendItem styles={styles} state="missed" label="Missed" />
+      </View>
+    </View>
+  );
+
+  // ── Upcoming Schedule card ──────────────────────────────────────────────
+  const upcomingCard = (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderIconWrap}>
+          <Ionicons name="notifications-outline" size={16} color={ORANGE} />
+        </View>
+        <Text style={styles.cardHeaderTitle}>Upcoming Schedule</Text>
+      </View>
+
+      {upcomingRestDayYmd || upcomingLeave ? (
+        <View style={styles.upcomingList}>
+          {upcomingRestDayYmd ? (
+            <View style={styles.upcomingRow}>
+              <View style={[styles.rowIconWrap, { backgroundColor: ICON_BG }]}>
+                <Ionicons name="bed-outline" size={18} color={ORANGE} />
+              </View>
+              <View style={styles.rowTextCol}>
+                <Text style={styles.rowTitle}>Rest Day</Text>
+                <Text style={styles.rowSub}>{formatDisplayYmd(upcomingRestDayYmd)}</Text>
+              </View>
+              <View style={[styles.pill, { backgroundColor: DIVIDER }]}>
+                <Text style={[styles.pillText, { color: MUTED }]}>Scheduled</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {upcomingLeave ? (
+            <View style={styles.upcomingRow}>
+              <View style={[styles.rowIconWrap, { backgroundColor: SUCCESS_BG }]}>
+                <Ionicons name="sunny-outline" size={18} color={GREEN} />
+              </View>
+              <View style={styles.rowTextCol}>
+                <Text style={styles.rowTitle} numberOfLines={1}>
+                  Approved Leave — {labelForLeaveReasonCode(upcomingLeave.reason_code)}
+                </Text>
+                <Text style={styles.rowSub}>{formatDisplayYmd(upcomingLeave.date)}</Text>
+              </View>
+              <View style={[styles.pill, { backgroundColor: SUCCESS_BG }]}>
+                <Text style={[styles.pillText, { color: GREEN }]}>Approved</Text>
+              </View>
+            </View>
+          ) : null}
+        </View>
+      ) : (
+        <Text style={styles.emptyText}>Nothing scheduled — enjoy your work!</Text>
+      )}
+    </View>
+  );
+
+  const body = (
+    <ScrollView
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
+      contentContainerStyle={[styles.scroll, !isDesktop && { paddingBottom: 24 }]}
+    >
+      {hero}
+
+      {beforeStart ? (
+        <View style={styles.previewBanner}>
+          <View style={styles.previewBannerIconWrap}>
+            <Ionicons name="eye-outline" size={20} color={INFO} />
+          </View>
+          <Text style={styles.previewBannerText}>
+            Preview — your work starts on {formatLongDateFull(contractStart!)}.
+          </Text>
+        </View>
+      ) : null}
+
+      {calendarCard}
+      {leaveRequestsCard}
+      {attendanceSummaryCard}
+      {upcomingCard}
+
+      <TouchableOpacity
+        style={styles.historyLink}
+        onPress={() => router.push('/(helper)/work/history')}
+        activeOpacity={0.88}
+      >
+        <Ionicons name="time-outline" size={18} color={ORANGE} />
+        <Text style={styles.historyLinkText}>View attendance history</Text>
+        <Ionicons name="chevron-forward" size={16} color={ORANGE} />
       </TouchableOpacity>
     </ScrollView>
   );
@@ -478,54 +802,111 @@ export default function WorkScheduleScreen() {
     </Modal>
   );
 
+  // ── Selected-date modal ─────────────────────────────────────────────────
   const detailModal = (
-    <Modal visible={!!detailDay} animationType="slide" transparent onRequestClose={() => setDetailDay(null)}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.modalOverlay}
-      >
+    <Modal visible={!!detailDay} animationType="fade" transparent onRequestClose={() => setDetailDay(null)}>
+      <View style={styles.detailOverlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setDetailDay(null)} />
-        <View style={styles.modalCard}>
-          {detailDay ? (
-            <>
-              <Text style={styles.modalTitle}>
-                {detailDay.weekday} · {detailDay.date}
-              </Text>
-              <View style={styles.sheetSection}>
-                <Text style={styles.sheetLabel}>Status</Text>
-                <Text style={styles.sheetValue}>{labelForDetail(detailDay)}</Text>
-              </View>
-              <View style={styles.sheetSection}>
-                <Text style={styles.sheetLabel}>Check-in</Text>
-                <Text style={styles.sheetValue}>
-                  {detailDay.check_in_at ? formatAttendanceTime(detailDay.check_in_at) : '—'}
-                </Text>
-              </View>
-              <View style={styles.sheetSection}>
-                <Text style={styles.sheetLabel}>Check-out</Text>
-                <Text style={styles.sheetValue}>
-                  {detailDay.check_out_at ? formatAttendanceTime(detailDay.check_out_at) : '—'}
-                </Text>
-              </View>
-              <View style={styles.sheetSection}>
-                <Text style={styles.sheetLabel}>Tasks completed</Text>
-                <Text style={styles.sheetValue}>
-                  {detailDay.tasks_completed != null ? String(detailDay.tasks_completed) : '—'}
-                </Text>
-              </View>
-              {detailDay.special_note || detailDay.note ? (
-                <View style={styles.sheetSection}>
-                  <Text style={styles.sheetLabel}>Note</Text>
-                  <Text style={styles.sheetValue}>{detailDay.special_note || detailDay.note}</Text>
+        {detailDay ? (
+          <View style={styles.detailCard}>
+            <LinearGradient colors={HERO_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.detailHero}>
+              <View style={styles.detailHeroRow}>
+                <View>
+                  <Text style={styles.detailWeekday}>{detailDay.weekday}</Text>
+                  <Text style={styles.detailDateText}>{formatLongDateFull(detailDay.date)}</Text>
                 </View>
+                <TouchableOpacity style={styles.detailCloseBtn} onPress={() => setDetailDay(null)}>
+                  <Ionicons name="close" size={18} color="#fff" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.detailStatusPill}>
+                <Text style={[styles.detailStatusPillText, { color: detailStatusColor }]}>
+                  {labelForDetail(detailDay)}
+                </Text>
+              </View>
+
+              <View style={styles.detailInfoGrid}>
+                <View style={styles.detailInfoCol}>
+                  <Text style={styles.detailInfoLabel}>Work Hours</Text>
+                  <Text style={styles.detailInfoValue}>{activeHire.work_hours || 'Not set'}</Text>
+                </View>
+                <View style={styles.detailInfoCol}>
+                  <Text style={styles.detailInfoLabel}>Check-in</Text>
+                  <Text style={styles.detailInfoValue}>
+                    {detailDay.check_in_at ? formatAttendanceTime(detailDay.check_in_at) : '—'}
+                  </Text>
+                </View>
+                <View style={styles.detailInfoCol}>
+                  <Text style={styles.detailInfoLabel}>Check-out</Text>
+                  <Text style={styles.detailInfoValue}>
+                    {detailDay.check_out_at ? formatAttendanceTime(detailDay.check_out_at) : '—'}
+                  </Text>
+                </View>
+                <View style={styles.detailInfoCol}>
+                  <Text style={styles.detailInfoLabel}>Tasks Completed</Text>
+                  <Text style={styles.detailInfoValue}>
+                    {detailDay.tasks_completed != null ? String(detailDay.tasks_completed) : '—'}
+                  </Text>
+                </View>
+              </View>
+
+              {detailDay.special_note || detailDay.note ? (
+                <Text style={styles.detailNote}>{detailDay.special_note || detailDay.note}</Text>
               ) : null}
-              <TouchableOpacity style={styles.modalSubmit} onPress={() => setDetailDay(null)}>
-                <Text style={styles.modalSubmitText}>Close</Text>
-              </TouchableOpacity>
-            </>
-          ) : null}
-        </View>
-      </KeyboardAvoidingView>
+
+              {detailIsToday ? (
+                <TouchableOpacity
+                  style={[
+                    styles.detailCheckBtn,
+                    !beforeStart && !detailCheckedIn && !detailCheckedOut && !detailIsRestNoCheckIn && styles.detailCheckBtnIn,
+                    !beforeStart && detailCheckedIn && !detailCheckedOut && styles.detailCheckBtnOut,
+                    (beforeStart || detailCheckedOut || detailIsRestNoCheckIn) && styles.detailCheckBtnDisabled,
+                  ]}
+                  onPress={() => {
+                    if (beforeStart || detailCheckedOut || detailIsRestNoCheckIn) return;
+                    if (!detailCheckedIn) void onCheckIn();
+                    else void onCheckOut();
+                  }}
+                  disabled={actionBusy || beforeStart || detailCheckedOut || detailIsRestNoCheckIn}
+                  activeOpacity={0.9}
+                >
+                  {actionBusy ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name={
+                          beforeStart
+                            ? 'time-outline'
+                            : detailCheckedOut
+                              ? 'checkmark-done'
+                              : detailCheckedIn
+                                ? 'log-out-outline'
+                                : 'log-in-outline'
+                        }
+                        size={20}
+                        color="#fff"
+                      />
+                      <Text style={styles.detailCheckBtnText}>
+                        {beforeStart
+                          ? `Starts ${formatLongDateFull(contractStart!)}`
+                          : detailIsRestNoCheckIn
+                            ? 'Rest day'
+                            : detailCheckedOut
+                              ? 'Done for today'
+                              : detailCheckedIn
+                                ? 'Check out'
+                                : 'Check in'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : null}
+            </LinearGradient>
+          </View>
+        ) : null}
+      </View>
     </Modal>
   );
 
@@ -566,7 +947,7 @@ function labelForDetail(d: AttendanceDay): string {
   }
 }
 
-function LegendItem({
+function CalLegendItem({
   styles,
   color,
   label,
@@ -578,15 +959,46 @@ function LegendItem({
   outline?: boolean;
 }) {
   return (
-    <View style={styles.legendItem}>
+    <View style={styles.calLegendItem}>
       <View
         style={[
-          styles.legendDot,
+          styles.calLegendDot,
           { backgroundColor: color },
           outline && { borderWidth: 2, borderColor: '#2563EB' },
         ]}
       />
-      <Text style={styles.legendText}>{label}</Text>
+      <Text style={styles.calLegendText}>{label}</Text>
+    </View>
+  );
+}
+
+function WeekDot({ state, styles }: { state: WeekDotState; styles: HelperWorkScheduleStyles }) {
+  if (state === 'present') {
+    return (
+      <View style={[styles.weekDot, styles.weekDotPresent]}>
+        <Ionicons name="checkmark" size={12} color="#fff" />
+      </View>
+    );
+  }
+  if (state === 'missed') {
+    return <View style={[styles.weekDot, styles.weekDotMissed]} />;
+  }
+  return <View style={[styles.weekDot, styles.weekDotScheduled]} />;
+}
+
+function WeekLegendItem({
+  styles,
+  state,
+  label,
+}: {
+  styles: HelperWorkScheduleStyles;
+  state: WeekDotState;
+  label: string;
+}) {
+  return (
+    <View style={styles.weekLegendItem}>
+      <WeekDot state={state} styles={styles} />
+      <Text style={styles.weekLegendText}>{label}</Text>
     </View>
   );
 }
@@ -666,6 +1078,19 @@ function formatDisplayYmd(ymd: string) {
     return new Date(y, m - 1, d).toLocaleDateString(undefined, {
       weekday: 'short',
       month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return ymd;
+  }
+}
+
+function formatLongDateFull(ymd: string) {
+  try {
+    const [y, m, d] = ymd.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+      month: 'long',
       day: 'numeric',
       year: 'numeric',
     });

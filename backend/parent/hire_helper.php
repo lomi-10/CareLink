@@ -118,24 +118,20 @@ try {
     $deployment_agreement   = isset($input['deployment_agreement'])   ? trim((string) $input['deployment_agreement'])   : null;
     $termination_conditions = isset($input['termination_conditions']) ? trim((string) $input['termination_conditions']) : null;
 
-    if ($confirmed_salary !== null && $confirmed_salary < 7000) {
-        throw new Exception('Confirmed salary must be at least ₱7,000 (RA 10361).');
-    }
-
     if (empty($rest_days_input)) {
         throw new Exception('Select at least one rest day for the contract.');
     }
 
     $endDt = carelink_hire_parse_ymd($contract_end_raw);
-    if ($endDt === null) {
-        throw new Exception('Contract end date is required (use YYYY-MM-DD).');
-    }
     if ($endDt === false) {
         throw new Exception('Invalid contract end date (use YYYY-MM-DD).');
     }
+    if ($endDt === null && $contract_duration !== 'Indefinite') {
+        throw new Exception('Contract end date is required (use YYYY-MM-DD).');
+    }
 
     $js = $conn->prepare('
-        SELECT jp.start_date
+        SELECT jp.start_date, jp.work_schedule
         FROM job_posts jp
         INNER JOIN job_applications ja ON ja.job_post_id = jp.job_post_id
         WHERE ja.application_id = ? AND jp.parent_id = ?
@@ -156,6 +152,14 @@ try {
         }
     }
 
+    $isPartTime = ($jr['work_schedule'] ?? 'Full-time') === 'Part-time';
+    if ($confirmed_salary === null || $confirmed_salary <= 0) {
+        throw new Exception('Confirmed salary is required.');
+    }
+    if (!$isPartTime && $confirmed_salary < 7000) {
+        throw new Exception('Confirmed salary must be at least ₱7,000 (RA 10361).');
+    }
+
     $startDtCompare = null;
     if ($contract_start_raw !== '') {
         $ps = carelink_hire_parse_ymd($contract_start_raw);
@@ -170,7 +174,7 @@ try {
         }
     }
 
-    if ($startDtCompare && $endDt < $startDtCompare) {
+    if ($endDt !== null && $startDtCompare && $endDt < $startDtCompare) {
         throw new Exception('Contract end date must be on or after the employment start date.');
     }
 
@@ -183,6 +187,7 @@ try {
     }
 
     $startDb = $contract_start_raw !== '' ? $contract_start_raw : null;
+    $endDb = $contract_end_raw !== '' ? $contract_end_raw : null;
 
     $vendorAutoload = __DIR__ . '/../vendor/autoload.php';
     if (!is_readable($vendorAutoload)) {
@@ -268,7 +273,7 @@ try {
         $relativePath,
         $templateVer,
         $startDb,
-        $contract_end_raw,
+        $endDb,
         $notesDb,
         $contract_duration,
         $confirmed_salary,

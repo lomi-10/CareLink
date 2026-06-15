@@ -3,10 +3,10 @@ import { StyleSheet, Platform } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
 import {
   BG, CARD_BG, BROWN, CARAMEL, DARK, MUTED,
-  DIVIDER, ICON_BG, SURFACE, GREEN, SUCCESS_BG, WARNING_BG, DANGER,
+  DIVIDER, ICON_BG, SURFACE, SUCCESS_BG, WARNING_BG, DANGER, DANGER_BG,
 } from '@/components/parent/home/parentWarmTheme';
 
-const ACCENT = BROWN;
+export const ACCENT = BROWN;
 
 const CARD_SHADOW = Platform.select({
   ios:     { shadowColor: '#8B5A2B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
@@ -63,6 +63,8 @@ export const s = StyleSheet.create({
   convTime:         { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED },
   convJob:          { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: BROWN, marginBottom: 2 },
   convPreview:      { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED },
+  convPreviewPendingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  convPreviewPending:    { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: CARAMEL, fontStyle: 'italic' },
 
   emptyWrap:        { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   emptyTitle:       { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: DARK, marginTop: 14, marginBottom: 6 },
@@ -90,36 +92,68 @@ export const s = StyleSheet.create({
   callBtn:          { width: 38, height: 38, borderRadius: 19, backgroundColor: ICON_BG,
                       justifyContent: 'center', alignItems: 'center', marginLeft: 6 },
 
-  appActionBar:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                      paddingHorizontal: 14, paddingVertical: 10, backgroundColor: CARD_BG,
-                      borderBottomWidth: 1, borderBottomColor: DIVIDER, gap: 10 },
-  appActionLabel:   { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: MUTED },
-  appActionBtns:    { flexDirection: 'row', gap: 8 },
-  appActionBtn:     { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, minWidth: 72, alignItems: 'center' },
-  appActionHire:    { backgroundColor: CARAMEL },
-  appActionReject:  { backgroundColor: SURFACE, borderWidth: 1, borderColor: DIVIDER },
-  appActionBtnTxt:  { color: '#fff', fontFamily: FontFamily.fredokaSemiBold, fontSize: 13 },
   appActionRejectTxt: { color: DANGER, fontFamily: FontFamily.fredokaSemiBold, fontSize: 13 },
-  appActionBarMuted:{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8,
-                      backgroundColor: SUCCESS_BG, borderBottomWidth: 1, borderBottomColor: DIVIDER },
-  appActionMutedTxt:{ fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: GREEN },
-  contractDownloadLink: { paddingVertical: 4, paddingHorizontal: 8 },
-  contractDownloadLinkTxt: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: BROWN },
 
-  contractActionBar: {
+  // Tab bar (Messages / Contract / Interview)
+  chatTabBar:       { flexDirection: 'row', backgroundColor: CARD_BG, paddingHorizontal: 10,
+                      paddingTop: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: DIVIDER, gap: 6 },
+  chatTabBtn:       { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                      gap: 6, paddingVertical: 9, borderRadius: 10, backgroundColor: ICON_BG, position: 'relative' },
+  chatTabBtnActive: { backgroundColor: CARAMEL },
+  chatTabBtnText:       { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: MUTED },
+  chatTabBtnTextActive: { color: '#fff' },
+  chatTabDot:       { position: 'absolute', top: 6, right: 10, width: 8, height: 8, borderRadius: 4 },
+  chatTabDotAmber:  { backgroundColor: '#F59E0B' },
+  chatTabDotBlue:   { backgroundColor: '#3B82F6' },
+
+  // Contract / Interview tab shared
+  contractTabBody:  { flex: 1, padding: 14 },
+  contractHeaderRow:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  contractHeaderTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: DARK },
+
+  statusPill:       { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  statusPillTxt:    { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: DARK },
+  statusPillAmber:  { backgroundColor: WARNING_BG },
+  statusPillGreen:  { backgroundColor: SUCCESS_BG },
+  statusPillRed:    { backgroundColor: DANGER_BG },
+  statusPillBlue:   { backgroundColor: '#DBEAFE' },
+  statusPillGray:   { backgroundColor: ICON_BG },
+
+  contractSummaryCard: { backgroundColor: SURFACE, borderRadius: 14, borderWidth: 1, borderColor: DIVIDER,
+                      padding: 14, marginBottom: 14, ...CARD_SHADOW } as any,
+  contractRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+                      paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: DIVIDER, gap: 10 },
+  contractRowLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED, flexShrink: 0 },
+  contractRowValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, flex: 1, textAlign: 'right' },
+
+  contractSignStatus: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, marginBottom: 14, textAlign: 'center' },
+  contractActionBtnsCol: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-start' },
+
+  contractDangerOutlineBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
+                      borderWidth: 1, borderColor: DANGER, backgroundColor: SURFACE },
+  contractDangerOutlineBtnTxt: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DANGER },
+
+  // Empty states (no contract / no interview)
+  contractEmptyState:   { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 16 },
+  contractEmptyIconWrap:{ width: 76, height: 76, borderRadius: 38, backgroundColor: ICON_BG,
+                      justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  contractEmptyTitle:   { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: DARK, marginBottom: 6 },
+  contractEmptySub:     { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED, textAlign: 'center', lineHeight: 19 },
+  contractEmptyBtns:    { flexDirection: 'row', gap: 10, justifyContent: 'center', marginTop: 4 },
+
+  contractDeclineBanner: {
     flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
+    alignItems: 'flex-start',
+    gap: 8,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: WARNING_BG,
+    paddingVertical: 10,
+    backgroundColor: '#FCE4E4',
     borderBottomWidth: 1,
     borderBottomColor: DIVIDER,
   },
-  contractActionTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK },
-  contractActionSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginTop: 2 },
-  contractActionBtns: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  contractDeclineBannerTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: DANGER },
+  contractDeclineBannerText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, marginTop: 2, lineHeight: 17 },
+
   contractOutlineBtn: {
     paddingHorizontal: 12,
     paddingVertical: 8,

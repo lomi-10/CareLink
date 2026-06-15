@@ -49,6 +49,14 @@ try {
         json_out(['success' => false, 'message' => 'Forbidden'], 403);
     }
 
+    $today = date('Y-m-d');
+    $now = date('Y-m-d H:i:s');
+
+    $contractExtras = carelink_attendance_load_contract_extras($conn, $application_id);
+    if ($contractExtras['employment_start_date'] !== null && $today < $contractExtras['employment_start_date']) {
+        json_out(['success' => false, 'message' => 'Your employment has not started yet.'], 422);
+    }
+
     if (carelink_attendance_today_is_rest_day($conn, $application_id)) {
         json_out(['success' => false, 'message' => 'Cannot check in on a scheduled rest day (contract).'], 422);
     }
@@ -58,9 +66,6 @@ try {
         $label = $specialToday['type'] === 'holiday' ? 'employer-marked holiday' : 'no-work day';
         json_out(['success' => false, 'message' => 'Cannot check in on a ' . $label . ' (contract).'], 422);
     }
-
-    $today = date('Y-m-d');
-    $now = date('Y-m-d H:i:s');
 
     $st = $conn->prepare("
         SELECT id, checked_in_at, checked_out_at, status

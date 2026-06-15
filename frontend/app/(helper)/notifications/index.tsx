@@ -20,7 +20,7 @@ import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { useAuth } from '@/hooks/shared';
 import type { Notification } from '@/hooks/shared';
-import { getHelperNotificationRoute } from '@/utils/notification-routes';
+import { resolveHelperNotificationRoute } from '@/utils/notification-routes';
 import {
   MUTED, ORANGE, GREEN, BLUE, ICON_BG, PAGE_BG, SURFACE,
   SUCCESS_BG, WARNING_BG, DANGER, DANGER_BG, INFO, INFO_BG,
@@ -55,6 +55,8 @@ function buildNotificationTypeConfig() {
     leave_request_submitted: { icon: 'umbrella-outline', color: WARNING, bg: WARNING_BG },
     leave_request_responded: { icon: 'checkmark-circle-outline', color: INFO, bg: INFO_BG },
     contract_terminated: { icon: 'document-text-outline', color: DANGER, bg: DANGER_BG },
+    placement_renewal: { icon: 'sync-outline', color: INFO, bg: INFO_BG },
+    termination_requested: { icon: 'alert-circle-outline', color: DANGER, bg: DANGER_BG },
   };
   return config;
 }
@@ -119,9 +121,9 @@ function NotifContent({
   const router = useRouter();
   const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } = useNotifications('helper');
 
-  const handleNotificationPress = (item: Notification) => {
+  const handleNotificationPress = async (item: Notification) => {
     if (!item.is_read) markOneRead(item.notification_id);
-    const route = getHelperNotificationRoute(item);
+    const route = await resolveHelperNotificationRoute(item);
     if (route) {
       router.push(route as any);
     }

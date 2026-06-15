@@ -64,6 +64,8 @@ export async function fetchWeekAttendance(
     success: true as const,
     week_start: res.week_start,
     days: res.days,
+    employment_start_date: res.employment_start_date ?? null,
+    employment_end_date: res.employment_end_date ?? null,
     today: todayRow
       ? {
           date: todayRow.date,

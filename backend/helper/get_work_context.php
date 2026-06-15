@@ -74,6 +74,20 @@ try {
 
             jp.title AS job_title,
 
+            pp.barangay AS work_barangay,
+
+            pp.municipality AS work_municipality,
+
+            pp.province AS work_province,
+
+            pp.address AS work_address,
+
+            c.work_hours AS contract_work_hours,
+
+            c.rest_days AS contract_rest_days,
+
+            c.employment_start_date,
+
             TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS employer_name
 
         FROM job_applications ja
@@ -81,6 +95,10 @@ try {
         INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
 
         INNER JOIN users u ON u.user_id = jp.parent_id AND u.user_type = 'parent'
+
+        LEFT JOIN contracts c ON c.application_id = ja.application_id
+
+        LEFT JOIN parent_profiles pp ON pp.user_id = jp.parent_id
 
         WHERE ja.helper_id = ?
 
@@ -170,6 +188,44 @@ try {
 
 
 
+    $workLocationParts = array_filter([
+
+        trim((string) ($row['work_barangay'] ?? '')),
+
+        trim((string) ($row['work_municipality'] ?? '')),
+
+        trim((string) ($row['work_province'] ?? '')),
+
+    ], fn ($part) => $part !== '');
+
+    $workLocation = !empty($workLocationParts)
+
+        ? implode(', ', $workLocationParts)
+
+        : trim((string) ($row['work_address'] ?? ''));
+
+
+
+    $restDays = [];
+
+    if (!empty($row['contract_rest_days'])) {
+
+        $decoded = json_decode((string) $row['contract_rest_days'], true);
+
+        if (is_array($decoded)) {
+
+            $restDays = $decoded;
+
+        }
+
+    }
+
+
+
+    $employmentStartDate = !empty($row['employment_start_date']) ? (string) $row['employment_start_date'] : null;
+
+
+
     echo json_encode([
 
         'success' => true,
@@ -193,6 +249,14 @@ try {
             'job_title' => $row['job_title'],
 
             'employer_name' => trim((string) $row['employer_name']),
+
+            'work_location' => $workLocation !== '' ? $workLocation : null,
+
+            'work_hours' => $row['contract_work_hours'] !== null ? (string) $row['contract_work_hours'] : null,
+
+            'rest_days' => $restDays,
+
+            'employment_start_date' => $employmentStartDate,
 
         ],
 

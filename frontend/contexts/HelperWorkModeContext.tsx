@@ -20,6 +20,10 @@ export type ActiveHire = {
   placement_status?: 'active' | 'termination_pending';
   termination_last_day?: string | null;
   termination_notice_date?: string | null;
+  work_location?: string | null;
+  work_hours?: string | null;
+  rest_days?: string[];
+  employment_start_date?: string | null;
 };
 
 export type EmploymentEndedInfo = {

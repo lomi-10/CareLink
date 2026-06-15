@@ -6,7 +6,7 @@ import { Sidebar, MobileHeader, MobileMenu } from '@/components/helper/home';
 import { WorkModeTabBar } from './WorkModeTabBar';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
-import { theme } from '@/constants/theme';
+import { DARK, MUTED, ORANGE, ICON_BG, DIVIDER, SURFACE, PAGE_BG } from '@/components/helper/home/helperWarmTheme';
 
 type Props = {
   children: React.ReactNode;
@@ -49,10 +49,10 @@ export function WorkModeShell({ children, desktopTitle, desktopSubtitle }: Props
               <Ionicons
                 name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
                 size={20}
-                color={unreadCount > 0 ? theme.color.helper : theme.color.muted}
+                color={unreadCount > 0 ? ORANGE : MUTED}
               />
               {unreadCount > 0 ? (
-                <View style={[styles.badge, { backgroundColor: theme.color.helper }]}>
+                <View style={[styles.badge, { backgroundColor: ORANGE }]}>
                   <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
                 </View>
               ) : null}
@@ -92,7 +92,6 @@ export function WorkModeShell({ children, desktopTitle, desktopSubtitle }: Props
     <SafeAreaView style={styles.mobileRoot}>
       <MobileHeader
         onMenuPress={() => setMenuOpen(true)}
-        accentColor={theme.color.helper}
         subtitle="Work Mode"
         notificationCount={unreadCount}
         onNotificationPress={() => router.push('/(helper)/notifications')}
@@ -134,7 +133,7 @@ export function WorkModeShell({ children, desktopTitle, desktopSubtitle }: Props
 }
 
 const styles = StyleSheet.create({
-  desktopRoot: { flex: 1, flexDirection: 'row', backgroundColor: theme.color.canvasHelper },
+  desktopRoot: { flex: 1, flexDirection: 'row', backgroundColor: PAGE_BG },
   desktopMain: { flex: 1, paddingHorizontal: 28, paddingTop: 24, paddingBottom: 16 },
   desktopTopBar: {
     flexDirection: 'row',
@@ -142,21 +141,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 20,
   },
-  desktopTitle: { fontSize: 24, fontWeight: '900', color: theme.color.ink, letterSpacing: -0.4 },
-  desktopSub: { fontSize: 13, color: theme.color.muted, marginTop: 4 },
+  desktopTitle: { fontSize: 24, fontWeight: '900', color: DARK, letterSpacing: -0.4 },
+  desktopSub: { fontSize: 13, color: MUTED, marginTop: 4 },
   notifBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: theme.color.surface,
+    backgroundColor: SURFACE,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: theme.color.line,
+    borderColor: DIVIDER,
   },
   notifBtnActive: {
-    backgroundColor: theme.color.helperSoft,
-    borderColor: theme.color.helper + '40',
+    backgroundColor: ICON_BG,
+    borderColor: ORANGE + '40',
   },
   badge: {
     position: 'absolute',
@@ -170,6 +169,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   badgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
-  mobileRoot: { flex: 1, backgroundColor: theme.color.canvasHelper },
+  mobileRoot: { flex: 1, backgroundColor: PAGE_BG },
   mobileBody: { flex: 1 },
 });

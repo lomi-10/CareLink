@@ -12,7 +12,7 @@ import { useNotifications, useResponsive, useAuth } from '@/hooks/shared';
 import { Sidebar, ParentTabBar } from '@/components/parent/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import type { Notification } from '@/hooks/shared';
-import { getParentNotificationRoute } from '@/utils/notification-routes';
+import { resolveParentNotificationRoute } from '@/utils/notification-routes';
 import { BROWN, ICON_BG } from '@/components/parent/home/parentWarmTheme';
 
 import { ns } from './notifications.styles';
@@ -42,6 +42,7 @@ const NOTIF_PALETTE: Record<string, IconCfg> = {
   leave_request_submitted: { icon: 'umbrella-outline',         color: '#D97706', bg: '#FEF3C7' },
   leave_request_responded: { icon: 'checkmark-circle-outline', color: '#3B82F6', bg: '#DBEAFE' },
   contract_terminated:     { icon: 'document-text-outline',   color: '#DC2626', bg: '#FEE2E2' },
+  placement_renewal:       { icon: 'sync-outline',             color: '#3B82F6', bg: '#DBEAFE' },
 };
 
 function timeAgo(dateStr: string) {
@@ -80,9 +81,9 @@ function NotifContent() {
   const router = useRouter();
   const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } = useNotifications('parent');
 
-  const handleNotificationPress = (item: Notification) => {
+  const handleNotificationPress = async (item: Notification) => {
     if (!item.is_read) markOneRead(item.notification_id);
-    const route = getParentNotificationRoute(item);
+    const route = await resolveParentNotificationRoute(item);
     if (route) router.push(route as any);
   };
 

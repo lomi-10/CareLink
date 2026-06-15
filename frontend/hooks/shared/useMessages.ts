@@ -11,12 +11,29 @@ export interface Conversation {
   partner_name:  string;
   partner_type:  'helper' | 'parent';
   partner_photo: string | null;
-  last_message:  string;
+  last_message:  string | null;
   last_sent_at:  string;
   is_mine:       boolean;
   unread_count:  number;
   job_post_id:   number | null;
   job_title:     string | null;
+  /** False when this entry comes from a shortlisted application with no messages exchanged yet. */
+  has_messages:  boolean;
+  /** job_applications.status for pending connections (has_messages === false), otherwise null. */
+  application_status: string | null;
+}
+
+const PENDING_CONNECTION_LABELS: Record<string, string> = {
+  'Shortlisted':          'Shortlisted — say hello!',
+  'Interview Scheduled':  'Interview scheduled — coordinate the details',
+  'Accepted':             'Accepted — discuss next steps',
+  'contract_pending':     'Contract pending — discuss the details',
+  'hired':                'Hired — say hello!',
+};
+
+/** Preview text for a conversation that has no messages yet (has_messages === false). */
+export function pendingConnectionLabel(status: string | null): string {
+  return (status && PENDING_CONNECTION_LABELS[status]) || 'Start the conversation';
 }
 
 export type MessageType = 'text' | 'image' | 'video_call';

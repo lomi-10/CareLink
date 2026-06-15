@@ -1905,3 +1905,45 @@ ALTER TABLE `contracts`
   ADD COLUMN IF NOT EXISTS `debt_agreement`         text DEFAULT NULL COMMENT 'Item 11: debt agreement, if any',
   ADD COLUMN IF NOT EXISTS `deployment_agreement`   text DEFAULT NULL COMMENT 'Item 12: deployment cost agreement, if any',
   ADD COLUMN IF NOT EXISTS `termination_conditions` text DEFAULT NULL COMMENT 'Item 13: termination conditions, if any';
+
+-- ---------------------------------------------------------------------------
+-- Migration: password re-entry attempts (digital signature confirmation, RA 8792)
+-- Tracks failed attempts on /v1/auth/verify_password.php; 5 failures locks
+-- further verification for that user for 5 minutes.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `password_verify_attempts` (
+  `user_id` int NOT NULL,
+  `attempt_count` int NOT NULL DEFAULT 0,
+  `last_attempt` datetime DEFAULT NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_password_verify_attempts_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------------------------------------------------------------------------
+-- Migration: helper "request contract changes" flag on contracts table
+-- Set by /v1/applications/request_contract_changes.php when the helper asks
+-- the employer to review/regenerate the contract before signing; cleared by
+-- /parent/edit_contract.php once the employer regenerates the contract.
+-- ---------------------------------------------------------------------------
+ALTER TABLE `contracts`
+  ADD COLUMN IF NOT EXISTS `helper_decline_reason` varchar(1000) DEFAULT NULL COMMENT 'Helper-submitted reason for requesting contract changes',
+  ADD COLUMN IF NOT EXISTS `helper_decline_at` datetime DEFAULT NULL COMMENT 'When the helper last requested contract changes';
+
+-- ---------------------------------------------------------------------------
+-- Migration: align placements.employment_type / work_schedule with job_posts
+-- job_posts.employment_type was renamed from ('Live-in','Live-out','Any') to
+-- ('Stay-in','Stay-out','Any'), but placements.employment_type was left as
+-- ('Live-in','Live-out') NOT NULL — carelink_finalize_hire_after_contract()
+-- copies jp.employment_type/work_schedule straight into placements, so a
+-- 'Stay-in'/'Stay-out'/'Any' value (or work_schedule = 'Any') triggers
+-- "Data truncated for column 'employment_type'" when signing a contract.
+-- ---------------------------------------------------------------------------
+ALTER TABLE `placements`
+  MODIFY COLUMN `employment_type` enum('Live-in','Live-out','Stay-in','Stay-out','Any') COLLATE utf8mb4_general_ci NOT NULL,
+  MODIFY COLUMN `work_schedule` enum('Full-time','Part-time','Any') COLLATE utf8mb4_general_ci NOT NULL;
+
+UPDATE `placements` SET `employment_type` = 'Stay-in'  WHERE `employment_type` = 'Live-in';
+UPDATE `placements` SET `employment_type` = 'Stay-out' WHERE `employment_type` = 'Live-out';
+
+ALTER TABLE `placements`
+  MODIFY COLUMN `employment_type` enum('Stay-in','Stay-out','Any') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Any' COMMENT 'Accommodation arrangement (snapshot at hire time)';

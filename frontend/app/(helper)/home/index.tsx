@@ -188,6 +188,9 @@ export default function HelperHome() {
             <WorkModeDashboard
               helperId={helperIdNum}
               userFirstName={userData.first_name}
+              userFullName={getFullName()}
+              profileImage={profileImage}
+              verified={profileData?.profile?.verification_status === 'Verified'}
               activeHire={activeHire}
               onRefreshWorkContext={refreshWork}
             />
@@ -312,6 +315,9 @@ export default function HelperHome() {
           <WorkModeDashboard
             helperId={helperIdNum}
             userFirstName={userData.first_name}
+            userFullName={getFullName()}
+            profileImage={profileImage}
+            verified={profileData?.profile?.verification_status === 'Verified'}
             activeHire={activeHire}
             onRefreshWorkContext={refreshWork}
           />

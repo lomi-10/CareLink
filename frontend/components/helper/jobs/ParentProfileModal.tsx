@@ -514,6 +514,9 @@ const s = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: '95%',
+    // On native, the `flex: 1` ScrollView below can collapse to 0px height inside a
+    // container that only has `maxHeight` (no `height`) — give it a definite height.
+    height: Platform.OS === 'web' ? undefined : '95%',
     overflow: 'hidden',
     ...Platform.select({
       ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 16 },

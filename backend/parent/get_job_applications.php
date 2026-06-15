@@ -34,9 +34,13 @@ try {
         $where = "jp.parent_id = $parent_id";
     }
     $query = "
-        SELECT 
+        SELECT
             a.application_id, a.job_post_id, a.helper_id, a.status, a.applied_at, a.cover_letter,
             a.employer_signed_at, a.helper_signed_at, a.contract_generated_at,
+            c.helper_decline_reason, c.helper_decline_at,
+            c.confirmed_salary, c.work_hours, c.rest_days,
+            c.employment_start_date, c.employment_end_date, c.contract_duration,
+            c.payment_schedule, c.other_benefits, c.pdf_file_path,
             jp.title AS job_title, jp.start_date AS job_start_date, jp.category_id,
             rc.category_name,
             u.first_name, u.last_name, u.email, hp.contact_number,
@@ -44,10 +48,25 @@ try {
             hp.experience_years, hp.barangay, hp.municipality, hp.province,
             hp.education_level, hp.religion, hp.civil_status, hp.bio,
             hp.employment_type, hp.work_schedule, hp.expected_salary, hp.salary_period,
-            hp.verification_status, hp.rating_average, hp.rating_count
+            hp.verification_status, hp.rating_average, hp.rating_count,
+            li.interview_id, li.interview_date, li.interview_type, li.location_or_link,
+            li.interview_status, li.parent_confirmed, li.helper_confirmed
         FROM job_applications a
         JOIN job_posts jp ON a.job_post_id = jp.job_post_id
         LEFT JOIN ref_categories rc ON jp.category_id = rc.category_id
+        LEFT JOIN contracts c ON c.application_id = a.application_id
+        LEFT JOIN (
+            SELECT i1.application_id, i1.interview_id, i1.interview_date, i1.interview_type,
+                   i1.location_or_link, i1.status AS interview_status,
+                   i1.parent_confirmed, i1.helper_confirmed
+            FROM interview_schedules i1
+            WHERE i1.interview_id = (
+                SELECT i2.interview_id FROM interview_schedules i2
+                WHERE i2.application_id = i1.application_id
+                ORDER BY i2.created_at DESC, i2.interview_id DESC
+                LIMIT 1
+            )
+        ) li ON li.application_id = a.application_id
         JOIN users u ON a.helper_id = u.user_id
         JOIN helper_profiles hp ON u.user_id = hp.user_id
         WHERE $where
@@ -118,6 +137,24 @@ try {
             'employer_signed_at' => $row['employer_signed_at'] ?? null,
             'helper_signed_at' => $row['helper_signed_at'] ?? null,
             'contract_generated_at' => $row['contract_generated_at'] ?? null,
+            'helper_decline_reason' => $row['helper_decline_reason'] ?? null,
+            'helper_decline_at' => $row['helper_decline_at'] ?? null,
+            'confirmed_salary'       => $row['confirmed_salary'] !== null ? (float)$row['confirmed_salary'] : null,
+            'work_hours'             => $row['work_hours'] ?? null,
+            'rest_days'              => $row['rest_days'] ? (json_decode($row['rest_days'], true) ?: []) : [],
+            'employment_start_date'  => $row['employment_start_date'] ?? null,
+            'employment_end_date'    => $row['employment_end_date'] ?? null,
+            'contract_duration'      => $row['contract_duration'] ?? null,
+            'payment_schedule'       => $row['payment_schedule'] ?? null,
+            'other_benefits'         => $row['other_benefits'] ?? null,
+            'pdf_file_path'          => $row['pdf_file_path'] ?? null,
+            'interview_id'           => $row['interview_id'] !== null ? (int)$row['interview_id'] : null,
+            'interview_date'         => $row['interview_date'] ?? null,
+            'interview_type'         => $row['interview_type'] ?? null,
+            'location_or_link'       => $row['location_or_link'] ?? null,
+            'interview_status'       => $row['interview_status'] ?? null,
+            'parent_confirmed'       => (bool)$row['parent_confirmed'],
+            'helper_confirmed'       => (bool)$row['helper_confirmed'],
             'applied_at'     => $row['applied_at'],
             'cover_letter'   => $row['cover_letter'],
             'job_title'      => $row['job_title']    ?? null,

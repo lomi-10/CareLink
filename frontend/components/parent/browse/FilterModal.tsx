@@ -296,6 +296,9 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: Platform.OS === 'web' ? 24 : 0,
     borderBottomRightRadius: Platform.OS === 'web' ? 24 : 0,
     maxHeight: '90%',
+    // On native, the `flex: 1` ScrollView below can collapse to 0px height inside a
+    // container that only has `maxHeight` (no `height`) — give it a definite height.
+    height: Platform.OS === 'web' ? undefined : '90%',
     width: '100%',
     maxWidth: 560,
     alignSelf: 'center',

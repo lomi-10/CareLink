@@ -15,6 +15,8 @@ export const PAGE_BG  = '#FBF5EC';
 export const SURFACE  = '#FFFFFF';
 export const SUCCESS_BG = '#ECFDF5';
 export const WARNING_BG = '#FEF3C7';
+export const DANGER    = '#DC2626';
+export const DANGER_BG = '#FCE4E4';
 export const OVERLAY  = 'rgba(42, 22, 8, 0.5)';
 export const ACCENT   = ORANGE;
 
@@ -98,6 +100,8 @@ export function createHelperMessagesStyles() {
     convTime: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: SUBTLE },
     convJob: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: ORANGE, marginBottom: 2 },
     convPreview: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED },
+    convPreviewPendingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    convPreviewPending:    { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: ORANGE, fontStyle: 'italic' },
 
     emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
     emptyTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: DARK, marginTop: 14, marginBottom: 6 },
@@ -160,20 +164,87 @@ export function createHelperMessagesStyles() {
       borderColor: DIVIDER,
     },
 
-    contractActionBar: {
+    // Tab bar (Messages / Contract / Interview)
+    chatTabBar: {
       flexDirection: 'row',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      backgroundColor: WARNING_BG,
+      backgroundColor: SURFACE,
+      paddingHorizontal: 10,
+      paddingTop: 8,
+      paddingBottom: 8,
       borderBottomWidth: 1,
       borderBottomColor: DIVIDER,
+      gap: 6,
     },
-    contractActionTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK },
-    contractActionSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginTop: 2 },
-    contractActionBtns: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+    chatTabBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 9,
+      borderRadius: 10,
+      backgroundColor: ICON_BG,
+      position: 'relative',
+    },
+    chatTabBtnActive: { backgroundColor: ORANGE },
+    chatTabBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: MUTED },
+    chatTabBtnTextActive: { color: '#fff' },
+    chatTabDot: { position: 'absolute', top: 6, right: 10, width: 8, height: 8, borderRadius: 4 },
+    chatTabDotAmber: { backgroundColor: '#F59E0B' },
+    chatTabDotBlue: { backgroundColor: '#3B82F6' },
+
+    // Contract / Interview tab shared
+    contractTabBody: { flex: 1, padding: 14 },
+    contractHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+    contractHeaderTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: DARK },
+
+    statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+    statusPillTxt: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: DARK },
+    statusPillAmber: { backgroundColor: WARNING_BG },
+    statusPillGreen: { backgroundColor: SUCCESS_BG },
+    statusPillRed: { backgroundColor: DANGER_BG },
+    statusPillBlue: { backgroundColor: '#DBEAFE' },
+    statusPillGray: { backgroundColor: ICON_BG },
+
+    contractSummaryCard: {
+      backgroundColor: SURFACE,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: DIVIDER,
+      padding: 14,
+      marginBottom: 14,
+      ...CARD_SHADOW,
+    } as any,
+    contractRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      paddingVertical: 7,
+      borderBottomWidth: 1,
+      borderBottomColor: DIVIDER,
+      gap: 10,
+    },
+    contractRowLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED, flexShrink: 0 },
+    contractRowValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, flex: 1, textAlign: 'right' },
+
+    contractSignStatus: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, marginBottom: 14, textAlign: 'center' },
+    contractActionBtnsCol: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-start' },
+
+    // Empty states (no contract / no interview)
+    contractEmptyState: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 16 },
+    contractEmptyIconWrap: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
+      backgroundColor: ICON_BG,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    contractEmptyTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: DARK, marginBottom: 6 },
+    contractEmptySub: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED, textAlign: 'center', lineHeight: 19 },
+    contractEmptyBtns: { flexDirection: 'row', gap: 10, justifyContent: 'center', marginTop: 4 },
+
     contractOutlineBtn: {
       paddingHorizontal: 12,
       paddingVertical: 8,
@@ -183,6 +254,27 @@ export function createHelperMessagesStyles() {
       backgroundColor: SURFACE,
     },
     contractOutlineBtnTxt: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: ORANGE },
+    contractDangerOutlineBtn: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderWidth: 1.5,
+      borderColor: DANGER,
+      backgroundColor: SURFACE,
+    },
+    contractDangerOutlineBtnTxt: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DANGER },
+    contractDeclineBanner: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      backgroundColor: DANGER_BG,
+      borderBottomWidth: 1,
+      borderBottomColor: DIVIDER,
+    },
+    contractDeclineBannerTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: DANGER },
+    contractDeclineBannerText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, marginTop: 2, lineHeight: 17 },
     contractPrimaryBtn: {
       paddingHorizontal: 14,
       paddingVertical: 8,
@@ -193,19 +285,6 @@ export function createHelperMessagesStyles() {
     },
     contractPrimaryBtnDisabled: { opacity: 0.45 },
     contractPrimaryBtnTxt: { fontFamily: FontFamily.fredokaSemiBold, color: '#fff', fontSize: 13 },
-    hiredBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      backgroundColor: SUCCESS_BG,
-      borderBottomWidth: 1,
-      borderBottomColor: DIVIDER,
-    },
-    hiredBarTxt: { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: GREEN },
-    hiredBarLink: { paddingVertical: 4, paddingHorizontal: 8 },
-    hiredBarLinkTxt: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: ORANGE },
     contractPdfModal: { flex: 1, backgroundColor: SURFACE },
     contractPdfHeader: {
       flexDirection: 'row',

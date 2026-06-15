@@ -1,7 +1,7 @@
 // app/(parent)/applicant_profile.tsx
 // Applicant Profile - Review full details and take actions
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -26,7 +26,13 @@ import {
   HireJobPickerModal,
   HireContractTermsModal,
   toYmdInput,
+  computeContractEndDate,
+  formatDurationString,
+  workHoursToString,
+  DEFAULT_WORK_START,
+  DEFAULT_WORK_END,
   type HireJobOptionRow,
+  type DurationUnit,
 } from '@/components/parent/hire';
 
 interface ApplicantDetails {
@@ -99,9 +105,51 @@ export default function ApplicantProfile() {
   } | null>(null);
   const [hireTermsVisible, setHireTermsVisible] = useState(false);
   const [hireContractStartDate, setHireContractStartDate] = useState('');
-  const [hireContractEndDate, setHireContractEndDate] = useState('');
+  const [hireContractType, setHireContractType] = useState<'Fixed Term' | 'Indefinite'>('Indefinite');
+  const [hireDurationAmount, setHireDurationAmount] = useState(1);
+  const [hireDurationUnit, setHireDurationUnit] = useState<DurationUnit>('Years');
   const [hireContractNotes, setHireContractNotes] = useState('');
+  const [hireConfirmedSalary, setHireConfirmedSalary] = useState('');
+  const [hireWorkSchedule, setHireWorkSchedule] = useState<'Full-time' | 'Part-time' | 'Any'>('Full-time');
+  const [hireWorkHoursStart, setHireWorkHoursStart] = useState(DEFAULT_WORK_START);
+  const [hireWorkHoursEnd, setHireWorkHoursEnd] = useState(DEFAULT_WORK_END);
+  const [hireFlexibleHours, setHireFlexibleHours] = useState(false);
+  const [hireRestDays, setHireRestDays] = useState<string[]>(['Sun']);
+  const [hireVacationLeave, setHireVacationLeave] = useState(5);
+  const [hireSickLeave, setHireSickLeave] = useState(5);
+  const [hireSpecialConditions, setHireSpecialConditions] = useState('');
+  const [hireOvertimeRate, setHireOvertimeRate] = useState('');
+  const [hirePaymentSchedule, setHirePaymentSchedule] = useState('Every 15th and 30th');
+  const [hireOtherBenefits, setHireOtherBenefits] = useState('');
+  const [hireDebtAgreement, setHireDebtAgreement] = useState('');
+  const [hireDeploymentAgreement, setHireDeploymentAgreement] = useState('');
+  const [hireTerminationConditions, setHireTerminationConditions] = useState('');
   const afterNotificationClose = useRef<(() => void) | null>(null);
+
+  const hireContractEndDate = useMemo(
+    () => computeContractEndDate(hireContractStartDate, hireContractType, hireDurationAmount, hireDurationUnit),
+    [hireContractStartDate, hireContractType, hireDurationAmount, hireDurationUnit],
+  );
+
+  const resetHireFormState = useCallback(() => {
+    setHireContractNotes('');
+    setHireContractType('Indefinite');
+    setHireDurationAmount(1);
+    setHireDurationUnit('Years');
+    setHireWorkHoursStart(DEFAULT_WORK_START);
+    setHireWorkHoursEnd(DEFAULT_WORK_END);
+    setHireFlexibleHours(false);
+    setHireRestDays(['Sun']);
+    setHireVacationLeave(5);
+    setHireSickLeave(5);
+    setHireSpecialConditions('');
+    setHireOvertimeRate('');
+    setHirePaymentSchedule('Every 15th and 30th');
+    setHireOtherBenefits('');
+    setHireDebtAgreement('');
+    setHireDeploymentAgreement('');
+    setHireTerminationConditions('');
+  }, []);
 
   const dismissNotification = () => {
     setNotification((prev) => ({ ...prev, visible: false }));
@@ -156,14 +204,6 @@ export default function ApplicantProfile() {
       );
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Could not load hire options');
-      if (!data.needs_selection) {
-        setHireTarget(null);
-        setHireContractStartDate(toYmdInput(applicant?.job_start_date));
-        setHireContractEndDate('');
-        setHireContractNotes('');
-        setHireTermsVisible(true);
-        return;
-      }
       const apps = (data.applications ?? []).map((a: any) => ({
         application_id: Number(a.application_id),
         job_post_id: Number(a.job_post_id),
@@ -171,7 +211,22 @@ export default function ApplicantProfile() {
         status: String(a.status ?? ''),
         applied_at: String(a.applied_at ?? ''),
         job_start_date: a.job_start_date ?? null,
+        salary_offered: a.salary_offered ?? null,
+        salary_period: a.salary_period ?? null,
+        employment_type: a.employment_type ?? null,
+        work_schedule: a.work_schedule ?? null,
       }));
+      if (!data.needs_selection) {
+        const curId = Number(applicationId);
+        const row = apps.find((a: HireJobOptionRow) => a.application_id === curId) ?? apps[0] ?? null;
+        setHireTarget(null);
+        setHireContractStartDate(toYmdInput(applicant?.job_start_date));
+        resetHireFormState();
+        setHireConfirmedSalary(row?.salary_offered != null ? String(row.salary_offered) : '');
+        setHireWorkSchedule(row?.work_schedule === 'Part-time' ? 'Part-time' : row?.work_schedule === 'Any' ? 'Any' : 'Full-time');
+        setHireTermsVisible(true);
+        return;
+      }
       setHirePickHelperName(String(data.helper_name ?? applicant?.helper_name ?? 'This helper'));
       setHirePickApps(apps);
       const curId = Number(applicationId);
@@ -200,40 +255,45 @@ export default function ApplicantProfile() {
       job_start_date: row.job_start_date ?? null,
     });
     setHireContractStartDate(toYmdInput(row.job_start_date));
-    setHireContractEndDate('');
-    setHireContractNotes('');
+    resetHireFormState();
+    setHireConfirmedSalary(row.salary_offered != null ? String(row.salary_offered) : '');
+    setHireWorkSchedule(row.work_schedule === 'Part-time' ? 'Part-time' : row.work_schedule === 'Any' ? 'Any' : 'Full-time');
     setHirePickVisible(false);
     setHireTermsVisible(true);
   };
 
   const confirmHireTerms = () => {
-    const end = hireContractEndDate.trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(end)) {
-      setNotification({
-        visible: true,
-        type: 'warning',
-        title: 'Contract end date',
-        message: 'Enter the contract end date as YYYY-MM-DD (required).',
-      });
-      return;
-    }
+    const warn = (title: string, message: string) => {
+      setNotification({ visible: true, type: 'warning', title, message });
+    };
     const start = hireContractStartDate.trim();
-    if (start !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(start)) {
-      setNotification({
-        visible: true,
-        type: 'warning',
-        title: 'Start date',
-        message: 'Employment start must be YYYY-MM-DD, or leave blank to use the job post date.',
-      });
+    if (hireContractType === 'Fixed Term' && start === '') {
+      warn('Start date', 'Pick a start date for a Fixed Term contract, or switch to Indefinite.');
       return;
     }
-    if (start !== '' && end < start) {
-      setNotification({
-        visible: true,
-        type: 'warning',
-        title: 'Dates',
-        message: 'Contract end must be on or after the employment start date.',
-      });
+    if (start !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(start)) {
+      warn('Start date', 'Employment start must be YYYY-MM-DD, or leave blank to use the job post date.');
+      return;
+    }
+    if (hireContractType === 'Fixed Term' && !hireContractEndDate) {
+      warn('Contract end date', 'Could not compute the contract end date. Check the start date and duration.');
+      return;
+    }
+    const salary = parseFloat(hireConfirmedSalary.trim());
+    if (!hireConfirmedSalary.trim() || isNaN(salary) || salary <= 0) {
+      warn('Salary', 'Enter the confirmed salary for this contract.');
+      return;
+    }
+    if (!hirePaymentSchedule.trim()) {
+      warn('Payment schedule', 'Select or enter a salary payment schedule.');
+      return;
+    }
+    if (!hireFlexibleHours && (!hireWorkHoursStart || !hireWorkHoursEnd)) {
+      warn('Work hours', 'Set work hours, or turn on Flexible hours.');
+      return;
+    }
+    if (hireRestDays.length === 0) {
+      warn('Rest days', 'Select at least one rest day for the contract.');
       return;
     }
     setHireTermsVisible(false);
@@ -257,9 +317,22 @@ export default function ApplicantProfile() {
           job_post_id: jpId,
           parent_id: user.user_id,
           helper_id: helperId,
-          contract_end_date: hireContractEndDate.trim(),
+          contract_end_date: hireContractEndDate || '',
           contract_start_date: hireContractStartDate.trim() || undefined,
           contract_terms_notes: hireContractNotes.trim() || undefined,
+          contract_duration: hireContractType === 'Indefinite' ? 'Indefinite' : formatDurationString(hireDurationAmount, hireDurationUnit),
+          confirmed_salary: parseFloat(hireConfirmedSalary.trim()) || undefined,
+          work_hours: workHoursToString(hireWorkHoursStart, hireWorkHoursEnd, hireFlexibleHours),
+          rest_days: hireRestDays.length > 0 ? hireRestDays : undefined,
+          vacation_leave_days: hireVacationLeave,
+          sick_leave_days: hireSickLeave,
+          special_conditions: hireSpecialConditions.trim() || undefined,
+          overtime_rate: hireOvertimeRate.trim() || undefined,
+          payment_schedule: hirePaymentSchedule.trim() || undefined,
+          other_benefits: hireOtherBenefits.trim() || undefined,
+          debt_agreement: hireDebtAgreement.trim() || undefined,
+          deployment_agreement: hireDeploymentAgreement.trim() || undefined,
+          termination_conditions: hireTerminationConditions.trim() || undefined,
         }),
       });
 
@@ -267,9 +340,10 @@ export default function ApplicantProfile() {
 
       if (data.success) {
         setHireTarget(null);
-        setHireContractEndDate('');
         setHireContractStartDate('');
-        setHireContractNotes('');
+        setHireConfirmedSalary('');
+        setHireWorkSchedule('Full-time');
+        resetHireFormState();
         afterNotificationClose.current = () => router.push('/(parent)/jobs');
         setNotification({
           visible: true,
@@ -427,11 +501,45 @@ export default function ApplicantProfile() {
       <HireContractTermsModal
         visible={hireTermsVisible}
         jobTitle={hireTarget?.job_title ?? 'this position'}
+        helperName={applicant.helper_name}
+        workSchedule={hireWorkSchedule}
         contractStartDate={hireContractStartDate}
-        contractEndDate={hireContractEndDate}
-        contractNotes={hireContractNotes}
         onChangeStart={setHireContractStartDate}
-        onChangeEnd={setHireContractEndDate}
+        contractType={hireContractType}
+        onChangeContractType={setHireContractType}
+        durationAmount={hireDurationAmount}
+        onChangeDurationAmount={setHireDurationAmount}
+        durationUnit={hireDurationUnit}
+        onChangeDurationUnit={setHireDurationUnit}
+        confirmedSalary={hireConfirmedSalary}
+        onChangeSalary={setHireConfirmedSalary}
+        paymentSchedule={hirePaymentSchedule}
+        onChangePaymentSchedule={setHirePaymentSchedule}
+        workHoursStart={hireWorkHoursStart}
+        workHoursEnd={hireWorkHoursEnd}
+        onChangeWorkHoursStart={setHireWorkHoursStart}
+        onChangeWorkHoursEnd={setHireWorkHoursEnd}
+        flexibleHours={hireFlexibleHours}
+        onChangeFlexibleHours={setHireFlexibleHours}
+        restDays={hireRestDays}
+        onToggleRestDay={(day) => setHireRestDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day])}
+        vacationLeaveDays={hireVacationLeave}
+        sickLeaveDays={hireSickLeave}
+        onChangeVacationLeave={setHireVacationLeave}
+        onChangeSickLeave={setHireSickLeave}
+        overtimeRate={hireOvertimeRate}
+        onChangeOvertimeRate={setHireOvertimeRate}
+        otherBenefits={hireOtherBenefits}
+        onChangeOtherBenefits={setHireOtherBenefits}
+        debtAgreement={hireDebtAgreement}
+        onChangeDebtAgreement={setHireDebtAgreement}
+        deploymentAgreement={hireDeploymentAgreement}
+        onChangeDeploymentAgreement={setHireDeploymentAgreement}
+        terminationConditions={hireTerminationConditions}
+        onChangeTerminationConditions={setHireTerminationConditions}
+        specialConditions={hireSpecialConditions}
+        onChangeSpecialConditions={setHireSpecialConditions}
+        contractNotes={hireContractNotes}
         onChangeNotes={setHireContractNotes}
         onCancel={() => { setHireTermsVisible(false); setHireTarget(null); }}
         onContinue={confirmHireTerms}
@@ -451,7 +559,7 @@ export default function ApplicantProfile() {
       <ConfirmationModal
         visible={hireConfirmOpen}
         title="Start employment contract?"
-        message={`Create a draft contract for "${hireTarget?.job_title ?? 'this position'}" with ${applicant.helper_name}, ending ${hireContractEndDate.trim() || '(set date)'}. The hire is not final until both of you review and confirm.`}
+        message={`Create a draft contract for "${hireTarget?.job_title ?? 'this position'}" with ${applicant.helper_name}, ${hireContractType === 'Indefinite' ? 'with no fixed end date (Indefinite)' : `ending ${hireContractEndDate || '(set date)'}`}. The hire is not final until both of you review and confirm.`}
         confirmText="Continue"
         cancelText="Cancel"
         type="success"
@@ -459,9 +567,10 @@ export default function ApplicantProfile() {
         onCancel={() => {
           setHireConfirmOpen(false);
           setHireTarget(null);
-          setHireContractEndDate('');
           setHireContractStartDate('');
-          setHireContractNotes('');
+          setHireConfirmedSalary('');
+          setHireWorkSchedule('Full-time');
+          resetHireFormState();
         }}
       />
 

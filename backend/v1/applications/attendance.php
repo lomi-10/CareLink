@@ -53,6 +53,7 @@ try {
     }
 
     $days = carelink_attendance_merge_week($conn, $application_id, $monday);
+    $extras = carelink_attendance_load_contract_extras($conn, $application_id);
 
     $logs = null;
     if ($history_limit > 0) {

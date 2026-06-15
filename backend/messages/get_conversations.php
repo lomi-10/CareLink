@@ -1,6 +1,8 @@
 <?php
 // carelink_api/messages/get_conversations.php
-// Returns a list of conversations (unique chat partners) with latest message preview
+// Returns a list of conversations (unique chat partners) with latest message preview.
+// Also surfaces "pending" connections (shortlisted-or-further job applications) that
+// don't have any messages yet, so parents/helpers can find each other right away.
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -14,7 +16,11 @@ $user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
 if (!$user_id) { echo json_encode(['success' => false, 'message' => 'user_id required']); exit(); }
 
 try {
-    // Get latest message per conversation partner, with partner info
+    $base = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
+    $conversations = [];
+    $seenPartners  = [];
+
+    // 1. Existing message threads — latest message per conversation partner
     $stmt = $conn->prepare("
         SELECT
             m.message_id,
@@ -50,8 +56,6 @@ try {
     $stmt->execute();
     $result = $stmt->get_result();
 
-    $base = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
-    $conversations = [];
     while ($row = $result->fetch_assoc()) {
         $rawPhoto = ($row['user_type'] === 'helper') ? $row['helper_photo'] : $row['parent_photo'];
         $photo    = null;
@@ -63,20 +67,95 @@ try {
         if ($msgType === 'image')      $previewText = 'Sent a photo';
         if ($msgType === 'video_call') $previewText = 'Video call invitation';
 
+        $partnerId = (int)$row['partner_id'];
         $conversations[] = [
-            'partner_id'    => (int)$row['partner_id'],
-            'partner_name'  => trim($row['first_name'] . ' ' . $row['last_name']),
-            'partner_type'  => $row['user_type'],
-            'partner_photo' => $photo,
-            'last_message'  => $previewText,
-            'last_sent_at'  => $row['sent_at'],
-            'is_mine'       => (int)$row['sender_id'] === $user_id,
-            'unread_count'  => (int)$row['unread_count'],
-            'job_post_id'   => $row['job_post_id'] ? (int)$row['job_post_id'] : null,
-            'job_title'     => $row['job_title'],
+            'partner_id'         => $partnerId,
+            'partner_name'       => trim($row['first_name'] . ' ' . $row['last_name']),
+            'partner_type'       => $row['user_type'],
+            'partner_photo'      => $photo,
+            'last_message'       => $previewText,
+            'last_sent_at'       => $row['sent_at'],
+            'is_mine'            => (int)$row['sender_id'] === $user_id,
+            'unread_count'       => (int)$row['unread_count'],
+            'job_post_id'        => $row['job_post_id'] ? (int)$row['job_post_id'] : null,
+            'job_title'          => $row['job_title'],
+            'has_messages'       => true,
+            'application_status' => null,
         ];
+        $seenPartners[$partnerId] = true;
     }
     $stmt->close();
+
+    // 2. Pending connections — shortlisted-or-further applications without messages yet
+    $shortlistedStatuses = "'Shortlisted','Interview Scheduled','Accepted','contract_pending','hired'";
+    $userRow  = $conn->query("SELECT user_type FROM users WHERE user_id = $user_id")->fetch_assoc();
+    $userType = $userRow['user_type'] ?? null;
+
+    $stmt2 = null;
+    if ($userType === 'parent') {
+        $stmt2 = $conn->prepare("
+            SELECT
+                ja.helper_id AS partner_id, ja.job_post_id, jp.title AS job_title, ja.status,
+                COALESCE(ja.updated_at, ja.reviewed_at, ja.applied_at) AS event_at,
+                u.first_name, u.last_name, u.user_type, hp.profile_image
+            FROM job_applications ja
+            JOIN job_posts jp ON ja.job_post_id = jp.job_post_id
+            JOIN users u ON u.user_id = ja.helper_id
+            LEFT JOIN helper_profiles hp ON hp.user_id = u.user_id
+            WHERE jp.parent_id = ? AND ja.status IN ($shortlistedStatuses)
+            ORDER BY event_at DESC
+        ");
+    } elseif ($userType === 'helper') {
+        $stmt2 = $conn->prepare("
+            SELECT
+                jp.parent_id AS partner_id, ja.job_post_id, jp.title AS job_title, ja.status,
+                COALESCE(ja.updated_at, ja.reviewed_at, ja.applied_at) AS event_at,
+                u.first_name, u.last_name, u.user_type, pp.profile_image
+            FROM job_applications ja
+            JOIN job_posts jp ON ja.job_post_id = jp.job_post_id
+            JOIN users u ON u.user_id = jp.parent_id
+            LEFT JOIN parent_profiles pp ON pp.user_id = u.user_id
+            WHERE ja.helper_id = ? AND ja.status IN ($shortlistedStatuses)
+            ORDER BY event_at DESC
+        ");
+    }
+
+    if ($stmt2) {
+        $stmt2->bind_param("i", $user_id);
+        $stmt2->execute();
+        $res2 = $stmt2->get_result();
+        while ($row = $res2->fetch_assoc()) {
+            $partnerId = (int)$row['partner_id'];
+            if (isset($seenPartners[$partnerId])) continue; // already has a message thread
+            $seenPartners[$partnerId] = true; // first row per partner is the most recent (ORDER BY event_at DESC)
+
+            $rawPhoto = $row['profile_image'] ?? null;
+            $photo    = null;
+            if ($rawPhoto) {
+                $photo = (stripos($rawPhoto, 'http') === 0) ? $rawPhoto : $base . $rawPhoto;
+            }
+
+            $conversations[] = [
+                'partner_id'         => $partnerId,
+                'partner_name'       => trim($row['first_name'] . ' ' . $row['last_name']),
+                'partner_type'       => $row['user_type'],
+                'partner_photo'      => $photo,
+                'last_message'       => null,
+                'last_sent_at'       => $row['event_at'],
+                'is_mine'            => false,
+                'unread_count'       => 0,
+                'job_post_id'        => (int)$row['job_post_id'],
+                'job_title'          => $row['job_title'],
+                'has_messages'       => false,
+                'application_status' => $row['status'],
+            ];
+        }
+        $stmt2->close();
+    }
+
+    usort($conversations, function ($a, $b) {
+        return strtotime($b['last_sent_at']) <=> strtotime($a['last_sent_at']);
+    });
 
     echo json_encode(['success' => true, 'conversations' => $conversations]);
 } catch (Exception $e) {
