@@ -26,6 +26,7 @@ import { Avatar } from './components';
 import MessagesTab from './MessagesTab';
 import ContractTab from './ContractTab';
 import InterviewTab from './InterviewTab';
+import VideoCallTab from './VideoCallTab';
 import { useHireFlow } from './useHireFlow';
 
 export default function ChatPanel({
@@ -46,8 +47,9 @@ export default function ChatPanel({
   const [interviewExisting, setInterviewExisting] = useState<InterviewInfo | null>(null);
   const [cancelInterviewConfirmVisible, setCancelInterviewConfirmVisible] = useState(false);
   const [interviewActionLoading, setInterviewActionLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'messages' | 'contract' | 'interview'>('messages');
+  const [activeTab, setActiveTab] = useState<'messages' | 'contract' | 'interview' | 'videocall'>('messages');
   const [resolvedApp, setResolvedApp] = useState<ResolvedApplication | null>(null);
+  const isHired = !!resolvedApp && ['hired', 'Accepted', 'termination_pending'].includes(resolvedApp.status);
   const [hiringAction, setHiringAction] = useState(false);
   const [contractPdfVisible, setContractPdfVisible] = useState(false);
   const [contractPdfUri, setContractPdfUri] = useState<string | null>(null);
@@ -132,6 +134,10 @@ export default function ChatPanel({
   useEffect(() => {
     setActiveTab('messages');
   }, [partnerId]);
+
+  useEffect(() => {
+    if (isHired) setActiveTab(prev => prev === 'interview' ? 'messages' : prev);
+  }, [isHired]);
 
   const contractNeedsAction =
     !!resolvedApp &&
@@ -379,14 +385,24 @@ export default function ChatPanel({
           <Text style={[s.chatTabBtnText, activeTab === 'contract' && s.chatTabBtnTextActive]}>Contract</Text>
           {contractNeedsAction && <View style={[s.chatTabDot, s.chatTabDotAmber]} />}
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.chatTabBtn, activeTab === 'interview' && s.chatTabBtnActive]}
-          onPress={() => setActiveTab('interview')}
-        >
-          <Ionicons name="calendar-outline" size={16} color={activeTab === 'interview' ? '#fff' : MUTED} />
-          <Text style={[s.chatTabBtnText, activeTab === 'interview' && s.chatTabBtnTextActive]}>Interview</Text>
-          {interviewUpcoming && <View style={[s.chatTabDot, s.chatTabDotBlue]} />}
-        </TouchableOpacity>
+        {isHired ? (
+          <TouchableOpacity
+            style={[s.chatTabBtn, activeTab === 'videocall' && s.chatTabBtnActive]}
+            onPress={() => setActiveTab('videocall')}
+          >
+            <Ionicons name="videocam-outline" size={16} color={activeTab === 'videocall' ? '#fff' : MUTED} />
+            <Text style={[s.chatTabBtnText, activeTab === 'videocall' && s.chatTabBtnTextActive]}>Video Call</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[s.chatTabBtn, activeTab === 'interview' && s.chatTabBtnActive]}
+            onPress={() => setActiveTab('interview')}
+          >
+            <Ionicons name="calendar-outline" size={16} color={activeTab === 'interview' ? '#fff' : MUTED} />
+            <Text style={[s.chatTabBtnText, activeTab === 'interview' && s.chatTabBtnTextActive]}>Interview</Text>
+            {interviewUpcoming && <View style={[s.chatTabDot, s.chatTabDotBlue]} />}
+          </TouchableOpacity>
+        )}
       </View>
 
       {activeTab === 'messages' && (
@@ -421,7 +437,7 @@ export default function ChatPanel({
         />
       )}
 
-      {activeTab === 'interview' && (
+      {activeTab === 'interview' && !isHired && (
         <InterviewTab
           resolvedApp={resolvedApp}
           partnerName={partnerName}
@@ -429,6 +445,16 @@ export default function ChatPanel({
           onSchedule={openScheduleInterviewForResolvedApp}
           onReschedule={openRescheduleInterview}
           onCancel={() => setCancelInterviewConfirmVisible(true)}
+        />
+      )}
+
+      {activeTab === 'videocall' && isHired && (
+        <VideoCallTab
+          partnerName={partnerName}
+          onStartCall={async () => {
+            const url = await sendVideoCall(myUserId, jobPostId);
+            if (url) Linking.openURL(url);
+          }}
         />
       )}
 

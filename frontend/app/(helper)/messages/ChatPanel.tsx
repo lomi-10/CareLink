@@ -27,6 +27,7 @@ import { Avatar } from './components';
 import MessagesTab from './MessagesTab';
 import ContractTab from './ContractTab';
 import InterviewTab from './InterviewTab';
+import VideoCallTab from './VideoCallTab';
 
 export default function ChatPanel({
   partnerId, partnerName, partnerPhoto, jobPostId, onBack,
@@ -43,6 +44,7 @@ export default function ChatPanel({
   const [callModal, setCallModal]         = useState(false);
   const [helperScheduleModal, setHelperScheduleModal] = useState(false);
   const [resolvedApp, setResolvedApp] = useState<ResolvedApplication | null>(null);
+  const isHired = !!resolvedApp && ['hired', 'Accepted', 'termination_pending'].includes(resolvedApp.status);
   const [contractAction, setContractAction] = useState(false);
   const [contractPdfVisible, setContractPdfVisible] = useState(false);
   const [contractPdfUri, setContractPdfUri] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export default function ChatPanel({
   const [signPasswordVisible, setSignPasswordVisible] = useState(false);
   const [disagreeModalVisible, setDisagreeModalVisible] = useState(false);
   const [disagreeBusy, setDisagreeBusy] = useState(false);
-  const [activeTab, setActiveTab] = useState<'messages' | 'contract' | 'interview'>('messages');
+  const [activeTab, setActiveTab] = useState<'messages' | 'contract' | 'interview' | 'videocall'>('messages');
   const [cancelInterviewConfirmVisible, setCancelInterviewConfirmVisible] = useState(false);
   const [interviewActionLoading, setInterviewActionLoading] = useState(false);
   const [chatNotif, setChatNotif] = useState<{
@@ -127,6 +129,10 @@ export default function ChatPanel({
   useEffect(() => {
     setActiveTab('messages');
   }, [partnerId]);
+
+  useEffect(() => {
+    if (isHired) setActiveTab(prev => prev === 'interview' ? 'messages' : prev);
+  }, [isHired]);
 
   const handleSend = async () => {
     const t = text.trim();
@@ -338,11 +344,18 @@ export default function ChatPanel({
           <Text style={[s.chatTabBtnText, activeTab === 'contract' && s.chatTabBtnTextActive]}>Contract</Text>
           {contractNeedsAction && <View style={[s.chatTabDot, s.chatTabDotAmber]} />}
         </TouchableOpacity>
-        <TouchableOpacity style={[s.chatTabBtn, activeTab === 'interview' && s.chatTabBtnActive]} onPress={() => setActiveTab('interview')}>
-          <Ionicons name="calendar-outline" size={16} color={activeTab === 'interview' ? '#fff' : MUTED} />
-          <Text style={[s.chatTabBtnText, activeTab === 'interview' && s.chatTabBtnTextActive]}>Interview</Text>
-          {interviewBadge && <View style={[s.chatTabDot, s.chatTabDotBlue]} />}
-        </TouchableOpacity>
+        {isHired ? (
+          <TouchableOpacity style={[s.chatTabBtn, activeTab === 'videocall' && s.chatTabBtnActive]} onPress={() => setActiveTab('videocall')}>
+            <Ionicons name="videocam-outline" size={16} color={activeTab === 'videocall' ? '#fff' : MUTED} />
+            <Text style={[s.chatTabBtnText, activeTab === 'videocall' && s.chatTabBtnTextActive]}>Video Call</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={[s.chatTabBtn, activeTab === 'interview' && s.chatTabBtnActive]} onPress={() => setActiveTab('interview')}>
+            <Ionicons name="calendar-outline" size={16} color={activeTab === 'interview' ? '#fff' : MUTED} />
+            <Text style={[s.chatTabBtnText, activeTab === 'interview' && s.chatTabBtnTextActive]}>Interview</Text>
+            {interviewBadge && <View style={[s.chatTabDot, s.chatTabDotBlue]} />}
+          </TouchableOpacity>
+        )}
       </View>
 
       {activeTab === 'messages' && (
@@ -375,7 +388,7 @@ export default function ChatPanel({
         />
       )}
 
-      {activeTab === 'interview' && (
+      {activeTab === 'interview' && !isHired && (
         <InterviewTab
           resolvedApp={resolvedApp}
           partnerName={partnerName}
@@ -384,6 +397,16 @@ export default function ChatPanel({
           onConfirm={() => executeConfirmInterview('confirm')}
           onDecline={() => executeConfirmInterview('decline')}
           onCancel={() => setCancelInterviewConfirmVisible(true)}
+        />
+      )}
+
+      {activeTab === 'videocall' && isHired && (
+        <VideoCallTab
+          partnerName={partnerName}
+          onStartCall={async () => {
+            const url = await sendVideoCall(myUserId, jobPostId);
+            if (url) Linking.openURL(url);
+          }}
         />
       )}
 
