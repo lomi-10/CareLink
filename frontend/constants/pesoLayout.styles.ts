@@ -143,21 +143,27 @@ export const styles = StyleSheet.create({
   sidebarItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderRadius: 10,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   sidebarItemActive: {
-    backgroundColor: '#FFF4E5',
+    backgroundColor: theme.color.peso,
+    shadowColor: theme.color.peso,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 2,
   },
   sidebarText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     color: '#444',
+    flexShrink: 1,
   },
   sidebarTextActive: {
-    color: '#FF9500',
+    color: '#fff',
     fontWeight: '700',
   },
 

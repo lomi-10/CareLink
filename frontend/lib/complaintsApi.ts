@@ -66,3 +66,17 @@ export async function fetchPesoComplaints(pesoUserId: number) {
   const res = await fetch(`${API_URL}/peso/get_complaints.php?peso_user_id=${pesoUserId}`);
   return res.json() as Promise<{ success: boolean; complaints?: AdminComplaintRow[]; message?: string }>;
 }
+
+export async function resolvePesoComplaint(body: {
+  complaint_id: number;
+  peso_user_id: number;
+  action: 'Resolved' | 'Dismissed';
+  notes?: string;
+}) {
+  const res = await fetch(`${API_URL}/peso/resolve_complaint.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return res.json() as Promise<{ success: boolean; message?: string }>;
+}
