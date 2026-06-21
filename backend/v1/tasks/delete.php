@@ -64,7 +64,7 @@ try {
     if (!$row) {
         json_out(['success' => false, 'message' => 'Task not found'], 404);
     }
-    if (!in_array($row['app_status'], ['hired', 'Accepted'], true)) {
+    if (!in_array($row['app_status'], ['hired', 'Accepted', 'termination_pending'], true)) {
         json_out(['success' => false, 'message' => 'Application is not an active hire'], 403);
     }
     if ((int) $row['parent_id'] !== $user_id) {

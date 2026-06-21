@@ -224,13 +224,14 @@ try {
 
     $employmentStartDate = !empty($row['employment_start_date']) ? (string) $row['employment_start_date'] : null;
 
-
+    $todayYmd = date('Y-m-d');
+    $startsInFuture = $employmentStartDate !== null && $employmentStartDate > $todayYmd;
 
     echo json_encode([
 
         'success' => true,
 
-        'is_work_mode' => true,
+        'is_work_mode' => !$startsInFuture,
 
         'placement_status' => $placement_status,
 

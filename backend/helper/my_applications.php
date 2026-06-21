@@ -181,6 +181,27 @@ try {
         ];
     }
 
+    // Attach shared document IDs for each application (used by edit modal to pre-select)
+    if (!empty($applications)) {
+        $appIds = array_map('intval', array_column($applications, 'application_id'));
+        $idList = implode(',', $appIds);
+        $sharedResult = $conn->query("
+            SELECT application_id, document_id
+            FROM application_document_shares
+            WHERE application_id IN ($idList)
+        ");
+        $sharedByApp = [];
+        if ($sharedResult) {
+            while ($row = $sharedResult->fetch_assoc()) {
+                $sharedByApp[(int)$row['application_id']][] = (int)$row['document_id'];
+            }
+        }
+        foreach ($applications as &$app) {
+            $app['shared_document_ids'] = $sharedByApp[(int)$app['application_id']] ?? [];
+        }
+        unset($app);
+    }
+
     echo json_encode([
         'success' => true,
         'applications' => $applications,

@@ -84,24 +84,28 @@ try {
     $upd->execute();
     $upd->close();
 
-    // Replace shared documents (only helper's verified docs are allowed)
-    $del = $conn->prepare("DELETE FROM application_document_shares WHERE application_id = ?");
-    $del->bind_param("i", $application_id);
-    $del->execute();
-    $del->close();
+    // Replace shared documents — raw SQL with safe integers, no prepared statement complexity
+    $safe_app = intval($application_id);
+    $safe_hlp = intval($helper_id);
+    $conn->query("DELETE FROM application_document_shares WHERE application_id = $safe_app");
 
     if (!empty($shared_doc_ids)) {
-        $ins = $conn->prepare("
-            INSERT INTO application_document_shares (application_id, document_id)
-            SELECT ?, document_id FROM user_documents
-            WHERE document_id = ? AND user_id = ? AND status = 'Verified'
-        ");
-        foreach ($shared_doc_ids as $doc_id) {
-            if ($doc_id <= 0) continue;
-            $ins->bind_param("iii", $application_id, $doc_id, $helper_id);
-            $ins->execute();
+        $safe_ids = array_values(array_filter(array_map('intval', $shared_doc_ids), fn($id) => $id > 0));
+        if (!empty($safe_ids)) {
+            $id_list = implode(',', $safe_ids);
+            $res = $conn->query(
+                "SELECT document_id FROM user_documents
+                 WHERE document_id IN ($id_list) AND user_id = $safe_hlp AND status = 'Verified'"
+            );
+            $verified = [];
+            if ($res) {
+                while ($row = $res->fetch_assoc()) $verified[] = intval($row['document_id']);
+            }
+            if (!empty($verified)) {
+                $values = implode(',', array_map(fn($did) => "($safe_app, $did)", $verified));
+                $conn->query("INSERT IGNORE INTO application_document_shares (application_id, document_id) VALUES $values");
+            }
         }
-        $ins->close();
     }
 
     echo json_encode(['success' => true, 'message' => 'Application updated successfully']);

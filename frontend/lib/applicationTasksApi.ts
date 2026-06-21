@@ -1,6 +1,7 @@
 import API_URL from '@/constants/api';
 
 export type ApplicationTaskStatus = 'pending' | 'done' | 'skipped';
+export type TaskPriority = 'low' | 'medium' | 'high';
 
 export type ApplicationTask = {
   id: number;
@@ -12,6 +13,7 @@ export type ApplicationTask = {
   requires_photo: boolean;
   is_recurring: boolean;
   recur_days: string[] | null;
+  priority: TaskPriority;
   status: ApplicationTaskStatus;
   completed_at: string | null;
   photo_url: string | null;
@@ -46,6 +48,7 @@ export async function createApplicationTask(
     requires_photo?: boolean;
     is_recurring?: boolean;
     recur_days?: string[] | null;
+    priority?: TaskPriority;
   },
 ) {
   const r = await fetch(`${API_URL}/v1/applications/tasks.php`, {
@@ -61,6 +64,7 @@ export async function createApplicationTask(
       requires_photo: !!body.requires_photo,
       is_recurring: !!body.is_recurring,
       recur_days: body.recur_days ?? null,
+      priority: body.priority ?? 'medium',
     }),
   });
   return r.json() as Promise<{ success: boolean; data?: { id: number }; message?: string }>;
@@ -69,7 +73,7 @@ export async function createApplicationTask(
 export async function updateApplicationTask(
   taskId: number,
   parentUserId: number,
-  body: { title: string; description?: string | null; due_date?: string | null },
+  body: { title: string; description?: string | null; due_date?: string | null; priority?: TaskPriority },
 ) {
   const r = await fetch(`${API_URL}/v1/tasks/update.php`, {
     method: 'POST',
@@ -81,6 +85,7 @@ export async function updateApplicationTask(
       title: body.title,
       description: body.description ?? '',
       due_date: body.due_date ?? '',
+      priority: body.priority ?? 'medium',
     }),
   });
   return r.json() as Promise<{ success: boolean; data?: { id: number }; message?: string }>;

@@ -12,9 +12,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   RefreshControl,
   SafeAreaView,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -204,8 +206,9 @@ export default function WorkManagement() {
   const [selectedApplicantId, setSelectedApplicantId] = useState('');
   const [profileTab, setProfileTab] = useState<'overview' | 'skills' | 'documents'>('overview');
   const [applicantMobileView, setApplicantMobileView] = useState<'list' | 'detail'>('list');
-  const [sharedDocs, setSharedDocs] = useState<{ document_id: number; document_type: string; status: string }[]>([]);
+  const [sharedDocs, setSharedDocs] = useState<{ document_id: number; document_type: string; status: string; file_url?: string }[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<{ file_url: string; document_type: string } | null>(null);
   const [statusConfirm, setStatusConfirm]         = useState<{ visible: boolean; appId: string; action: 'Shortlisted' | 'Rejected' | null }>({ visible: false, appId: '', action: null });
   const [interviewTarget, setInterviewTarget]     = useState<{ appId: number; helperName: string; jobTitle: string } | null>(null);
 
@@ -901,7 +904,13 @@ export default function WorkManagement() {
               <Text style={w.recentEmptyText}>No documents have been shared for this application yet.</Text>
             ) : (
               sharedDocs.map(doc => (
-                <View key={doc.document_id} style={w.docRow}>
+                <TouchableOpacity
+                  key={doc.document_id}
+                  style={w.docRow}
+                  activeOpacity={0.75}
+                  onPress={() => doc.file_url && setViewingDoc({ file_url: doc.file_url, document_type: doc.document_type })}
+                  disabled={!doc.file_url}
+                >
                   <View style={w.docIconWrap}>
                     <Ionicons name="document-text-outline" size={18} color={BROWN} />
                   </View>
@@ -909,7 +918,8 @@ export default function WorkManagement() {
                     <Text style={w.docTitle} numberOfLines={1}>{doc.document_type}</Text>
                     <Text style={w.docStatus}>{doc.status}</Text>
                   </View>
-                </View>
+                  <Ionicons name="eye-outline" size={18} color={MUTED} />
+                </TouchableOpacity>
               ))
             )}
           </View>
@@ -1161,6 +1171,35 @@ export default function WorkManagement() {
           onScheduled={() => { setInterviewTarget(null); refreshApps(); setNotification({ visible: true, message: 'Interview invite sent!', type: 'success' }); }}
         />
       )}
+      <Modal visible={!!viewingDoc} transparent animationType="fade" onRequestClose={() => setViewingDoc(null)}>
+        <View style={docViewer.overlay}>
+          <SafeAreaView style={docViewer.safeArea}>
+            <View style={docViewer.header}>
+              <Text style={docViewer.headerTitle} numberOfLines={1}>{viewingDoc?.document_type}</Text>
+              <TouchableOpacity style={docViewer.closeBtn} onPress={() => setViewingDoc(null)} activeOpacity={0.8}>
+                <Ionicons name="close" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={docViewer.imageWrap}
+              maximumZoomScale={4}
+              minimumZoomScale={1}
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
+            >
+              {viewingDoc && (
+                <Image
+                  source={{ uri: viewingDoc.file_url }}
+                  style={docViewer.image}
+                  contentFit="contain"
+                />
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
+
       <ConfirmationModal
         visible={statusConfirm.visible}
         title={statusConfirm.action === 'Shortlisted' ? 'Shortlist Applicant?' : 'Reject Applicant?'}
@@ -1262,3 +1301,45 @@ export default function WorkManagement() {
     </View>
   );
 }
+
+const docViewer = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerTitle: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Fredoka-SemiBold',
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+  },
+  image: {
+    width: '100%',
+    height: undefined,
+    aspectRatio: 0.75,
+    borderRadius: 8,
+  },
+});

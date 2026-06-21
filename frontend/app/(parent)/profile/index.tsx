@@ -17,7 +17,8 @@ import {
 import { useParentProfile, useParentStats } from '@/hooks/parent';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 
-import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
+import { Sidebar, MobileMenu, ParentTabBar, ParentWorkModeTabBar } from '@/components/parent/home';
+import { useParentPortalMode } from '@/hooks/parent/useParentPortalMode';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import EditParentProfileModal from '@/components/parent/profile/EditParentProfileModal';
 
@@ -40,6 +41,7 @@ export default function ParentProfile() {
   const { handleLogout } = useAuth();
   const { isDesktop } = useResponsive();
   const { unreadCount } = useNotifications('parent');
+  const isWorkMode = useParentPortalMode();
   const { profileData, loading, refresh, getFullName, getVerificationBadge } = useParentProfile();
   const { stats } = useParentStats();
 
@@ -300,7 +302,7 @@ export default function ParentProfile() {
 
         {content}
 
-        <ParentTabBar />
+        {isWorkMode ? <ParentWorkModeTabBar /> : <ParentTabBar />}
       </SafeAreaView>
 
       <MobileMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} handleLogout={initiateLogout} />

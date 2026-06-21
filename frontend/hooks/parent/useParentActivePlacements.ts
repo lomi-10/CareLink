@@ -16,12 +16,19 @@ export type ActivePlacement = {
   helper_id: string;
   helper_name: string;
   helper_photo?: string;
+  helper_phone?: string | null;
   job_title: string;
   status: string;
   job_start_date?: string | null;
   salary_offered?: number;
   salary_period?: string;
   termination_last_day?: string | null;
+  /** Helper's profile skills (ref_skills.skill_name) — used to score task/category relevance. */
+  helper_skills?: string[];
+  /** Other job titles the helper listed on their profile (helper_jobs from ref_jobs). */
+  helper_jobs?: string[];
+  /** The hiring job post's description/duties text, when available. */
+  job_description?: string | null;
 };
 
 function isHiredStatus(s: string) {
@@ -84,12 +91,16 @@ function buildPlacements(apps: JobApplication[], jobs: JobPost[]): ActivePlaceme
         helper_id: a.helper_id,
         helper_name: a.helper_name,
         helper_photo: a.helper_photo,
+        helper_phone: (a as JobApplication & { helper_phone?: string }).helper_phone ?? null,
         job_title: title,
         status: a.status,
         job_start_date: a.job_start_date ?? null,
         salary_offered: salaryOffered ?? job?.salary_offered,
         salary_period: salaryPeriod ?? job?.salary_period,
         termination_last_day: terminationLast,
+        helper_skills: a.helper_skills ?? [],
+        helper_jobs: a.helper_jobs ?? [],
+        job_description: job?.description ?? null,
       };
     })
     .filter(keepPlacementRow);

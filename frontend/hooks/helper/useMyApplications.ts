@@ -59,6 +59,9 @@ export interface Application {
   // Category / Job type info
   category_name?: string;
   job_names?: string[];
+
+  // Document IDs the helper has shared for this application (used to pre-populate edit modal)
+  shared_document_ids?: number[];
 }
 
 export interface ApplicationStats {

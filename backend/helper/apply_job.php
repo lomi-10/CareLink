@@ -28,24 +28,43 @@ if (isset($input['shared_document_ids']) && is_array($input['shared_document_ids
 }
 
 // Replaces this application's shared-document list with the helper's current selection.
-// Only the helper's own VERIFIED documents can be shared — never pending/rejected ones.
+// Uses raw SQL with intval()-safe integers — no prepared statement complexity.
 function syncSharedDocuments($conn, $application_id, $helper_id, $document_ids) {
-    $del = $conn->prepare("DELETE FROM application_document_shares WHERE application_id = ?");
-    $del->bind_param("i", $application_id);
-    $del->execute();
+    $app_id     = intval($application_id);
+    $helper_id  = intval($helper_id);
 
-    if (empty($document_ids)) return;
+    // Clear existing shares for this application
+    $conn->query("DELETE FROM application_document_shares WHERE application_id = $app_id");
 
-    $ins = $conn->prepare("
-        INSERT INTO application_document_shares (application_id, document_id)
-        SELECT ?, document_id FROM user_documents
-        WHERE document_id = ? AND user_id = ? AND status = 'Verified'
-    ");
-    foreach ($document_ids as $doc_id) {
-        if ($doc_id <= 0) continue;
-        $ins->bind_param("iii", $application_id, $doc_id, $helper_id);
-        $ins->execute();
+    if (empty($document_ids)) return 0;
+
+    // Collect only valid positive integers
+    $safe_ids = array_values(array_filter(array_map('intval', $document_ids), fn($id) => $id > 0));
+    if (empty($safe_ids)) return 0;
+
+    // Fetch which of those IDs actually belong to this helper and are Verified
+    $id_list = implode(',', $safe_ids);
+    $res = $conn->query(
+        "SELECT document_id FROM user_documents
+         WHERE document_id IN ($id_list) AND user_id = $helper_id AND status = 'Verified'"
+    );
+
+    $verified = [];
+    if ($res) {
+        while ($row = $res->fetch_assoc()) $verified[] = intval($row['document_id']);
     }
+
+    error_log("[syncSharedDocuments] app=$app_id helper=$helper_id requested=" . count($safe_ids) . " verified=" . count($verified));
+
+    if (empty($verified)) return 0;
+
+    // Bulk-insert all verified IDs in one query
+    $values = implode(',', array_map(fn($did) => "($app_id, $did)", $verified));
+    $conn->query("INSERT IGNORE INTO application_document_shares (application_id, document_id) VALUES $values");
+
+    $inserted = $conn->affected_rows;
+    error_log("[syncSharedDocuments] inserted=$inserted err=" . $conn->error);
+    return $inserted;
 }
 
 // Validation
@@ -231,12 +250,13 @@ try {
     if ($insert_stmt->execute()) {
         $application_id = $conn->insert_id;
 
-        syncSharedDocuments($conn, $application_id, $helper_id, $shared_document_ids);
+        $sharedCount = syncSharedDocuments($conn, $application_id, $helper_id, $shared_document_ids);
 
         echo json_encode([
             'success' => true,
             'message' => 'Application submitted successfully',
-            'application_id' => $application_id
+            'application_id' => $application_id,
+            'shared_doc_count' => $sharedCount
         ]);
 
         // Notify the parent that a helper applied

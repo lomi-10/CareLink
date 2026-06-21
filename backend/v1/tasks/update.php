@@ -60,7 +60,7 @@ try {
     if (!$row) {
         json_out(['success' => false, 'message' => 'Task not found'], 404);
     }
-    if (!in_array($row['app_status'], ['hired', 'Accepted'], true)) {
+    if (!in_array($row['app_status'], ['hired', 'Accepted', 'termination_pending'], true)) {
         json_out(['success' => false, 'message' => 'Application is not an active hire'], 403);
     }
     if ((int) $row['parent_id'] !== $user_id) {
@@ -89,12 +89,15 @@ try {
         json_out(['success' => false, 'message' => 'due_date must be YYYY-MM-DD'], 400);
     }
 
+    $priority_raw = array_key_exists('priority', $input) ? trim((string)$input['priority']) : ($row['priority'] ?? 'medium');
+    $priority = in_array($priority_raw, ['low', 'medium', 'high'], true) ? $priority_raw : 'medium';
+
     $upd = $conn->prepare("
         UPDATE `{$t}`
-        SET title = ?, description = ?, due_date = ?, updated_at = NOW()
+        SET title = ?, description = ?, due_date = ?, priority = ?, updated_at = NOW()
         WHERE id = ? AND status = 'pending'
     ");
-    $upd->bind_param('sssi', $title, $description, $due_date, $task_id);
+    $upd->bind_param('ssssi', $title, $description, $due_date, $priority, $task_id);
     $upd->execute();
     if ($upd->affected_rows === 0) {
         $upd->close();

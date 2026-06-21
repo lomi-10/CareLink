@@ -51,7 +51,7 @@ function load_hire_row(mysqli $conn, int $application_id): array
     if (!$row) {
         return [false, null];
     }
-    if (!in_array($row['status'], ['hired', 'Accepted'], true)) {
+    if (!in_array($row['status'], ['hired', 'Accepted', 'termination_pending'], true)) {
         return [false, null];
     }
     return [true, $row];
@@ -116,7 +116,7 @@ try {
         if ($scope === 'today') {
             $sql = "
                 SELECT id, application_id, created_by, title, description, due_date, requires_photo,
-                       is_recurring, recur_days, status, completed_at, photo_url, created_at, updated_at
+                       is_recurring, recur_days, priority, status, completed_at, photo_url, created_at, updated_at
                 FROM `{$t}`
                 WHERE application_id = ?
                   AND (
@@ -129,7 +129,7 @@ try {
         } else {
             $sql = "
                 SELECT id, application_id, created_by, title, description, due_date, requires_photo,
-                       is_recurring, recur_days, status, completed_at, photo_url, created_at, updated_at
+                       is_recurring, recur_days, priority, status, completed_at, photo_url, created_at, updated_at
                 FROM `{$t}`
                 WHERE application_id = ?
                 ORDER BY FIELD(status, 'pending', 'skipped', 'done'),
@@ -168,6 +168,8 @@ try {
         if (is_array($recur_days) && count($recur_days) > 0) {
             $recur_json = json_encode(array_values($recur_days));
         }
+        $priority_raw = isset($input['priority']) ? trim((string)$input['priority']) : 'medium';
+        $priority = in_array($priority_raw, ['low', 'medium', 'high'], true) ? $priority_raw : 'medium';
 
         if ($application_id <= 0 || $user_id <= 0 || $user_type !== 'parent' || $title === '') {
             json_out(['success' => false, 'message' => 'application_id, user_id, user_type=parent, title required'], 400);
@@ -182,11 +184,11 @@ try {
         $st = $conn->prepare("
             INSERT INTO `{$t}` (
                 application_id, created_by, title, description, due_date, requires_photo,
-                is_recurring, recur_days, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                is_recurring, recur_days, priority, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
         ");
         $st->bind_param(
-            'iisssiis',
+            'iisssiiss',
             $application_id,
             $user_id,
             $title,
@@ -194,7 +196,8 @@ try {
             $due_date,
             $rp,
             $ir,
-            $recur_json
+            $recur_json,
+            $priority
         );
         $st->execute();
         $id = (int) $conn->insert_id;

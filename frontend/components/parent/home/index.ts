@@ -11,3 +11,4 @@ export { RecommendedHelpersSection } from './RecommendedHelpersSection';
 export { ParentStatTile } from './ParentStatTile';
 export { SafetyBanner } from './SafetyBanner';
 export { ParentTabBar } from './ParentTabBar';
+export { ParentWorkModeTabBar } from './ParentWorkModeTabBar';

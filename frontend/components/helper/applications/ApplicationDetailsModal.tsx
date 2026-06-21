@@ -143,8 +143,10 @@ export default function ApplicationDetailsModal({
           (d) => d.status === 'Verified'
         );
         setDocs(verifiedDocs);
-        // Pre-select docs that were already shared (not in Application type, so start with none)
-        setSelectedDocIds([]);
+        // Pre-select docs that were already shared, filtered to only those still Verified
+        const verifiedIds = new Set(verifiedDocs.map(d => d.document_id));
+        const preSelected = (application.shared_document_ids ?? []).filter(id => verifiedIds.has(id));
+        setSelectedDocIds(preSelected);
       })
       .catch(() => setDocs([]))
       .finally(() => setDocsLoading(false));
@@ -177,8 +179,8 @@ export default function ApplicationDetailsModal({
       const data = await res.json();
       if (data.success) {
         setEditMode(false);
-        // Reflect the new cover letter locally
         (application as any).cover_letter = trimmed;
+        (application as any).shared_document_ids = selectedDocIds;
       } else {
         setSaveError(data.message ?? 'Failed to update application.');
       }

@@ -1,4 +1,5 @@
 export * from './useParentJobs';
+export * from './useParentPlacementHistory';
 export * from './useParentProfile';
 export * from './useParentStats';
 export * from './useBrowseHelpers';

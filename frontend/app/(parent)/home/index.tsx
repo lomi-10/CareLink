@@ -1,33 +1,38 @@
 // app/(parent)/home/index.tsx
 // PHP: parent/get_stats.php (via useParentStats), parent/get_job_applications.php (via useParentRecentlyEndedPlacements)
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, ScrollView, RefreshControl, ActivityIndicator,
-  SafeAreaView, Text, TouchableOpacity,
+  SafeAreaView, Text, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { h } from './home.styles';
 import { useParentStats, useParentProfile } from '@/hooks/parent';
-import { useParentRecentlyEndedPlacements } from '@/hooks/parent/useParentRecentlyEndedPlacements';
 import type { PendingReview } from '@/lib/reviewsApi';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
+import { FontFamily } from '@/constants/GlobalStyles';
 
-import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard } from '@/components/shared';
+import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal } from '@/components/shared';
 import {
-  Sidebar, MobileMenu, GreetingCard, ActiveHelpersSection, RecommendedHelpersSection,
-  ParentTabBar, ParentStatTile, SafetyBanner,
+  Sidebar, MobileMenu, GreetingCard, RecommendedHelpersSection,
+  ParentTabBar, ParentStatTile, SafetyBanner, ParentWorkModeTabBar,
 } from '@/components/parent/home';
 import {
   BROWN, CARAMEL, GOLD, DARK, MUTED, DIVIDER, ICON_BG, GREEN, SUCCESS_BG,
 } from '@/components/parent/home/parentWarmTheme';
 import { MobileHeader, QuickAction, SectionHeader } from '@/components/helper/home';
+import ParentWorkDashboard from './ParentWorkDashboard';
 
-const INFO  = '#3B82F6';
+const INFO    = '#3B82F6';
 const INFO_BG = '#DBEAFE';
-const AMBER = '#D97706';
+const AMBER   = '#D97706';
 const AMBER_BG = '#FEF3C7';
+
+type PortalMode = 'recruitment' | 'work';
+const MODE_KEY = 'parent_portal_mode';
 
 export default function ParentHome() {
   const router = useRouter();
@@ -36,20 +41,34 @@ export default function ParentHome() {
   const { profileData, refresh: refreshProfile } = useParentProfile();
   const profileImage = (profileData?.profile?.profile_image ?? userData?.profile_image ?? null) as string | null;
 
-  // Re-fetch the profile (incl. profile photo) whenever this tab regains focus,
-  // so edits made on the Profile screen (e.g. a new photo) show up here too.
   useFocusEffect(useCallback(() => { refreshProfile(); }, []));
-  const { placements: recentlyEnded, loading: endedLoading, refresh: refreshEnded } =
-    useParentRecentlyEndedPlacements(1);
   const { stats, loading: statsLoading, refresh } = useParentStats();
   const { isDesktop } = useResponsive();
   const { unreadCount } = useNotifications('parent');
 
+  // ── Mode toggle ─────────────────────────────────────────────────────────────
+  const [portalMode, setPortalMode] = useState<PortalMode>('recruitment');
+  const [modeReady, setModeReady] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(MODE_KEY).then((v) => {
+      if (v === 'work' || v === 'recruitment') setPortalMode(v);
+      setModeReady(true);
+    });
+  }, []);
+
+  const switchMode = async (mode: PortalMode) => {
+    await AsyncStorage.setItem(MODE_KEY, mode);
+    setPortalMode(mode);
+  };
+
+  const isWorkMode = portalMode === 'work';
+
+  // ── Misc state ──────────────────────────────────────────────────────────────
   const [isMobileMenuOpen,         setIsMobileMenuOpen]         = useState(false);
   const [confirmLogoutVisible,      setConfirmLogoutVisible]      = useState(false);
   const [successLogoutVisible,      setSuccessLogoutVisible]      = useState(false);
   const [placementReviewRefreshTok, setPlacementReviewRefreshTok] = useState(0);
-  const [renewalRefreshTok,         setRenewalRefreshTok]         = useState(0);
   const [reviewModalVisible,        setReviewModalVisible]        = useState(false);
   const [reviewTarget, setReviewTarget] = useState<{
     applicationId: number;
@@ -78,15 +97,13 @@ export default function ParentHome() {
     </TouchableOpacity>
   );
 
-  if (statsLoading) {
+  if (statsLoading || !modeReady) {
     return (
       <View style={h.loadingContainer}>
         <ActivityIndicator size="large" color={BROWN} />
       </View>
     );
   }
-
-  const lastEnded = recentlyEnded[0];
 
   const renderModals = () => (
     <>
@@ -116,42 +133,10 @@ export default function ParentHome() {
         counterpartyName={reviewTarget?.counterpartyName ?? ''}
         jobTitle={reviewTarget?.jobTitle}
         accentColor={BROWN}
-        onSubmitted={() => {
-          bumpPlacementReviewBanner();
-          void refreshEnded();
-        }}
+        onSubmitted={bumpPlacementReviewBanner}
       />
     </>
   );
-
-  const renderRecentPlacement = () => {
-    if (endedLoading || !lastEnded) return null;
-    return (
-      <View style={{ marginBottom: 8 }}>
-        <Text style={h.recentTitle}>Recent placement</Text>
-        <TouchableOpacity
-          style={h.recentRateBtn}
-          onPress={() => openPlacementReview(lastEnded.application_id, lastEnded.helper_name, lastEnded.job_title)}
-        >
-          <Ionicons name="star-outline" size={18} color={BROWN} />
-          <Text style={h.recentRateBtnText}>Rate your helper</Text>
-        </TouchableOpacity>
-        <PostPlacementRenewalCard
-          applicationId={lastEnded.application_id}
-          jobPostId={lastEnded.job_post_id}
-          messagesPartnerUserId={lastEnded.helper_id}
-          userType="parent"
-          counterpartyName={lastEnded.helper_name}
-          jobTitle={lastEnded.job_title}
-          endedOn={lastEnded.ended_on}
-          accentColor={BROWN}
-          softBg={ICON_BG}
-          refreshToken={renewalRefreshTok}
-          onIntentSaved={() => { setRenewalRefreshTok((x) => x + 1); void refreshEnded(); }}
-        />
-      </View>
-    );
-  };
 
   const renderStatsGrid = (mobile?: boolean) => {
     const jobsApplicantsTab = { pathname: '/(parent)/jobs', params: { tab: 'applicants' } } as any;
@@ -179,6 +164,47 @@ export default function ParentHome() {
     );
   };
 
+  // ── Mode toggle pill ─────────────────────────────────────────────────────────
+  const renderModeToggle = () => (
+    <View style={ms.toggleWrap}>
+      <View style={ms.togglePill}>
+        <TouchableOpacity
+          style={[ms.toggleOption, !isWorkMode && ms.toggleActive]}
+          onPress={() => switchMode('recruitment')}
+          activeOpacity={0.85}
+        >
+          <Ionicons
+            name="search"
+            size={14}
+            color={!isWorkMode ? '#fff' : MUTED}
+          />
+          <Text style={[ms.toggleLabel, !isWorkMode && ms.toggleLabelActive]}>
+            RECRUITMENT MODE
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[ms.toggleOption, isWorkMode && ms.toggleActive]}
+          onPress={() => switchMode('work')}
+          activeOpacity={0.85}
+        >
+          <Ionicons
+            name="briefcase"
+            size={14}
+            color={isWorkMode ? '#fff' : MUTED}
+          />
+          <Text style={[ms.toggleLabel, isWorkMode && ms.toggleLabelActive]}>
+            WORK MODE
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={ms.toggleSub}>
+        {isWorkMode
+          ? 'You are in Work Mode. Manage your active helpers and daily household operations.'
+          : 'You are in Recruitment Mode. Find and hire the right helper for your home.'}
+      </Text>
+    </View>
+  );
+
   // ─── DESKTOP ────────────────────────────────────────────────────────────────
   if (isDesktop) {
     return (
@@ -188,14 +214,15 @@ export default function ParentHome() {
           style={h.mainContent}
           contentContainerStyle={[h.scrollContent, { maxWidth: 900, alignSelf: 'center', width: '100%' }]}
           refreshControl={
-            <RefreshControl refreshing={false} onRefresh={() => { refresh(); void refreshEnded(); bumpPlacementReviewBanner(); }} />
+            <RefreshControl refreshing={false} onRefresh={() => { refresh(); bumpPlacementReviewBanner(); }} />
           }
         >
-          {/* Desktop top bar */}
           <View style={h.desktopTopBar}>
             <View>
-              <Text style={h.desktopPageTitle}>Dashboard</Text>
-              <Text style={h.desktopPageSub}>Parent Portal — Home & Family Care</Text>
+              <Text style={h.desktopPageTitle}>{isWorkMode ? 'Work Dashboard' : 'Dashboard'}</Text>
+              <Text style={h.desktopPageSub}>
+                {isWorkMode ? 'Manage your active helpers' : 'Parent Portal — Home & Family Care'}
+              </Text>
             </View>
             <TouchableOpacity
               style={[h.desktopNotifBtn, unreadCount > 0 && h.desktopNotifBtnActive]}
@@ -214,37 +241,41 @@ export default function ParentHome() {
             </TouchableOpacity>
           </View>
 
-          <GreetingCard userName={getFullName()} profileImage={profileImage} />
+          {renderModeToggle()}
 
-          <PendingPlacementReviewsBanner
-            userType="parent"
-            accentColor={BROWN}
-            softBg={ICON_BG}
-            refreshToken={placementReviewRefreshTok}
-            onReviewPress={(item: PendingReview) =>
-              openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
-            }
-          />
-
-          {renderRecentPlacement()}
-          <RecommendedHelpersSection />
-
-          <SectionHeader title="My Hiring Activity" />
-          {renderStatsGrid()}
-
-          <SafetyBanner />
-
-          <SectionHeader title="Quick Actions" />
-          <View style={h.quickActionsDesktop}>
-            <QuickActionDesktop icon="add-circle" title="Post a Job" desc="Find the perfect helper for your home"
-              color={BROWN} onPress={() => router.push('/(parent)/jobs')} />
-            <QuickActionDesktop icon="search" title="Browse Helpers" desc="View PESO-verified helpers"
-              color={GREEN} onPress={() => router.push('/(parent)/browse')} />
-            <QuickActionDesktop icon="people" title="Applications" desc="Review & manage applicants"
-              color={INFO} onPress={() => router.push({ pathname: '/(parent)/jobs', params: { tab: 'applicants' } } as any)} />
-          </View>
-
-          <ActiveHelpersSection />
+          {isWorkMode ? (
+            <ParentWorkDashboard
+              userName={getFullName()}
+              profileImage={profileImage}
+              onSwitchToRecruitment={() => switchMode('recruitment')}
+            />
+          ) : (
+            <>
+              <GreetingCard userName={getFullName()} profileImage={profileImage} />
+              <PendingPlacementReviewsBanner
+                userType="parent"
+                accentColor={BROWN}
+                softBg={ICON_BG}
+                refreshToken={placementReviewRefreshTok}
+                onReviewPress={(item: PendingReview) =>
+                  openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
+                }
+              />
+              <RecommendedHelpersSection />
+              <SectionHeader title="My Hiring Activity" />
+              {renderStatsGrid()}
+              <SafetyBanner />
+              <SectionHeader title="Quick Actions" />
+              <View style={h.quickActionsDesktop}>
+                <QuickActionDesktop icon="add-circle" title="Post a Job" desc="Find the perfect helper for your home"
+                  color={BROWN} onPress={() => router.push('/(parent)/jobs')} />
+                <QuickActionDesktop icon="search" title="Browse Helpers" desc="View PESO-verified helpers"
+                  color={GREEN} onPress={() => router.push('/(parent)/browse')} />
+                <QuickActionDesktop icon="people" title="Applications" desc="Review & manage applicants"
+                  color={INFO} onPress={() => router.push({ pathname: '/(parent)/jobs', params: { tab: 'applicants' } } as any)} />
+              </View>
+            </>
+          )}
         </ScrollView>
         {renderModals()}
       </View>
@@ -256,61 +287,97 @@ export default function ParentHome() {
     <SafeAreaView style={h.container}>
       <MobileHeader
         onMenuPress={() => setIsMobileMenuOpen(true)}
-        subtitle="Parent Portal"
+        subtitle={isWorkMode ? 'Work Mode' : 'Parent Portal'}
         notificationCount={unreadCount}
         onNotificationPress={() => router.push('/(parent)/notifications')}
       />
-      <ScrollView
-        contentContainerStyle={[h.mobileScrollContent, { paddingBottom: 88 }]}
-        refreshControl={
-          <RefreshControl refreshing={false} onRefresh={() => { refresh(); void refreshEnded(); bumpPlacementReviewBanner(); }} />
-        }
-      >
-        <GreetingCard userName={getFullName()} profileImage={profileImage} />
 
-        <PendingPlacementReviewsBanner
-          userType="parent"
-          accentColor={BROWN}
-          softBg={ICON_BG}
-          refreshToken={placementReviewRefreshTok}
-          onReviewPress={(item: PendingReview) =>
-            openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
+      {isWorkMode ? (
+        <>
+          {renderModeToggle()}
+          <ParentWorkDashboard
+            userName={getFullName()}
+            profileImage={profileImage}
+            onSwitchToRecruitment={() => switchMode('recruitment')}
+          />
+        </>
+      ) : (
+        <ScrollView
+          contentContainerStyle={[h.mobileScrollContent, { paddingBottom: 88 }]}
+          refreshControl={
+            <RefreshControl refreshing={false} onRefresh={() => { refresh(); bumpPlacementReviewBanner(); }} />
           }
-        />
-
-        {renderRecentPlacement()}
-        <RecommendedHelpersSection />
-
-        <SectionHeader title="My Hiring Activity" />
-        {renderStatsGrid(true)}
-
-        <SafetyBanner />
-
-        <SectionHeader title="Quick Actions" />
-        <View style={h.quickActionsGrid}>
-          <QuickAction icon="add-circle" label="Post Job"    color={BROWN}  onPress={() => router.push('/(parent)/jobs')} />
-          <QuickAction icon="search"     label="Find Helpers" color={GREEN}  onPress={() => router.push('/(parent)/browse')} />
-          <QuickAction icon="chatbubbles" label="Messages"   color={INFO}   onPress={() => router.push('/(parent)/messages')} />
-          <QuickAction icon="person"     label="My Profile"  color="#7C3AED" onPress={() => router.push('/(parent)/profile')} />
-        </View>
-
-        <ActiveHelpersSection compactCards />
-
-        {/* Hire banner */}
-        <View style={h.hireBanner}>
-          <View style={h.hireBannerLeft}>
-            <Text style={h.hireBannerTitle}>Need help at home?</Text>
-            <Text style={h.hireBannerSub}>Post a job and find trusted helpers today.</Text>
+        >
+          {renderModeToggle()}
+          <GreetingCard userName={getFullName()} profileImage={profileImage} />
+          <PendingPlacementReviewsBanner
+            userType="parent"
+            accentColor={BROWN}
+            softBg={ICON_BG}
+            refreshToken={placementReviewRefreshTok}
+            onReviewPress={(item: PendingReview) =>
+              openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
+            }
+          />
+          <RecommendedHelpersSection />
+          <SectionHeader title="My Hiring Activity" />
+          {renderStatsGrid(true)}
+          <SafetyBanner />
+          <SectionHeader title="Quick Actions" />
+          <View style={h.quickActionsGrid}>
+            <QuickAction icon="add-circle" label="Post Job"    color={BROWN}  onPress={() => router.push('/(parent)/jobs')} />
+            <QuickAction icon="search"     label="Find Helpers" color={GREEN}  onPress={() => router.push('/(parent)/browse')} />
+            <QuickAction icon="chatbubbles" label="Messages"   color={INFO}   onPress={() => router.push('/(parent)/messages')} />
+            <QuickAction icon="person"     label="My Profile"  color="#7C3AED" onPress={() => router.push('/(parent)/profile')} />
           </View>
-          <TouchableOpacity style={h.hireBannerBtn} onPress={() => router.push('/(parent)/jobs')}>
-            <Text style={h.hireBannerBtnText}>Post Job</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          <View style={h.hireBanner}>
+            <View style={h.hireBannerLeft}>
+              <Text style={h.hireBannerTitle}>Need help at home?</Text>
+              <Text style={h.hireBannerSub}>Post a job and find trusted helpers today.</Text>
+            </View>
+            <TouchableOpacity style={h.hireBannerBtn} onPress={() => router.push('/(parent)/jobs')}>
+              <Text style={h.hireBannerBtnText}>Post Job</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      )}
 
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
-      <ParentTabBar />
+      {isWorkMode ? <ParentWorkModeTabBar /> : <ParentTabBar />}
       {renderModals()}
     </SafeAreaView>
   );
 }
+
+// ── Mode toggle styles ────────────────────────────────────────────────────────
+const ms = StyleSheet.create({
+  toggleWrap: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4 },
+  togglePill: {
+    flexDirection: 'row',
+    backgroundColor: '#F3E8D6',
+    borderRadius: 30,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: DIVIDER,
+  },
+  toggleOption: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 9, paddingHorizontal: 8, borderRadius: 24,
+  },
+  toggleActive: { backgroundColor: CARAMEL },
+  toggleLabel: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 11,
+    color: MUTED,
+    letterSpacing: 0.5,
+  },
+  toggleLabelActive: { color: '#fff' },
+  toggleSub: {
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 12,
+    color: MUTED,
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 17,
+  },
+});

@@ -9,7 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useConversations, Conversation } from '@/hooks/shared';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
-import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
+import { Sidebar, MobileMenu, ParentTabBar, ParentWorkModeTabBar } from '@/components/parent/home';
+import { useParentPortalMode } from '@/hooks/parent/useParentPortalMode';
 import { LoadingSpinner, ConfirmationModal, NotificationModal } from '@/components/shared/';
 import { BG, BROWN, CARAMEL, DARK, MUTED, SUBTLE } from '@/components/parent/home/parentWarmTheme';
 import { s, ACCENT } from './messages.styles';
@@ -23,6 +24,7 @@ export default function ParentMessages() {
   const { isDesktop }    = useResponsive();
   const { handleLogout } = useAuth();
   const { unreadCount: notifUnread } = useNotifications('parent');
+  const isWorkMode = useParentPortalMode();
   const params = useLocalSearchParams<{ partner_id?: string; partner_name?: string; job_post_id?: string }>();
 
   const { conversations, loading: loadingConvs, refresh } = useConversations();
@@ -170,7 +172,7 @@ export default function ParentMessages() {
           </SafeAreaView>
         )}
 
-        {!activePartner ? <ParentTabBar /> : null}
+        {!activePartner ? (isWorkMode ? <ParentWorkModeTabBar /> : <ParentTabBar />) : null}
 
         <MobileMenu
           isOpen={isMobileMenuOpen}

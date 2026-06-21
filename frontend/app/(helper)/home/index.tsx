@@ -23,7 +23,13 @@ import {
 } from '@/components/helper/home';
 import { WorkModeDashboard, WorkModeTabBar } from '@/components/helper/work';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
+import { ymdLocal } from '@/lib/helperWorkApi';
 import type { PendingReview } from '@/lib/reviewsApi';
+
+function formatShortDate(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export default function HelperHome() {
   const router = useRouter();
@@ -211,6 +217,17 @@ export default function HelperHome() {
                 }
               />
 
+              {!isWorkMode && activeHire?.employment_start_date && activeHire.employment_start_date > ymdLocal() ? (
+                <View style={layoutStyles.endedCard}>
+                  <Text style={layoutStyles.endedTitle}>Job starting soon</Text>
+                  <Text style={layoutStyles.endedBody}>
+                    Your placement{activeHire.job_title ? ` (${activeHire.job_title})` : ''} with{' '}
+                    {activeHire.employer_name || 'your employer'} starts on{' '}
+                    {formatShortDate(activeHire.employment_start_date)}. Work Mode will unlock automatically that day.
+                  </Text>
+                </View>
+              ) : null}
+
               {employmentEnded?.application_id ? (
                 <View style={layoutStyles.endedCard}>
                   <Text style={layoutStyles.endedTitle}>
@@ -337,6 +354,17 @@ export default function HelperHome() {
                 openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
               }
             />
+
+            {!isWorkMode && activeHire?.employment_start_date && activeHire.employment_start_date > ymdLocal() ? (
+              <View style={layoutStyles.endedCard}>
+                <Text style={layoutStyles.endedTitle}>Job starting soon</Text>
+                <Text style={layoutStyles.endedBody}>
+                  Your placement{activeHire.job_title ? ` (${activeHire.job_title})` : ''} with{' '}
+                  {activeHire.employer_name || 'your employer'} starts on{' '}
+                  {formatShortDate(activeHire.employment_start_date)}. Work Mode will unlock automatically that day.
+                </Text>
+              </View>
+            ) : null}
 
             {employmentEnded?.application_id ? (
               <View style={layoutStyles.endedCard}>

@@ -1,15 +1,17 @@
-// app/(parent)/hire/index.tsx  — Active Helpers list
-// PHP: parent/get_job_applications.php + parent/get_posted_jobs.php (via useParentActivePlacements), v1/applications/termination_details.php
+// app/(parent)/hire/index.tsx
+// Mode router: shows WorkModeHelpersScreen in work mode, else recruitment Active Helpers.
+// PHP: parent/get_job_applications.php + parent/get_posted_jobs.php, v1/applications/termination_details.php
 import React, { useCallback, useState } from 'react';
 import {
   View, ScrollView, Text, SafeAreaView,
   RefreshControl, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { s } from './active_helpers.styles';
-import { BROWN, ICON_BG } from '@/components/parent/home/parentWarmTheme';
+import { BG, BROWN, ICON_BG } from '@/components/parent/home/parentWarmTheme';
 import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
 import { MobileHeader } from '@/components/helper/home';
 import { ActiveHelperCard } from '@/components/parent/home/ActiveHelperCard';
@@ -20,7 +22,35 @@ import {
   ConfirmationModal, NotificationModal,
   PlacementReviewModal, PostPlacementRenewalCard,
 } from '@/components/shared';
+import { WorkModeHelpersScreen } from './WorkModeHelpersScreen';
 
+// ── Default export: mode router ──────────────────────────────────────────
+export default function HireScreen() {
+  const [portalMode, setPortalMode] = useState<'recruitment' | 'work'>('recruitment');
+  const [modeReady, setModeReady] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      void AsyncStorage.getItem('parent_portal_mode').then(v => {
+        setPortalMode(v === 'work' ? 'work' : 'recruitment');
+        setModeReady(true);
+      });
+    }, []),
+  );
+
+  if (!modeReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: BG }}>
+        <ActivityIndicator color={BROWN} style={{ marginTop: 60 }} />
+      </View>
+    );
+  }
+
+  if (portalMode === 'work') return <WorkModeHelpersScreen />;
+  return <RecruitmentHelpersScreen />;
+}
+
+// ── Recruitment mode: active + past helpers ──────────────────────────────
 function formatEndedShort(d?: string | null): string | null {
   if (!d) return null;
   try {
@@ -30,7 +60,7 @@ function formatEndedShort(d?: string | null): string | null {
   } catch { return d; }
 }
 
-export default function ActiveHelpersScreen() {
+function RecruitmentHelpersScreen() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
   const { handleLogout, userData } = useAuth();
@@ -145,7 +175,7 @@ export default function ActiveHelpersScreen() {
                 </View>
                 <TouchableOpacity
                   style={s.rateBtn}
-                  onPress={() => openPlacementReview(p.application_id, p.helper_name, p.job_title)}
+                  onPress={() => openPlacementReview(Number(p.application_id), p.helper_name, p.job_title)}
                   activeOpacity={0.88}
                 >
                   <Ionicons name="star-outline" size={18} color={BROWN} />
@@ -153,9 +183,9 @@ export default function ActiveHelpersScreen() {
                 </TouchableOpacity>
               </View>
               <PostPlacementRenewalCard
-                applicationId={p.application_id}
-                jobPostId={p.job_post_id}
-                messagesPartnerUserId={p.helper_id}
+                applicationId={Number(p.application_id)}
+                jobPostId={Number(p.job_post_id)}
+                messagesPartnerUserId={Number(p.helper_id)}
                 userType="parent"
                 counterpartyName={p.helper_name}
                 jobTitle={p.job_title}

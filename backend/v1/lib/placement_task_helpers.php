@@ -16,6 +16,9 @@ function carelink_placement_task_row_to_api(array $r): array
         $recur = null;
     }
 
+    $valid_priorities = ['low', 'medium', 'high'];
+    $priority = in_array($r['priority'] ?? '', $valid_priorities, true) ? $r['priority'] : 'medium';
+
     return [
         'id' => (int) $r['id'],
         'application_id' => (int) $r['application_id'],
@@ -26,6 +29,7 @@ function carelink_placement_task_row_to_api(array $r): array
         'requires_photo' => !empty($r['requires_photo']),
         'is_recurring' => !empty($r['is_recurring']),
         'recur_days' => $recur,
+        'priority' => $priority,
         'status' => $r['status'],
         'completed_at' => $r['completed_at'],
         'photo_url' => $r['photo_url'] ?? null,

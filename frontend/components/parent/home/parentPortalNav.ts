@@ -90,7 +90,7 @@ export const PARENT_PORTAL_NAV: ParentNavItem[] = [
   { baseIcon: 'home', label: 'Home', path: '/(parent)/home' },
   { baseIcon: 'search', label: 'Find Helpers', path: '/(parent)/browse' },
   { baseIcon: 'briefcase', label: 'Work Management', path: '/(parent)/jobs' },
-  { baseIcon: 'heart', label: 'Active Helpers', path: '/(parent)/hire' },
+  { baseIcon: 'time', label: 'Placement History', path: '/(parent)/hire/history' },
   { baseIcon: 'notifications', label: 'Notifications', path: '/(parent)/notifications', useNotificationBadge: true },
   { baseIcon: 'chatbubbles', label: 'Messages', path: '/(parent)/messages' },
   { baseIcon: 'person', label: 'Profile', path: '/(parent)/profile' },
