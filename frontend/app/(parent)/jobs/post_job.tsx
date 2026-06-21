@@ -55,7 +55,7 @@ export default function PostJob() {
   const isDisabled = !verification.canPostJobs;
 
   // Custom hooks
-  const { formData, errors, updateField, updateFields, validate, reset, getSubmissionData, populateForm } = useJobForm();
+  const { formData, errors, updateField, updateFields, validate, reset, getSubmissionData, populateForm, generateDescription } = useJobForm();
   const {
     categories, jobs, skills, languages, religions,
     loading: referencesLoading, getJobsByCategories, getSkillsByJobs,
@@ -133,6 +133,13 @@ export default function PostJob() {
     const currentDays = formData.days_off;
     const newDays = currentDays.includes(day) ? currentDays.filter((d) => d !== day) : [...currentDays, day];
     updateField('days_off', newDays);
+  };
+
+  const handleGenerateDescription = () => {
+    if (isDisabled) return;
+    const category = categories.find((c) => c.category_id.toString() === formData.category_id) || null;
+    const selectedJobs = availableJobs.filter((j) => formData.job_ids.includes(j.job_id.toString()));
+    updateField('description', generateDescription(category, selectedJobs));
   };
 
   // Logout Handlers (Matches jobs.tsx exactly)
@@ -220,15 +227,15 @@ export default function PostJob() {
         <CategorySelector categories={categories} selectedCategoryIds={formData.category_id ? [formData.category_id] : []} customCategory={formData.custom_category} onToggleCategory={handleSelectCategory} onCustomCategoryChange={(value: string) => updateField('custom_category', value)} error={errors.category} disabled={isDisabled} />
         <JobTitleInput categoryIds={formData.category_id ? [formData.category_id] : []} availableJobs={availableJobs} selectedJobIds={formData.job_ids} customJobTitle={formData.custom_job_title} title={formData.title} onToggleJob={handleToggleJob} onCustomJobChange={(value: string) => updateField('custom_job_title', value)} onTitleChange={(value: string) => updateField('title', value)} error={errors.title} disabled={isDisabled} />
         <SkillsSelector selectedJobIds={formData.job_ids} availableSkills={availableSkills} selectedSkills={formData.skill_ids} customSkills={formData.custom_skills} onToggleSkill={handleToggleSkill} onCustomSkillsChange={(value: string) => updateField('custom_skills', value)} disabled={isDisabled} />
-        <DescriptionInput value={formData.description} onChange={(value) => updateField('description', value)} error={errors.description} disabled={isDisabled} />
+        <DescriptionInput value={formData.description} onChange={(value) => updateField('description', value)} onGenerateDescription={handleGenerateDescription} error={errors.description} disabled={isDisabled} />
         <LocationSelector province={formData.province} municipality={formData.municipality} barangay={formData.barangay} onProvinceChange={(value) => updateField('province', value)} onMunicipalityChange={(value) => updateField('municipality', value)} onBarangayChange={(value) => updateField('barangay', value)} disabled={isDisabled} />
         <WorkArrangementCard employmentType={formData.employment_type} workSchedule={formData.work_schedule} onEmploymentTypeChange={(type: string) => updateField('employment_type', type)} onWorkScheduleChange={(schedule: string) => updateField('work_schedule', schedule)} disabled={isDisabled} />
-        <SalaryInputCard salaryOffered={formData.salary_offered} salaryPeriod={formData.salary_period} benefits={formData.benefits} onSalaryChange={(value: string) => updateField('salary_offered', value)} onPeriodChange={(period) => updateField('salary_period', period)} onBenefitsChange={(value: string) => updateField('benefits', value)} error={errors.salary} disabled={isDisabled} />
+        <SalaryInputCard salaryMin={formData.salary_min} salaryMax={formData.salary_max} salaryPeriod={formData.salary_period} onSalaryMinChange={(value: string) => updateField('salary_min', value)} onSalaryMaxChange={(value: string) => updateField('salary_max', value)} onPeriodChange={(period) => updateField('salary_period', period)} categoryIds={formData.category_id ? [formData.category_id] : []} error={errors.salary} errorMax={errors.salary_max} disabled={isDisabled} />
         <AgeRangeSelector minAge={formData.min_age} maxAge={formData.max_age} onMinAgeChange={(value) => updateField('min_age', value)} onMaxAgeChange={(value) => updateField('max_age', value)} disabled={isDisabled} />
         <ExperienceSelector minExperience={formData.min_experience_years} onExperienceChange={(value) => updateField('min_experience_years', value)} disabled={isDisabled} />
         <WorkScheduleCard startDate={formData.start_date} workHours={formData.work_hours} daysOff={formData.days_off} onStartDateChange={(value) => updateField('start_date', value)} onWorkHoursChange={(value) => updateField('work_hours', value)} onDaysOffToggle={handleDaysOffToggle} disabled={isDisabled} />
-        <ContractDetailsCard contractDuration={formData.contract_duration} probationPeriod={formData.probation_period} onContractDurationChange={(value) => updateField('contract_duration', value)} onProbationPeriodChange={(value) => updateField('probation_period', value)} disabled={isDisabled} />
-        <BenefitsCard benefits={formData.benefits} providesMeals={formData.provides_meals} providesAccommodation={formData.provides_accommodation} providesSSS={formData.provides_sss} providesPhilHealth={formData.provides_philhealth} providesPagIbig={formData.provides_pagibig} vacationDays={formData.vacation_days} sickDays={formData.sick_days} onBenefitsChange={(value) => updateField('benefits', value)} onMealsToggle={() => updateField('provides_meals', !formData.provides_meals)} onAccommodationToggle={() => updateField('provides_accommodation', !formData.provides_accommodation)} onSSSToggle={() => updateField('provides_sss', !formData.provides_sss)} onPhilHealthToggle={() => updateField('provides_philhealth', !formData.provides_philhealth)} onPagIbigToggle={() => updateField('provides_pagibig', !formData.provides_pagibig)} onVacationDaysChange={(value) => updateField('vacation_days', value)} onSickDaysChange={(value) => updateField('sick_days', value)} disabled={isDisabled} />
+        <ContractDetailsCard contractDuration={formData.contract_duration} onContractDurationChange={(value) => updateField('contract_duration', value)} disabled={isDisabled} />
+        <BenefitsCard providesMeals={formData.provides_meals} providesAccommodation={formData.provides_accommodation} providesSSS={formData.provides_sss} providesPhilHealth={formData.provides_philhealth} providesPagIbig={formData.provides_pagibig} onMealsToggle={() => updateField('provides_meals', !formData.provides_meals)} onAccommodationToggle={() => updateField('provides_accommodation', !formData.provides_accommodation)} onSSSToggle={() => updateField('provides_sss', !formData.provides_sss)} onPhilHealthToggle={() => updateField('provides_philhealth', !formData.provides_philhealth)} onPagIbigToggle={() => updateField('provides_pagibig', !formData.provides_pagibig)} disabled={isDisabled} />
         <PreferencesCard religions={religions} languages={languages} selectedReligion={formData.preferred_religion} selectedLanguageId={formData.preferred_language_id} requirePoliceClearance={formData.require_police_clearance} preferTesdaNc2={formData.prefer_tesda_nc2} onReligionChange={(religion: string) => updateField('preferred_religion', religion)} onLanguageChange={(langId: string) => updateField('preferred_language_id', langId)} onPoliceClearanceChange={(value: boolean) => updateField('require_police_clearance', value)} onTesdaNc2Change={(value: boolean) => updateField('prefer_tesda_nc2', value)} disabled={isDisabled} />
 
         <TouchableOpacity style={[styles.submitButton, (submitting || isDisabled) && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={submitting || isDisabled} activeOpacity={0.8}>

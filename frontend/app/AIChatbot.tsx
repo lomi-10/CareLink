@@ -113,7 +113,7 @@ export default function AIChatbot() {
           placeholder="Ask about Kasambahay Law, hiring, or CareLink…"
           alwaysShowSend
           messagesContainerStyle={styles.messagesContainer}
-          textInputStyle={styles.textInput}
+          textInputProps={{ style: styles.textInput }}
         />
       </View>
     </>
