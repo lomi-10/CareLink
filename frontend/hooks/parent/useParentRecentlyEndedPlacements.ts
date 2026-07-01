@@ -33,7 +33,7 @@ export function useParentRecentlyEndedPlacements(maxRows = 1) {
       }
 
       const res = await fetch(
-        `${API_URL}/parent/placement_recently_ended.php?parent_id=${parentId}`,
+        `${API_URL}/parent/placement_recently_ended.php?parent_id=${parentId}&requester_id=${parentId}`,
       );
       const data = await res.json();
       if (!data.success) {

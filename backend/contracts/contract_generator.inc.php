@@ -33,6 +33,7 @@ function carelink_contract_upsert_row(
     ?string $paymentSchedule = null,
     ?string $otherBenefits = null,
     ?string $debtAgreement = null,
+    ?float $debtAmount = null,
     ?string $deploymentAgreement = null,
     ?string $terminationConditions = null
 ): void {
@@ -44,10 +45,10 @@ function carelink_contract_upsert_row(
             contract_duration, confirmed_salary, work_hours, rest_days,
             vacation_leave_days, sick_leave_days, special_conditions,
             overtime_rate, payment_schedule, other_benefits, debt_agreement,
-            deployment_agreement, termination_conditions,
+            debt_amount, deployment_agreement, termination_conditions,
             created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE
             pdf_file_path = VALUES(pdf_file_path),
             template_version = VALUES(template_version),
@@ -68,6 +69,7 @@ function carelink_contract_upsert_row(
             payment_schedule = VALUES(payment_schedule),
             other_benefits = VALUES(other_benefits),
             debt_agreement = VALUES(debt_agreement),
+            debt_amount = VALUES(debt_amount),
             deployment_agreement = VALUES(deployment_agreement),
             termination_conditions = VALUES(termination_conditions),
             created_at = NOW()
@@ -76,7 +78,7 @@ function carelink_contract_upsert_row(
         throw new Exception('Failed to prepare insert: ' . $conn->error);
     }
     $ins->bind_param(
-        'iiiissssssdssiisssssss',
+        'iiiissssssdssiisssssdss',
         $application_id,
         $job_post_id,
         $employer_id,
@@ -97,6 +99,7 @@ function carelink_contract_upsert_row(
         $paymentSchedule,
         $otherBenefits,
         $debtAgreement,
+        $debtAmount,
         $deploymentAgreement,
         $terminationConditions
     );
@@ -180,6 +183,7 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
             c.payment_schedule,
             c.other_benefits,
             c.debt_agreement,
+            c.debt_amount,
             c.deployment_agreement,
             c.termination_conditions,
             ja.employer_signed_at,
@@ -415,7 +419,24 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     $optDebtAgreement = isset($opts['debt_agreement']) ? trim((string) $opts['debt_agreement']) : '';
     $storedDebtAgreement = isset($row['debt_agreement']) && $row['debt_agreement'] !== null ? trim((string) $row['debt_agreement']) : '';
     $effectiveDebtAgreement = $optDebtAgreement !== '' ? $optDebtAgreement : $storedDebtAgreement;
+
+    // Numeric debt amount (opts > stored), used only to flag debt bondage risk —
+    // an RA 10364 (Anti-Trafficking) safeguard. Not itself a legal cap, just a
+    // visible warning when the debt exceeds one month's salary.
+    $optDebtAmount = isset($opts['debt_amount']) && $opts['debt_amount'] !== null && $opts['debt_amount'] !== ''
+        ? (float) $opts['debt_amount'] : null;
+    $storedDebtAmount = isset($row['debt_amount']) && $row['debt_amount'] !== null ? (float) $row['debt_amount'] : null;
+    $effectiveDebtAmount = $optDebtAmount ?? $storedDebtAmount;
+    $debtMonthlySalary = $salaryPeriodRaw === 'Daily' ? $effectiveSalary * 26 : $effectiveSalary;
+    $debtExceedsOneMonth = $effectiveDebtAmount !== null && $debtMonthlySalary > 0 && $effectiveDebtAmount > $debtMonthlySalary;
+
     $debtAgreementEsc = $effectiveDebtAgreement !== '' ? carelink_contract_escape($effectiveDebtAgreement) : 'Wala';
+    if ($effectiveDebtAmount !== null) {
+        $debtAgreementEsc .= ' (₱' . number_format($effectiveDebtAmount, 2) . ')';
+    }
+    if ($debtExceedsOneMonth) {
+        $debtAgreementEsc .= ' — ⚠ Exceeds one month\'s salary; helper must explicitly acknowledge before signing.';
+    }
 
     // BK-1 item 12: deployment cost agreement (opts > stored > default "Wala")
     $optDeploymentAgreement = isset($opts['deployment_agreement']) ? trim((string) $opts['deployment_agreement']) : '';
@@ -429,8 +450,13 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     $effectiveTerminationConditions = $optTerminationConditions !== '' ? $optTerminationConditions : $storedTerminationConditions;
     $terminationConditionsEsc = $effectiveTerminationConditions !== '' ? carelink_contract_escape($effectiveTerminationConditions) : 'Ayon sa RA 10361';
 
-    // BK-1 item 14: termination pay = salary / 26 * 15
-    $terminationPayEsc = '₱' . number_format($effectiveSalary / 26 * 15, 2);
+    // BK-1 item 14: termination pay-in-lieu = one full month's salary, matching
+    // the 30-day notice period stated elsewhere in this same contract (see
+    // bk1_template.php's termination clause). Previously this used salary/26*15
+    // (~15 working days, roughly half a month) — inconsistent with the stated
+    // 30-day notice. Daily-rate contracts are converted to a 30-day equivalent.
+    $terminationPayMonthly = $salaryPeriodRaw === 'Daily' ? $effectiveSalary * 30 : $effectiveSalary;
+    $terminationPayEsc = '₱' . number_format($terminationPayMonthly, 2);
 
     // BK-1 employer/helper signature dates (from job_applications, when already signed)
     $employerSignedRaw = isset($row['employer_signed_at']) ? (string) $row['employer_signed_at'] : '';
@@ -450,12 +476,14 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     }
     $benefitsNotes = $benefitsNotes !== '' ? carelink_contract_escape($benefitsNotes) : 'N/A';
 
-    // BK-1 item 8: SSS/PhilHealth/Pag-IBIG deductions are mandatory under RA 10361
-    // once the salary thresholds are met, regardless of the job post's toggles.
-    // Pag-IBIG is always mandatory for kasambahay. SSS applies at >= P1,000/mo,
-    // PhilHealth applies at >= P5,000/mo.
+    // BK-1 item 8: SSS/PhilHealth/Pag-IBIG deductions are mandatory under RA 10361,
+    // regardless of the job post's toggles. Pag-IBIG is always mandatory for
+    // kasambahay; SSS applies at >= P1,000/mo. PhilHealth has NO salary threshold —
+    // RA 11223 (Universal Health Care Act, 2019) made PhilHealth coverage mandatory
+    // for all employed persons regardless of salary, superseding the old >= P5,000
+    // PhilHealth Circular threshold previously used here.
     $provSss = !empty($row['provides_sss']) || $effectiveSalary >= 1000;
-    $provPh = !empty($row['provides_philhealth']) || $effectiveSalary >= 5000;
+    $provPh = true;
     $provPi = true;
 
     $signedDate = carelink_contract_escape(date('Y-m-d'));
@@ -615,6 +643,7 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     $persistPaymentSchedule = $optPaymentSchedule !== '' ? $optPaymentSchedule : ($storedPaymentSchedule !== '' ? $storedPaymentSchedule : null);
     $persistOtherBenefits   = $optOtherBenefits !== '' ? $optOtherBenefits : ($storedOtherBenefits !== '' ? $storedOtherBenefits : null);
     $persistDebtAgreement   = $optDebtAgreement !== '' ? $optDebtAgreement : ($storedDebtAgreement !== '' ? $storedDebtAgreement : null);
+    $persistDebtAmount      = $effectiveDebtAmount;
     $persistDeploymentAgreement   = $optDeploymentAgreement !== '' ? $optDeploymentAgreement : ($storedDeploymentAgreement !== '' ? $storedDeploymentAgreement : null);
     $persistTerminationConditions = $optTerminationConditions !== '' ? $optTerminationConditions : ($storedTerminationConditions !== '' ? $storedTerminationConditions : null);
     carelink_contract_upsert_row(
@@ -639,6 +668,7 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
         $persistPaymentSchedule,
         $persistOtherBenefits,
         $persistDebtAgreement,
+        $persistDebtAmount,
         $persistDeploymentAgreement,
         $persistTerminationConditions
     );

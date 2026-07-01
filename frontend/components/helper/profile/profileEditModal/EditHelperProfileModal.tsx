@@ -206,7 +206,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       if (!raw)  throw new Error('Not logged in');
       const parsed = JSON.parse(raw);
       setUserId(parsed.user_id);
-      const res  = await fetch(`${API_URL}/helper/get_profile.php?user_id=${parsed.user_id}`);
+      const res  = await fetch(`${API_URL}/helper/get_profile.php?user_id=${parsed.user_id}&requester_id=${parsed.user_id}`);
       const data = JSON.parse(await res.text());
       if (!data.success) throw new Error(data.message || 'Failed to load profile');
 
@@ -301,6 +301,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
     try {
       const fd = new FormData();
       fd.append('user_id',        userId || '');
+      fd.append('requester_id',   userId || '');
       fd.append('first_name',     firstName);
       fd.append('middle_name',    middleName);
       fd.append('last_name',      lastName);

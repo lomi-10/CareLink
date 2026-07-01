@@ -11,11 +11,16 @@ header('Access-Control-Allow-Headers: Content-Type');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
 ini_set('display_errors', 0);
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
-$user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
+$user_id      = isset($_GET['user_id'])      ? intval($_GET['user_id'])      : 0;
+$requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
 if (!$user_id) { echo json_encode(['success' => false, 'message' => 'user_id required']); exit(); }
 
 try {
+    // Only the inbox's own owner can list their conversations.
+    carelink_require_self($requester_id, $user_id, 'You are not allowed to view this inbox.');
+
     $base = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
     $conversations = [];
     $seenPartners  = [];

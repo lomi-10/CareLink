@@ -20,13 +20,22 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
-$input     = json_decode(file_get_contents('php://input'), true) ?? [];
-$parent_id = isset($input['parent_id']) ? intval($input['parent_id']) : 0;
-$helper_id = isset($input['helper_id']) ? intval($input['helper_id']) : 0;
+$input        = json_decode(file_get_contents('php://input'), true) ?? [];
+$parent_id    = isset($input['parent_id'])    ? intval($input['parent_id'])    : 0;
+$helper_id    = isset($input['helper_id'])    ? intval($input['helper_id'])    : 0;
+$requester_id = isset($input['requester_id']) ? intval($input['requester_id']) : 0;
 
 if ($parent_id <= 0 || $helper_id <= 0) {
     echo json_encode(['success' => false, 'message' => 'parent_id and helper_id are required']);
+    exit;
+}
+
+try {
+    carelink_require_self($requester_id, $parent_id, 'You are not allowed to log this view.');
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     exit;
 }
 

@@ -111,7 +111,7 @@ export function useMyApplications() {
 
       const user = JSON.parse(userData);
 
-      const response = await fetch(`${API_URL}/helper/my_applications.php?helper_id=${user.user_id}`);
+      const response = await fetch(`${API_URL}/helper/my_applications.php?helper_id=${user.user_id}&requester_id=${user.user_id}`);
       const data = await response.json();
 
       if (data.success) {

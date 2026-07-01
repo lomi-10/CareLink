@@ -21,7 +21,7 @@ export function useSavedJobs() {
       if (!userData) throw new Error('Not logged in');
       const user = JSON.parse(userData);
 
-      const response = await fetch(`${API_URL}/helper/saved_jobs.php?helper_id=${user.user_id}&sort=${sort}`);
+      const response = await fetch(`${API_URL}/helper/saved_jobs.php?helper_id=${user.user_id}&sort=${sort}&requester_id=${user.user_id}`);
       const data = await response.json();
 
       if (!data.success) throw new Error(data.message || 'Failed to load saved jobs');
@@ -48,7 +48,7 @@ export function useSavedJobs() {
       const response = await fetch(`${API_URL}/helper/unsave_job.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_post_id: jobId, helper_id: user.user_id }),
+        body: JSON.stringify({ job_post_id: jobId, helper_id: user.user_id, requester_id: user.user_id }),
       });
       const data = await response.json();
       if (!data.success) throw new Error(data.message || 'Failed to remove job');
@@ -73,7 +73,7 @@ export function useSavedJobs() {
         fetch(`${API_URL}/helper/unsave_job.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ job_post_id: job.job_post_id, helper_id: user.user_id }),
+          body: JSON.stringify({ job_post_id: job.job_post_id, helper_id: user.user_id, requester_id: user.user_id }),
         })
       ));
     } catch (err) {

@@ -227,7 +227,7 @@ export default function WorkManagement() {
     (async () => {
       try {
         setDocsLoading(true);
-        const res = await fetch(`${API_URL}/parent/get_applicant_profile.php?application_id=${selectedApplicant.application_id}&helper_id=${selectedApplicant.helper_id}`);
+        const res = await fetch(`${API_URL}/parent/get_applicant_profile.php?application_id=${selectedApplicant.application_id}&helper_id=${selectedApplicant.helper_id}&requester_id=${userData?.user_id ?? ''}`);
         const data = await res.json();
         if (!cancelled) setSharedDocs(data.success ? (data.shared_documents ?? []) : []);
       } catch {

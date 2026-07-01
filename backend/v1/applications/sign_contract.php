@@ -49,6 +49,7 @@ try {
     $application_id = isset($input['application_id']) ? (int) $input['application_id'] : 0;
     $user_id = isset($input['user_id']) ? (int) $input['user_id'] : 0;
     $user_type = isset($input['user_type']) ? trim((string) $input['user_type']) : '';
+    $debt_acknowledged = !empty($input['debt_acknowledged']);
 
     if ($application_id <= 0 || $user_id <= 0) {
         throw new Exception('application_id and user_id are required');
@@ -62,9 +63,10 @@ try {
     $sql = "
         SELECT ja.application_id, ja.job_post_id, ja.helper_id, ja.status,
                ja.employer_signed_at, ja.helper_signed_at,
-               jp.parent_id
+               jp.parent_id, c.debt_amount, c.confirmed_salary, jp.salary_period
         FROM job_applications ja
         INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+        LEFT JOIN contracts c ON c.application_id = ja.application_id
         WHERE ja.application_id = ?
         LIMIT 1
         FOR UPDATE
@@ -115,11 +117,29 @@ try {
             $conn->rollback();
             throw new Exception('Not authorized to sign as helper for this application');
         }
+
+        // RA 10364 (Anti-Trafficking) safeguard: if this contract has a debt or
+        // deployment-cost amount attached, the helper must explicitly
+        // acknowledge it before their signature is recorded — not just a
+        // checkbox buried in the password-confirmation step.
+        $debtAmount = isset($row['debt_amount']) && $row['debt_amount'] !== null ? (float) $row['debt_amount'] : null;
+        if ($debtAmount !== null && $debtAmount > 0 && !$debt_acknowledged) {
+            $conn->rollback();
+            throw new Exception('Please review and acknowledge the debt/deployment terms before signing.');
+        }
+
         if (empty($row['helper_signed_at'])) {
             $up = $conn->prepare('UPDATE job_applications SET helper_signed_at = NOW(), updated_at = NOW() WHERE application_id = ?');
             $up->bind_param('i', $application_id);
             $up->execute();
             $up->close();
+
+            if ($debtAmount !== null && $debtAmount > 0) {
+                $upAck = $conn->prepare('UPDATE contracts SET debt_acknowledged_at = NOW() WHERE application_id = ?');
+                $upAck->bind_param('i', $application_id);
+                $upAck->execute();
+                $upAck->close();
+            }
         }
     }
 

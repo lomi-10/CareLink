@@ -124,8 +124,8 @@ export function useParentActivePlacements() {
       const parentId = user.user_id;
 
       const [appsRes, jobsRes] = await Promise.all([
-        fetch(`${API_URL}/parent/get_job_applications.php?parent_id=${parentId}`),
-        fetch(`${API_URL}/parent/get_posted_jobs.php?parent_id=${parentId}`),
+        fetch(`${API_URL}/parent/get_job_applications.php?parent_id=${parentId}&requester_id=${parentId}`),
+        fetch(`${API_URL}/parent/get_posted_jobs.php?parent_id=${parentId}&requester_id=${parentId}`),
       ]);
 
       const appsData = await appsRes.json();

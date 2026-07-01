@@ -28,6 +28,7 @@ export interface HelperProfile {
   employment_type?: string;
   work_schedule?: string;
   expected_salary?: number;
+  salary_period?: string;
   
   // Background
   education_level?: string;
@@ -93,8 +94,9 @@ export function useBrowseHelpers() {
 
       const userData = await AsyncStorage.getItem('user_data');
       if (!userData) throw new Error('Not logged in');
+      const user = JSON.parse(userData);
 
-      const response = await fetch(`${API_URL}/parent/browse.php`);
+      const response = await fetch(`${API_URL}/parent/browse.php?parent_id=${user.user_id}`);
       const data = await response.json();
 
       if (data.success) {

@@ -64,7 +64,7 @@ export function useConversations() {
       const raw  = await AsyncStorage.getItem('user_data');
       if (!raw) return;
       const user = JSON.parse(raw);
-      const res  = await fetch(`${API_URL}/messages/get_conversations.php?user_id=${user.user_id}`);
+      const res  = await fetch(`${API_URL}/messages/get_conversations.php?user_id=${user.user_id}&requester_id=${user.user_id}`);
       const data = await res.json();
       if (data.success) setConversations(data.conversations ?? []);
     } catch (e) {
@@ -100,7 +100,7 @@ export function useChat(partnerId: number) {
       const user = JSON.parse(raw);
       setMyUserId(user.user_id);
       const res  = await fetch(
-        `${API_URL}/messages/get_messages.php?user_id=${user.user_id}&partner_id=${partnerId}`
+        `${API_URL}/messages/get_messages.php?user_id=${user.user_id}&partner_id=${partnerId}&requester_id=${user.user_id}`
       );
       const data = await res.json();
       if (data.success) setMessages(data.messages ?? []);
@@ -138,6 +138,7 @@ export function useChat(partnerId: number) {
           message_text: text.trim(),
           job_post_id:  jobPostId ?? null,
           message_type: type,
+          requester_id: user.user_id,
         }),
       });
       const data = await res.json();
@@ -192,6 +193,7 @@ export function useChat(partnerId: number) {
       // 1. Upload the image file (web: FormData needs Blob, not { uri })
       const form = new FormData();
       form.append('user_id', String(user.user_id));
+      form.append('requester_id', String(user.user_id));
       const filename = localUri.split('/').pop()?.split('?')[0] ?? 'photo.jpg';
       const ext      = filename.split('.').pop()?.toLowerCase() ?? 'jpg';
       const mimeMap: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
@@ -219,6 +221,7 @@ export function useChat(partnerId: number) {
           job_post_id:  jobPostId ?? null,
           message_type: 'image',
           image_url:    upData.image_url,
+          requester_id: user.user_id,
         }),
       });
       const sendData = await sendRes.json();

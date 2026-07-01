@@ -35,6 +35,7 @@ export default function SignUpScreen() {
     role, form, handleChange,
     showPassword, setShowPassword,
     showConfirmPassword, setShowConfirmPassword,
+    privacyConsent, setPrivacyConsent,
     notification, closeNotification,
     handleSignUpScreen, router,
   } = useSignupForm();
@@ -196,14 +197,39 @@ export default function SignUpScreen() {
         ))}
       </View>
 
+      {/* ── Privacy consent (RA 10173 / NPC Circular 16-01) ── */}
+      <TouchableOpacity
+        style={s.consentRow}
+        activeOpacity={0.8}
+        onPress={() => setPrivacyConsent(!privacyConsent)}
+      >
+        <Ionicons
+          name={privacyConsent ? 'checkbox' : 'square-outline'}
+          size={20}
+          color={privacyConsent ? t.btn : t.footerText}
+        />
+        <Text style={[s.consentText, { color: t.footerText }]}>
+          I agree that CareLink may collect and process my personal information for
+          recruitment and employment matching purposes in accordance with{' '}
+          <Text
+            style={{ textDecorationLine: 'underline' }}
+            onPress={() => router.push('/privacy-policy' as any)}
+          >
+            RA 10173 and NPC Circular 16-01
+          </Text>
+          .
+        </Text>
+      </TouchableOpacity>
+
       {/* ── Submit ── */}
       {/* Plain array style (not a function) - NativeWind's css-interop wrapper drops
           function-form `style` on Pressable on native, leaving it unstyled. */}
       <Pressable
-        style={[s.btn, { backgroundColor: t.btn, opacity: submitPressed ? 0.86 : 1 }]}
+        style={[s.btn, { backgroundColor: t.btn, opacity: !privacyConsent ? 0.5 : submitPressed ? 0.86 : 1 }]}
         onPressIn={() => setSubmitPressed(true)}
         onPressOut={() => setSubmitPressed(false)}
         onPress={handleSignUpScreen}
+        disabled={!privacyConsent}
       >
         <Text style={[s.btnText, { color: t.btnText }]}>Create account</Text>
       </Pressable>

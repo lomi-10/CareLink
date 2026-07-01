@@ -1,14 +1,17 @@
 // components/landing/web/Footer.tsx
 // Dark footer — brand, link row, social icons, copyright.
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import { FontFamily } from "@/constants/GlobalStyles";
 import { BG_DARK_2, CARD_GLASS_BORDER, TEXT_LIGHT, TEXT_LIGHT_MUTED, TEXT_LIGHT_SUBTLE, layout } from "./theme";
 
 export function Footer() {
+  const router = useRouter();
+
   return (
     <View style={s.footer}>
       <View style={[layout.container, s.footerInner]}>
@@ -20,7 +23,9 @@ export function Footer() {
           <Text style={s.footerLink}>About Us</Text>
           <Text style={s.footerLink}>Help Center</Text>
           <Text style={s.footerLink}>Terms of Service</Text>
-          <Text style={s.footerLink}>Privacy Policy</Text>
+          <TouchableOpacity onPress={() => router.push('/privacy-policy' as any)}>
+            <Text style={s.footerLink}>Privacy Policy</Text>
+          </TouchableOpacity>
           <Text style={s.footerLink}>Contact Us</Text>
         </View>
         <View style={s.footerSocial}>

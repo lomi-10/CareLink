@@ -22,7 +22,8 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 ob_start();
 
-require_once 'dbcon.php';
+require_once __DIR__ . '/../dbcon.php';
+require_once __DIR__ . '/admin_auth.php';
 
 // Helper function to send JSON response
 function sendResponse($success, $message, $data = null) {
@@ -54,6 +55,13 @@ try {
     if (!$data) {
         sendResponse(false, 'Invalid request data');
     }
+
+    // Only an existing approved admin may create new admin/PESO accounts —
+    // without this, anyone could POST here and grant themselves full admin
+    // access (privilege escalation), since this endpoint had no auth check
+    // at all before this fix.
+    $admin_user_id = isset($data['admin_user_id']) ? (int) $data['admin_user_id'] : 0;
+    admin_require_staff($conn, $admin_user_id);
 
     // Validate required fields
     $required = ['first_name', 'last_name', 'email', 'password', 'user_type'];

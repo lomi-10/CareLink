@@ -237,7 +237,7 @@ export function useJobForm() {
     if (!formData.salary_min || isNaN(salaryMin)) {
       newErrors.salary = 'Minimum salary is required — enter an amount';
     } else if (salaryMin < 7000) {
-      newErrors.salary = 'Salary is below minimum — must be at least ₱7,000 (RA 10361)';
+      newErrors.salary = 'Salary is below minimum — must be at least ₱7,000 (CareLink platform standard)';
     }
     if (formData.salary_max) {
       const salaryMax = parseFloat(formData.salary_max);

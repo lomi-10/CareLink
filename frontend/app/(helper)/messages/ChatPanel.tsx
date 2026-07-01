@@ -50,6 +50,8 @@ export default function ChatPanel({
   const [contractPdfUri, setContractPdfUri] = useState<string | null>(null);
   const [signConfirmVisible, setSignConfirmVisible] = useState(false);
   const [signPasswordVisible, setSignPasswordVisible] = useState(false);
+  const [debtAckVisible, setDebtAckVisible] = useState(false);
+  const [debtAcknowledged, setDebtAcknowledged] = useState(false);
   const [disagreeModalVisible, setDisagreeModalVisible] = useState(false);
   const [disagreeBusy, setDisagreeBusy] = useState(false);
   const [activeTab, setActiveTab] = useState<'messages' | 'contract' | 'interview' | 'videocall'>('messages');
@@ -71,7 +73,7 @@ export default function ChatPanel({
       const raw = await AsyncStorage.getItem('user_data');
       if (!raw) return;
       const user = JSON.parse(raw);
-      const res = await fetch(`${API_URL}/helper/my_applications.php?helper_id=${user.user_id}`);
+      const res = await fetch(`${API_URL}/helper/my_applications.php?helper_id=${user.user_id}&requester_id=${user.user_id}`);
       const data = await res.json();
       if (!data.success) return;
       const apps = data.applications ?? [];
@@ -189,6 +191,7 @@ export default function ChatPanel({
           application_id: resolvedApp.application_id,
           user_id:        user.user_id,
           user_type:      'helper',
+          debt_acknowledged: debtAcknowledged,
         }),
       });
       const data = await res.json() as { success?: boolean; message?: string; hire_finalized?: boolean };
@@ -204,6 +207,7 @@ export default function ChatPanel({
     } catch (e: any) {
       showChatNotif(e.message ?? 'Could not sign', 'error');
     } finally {
+      setDebtAcknowledged(false);
       setContractAction(false);
     }
   };
@@ -384,7 +388,13 @@ export default function ChatPanel({
           contractAction={contractAction}
           onReviewContract={openReviewContract}
           onDisagree={() => setDisagreeModalVisible(true)}
-          onAgree={() => setSignConfirmVisible(true)}
+          onAgree={() => {
+            if ((resolvedApp?.debt_amount ?? 0) > 0) {
+              setDebtAckVisible(true);
+            } else {
+              setSignConfirmVisible(true);
+            }
+          }}
         />
       )}
 
@@ -432,6 +442,24 @@ export default function ChatPanel({
         onDone={() => { fetchMessages(); }}
       />
 
+      <ConfirmationModal
+        visible={debtAckVisible}
+        title="Debt / deployment terms"
+        message={
+          `This contract includes a debt or deployment-cost obligation of ₱${Number(resolvedApp?.debt_amount ?? 0).toLocaleString()}` +
+          (resolvedApp?.debt_agreement ? `: ${resolvedApp.debt_agreement}` : '') +
+          '\n\nBy continuing, you confirm you understand and accept this obligation. If you do not understand or do not agree, do not continue — you can discuss this with the employer or contact CareLink support first.'
+        }
+        confirmText="I understand and accept"
+        cancelText="Not yet"
+        type="warning"
+        onConfirm={() => {
+          setDebtAcknowledged(true);
+          setDebtAckVisible(false);
+          setSignConfirmVisible(true);
+        }}
+        onCancel={() => setDebtAckVisible(false)}
+      />
       <ConfirmationModal
         visible={signConfirmVisible}
         title="Confirm agreement"

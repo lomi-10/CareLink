@@ -18,6 +18,7 @@ ini_set('display_errors', 0);
 error_reporting(0);
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/peso_auth.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -43,6 +44,11 @@ try {
     // Get JSON input
     $json = file_get_contents('php://input');
     $data = json_decode($json, true);
+
+    // Only an existing approved PESO staff member may create another PESO
+    // account — without this, anyone could self-register as PESO staff.
+    $staff_user_id = isset($data['staff_user_id']) ? (int) $data['staff_user_id'] : 0;
+    peso_validate_staff_actor($conn, $staff_user_id);
 
     // Validate required fields
     $required = ['first_name', 'last_name', 'email', 'username', 'password'];

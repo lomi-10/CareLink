@@ -29,7 +29,8 @@ type Props = {
 const CATEGORIES: { value: ComplaintCategory; label: string }[] = [
   { value: 'conduct', label: 'Conduct / treatment' },
   { value: 'payment', label: 'Wages or payment' },
-  { value: 'safety', label: 'Safety or working conditions' },
+  { value: 'unsafe_conditions', label: 'Unsafe working conditions' },
+  { value: 'abuse_or_mistreatment', label: 'Abuse or mistreatment' },
   { value: 'contract', label: 'Contract or duties' },
   { value: 'other', label: 'Other' },
 ];

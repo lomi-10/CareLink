@@ -1,4 +1,5 @@
 // components/helper/applications/ApplicationDetailsModal.tsx
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -133,9 +134,15 @@ export default function ApplicationDetailsModal({
     setEditCover(application.cover_letter ?? '');
     setSaveError(null);
     setEditMode(true);
-    // Fetch verified docs for this helper
+    // Fetch verified docs for this helper — requester_id comes from this
+    // device's own logged-in session, not from the application object, so
+    // the backend's ownership check actually proves something.
     setDocsLoading(true);
-    fetch(`${API_URL}/helper/get_documents.php?user_id=${application.helper_id}`)
+    (async () => {
+      const raw = await AsyncStorage.getItem('user_data');
+      const requesterId = raw ? JSON.parse(raw)?.user_id : null;
+      return fetch(`${API_URL}/helper/get_documents.php?user_id=${application.helper_id}&requester_id=${requesterId}`);
+    })()
       .then(r => r.json())
       .then(data => {
         const raw = data.data?.documents ?? data.documents ?? [];
@@ -166,6 +173,8 @@ export default function ApplicationDetailsModal({
     setSaveLoading(true);
     setSaveError(null);
     try {
+      const raw = await AsyncStorage.getItem('user_data');
+      const requesterId = raw ? JSON.parse(raw)?.user_id : null;
       const res = await fetch(`${API_URL}/helper/update_application.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -174,6 +183,7 @@ export default function ApplicationDetailsModal({
           helper_id: Number(application.helper_id),
           cover_letter: trimmed,
           shared_document_ids: selectedDocIds,
+          requester_id: requesterId,
         }),
       });
       const data = await res.json();

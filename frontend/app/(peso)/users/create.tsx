@@ -1,5 +1,6 @@
 // app/(PESO)/create_peso_user.tsx
 // Create PESO User - Form to create new PESO admin accounts
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
@@ -99,12 +100,15 @@ export default function CreatePESOUser() {
     try {
       setLoading(true);
 
+      const raw = await AsyncStorage.getItem("user_data");
+      const staffUserId = raw ? JSON.parse(raw)?.user_id : null;
+
       const response = await fetch(`${API_URL}/peso/create_peso_user.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, staff_user_id: staffUserId }),
       });
 
       const text = await response.text();

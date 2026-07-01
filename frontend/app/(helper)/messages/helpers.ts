@@ -70,6 +70,10 @@ export type ResolvedApplication = {
   contract_duration?: string | null;
   payment_schedule?: string | null;
   other_benefits?: string | null;
+  debt_agreement?: string | null;
+  debt_amount?: number | null;
+  deployment_agreement?: string | null;
+  debt_acknowledged_at?: string | null;
   pdf_file_path?: string | null;
   interview_id?: number | null;
   interview_date?: string | null;

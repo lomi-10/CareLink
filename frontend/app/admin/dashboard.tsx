@@ -43,19 +43,22 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
+      const raw = await AsyncStorage.getItem("user_data");
+      const adminUserId = raw ? JSON.parse(raw)?.user_id : "";
+
       // Fetch users count
       const userResponse = await fetch(`${API_URL}/admin_get_users.php`);
       const users = await userResponse.json();
       if (Array.isArray(users)) {
-        setStats(prev => ({ 
-          ...prev, 
-          total: users.length, 
-          pending: users.filter(u => u.status === 'pending').length 
+        setStats(prev => ({
+          ...prev,
+          total: users.length,
+          pending: users.filter(u => u.status === 'pending').length
         }));
       }
-      
+
       // Fetch logs count
-      const logResponse = await fetch(`${API_URL}/admin_get_logs.php`);
+      const logResponse = await fetch(`${API_URL}/admin/admin_get_logs.php?admin_user_id=${adminUserId}`);
       const logs = await logResponse.json();
       if (Array.isArray(logs)) {
         setStats(prev => ({ ...prev, logs: logs.length }));

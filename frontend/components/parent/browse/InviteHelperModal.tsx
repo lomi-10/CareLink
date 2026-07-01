@@ -54,7 +54,7 @@ export function InviteHelperModal({ visible, helper, jobs, onClose, onSuccess }:
       const raw  = await AsyncStorage.getItem('user_data');
       if (!raw) throw new Error('Not logged in');
       const user = JSON.parse(raw);
-      const res  = await fetch(`${API_URL}/parent/get_posted_jobs.php?parent_id=${user.user_id}`);
+      const res  = await fetch(`${API_URL}/parent/get_posted_jobs.php?parent_id=${user.user_id}&requester_id=${user.user_id}`);
       const data = await res.json();
       if (data.success) {
         setAvailableJobs((data.jobs ?? []).filter((j: Job) => j.status === 'Open'));
@@ -77,7 +77,7 @@ export function InviteHelperModal({ visible, helper, jobs, onClose, onSuccess }:
       const res  = await fetch(`${API_URL}/parent/invite_helper.php`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ parent_id: user.user_id, helper_id: helper.user_id, job_post_id: selectedJobId }),
+        body:    JSON.stringify({ parent_id: user.user_id, helper_id: helper.user_id, job_post_id: selectedJobId, requester_id: user.user_id }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Failed to send invitation');

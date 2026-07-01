@@ -84,7 +84,7 @@ export function useJobApplications(jobPostId: string) {
 
       const user = JSON.parse(userData);
       const response = await fetch(
-        `${API_URL}/parent/get_posted_jobs.php?parent_id=${user.user_id}`
+        `${API_URL}/parent/get_posted_jobs.php?parent_id=${user.user_id}&requester_id=${user.user_id}`
       );
       const data = await response.json();
 
@@ -107,14 +107,15 @@ export function useJobApplications(jobPostId: string) {
       setError(null);
 
       // If no specific job selected, fetch ALL applications for this parent
+      const raw  = await AsyncStorage.getItem('user_data');
+      const user = raw ? JSON.parse(raw) : null;
+      if (!user) { setLoading(false); return; }
+
       let url: string;
       if (jobPostId) {
-        url = `${API_URL}/parent/get_job_applications.php?job_post_id=${jobPostId}`;
+        url = `${API_URL}/parent/get_job_applications.php?job_post_id=${jobPostId}&requester_id=${user.user_id}`;
       } else {
-        const raw  = await AsyncStorage.getItem('user_data');
-        const user = raw ? JSON.parse(raw) : null;
-        if (!user) { setLoading(false); return; }
-        url = `${API_URL}/parent/get_job_applications.php?parent_id=${user.user_id}`;
+        url = `${API_URL}/parent/get_job_applications.php?parent_id=${user.user_id}&requester_id=${user.user_id}`;
       }
 
       const response = await fetch(url);
@@ -154,12 +155,15 @@ export function useJobApplications(jobPostId: string) {
     newStatus: 'Pending' | 'Reviewed' | 'Shortlisted' | 'Interview Scheduled' | 'Accepted' | 'Rejected' | 'Withdrawn'
   ) => {
     try {
+      const raw  = await AsyncStorage.getItem('user_data');
+      const user = raw ? JSON.parse(raw) : null;
       const response = await fetch(`${API_URL}/parent/update_application_status.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           application_id: applicationId,
-          status: newStatus
+          status: newStatus,
+          requester_id: user?.user_id,
         }),
       });
 

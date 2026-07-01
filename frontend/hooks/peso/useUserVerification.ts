@@ -42,7 +42,7 @@ export function useUserVerification() {
 
       // Fetch parent profile to get verification_status
       const response = await fetch(
-        `${API_URL}/parent/get_profile.php?user_id=${user.user_id}`
+        `${API_URL}/parent/get_profile.php?user_id=${user.user_id}&requester_id=${user.user_id}`
       );
       const data = await response.json();
 

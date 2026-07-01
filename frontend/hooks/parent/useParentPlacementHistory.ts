@@ -30,7 +30,7 @@ export function useParentPlacementHistory() {
       const user = JSON.parse(raw) as { user_id?: number };
       const parentId = Number(user.user_id);
       if (!parentId) { setPlacements([]); return; }
-      const res = await fetch(`${API_URL}/parent/placement_history.php?parent_id=${parentId}`);
+      const res = await fetch(`${API_URL}/parent/placement_history.php?parent_id=${parentId}&requester_id=${parentId}`);
       const data = await res.json();
       if (!data.success) { setError(data.message || 'Failed'); setPlacements([]); return; }
       setPlacements(data.placements ?? []);

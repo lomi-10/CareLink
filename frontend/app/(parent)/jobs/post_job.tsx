@@ -172,7 +172,7 @@ export default function PostJob() {
       if (!userData) throw new Error('Not logged in');
       const user = JSON.parse(userData);
 
-      const submissionData = { ...getSubmissionData(), parent_id: user.user_id };
+      const submissionData = { ...getSubmissionData(), parent_id: user.user_id, requester_id: user.user_id };
       const endpoint = edit_id ? '/parent/edit_job.php' : '/parent/post_job.php';
       if (edit_id) (submissionData as any).job_post_id = edit_id;
 

@@ -20,6 +20,7 @@ ini_set('log_errors', 1);
 ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 try {
     if (!$conn) {
@@ -28,10 +29,15 @@ try {
 
     $application_id = isset($_GET['application_id']) ? (int) $_GET['application_id'] : 0;
     $parent_id = isset($_GET['parent_id']) ? (int) $_GET['parent_id'] : 0;
+    $requester_id = isset($_GET['requester_id']) ? (int) $_GET['requester_id'] : 0;
 
     if ($application_id <= 0 || $parent_id <= 0) {
         throw new Exception('application_id and parent_id are required');
     }
+
+    // The SQL below already confirms the application belongs to parent_id —
+    // this confirms the caller IS parent_id, not just claiming to be.
+    carelink_require_self($requester_id, $parent_id, 'You are not allowed to view this contract.');
 
     $sql = "
         SELECT

@@ -28,14 +28,29 @@ export function RecommendedHelpersSection() {
     );
   }
 
-  if (recommendations.length === 0) return null;
+  const sectionTitle = referenceJob ? 'Best Match for Your Job' : 'Top Helpers in Ormoc';
+
+  if (recommendations.length === 0) {
+    return (
+      <View style={s.section}>
+        <View style={s.header}>
+          <Text style={s.title}>{sectionTitle}</Text>
+        </View>
+        <View style={s.emptyWrap}>
+          <Text style={s.emptyText}>
+            No strong matches found yet. Try posting a job or broadening your required skills and salary range.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={s.section}>
 
       {/* Header */}
       <View style={s.header}>
-        <Text style={s.title}>Recommended Helpers for You</Text>
+        <Text style={s.title}>{sectionTitle}</Text>
         <TouchableOpacity
           style={s.seeAllBtn}
           onPress={() => router.push('/(parent)/browse')}
@@ -54,10 +69,10 @@ export function RecommendedHelpersSection() {
       >
         {recommendations.slice(0, 6).map((helper, idx) => {
           // Same computeHelperJobMatch formula used on Browse Helpers / Work Management,
-          // so the percentage matches across screens. Falls back to the backend's
-          // hiring-history score only when the parent has no open job to compare against.
-          const match = referenceJob ? computeHelperJobMatch(helper, referenceJob) : null;
-          const pct = match ? match.score : Math.max(60, Math.round(helper.match_score));
+          // so the percentage matches across screens. Internally switches between
+          // job-specific matching and the "Top Helpers" feed based on referenceJob.
+          const match = computeHelperJobMatch(helper, referenceJob);
+          const pct = match.score;
           return (
             <RecommendedHelperCard
               key={helper.user_id}
@@ -107,5 +122,15 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 12,
     paddingBottom: 4,
+  },
+
+  emptyWrap: {
+    paddingHorizontal: 16,
+  },
+  emptyText: {
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 13,
+    color: BROWN,
+    lineHeight: 18,
   },
 });

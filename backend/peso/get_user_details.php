@@ -18,6 +18,8 @@ ini_set('display_errors', 0);
 error_reporting(0);
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/peso_auth.php';
+include_once __DIR__ . '/../shared/file_security.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -39,6 +41,10 @@ try {
     if (!$conn) {
         throw new Exception("Database connection failed");
     }
+
+    // Only approved PESO staff may pull a user's full details (profile +
+    // government ID documents + household composition).
+    peso_require_staff($conn);
 
     if (!isset($_GET['user_id'])) {
         throw new Exception("User ID is required");
@@ -282,7 +288,7 @@ try {
     // 3. Get user documents
     // ========================================================================
     
-    $documentsSql = "SELECT 
+    $documentsSql = "SELECT
                         document_id,
                         document_type,
                         file_path,
@@ -290,24 +296,46 @@ try {
                         status,
                         rejection_reason,
                         uploaded_at,
-                        verified_at
+                        verified_at,
+                        ai_verification_status,
+                        ai_confidence_score,
+                        didit_extracted_data,
+                        didit_checked_at
                     FROM user_documents
                     WHERE user_id = ?
                     ORDER BY FIELD(document_type, 'Barangay Clearance', 'Valid ID', 'Police Clearance', 'TESDA NC2')";
-    
+
     $documentsStmt = $conn->prepare($documentsSql);
     $documentsStmt->bind_param("i", $user_id);
     $documentsStmt->execute();
     $documentsResult = $documentsStmt->get_result();
-    
+
     $documents = array();
-    $doc_base_url = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/documents/";
-    
+
     while ($row = $documentsResult->fetch_assoc()) {
         $row['document_id'] = intval($row['document_id']);
-        $row['file_url'] = $doc_base_url . $row['file_path'];
+        $row['file_url'] = $row['file_path'] ? carelink_signed_document_url($row['document_id']) : null;
         $row['uploaded_at'] = $row['uploaded_at'] ? date('Y-m-d H:i:s', strtotime($row['uploaded_at'])) : null;
         $row['verified_at'] = $row['verified_at'] ? date('Y-m-d H:i:s', strtotime($row['verified_at'])) : null;
+
+        // AI pre-verification details (from the Gemini scan). Surface a legitimacy
+        // score (template match) + clarity (ai_confidence_score) + extracted fields.
+        $row['ai_confidence_score'] = $row['ai_confidence_score'] !== null ? (float) $row['ai_confidence_score'] : null;
+        $row['ai_legitimacy_score'] = null;
+        $row['ai_fields'] = array();
+        $row['ai_warnings'] = array();
+        if (!empty($row['didit_extracted_data'])) {
+            $decoded = json_decode($row['didit_extracted_data'], true);
+            if (is_array($decoded)) {
+                $row['ai_legitimacy_score'] = isset($decoded['legitimacy_score']) && $decoded['legitimacy_score'] !== null
+                    ? (float) $decoded['legitimacy_score'] : null;
+                if (isset($decoded['fields']) && is_array($decoded['fields']))   $row['ai_fields']   = $decoded['fields'];
+                if (isset($decoded['warnings']) && is_array($decoded['warnings'])) $row['ai_warnings'] = $decoded['warnings'];
+            }
+        }
+        unset($row['didit_extracted_data']);
+        $row['didit_checked_at'] = $row['didit_checked_at'] ? date('Y-m-d H:i:s', strtotime($row['didit_checked_at'])) : null;
+
         $documents[] = $row;
     }
     $documentsStmt->close();

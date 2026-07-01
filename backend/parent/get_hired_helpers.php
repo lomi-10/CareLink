@@ -4,14 +4,17 @@ header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 
 require_once '../config/database.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 try {
     $parent_id = $_GET['parent_id'] ?? null;
-    
+    $requester_id = isset($_GET['requester_id']) ? (int) $_GET['requester_id'] : 0;
+
     if (!$parent_id) {
         throw new Exception('Parent ID is required');
     }
-    
+    carelink_require_self($requester_id, (int) $parent_id, 'You are not allowed to view these helpers.');
+
     $conn = getDatabaseConnection();
     
     $sql = "

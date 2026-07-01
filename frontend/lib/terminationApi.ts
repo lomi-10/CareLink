@@ -8,6 +8,8 @@ export type TerminationReasonCode =
   | 'family_emergency'
   | 'found_other_work'
   | 'misconduct'
+  | 'unsafe_conditions'
+  | 'abuse_or_mistreatment'
   | 'end_of_term'
   | 'mutual_agreement'
   | 'other';
@@ -17,6 +19,8 @@ export const TERMINATION_REASON_OPTIONS: { value: TerminationReasonCode; label: 
   { value: 'family_emergency', label: 'Family emergency' },
   { value: 'found_other_work', label: 'Found other work' },
   { value: 'misconduct', label: 'Misconduct' },
+  { value: 'unsafe_conditions', label: 'Unsafe working conditions' },
+  { value: 'abuse_or_mistreatment', label: 'Abuse or mistreatment' },
   { value: 'end_of_term', label: 'End of term' },
   { value: 'mutual_agreement', label: 'Mutual agreement' },
   { value: 'other', label: 'Other' },

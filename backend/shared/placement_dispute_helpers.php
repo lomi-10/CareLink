@@ -162,7 +162,9 @@ function carelink_placement_id_for_application(mysqli $conn, int $application_id
 /**
  * Map app/API category keys to `complaints.category` ENUM in current.sql.
  *
- * @return string One of: Misconduct, Fraud / Fake Profile, Non-Payment, Abandonment of Work, Harassment, Property Damage, Other
+ * @return string One of: Misconduct, Fraud / Fake Profile, Non-Payment, Abandonment of Work,
+ *                 Harassment, Property Damage, Unsafe Working Conditions, Abuse or Mistreatment,
+ *                 Contract Dispute, Other
  */
 function carelink_map_complaint_category(string $cat): string
 {
@@ -170,8 +172,14 @@ function carelink_map_complaint_category(string $cat): string
     $map = [
         'conduct' => 'Misconduct',
         'payment' => 'Non-Payment',
-        'safety' => 'Property Damage',
-        'contract' => 'Abandonment of Work',
+        // Split from a single generic 'safety' key (which was previously
+        // mismapped to 'Property Damage') into two specific categories, so
+        // PESO/admin triage can tell environmental hazards apart from abuse.
+        'unsafe_conditions' => 'Unsafe Working Conditions',
+        'abuse_or_mistreatment' => 'Abuse or Mistreatment',
+        // Was previously mismapped to 'Abandonment of Work' — a generic contract
+        // dispute (e.g. unmet terms) is not the same thing as the helper leaving.
+        'contract' => 'Contract Dispute',
         'harassment' => 'Harassment',
         'fraud' => 'Fraud / Fake Profile',
         'other' => 'Other',

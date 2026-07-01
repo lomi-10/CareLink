@@ -158,11 +158,58 @@ CareLink is a mobile and web app where:
   require more
 - Be friendly, clear, and use simple English or mix of 
   Filipino terms naturally (e.g. "kasambahay", "po")
-- If someone asks something you don't know or is outside 
-  CareLink, say: "Para sa ganyang tanong, mas maganda pong 
+- If someone asks something you don't know or is outside
+  CareLink, say: "Para sa ganyang tanong, mas maganda pong
   makipag-ugnayan sa DOLE o sa inyong lokal na PESO office."
+- When a CURRENT USER CONTEXT block is provided below, use it
+  to personalize your help — e.g. nudge them to finish their
+  profile if completion is low, explain their verification
+  status if it is pending, or suggest posting a job if a
+  parent has none. Keep it natural; never read the values back
+  like a database dump.
 - Never make up features that don't exist in CareLink
 CAREBOT_SYS;
+}
+
+/**
+ * Build a SAFE, personalized context block appended to the system instruction.
+ * Receives only the non-sensitive snapshot from carelink_user_safe_context().
+ */
+function carelink_chatbot_context_block(array $ctx): string
+{
+    $type = (string) ($ctx['user_type'] ?? '');
+    if ($type !== 'parent' && $type !== 'helper') {
+        return ''; // only personalize for parents and helpers
+    }
+
+    $roleLabel = $type === 'parent' ? 'Employer (parent)' : 'Helper (kasambahay)';
+    $verif     = (string) ($ctx['verification_status'] ?? 'Unverified');
+    $pct       = (int) ($ctx['profile_completion_percent'] ?? 0);
+    $placement = !empty($ctx['has_active_placement']) ? 'yes' : 'no';
+
+    $lines = [];
+    $lines[] = '== CURRENT USER CONTEXT (private — personalize with it, never read it back as raw data) ==';
+    $lines[] = "- Role: {$roleLabel}";
+    $lines[] = "- Account verification status: {$verif}";
+    $lines[] = "- Profile completion: {$pct}%";
+    if ($type === 'parent') {
+        $lines[] = '- Has an active job post: ' . (!empty($ctx['has_active_job_post']) ? 'yes' : 'no');
+    }
+    $lines[] = "- Currently in an active placement (employed / active hire): {$placement}";
+    $lines[] = '';
+    $lines[] = 'Use this to give relevant, personalized help:';
+    $lines[] = '- If profile completion is below 90%, gently encourage finishing their profile (Profile tab) so PESO can verify them'
+        . ($type === 'helper' ? ' and employers can find them.' : ' and they can post jobs and hire.');
+    $lines[] = '- If verification is Pending, reassure them PESO is still reviewing; suggest making sure all required documents are uploaded and the profile is complete.';
+    $lines[] = '- If verification is Rejected, kindly suggest reviewing the rejection note and re-uploading clear, valid documents.';
+    $lines[] = '- If verification is Unverified, explain they must complete their profile and upload documents to start PESO verification.';
+    if ($type === 'parent') {
+        $lines[] = '- If they have no active job post, suggest posting a job (My Job Posts → +) to start hiring.';
+    }
+    $lines[] = '- If they are in an active placement, focus on day-to-day work features (tasks, attendance, schedule, leave, salary).';
+    $lines[] = 'Weave this naturally into answers. Never list these values like a database dump, never reveal another user\'s data, and never invent details beyond this context.';
+
+    return implode("\n", $lines);
 }
 
 header('Access-Control-Allow-Origin: *');
@@ -324,6 +371,19 @@ if ($model === '' || !preg_match('/^[a-zA-Z0-9._-]+$/', $model)) {
 $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent';
 
 $sys = trim(carelink_chatbot_system_instruction_text());
+
+// Append a SAFE, non-sensitive snapshot of the signed-in user so CareBot can
+// personalize. Computed server-side from the validated $userId (never trusted
+// from the client). Degrades silently to no-context if the DB is unavailable.
+require_once __DIR__ . '/shared/user_context.php';
+$userCtx = carelink_user_safe_context($userId);
+if (is_array($userCtx)) {
+    $ctxBlock = carelink_chatbot_context_block($userCtx);
+    if ($ctxBlock !== '') {
+        $sys .= "\n\n" . $ctxBlock;
+    }
+}
+
 $bodyOut = [
     'contents' => $parts,
 ];

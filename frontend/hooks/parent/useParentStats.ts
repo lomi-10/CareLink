@@ -33,7 +33,7 @@ export function useParentStats() {
       const raw = await AsyncStorage.getItem('user_data');
       if (!raw) throw new Error('Not logged in');
       const { user_id } = JSON.parse(raw);
-      const res  = await fetch(`${API_URL}/parent/get_stats.php?user_id=${user_id}`);
+      const res  = await fetch(`${API_URL}/parent/get_stats.php?user_id=${user_id}&requester_id=${user_id}`);
       const data = await res.json();
       if (data.success) setStats({ ...DEFAULT, ...data.stats });
     } catch (err: any) {

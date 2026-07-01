@@ -15,6 +15,7 @@ error_reporting(0);
 ob_start();
 require_once '../dbcon.php';
 require_once '../shared/create_notification.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -32,6 +33,9 @@ try {
 
     if (!$parent_id || !$helper_id || !$job_post_id)
         throw new Exception('parent_id, helper_id and job_post_id are required');
+
+    $requester_id = isset($body['requester_id']) ? intval($body['requester_id']) : 0;
+    carelink_require_self($requester_id, $parent_id, 'You are not allowed to send invitations for this employer account.');
 
     // ── Get parent name + job title ──────────────────────────────────────────
     $stmt = $conn->prepare("SELECT first_name, last_name FROM users WHERE user_id = ?");

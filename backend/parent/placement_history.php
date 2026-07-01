@@ -7,6 +7,7 @@ header('Access-Control-Allow-Headers: Content-Type');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
 
 require_once __DIR__ . '/../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 function hist_out($ok, $msg, $data = []) {
     echo json_encode(['success' => $ok, 'message' => $msg] + $data);
@@ -16,7 +17,9 @@ function hist_out($ok, $msg, $data = []) {
 try {
     if (!$conn) throw new Exception('Database connection failed');
     $parent_id = isset($_GET['parent_id']) ? (int)$_GET['parent_id'] : 0;
+    $requester_id = isset($_GET['requester_id']) ? (int)$_GET['requester_id'] : 0;
     if ($parent_id <= 0) hist_out(false, 'parent_id required');
+    carelink_require_self($requester_id, $parent_id, 'You are not allowed to view this placement history.');
 
     $base_url = 'http://' . $_SERVER['HTTP_HOST'] . '/carelink_api/uploads/profiles/';
 

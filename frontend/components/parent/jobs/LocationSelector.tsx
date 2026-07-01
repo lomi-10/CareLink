@@ -49,7 +49,7 @@ export function LocationSelector({
       const userData = await AsyncStorage.getItem('user_data');
       if (!userData) return;
       const user = JSON.parse(userData);
-      const res  = await fetch(`${API_URL}/parent/get_profile.php?user_id=${user.user_id}`);
+      const res  = await fetch(`${API_URL}/parent/get_profile.php?user_id=${user.user_id}&requester_id=${user.user_id}`);
       const data = await res.json();
       if (data.success && data.profile) {
         const p = data.profile;

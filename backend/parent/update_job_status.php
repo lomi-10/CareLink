@@ -21,6 +21,7 @@ ini_set('log_errors', 1);
 ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/ownership_guard.php';
 
 // 2. Your Standard Response Function
 function sendResponse($success, $message, $data = null) {
@@ -44,11 +45,19 @@ try {
     
     $job_post_id = isset($input['job_post_id']) ? intval($input['job_post_id']) : null;
     $new_status = $input['status'] ?? null;
-    
+    $requester_id = isset($input['requester_id']) ? intval($input['requester_id']) : 0;
+
     if (!$job_post_id || !$new_status) {
         throw new Exception('Job ID and status are required');
     }
-    
+
+    $ownerStmt = $conn->prepare('SELECT parent_id FROM job_posts WHERE job_post_id = ?');
+    $ownerStmt->bind_param('i', $job_post_id);
+    $ownerStmt->execute();
+    $ownerRow = $ownerStmt->get_result()->fetch_assoc();
+    $ownerStmt->close();
+    carelink_require_self($requester_id, $ownerRow ? (int) $ownerRow['parent_id'] : 0, 'You are not allowed to update this job post.');
+
     if (!in_array($new_status, ['Open', 'Filled', 'Closed'])) {
         throw new Exception('Invalid status provided');
     }

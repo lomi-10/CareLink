@@ -24,7 +24,20 @@ export function RecommendationsSection() {
     );
   }
 
-  if (recommendations.length === 0) return null;
+  if (recommendations.length === 0) {
+    return (
+      <View style={s.section}>
+        <View style={s.header}>
+          <Text style={s.title}>Recommended for you</Text>
+        </View>
+        <View style={s.emptyWrap}>
+          <Text style={s.emptyText}>
+            No strong matches yet. Try adding more skills or job roles to your profile, or broaden your salary range.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={s.section}>
@@ -48,20 +61,17 @@ export function RecommendationsSection() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={s.scroll}
       >
-        {recommendations.slice(0, 6).map((job, idx) => {
-          // Descending match percentages: 95 → 88 → 82 → 76 → 72 → 68
-          const pct = Math.max(68, 95 - idx * 6);
-          return (
-            <RecommendedJobCard
-              key={job.job_post_id}
-              job={job}
-              isTopMatch={idx === 0}
-              matchPercentage={pct}
-              onPress={() => router.push('/(helper)/browse')}
-              onSave={() => toggleSaveJob(job.job_post_id)}
-            />
-          );
-        })}
+        {recommendations.slice(0, 6).map((job, idx) => (
+          <RecommendedJobCard
+            key={job.job_post_id}
+            job={job}
+            isTopMatch={idx === 0}
+            matchPercentage={Math.round(Number(job.match_score ?? 0))}
+            isNew={!!job.is_new}
+            onPress={() => router.push('/(helper)/browse')}
+            onSave={() => toggleSaveJob(job.job_post_id)}
+          />
+        ))}
       </ScrollView>
     </View>
   );
@@ -102,4 +112,13 @@ const s = StyleSheet.create({
     paddingBottom: 4,
   },
 
+  emptyWrap: {
+    paddingHorizontal: 16,
+  },
+  emptyText: {
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 13,
+    color: '#7A5C3E',
+    lineHeight: 18,
+  },
 });

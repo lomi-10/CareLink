@@ -22,6 +22,7 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/sync_profile_completed.php';
+include_once __DIR__ . '/../shared/file_security.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -47,6 +48,12 @@ try {
     $user_id = intval($_POST['user_id']);
     error_log("=== PARENT DOCUMENT UPLOAD === User ID: $user_id");
 
+    // Ownership check — see the matching comment in helper/upload_documents.php.
+    $requester_id = isset($_POST['requester_id']) ? intval($_POST['requester_id']) : 0;
+    if ($requester_id <= 0 || $requester_id !== $user_id) {
+        throw new Exception("You are not allowed to upload documents for this account.");
+    }
+
     // Verify user exists
     $userCheck = $conn->prepare("SELECT user_id FROM users WHERE user_id = ?");
     $userCheck->bind_param("i", $user_id);
@@ -66,7 +73,6 @@ try {
         mkdir($uploadDir, 0777, true);
     }
 
-    $allowedTypes = array('image/jpeg', 'image/jpg', 'image/png', 'application/pdf');
     $filesProcessed = 0;
 
     $conn->begin_transaction();
@@ -75,14 +81,15 @@ try {
         // --- Process Valid ID ---
         if (isset($_FILES['valid_id']) && $_FILES['valid_id']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['valid_id'];
-            if (!in_array($file['type'], $allowedTypes)) throw new Exception("Invalid file type for Valid ID. JPG, PNG, or PDF only.");
-            if ($file['size'] > 5 * 1024 * 1024) throw new Exception("Valid ID file size too large. Maximum 5MB.");
+            $fileExt = carelink_validate_uploaded_file($file, 'Valid ID');
+            $newFileName = carelink_random_doc_filename('parent_validid', $user_id, $fileExt);
 
-            $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            $newFileName = "parent_validid_" . $user_id . "_" . time() . "." . $fileExt;
-            
             if (move_uploaded_file($file['tmp_name'], $uploadDir . $newFileName)) {
-                $conn->query("DELETE FROM user_documents WHERE user_id = $user_id AND document_type = 'Valid ID'");
+                $del = $conn->prepare("DELETE FROM user_documents WHERE user_id = ? AND document_type = 'Valid ID'");
+                $del->bind_param("i", $user_id);
+                $del->execute();
+                $del->close();
+
                 $stmt = $conn->prepare("INSERT INTO user_documents (user_id, document_type, file_path, status, uploaded_at) VALUES (?, 'Valid ID', ?, 'Pending', NOW())");
                 $stmt->bind_param("is", $user_id, $newFileName);
                 $stmt->execute();
@@ -94,14 +101,15 @@ try {
         // --- Process Barangay Clearance ---
         if (isset($_FILES['barangay_clearance']) && $_FILES['barangay_clearance']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['barangay_clearance'];
-            if (!in_array($file['type'], $allowedTypes)) throw new Exception("Invalid file type for Barangay Clearance. JPG, PNG, or PDF only.");
-            if ($file['size'] > 5 * 1024 * 1024) throw new Exception("Barangay Clearance file size too large. Maximum 5MB.");
+            $fileExt = carelink_validate_uploaded_file($file, 'Barangay Clearance');
+            $newFileName = carelink_random_doc_filename('parent_brgy', $user_id, $fileExt);
 
-            $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            $newFileName = "parent_brgy_" . $user_id . "_" . time() . "." . $fileExt;
-            
             if (move_uploaded_file($file['tmp_name'], $uploadDir . $newFileName)) {
-                $conn->query("DELETE FROM user_documents WHERE user_id = $user_id AND document_type = 'Barangay Clearance'");
+                $del = $conn->prepare("DELETE FROM user_documents WHERE user_id = ? AND document_type = 'Barangay Clearance'");
+                $del->bind_param("i", $user_id);
+                $del->execute();
+                $del->close();
+
                 $stmt = $conn->prepare("INSERT INTO user_documents (user_id, document_type, file_path, status, uploaded_at) VALUES (?, 'Barangay Clearance', ?, 'Pending', NOW())");
                 $stmt->bind_param("is", $user_id, $newFileName);
                 $stmt->execute();

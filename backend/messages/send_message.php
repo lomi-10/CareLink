@@ -8,6 +8,7 @@ header('Access-Control-Allow-Headers: Content-Type');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
 ini_set('display_errors', 0);
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 $input        = json_decode(file_get_contents('php://input'), true);
 $sender_id    = isset($input['sender_id'])    ? intval($input['sender_id'])    : 0;
@@ -16,6 +17,7 @@ $text         = isset($input['message_text']) ? trim($input['message_text'])   :
 $job_post_id  = isset($input['job_post_id'])  ? intval($input['job_post_id'])  : null;
 $message_type = isset($input['message_type']) ? trim($input['message_type'])   : 'text';
 $image_url    = isset($input['image_url'])    ? trim($input['image_url'])      : null;
+$requester_id = isset($input['requester_id']) ? intval($input['requester_id']) : 0;
 
 $allowed_types = ['text', 'image', 'video_call'];
 if (!in_array($message_type, $allowed_types)) $message_type = 'text';
@@ -27,6 +29,10 @@ if (!$sender_id || !$receiver_id || ($text === '' && $message_type === 'text' &&
 }
 
 try {
+    // Only the real sender's own device can send a message AS that sender —
+    // otherwise anyone could impersonate any user in a chat.
+    carelink_require_self($requester_id, $sender_id, 'You are not allowed to send messages as this account.');
+
     $stmt = $conn->prepare(
         "INSERT INTO messages (sender_id, receiver_id, job_post_id, message_text, message_type, image_url, sent_at)
          VALUES (?, ?, ?, ?, ?, ?, NOW())"

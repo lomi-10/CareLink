@@ -13,6 +13,7 @@ interface RecommendedJobCardProps {
   job:              JobPost;
   isTopMatch?:      boolean;
   matchPercentage?: number;   // 0–100
+  isNew?:           boolean;  // posted within the last 3 days
   onPress:          () => void;
   onSave?:          () => void;
 }
@@ -31,6 +32,7 @@ export function RecommendedJobCard({
   job,
   isTopMatch = false,
   matchPercentage,
+  isNew = false,
   onPress,
   onSave,
 }: RecommendedJobCardProps) {
@@ -54,24 +56,31 @@ export function RecommendedJobCard({
   return (
     <View style={s.card}>
 
-      {/* ── Top row: badge + heart ── */}
+      {/* ── Top row: badge(s) + heart ── */}
       <View style={s.topRow}>
-        {isTopMatch ? (
-          <View style={s.topMatchBadge}>
-            <Ionicons name="star" size={10} color="#FFF" />
-            <Text style={s.topMatchText}>Top Match</Text>
-            {matchPercentage !== undefined && (
-              <Text style={s.topMatchPct}> · {matchPercentage}%</Text>
-            )}
-          </View>
-        ) : (
-          <View style={s.newBadge}>
-            <Text style={s.newBadgeText}>New</Text>
-            {matchPercentage !== undefined && (
-              <Text style={s.newBadgePct}> · {matchPercentage}%</Text>
-            )}
-          </View>
-        )}
+        <View style={s.badgeGroup}>
+          {isTopMatch ? (
+            <View style={s.topMatchBadge}>
+              <Ionicons name="star" size={10} color="#FFF" />
+              <Text style={s.topMatchText}>Top Match</Text>
+              {matchPercentage !== undefined && (
+                <Text style={s.topMatchPct}> · {matchPercentage}%</Text>
+              )}
+            </View>
+          ) : (
+            <View style={s.matchBadgeOutline}>
+              {matchPercentage !== undefined && (
+                <Text style={s.matchBadgeOutlineText}>{matchPercentage}% Match</Text>
+              )}
+            </View>
+          )}
+
+          {isNew && (
+            <View style={s.newBadge}>
+              <Text style={s.newBadgeText}>New</Text>
+            </View>
+          )}
+        </View>
 
         <TouchableOpacity onPress={() => onSave?.()} hitSlop={8}>
           <Ionicons
@@ -136,6 +145,12 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 2,
   },
+  badgeGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
 
   // Top Match badge
   topMatchBadge: {
@@ -158,8 +173,8 @@ const s = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
   },
 
-  // New badge
-  newBadge: {
+  // Plain match-percentage outline badge (non-top-match cards)
+  matchBadgeOutline: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
@@ -168,15 +183,23 @@ const s = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 3,
   },
-  newBadgeText: {
+  matchBadgeOutlineText: {
     fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 10,
     color: '#7A5C3E',
   },
-  newBadgePct: {
-    fontFamily: FontFamily.fredokaRegular,
+
+  // "New" badge — job posted within the last 3 days (recency, unrelated to match score)
+  newBadge: {
+    backgroundColor: '#1A5C40',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  newBadgeText: {
+    fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 10,
-    color: '#9A7B5A',
+    color: '#FFFFFF',
   },
 
   // Icon

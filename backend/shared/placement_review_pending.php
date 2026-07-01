@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../dbcon.php';
+require_once __DIR__ . '/ownership_guard.php';
 
 function out_pending($ok, $msg, $pending = [])
 {
@@ -28,9 +29,11 @@ try {
     }
     $user_id = isset($_GET['user_id']) ? (int) $_GET['user_id'] : 0;
     $user_type = isset($_GET['user_type']) ? trim((string) $_GET['user_type']) : '';
+    $requester_id = isset($_GET['requester_id']) ? (int) $_GET['requester_id'] : 0;
     if ($user_id <= 0) {
         out_pending(false, 'user_id required');
     }
+    carelink_require_self($requester_id, $user_id, 'You are not allowed to view this.');
     if ($user_type !== 'parent' && $user_type !== 'helper') {
         out_pending(false, 'user_type must be parent or helper');
     }

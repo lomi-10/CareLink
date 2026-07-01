@@ -20,6 +20,8 @@ ini_set('log_errors', 1);
 ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/ownership_guard.php';
+include_once __DIR__ . '/../shared/file_security.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -47,6 +49,8 @@ try {
     }
     
     $user_id = intval($_GET['user_id']);
+    $requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
+    carelink_require_self($requester_id, $user_id, 'You are not allowed to view this profile.');
     error_log("=== GET PARENT PROFILE (NORMALIZED) === User ID: $user_id");
 
     // ========================================================================
@@ -164,6 +168,10 @@ try {
                     ud.rejection_reason,
                     ud.verified_by,
                     ud.verified_at,
+                    ud.ai_verification_status,
+                    ud.ai_confidence_score,
+                    ud.didit_extracted_data,
+                    ud.didit_checked_at,
                     ud.uploaded_at,
                     CONCAT(v.first_name, ' ', IFNULL(v.last_name, '')) AS verified_by_name
                 FROM user_documents ud
@@ -175,16 +183,15 @@ try {
     $docsStmt->execute();
     $docsResult = $docsStmt->get_result();
 
-    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'];
-
     while ($row = $docsResult->fetch_assoc()) {
         $row['document_id'] = intval($row['document_id']);
-        $row['file_url'] = "$protocol://$host/carelink_api/uploads/documents/" . $row['file_path'];
+        $row['file_url'] = $row['file_path'] ? carelink_signed_document_url($row['document_id']) : null;
         $row['uploaded_at'] = $row['uploaded_at'] ? date('Y-m-d H:i:s', strtotime($row['uploaded_at'])) : null;
         $row['expiry_date'] = $row['expiry_date'] ? date('Y-m-d', strtotime($row['expiry_date'])) : null;
         $row['verified_at'] = $row['verified_at'] ? date('Y-m-d H:i:s', strtotime($row['verified_at'])) : null;
         $row['verified_by'] = trim((string) $row['verified_by_name']) !== '' ? trim($row['verified_by_name']) : null;
+        $row['didit_extracted_data'] = $row['didit_extracted_data'] ? json_decode($row['didit_extracted_data'], true) : null;
+        $row['didit_checked_at'] = $row['didit_checked_at'] ? date('Y-m-d H:i:s', strtotime($row['didit_checked_at'])) : null;
         unset($row['verified_by_name']);
         $documents[] = $row;
     }

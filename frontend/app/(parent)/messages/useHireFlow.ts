@@ -60,6 +60,7 @@ export function useHireFlow({
   const [hirePaymentSchedule, setHirePaymentSchedule] = useState('Every 15th and 30th');
   const [hireOtherBenefits, setHireOtherBenefits] = useState('');
   const [hireDebtAgreement, setHireDebtAgreement] = useState('');
+  const [hireDebtAmount, setHireDebtAmount] = useState('');
   const [hireDeploymentAgreement, setHireDeploymentAgreement] = useState('');
   const [hireTerminationConditions, setHireTerminationConditions] = useState('');
   const [hireConfirmVisible, setHireConfirmVisible] = useState(false);
@@ -86,6 +87,7 @@ export function useHireFlow({
     setHirePaymentSchedule('Every 15th and 30th');
     setHireOtherBenefits('');
     setHireDebtAgreement('');
+    setHireDebtAmount('');
     setHireDeploymentAgreement('');
     setHireTerminationConditions('');
   }, []);
@@ -187,7 +189,7 @@ export function useHireFlow({
       if (!raw) throw new Error('Not logged in');
       const user = JSON.parse(raw);
       const res = await fetch(
-        `${getContractTermsUrl()}?application_id=${resolvedApp.application_id}&parent_id=${user.user_id}`,
+        `${getContractTermsUrl()}?application_id=${resolvedApp.application_id}&parent_id=${user.user_id}&requester_id=${user.user_id}`,
       );
       const data = await res.json() as {
         success?: boolean;
@@ -209,6 +211,7 @@ export function useHireFlow({
           payment_schedule?: string | null;
           other_benefits?: string | null;
           debt_agreement?: string | null;
+          debt_amount?: number | null;
           deployment_agreement?: string | null;
           termination_conditions?: string | null;
         };
@@ -245,6 +248,7 @@ export function useHireFlow({
       setHirePaymentSchedule(c.payment_schedule ?? 'Every 15th and 30th');
       setHireOtherBenefits(c.other_benefits ?? '');
       setHireDebtAgreement(c.debt_agreement ?? '');
+      setHireDebtAmount(c.debt_amount != null ? String(c.debt_amount) : '');
       setHireDeploymentAgreement(c.deployment_agreement ?? '');
       setHireTerminationConditions(c.termination_conditions ?? '');
       setHireContractNotes(c.terms_notes ?? '');
@@ -310,6 +314,7 @@ export function useHireFlow({
           job_post_id:    jpId,
           parent_id:      user.user_id,
           helper_id:      partnerId,
+          requester_id:   user.user_id,
           contract_end_date:      hireContractEndDate || '',
           contract_start_date:    hireContractStartDate.trim() || undefined,
           contract_terms_notes:   hireContractNotes.trim() || undefined,
@@ -324,6 +329,7 @@ export function useHireFlow({
           payment_schedule:       hirePaymentSchedule.trim() || undefined,
           other_benefits:         hireOtherBenefits.trim() || undefined,
           debt_agreement:         hireDebtAgreement.trim() || undefined,
+          debt_amount:            hireDebtAmount.trim() || undefined,
           deployment_agreement:   hireDeploymentAgreement.trim() || undefined,
           termination_conditions: hireTerminationConditions.trim() || undefined,
         }),
@@ -381,6 +387,7 @@ export function useHireFlow({
           job_post_id:    jpId,
           parent_id:      user.user_id,
           helper_id:      partnerId,
+          requester_id:   user.user_id,
           contract_end_date:      hireContractEndDate || '',
           contract_start_date:    hireContractStartDate.trim() || undefined,
           contract_terms_notes:   hireContractNotes.trim() || undefined,
@@ -395,6 +402,7 @@ export function useHireFlow({
           payment_schedule:       hirePaymentSchedule.trim() || undefined,
           other_benefits:         hireOtherBenefits.trim() || undefined,
           debt_agreement:         hireDebtAgreement.trim() || undefined,
+          debt_amount:            hireDebtAmount.trim() || undefined,
           deployment_agreement:   hireDeploymentAgreement.trim() || undefined,
           termination_conditions: hireTerminationConditions.trim() || undefined,
         }),
@@ -444,6 +452,8 @@ export function useHireFlow({
     setRejectConfirmVisible(false);
     setHiringAction(true);
     try {
+      const raw = await AsyncStorage.getItem('user_data');
+      const requesterId = raw ? JSON.parse(raw)?.user_id : null;
       const res = await fetch(`${API_URL}/parent/update_application_status.php`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -451,6 +461,7 @@ export function useHireFlow({
           application_id: resolvedApp.application_id,
           status:           'Rejected',
           parent_notes:     'Not selected for this role.',
+          requester_id:     requesterId,
         }),
       });
       const data = await res.json();
@@ -491,6 +502,7 @@ export function useHireFlow({
     hirePaymentSchedule, setHirePaymentSchedule,
     hireOtherBenefits, setHireOtherBenefits,
     hireDebtAgreement, setHireDebtAgreement,
+    hireDebtAmount, setHireDebtAmount,
     hireDeploymentAgreement, setHireDeploymentAgreement,
     hireTerminationConditions, setHireTerminationConditions,
     hireContractEndDate,

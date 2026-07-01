@@ -6,7 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Dimensions, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { AlertModal } from "@/components/admin/login/AlertModal";
 import { InfoPanel } from "@/components/admin/login/InfoPanel";
@@ -133,6 +133,16 @@ export default function AdminLoginScreen() {
 
   return (
     <View style={s.root}>
+      {/* Back to landing */}
+      <TouchableOpacity
+        style={s.backBtn}
+        onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="arrow-back" size={18} color="#fff" />
+        <Text style={s.backTxt}>Back</Text>
+      </TouchableOpacity>
+
       <View style={s.row}>
         <InfoPanel />
         <View style={s.cardSide}>
@@ -176,6 +186,14 @@ export default function AdminLoginScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, width: "100%", height: "100%", backgroundColor: BG_DARK_2 },
+  backBtn: {
+    position: "absolute", top: 22, left: 24, zIndex: 50,
+    flexDirection: "row", alignItems: "center", gap: 7,
+    paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.22)",
+  },
+  backTxt: { color: "#fff", fontSize: 13, fontFamily: FontFamily.fredokaSemiBold, fontWeight: "700" },
   row: { flex: 1, flexDirection: "row", minHeight: 0 },
   cardSide: {
     width: "36%", minWidth: 380, maxWidth: 460,

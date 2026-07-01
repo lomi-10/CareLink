@@ -21,6 +21,7 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/sync_profile_completed.php';
+include_once __DIR__ . '/../shared/file_security.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -49,6 +50,15 @@ try {
 
     $user_id = intval($_POST['user_id']);
     error_log("=== UPLOAD DOCUMENTS === User ID: $user_id");
+
+    // Ownership check: the app always sends requester_id (the currently
+    // logged-in user, read from their own session storage) alongside
+    // user_id. They must match — a helper can only ever upload documents
+    // for THEIR OWN account, never anyone else's.
+    $requester_id = isset($_POST['requester_id']) ? intval($_POST['requester_id']) : 0;
+    if ($requester_id <= 0 || $requester_id !== $user_id) {
+        throw new Exception("You are not allowed to upload documents for this account.");
+    }
 
     // Verify user exists and is a helper
     $checkUserSql = "SELECT user_id, user_type FROM users WHERE user_id = ?";
@@ -81,21 +91,19 @@ try {
     // ========================================================================
     
     if (isset($_FILES['barangay_clearance']) && $_FILES['barangay_clearance']['error'] === UPLOAD_ERR_OK) {
-        $fileExt = strtolower(pathinfo($_FILES['barangay_clearance']['name'], PATHINFO_EXTENSION));
-        $allowedExts = array('jpg', 'jpeg', 'png', 'pdf');
-        
-        if (in_array($fileExt, $allowedExts)) {
-            $fileName = "barangay_" . $user_id . "_" . time() . "." . $fileExt;
+        try {
+            $fileExt = carelink_validate_uploaded_file($_FILES['barangay_clearance'], 'Barangay Clearance');
+            $fileName = carelink_random_doc_filename('barangay', $user_id, $fileExt);
             $filePath = $uploadDir . $fileName;
-            
+
             if (move_uploaded_file($_FILES['barangay_clearance']['tmp_name'], $filePath)) {
                 $uploadedDocs['barangay_clearance'] = $fileName;
                 error_log("✅ Barangay Clearance uploaded: $fileName");
             } else {
                 $errors[] = "Failed to save Barangay Clearance";
             }
-        } else {
-            $errors[] = "Barangay Clearance: Invalid file type (only jpg, png, pdf allowed)";
+        } catch (Exception $e) {
+            $errors[] = $e->getMessage();
         }
     }
 
@@ -107,13 +115,11 @@ try {
     $id_type = isset($_POST['id_type']) ? trim($_POST['id_type']) : 'PhilSys';
     
     if (isset($_FILES['valid_id']) && $_FILES['valid_id']['error'] === UPLOAD_ERR_OK) {
-        $fileExt = strtolower(pathinfo($_FILES['valid_id']['name'], PATHINFO_EXTENSION));
-        $allowedExts = array('jpg', 'jpeg', 'png', 'pdf');
-        
-        if (in_array($fileExt, $allowedExts)) {
-            $fileName = "valid_id_" . $user_id . "_" . time() . "." . $fileExt;
+        try {
+            $fileExt = carelink_validate_uploaded_file($_FILES['valid_id'], 'Valid ID');
+            $fileName = carelink_random_doc_filename('valid_id', $user_id, $fileExt);
             $filePath = $uploadDir . $fileName;
-            
+
             if (move_uploaded_file($_FILES['valid_id']['tmp_name'], $filePath)) {
                 $uploadedDocs['valid_id'] = array(
                     'file_name' => $fileName,
@@ -123,8 +129,8 @@ try {
             } else {
                 $errors[] = "Failed to save Valid ID";
             }
-        } else {
-            $errors[] = "Valid ID: Invalid file type (only jpg, png, pdf allowed)";
+        } catch (Exception $e) {
+            $errors[] = $e->getMessage();
         }
     }
 
@@ -133,21 +139,19 @@ try {
     // ========================================================================
     
     if (isset($_FILES['police_clearance']) && $_FILES['police_clearance']['error'] === UPLOAD_ERR_OK) {
-        $fileExt = strtolower(pathinfo($_FILES['police_clearance']['name'], PATHINFO_EXTENSION));
-        $allowedExts = array('jpg', 'jpeg', 'png', 'pdf');
-        
-        if (in_array($fileExt, $allowedExts)) {
-            $fileName = "police_" . $user_id . "_" . time() . "." . $fileExt;
+        try {
+            $fileExt = carelink_validate_uploaded_file($_FILES['police_clearance'], 'Police Clearance');
+            $fileName = carelink_random_doc_filename('police', $user_id, $fileExt);
             $filePath = $uploadDir . $fileName;
-            
+
             if (move_uploaded_file($_FILES['police_clearance']['tmp_name'], $filePath)) {
                 $uploadedDocs['police_clearance'] = $fileName;
                 error_log("✅ Police Clearance uploaded: $fileName");
             } else {
                 $errors[] = "Failed to save Police Clearance";
             }
-        } else {
-            $errors[] = "Police Clearance: Invalid file type (only jpg, png, pdf allowed)";
+        } catch (Exception $e) {
+            $errors[] = $e->getMessage();
         }
     }
 
@@ -156,21 +160,19 @@ try {
     // ========================================================================
     
     if (isset($_FILES['tesda_nc2']) && $_FILES['tesda_nc2']['error'] === UPLOAD_ERR_OK) {
-        $fileExt = strtolower(pathinfo($_FILES['tesda_nc2']['name'], PATHINFO_EXTENSION));
-        $allowedExts = array('jpg', 'jpeg', 'png', 'pdf');
-        
-        if (in_array($fileExt, $allowedExts)) {
-            $fileName = "tesda_" . $user_id . "_" . time() . "." . $fileExt;
+        try {
+            $fileExt = carelink_validate_uploaded_file($_FILES['tesda_nc2'], 'TESDA NC2');
+            $fileName = carelink_random_doc_filename('tesda', $user_id, $fileExt);
             $filePath = $uploadDir . $fileName;
-            
+
             if (move_uploaded_file($_FILES['tesda_nc2']['tmp_name'], $filePath)) {
                 $uploadedDocs['tesda_nc2'] = $fileName;
                 error_log("✅ TESDA NC2 uploaded: $fileName");
             } else {
                 $errors[] = "Failed to save TESDA NC2";
             }
-        } else {
-            $errors[] = "TESDA NC2: Invalid file type (only jpg, png, pdf allowed)";
+        } catch (Exception $e) {
+            $errors[] = $e->getMessage();
         }
     }
 

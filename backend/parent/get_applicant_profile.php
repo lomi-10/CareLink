@@ -21,6 +21,8 @@ ini_set('log_errors', 1);
 ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/ownership_guard.php';
+include_once __DIR__ . '/../shared/file_security.php';
 
 // 2. Your response helper
 function sendResponse($success, $message, $data = null) {
@@ -43,12 +45,27 @@ try {
     // 3. Input validation (using your preferred GET method)
     $application_id = isset($_GET['application_id']) ? intval($_GET['application_id']) : null;
     $helper_id = isset($_GET['helper_id']) ? intval($_GET['helper_id']) : null;
-    
+    $requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
+
     if (!$application_id || !$helper_id) {
         throw new Exception("Application ID and Helper ID are required");
     }
-    
+
     error_log("=== GET APPLICANT PROFILE === App: $application_id, Helper: $helper_id");
+
+    // Only the parent who actually owns this application's job post may view
+    // the applicant's profile (salary expectations, contact info, etc.).
+    $ownerStmt = $conn->prepare("
+        SELECT jp.parent_id
+        FROM job_applications ja
+        INNER JOIN job_posts jp ON ja.job_post_id = jp.job_post_id
+        WHERE ja.application_id = ?
+    ");
+    $ownerStmt->bind_param("i", $application_id);
+    $ownerStmt->execute();
+    $ownerRow = $ownerStmt->get_result()->fetch_assoc();
+    $ownerStmt->close();
+    carelink_require_self($requester_id, $ownerRow ? (int)$ownerRow['parent_id'] : 0, "You are not allowed to view this applicant's profile.");
 
     // 4. Converting SQL to mysqli style (Replacing :names with ?)
     $sql = "
@@ -100,7 +117,6 @@ try {
     // 5b. Documents the helper explicitly chose to share with this employer for this application
     //     (consent-based — never expose documents the helper has not shared for this application)
     $shared_documents = [];
-    $doc_base_url = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/documents/";
     $docs_stmt = $conn->prepare("
         SELECT ud.document_id, ud.document_type, ud.file_path, ud.status, ud.uploaded_at
         FROM application_document_shares ads
@@ -112,7 +128,7 @@ try {
     $docs_stmt->execute();
     $docs_result = $docs_stmt->get_result();
     while ($doc = $docs_result->fetch_assoc()) {
-        $doc['file_url'] = $doc['file_path'] ? ($doc_base_url . $doc['file_path']) : null;
+        $doc['file_url'] = $doc['file_path'] ? carelink_signed_document_url((int)$doc['document_id']) : null;
         $shared_documents[] = $doc;
     }
     $docs_stmt->close();

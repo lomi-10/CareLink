@@ -31,7 +31,7 @@ export default function Index() {
         let user = JSON.parse(raw) as Record<string, unknown>;
 
         try {
-          const res = await fetch(`${API_URL}/shared/get_user_status.php?user_id=${user.user_id}`);
+          const res = await fetch(`${API_URL}/shared/get_user_status.php?user_id=${user.user_id}&requester_id=${user.user_id}`);
           const data = await res.json();
           if (data.success) {
             user = {

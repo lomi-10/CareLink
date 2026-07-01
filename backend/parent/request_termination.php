@@ -27,6 +27,7 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
 require_once __DIR__ . '/../shared/mysqli_stmt_helpers.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 /**
  * Map logical fields → your actual column names (edit if your table differs).
@@ -76,9 +77,12 @@ try {
         $remarks = null;
     }
 
+    $requester_id = isset($input['requester_id']) ? (int) $input['requester_id'] : 0;
+
     if ($application_id <= 0 || $parent_id <= 0) {
         throw new Exception('application_id and parent_id are required');
     }
+    carelink_require_self($requester_id, $parent_id, 'You are not allowed to request this termination.');
     if ($termination_reason === '') {
         throw new Exception('termination_reason is required');
     }

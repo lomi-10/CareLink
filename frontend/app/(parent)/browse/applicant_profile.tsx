@@ -122,6 +122,7 @@ export default function ApplicantProfile() {
   const [hirePaymentSchedule, setHirePaymentSchedule] = useState('Every 15th and 30th');
   const [hireOtherBenefits, setHireOtherBenefits] = useState('');
   const [hireDebtAgreement, setHireDebtAgreement] = useState('');
+  const [hireDebtAmount, setHireDebtAmount] = useState('');
   const [hireDeploymentAgreement, setHireDeploymentAgreement] = useState('');
   const [hireTerminationConditions, setHireTerminationConditions] = useState('');
   const afterNotificationClose = useRef<(() => void) | null>(null);
@@ -147,6 +148,7 @@ export default function ApplicantProfile() {
     setHirePaymentSchedule('Every 15th and 30th');
     setHireOtherBenefits('');
     setHireDebtAgreement('');
+    setHireDebtAmount('');
     setHireDeploymentAgreement('');
     setHireTerminationConditions('');
   }, []);
@@ -166,9 +168,12 @@ export default function ApplicantProfile() {
     try {
       setLoading(true);
 
+      const userData = await AsyncStorage.getItem('user_data');
+      const requesterId = userData ? JSON.parse(userData)?.user_id : '';
+
       // Fetch full helper profile + application details
       const response = await fetch(
-        `${API_URL}/parent/get_applicant_profile.php?application_id=${applicationId}&helper_id=${helperId}`
+        `${API_URL}/parent/get_applicant_profile.php?application_id=${applicationId}&helper_id=${helperId}&requester_id=${requesterId}`
       );
       const data = await response.json();
 
@@ -317,6 +322,7 @@ export default function ApplicantProfile() {
           job_post_id: jpId,
           parent_id: user.user_id,
           helper_id: helperId,
+          requester_id: user.user_id,
           contract_end_date: hireContractEndDate || '',
           contract_start_date: hireContractStartDate.trim() || undefined,
           contract_terms_notes: hireContractNotes.trim() || undefined,
@@ -331,6 +337,7 @@ export default function ApplicantProfile() {
           payment_schedule: hirePaymentSchedule.trim() || undefined,
           other_benefits: hireOtherBenefits.trim() || undefined,
           debt_agreement: hireDebtAgreement.trim() || undefined,
+          debt_amount: hireDebtAmount.trim() || undefined,
           deployment_agreement: hireDeploymentAgreement.trim() || undefined,
           termination_conditions: hireTerminationConditions.trim() || undefined,
         }),
@@ -366,6 +373,8 @@ export default function ApplicantProfile() {
 
   const handleShortlist = async () => {
     try {
+      const userData = await AsyncStorage.getItem('user_data');
+      const requesterId = userData ? JSON.parse(userData)?.user_id : null;
       const response = await fetch(
         `${API_URL}/parent/update_application_status.php`,
         {
@@ -375,6 +384,7 @@ export default function ApplicantProfile() {
             application_id: applicationId,
             status: 'Shortlisted',
             parent_notes: notes,
+            requester_id: requesterId,
           }),
         }
       );
@@ -403,6 +413,8 @@ export default function ApplicantProfile() {
   const runReject = async () => {
     setRejectConfirmOpen(false);
     try {
+      const userData = await AsyncStorage.getItem('user_data');
+      const requesterId = userData ? JSON.parse(userData)?.user_id : null;
       const response = await fetch(
         `${API_URL}/parent/update_application_status.php`,
         {
@@ -412,6 +424,7 @@ export default function ApplicantProfile() {
             application_id: applicationId,
             status: 'Rejected',
             parent_notes: notes,
+            requester_id: requesterId,
           }),
         }
       );
@@ -441,6 +454,8 @@ export default function ApplicantProfile() {
 
   const handleSaveNotes = async () => {
     try {
+      const userData = await AsyncStorage.getItem('user_data');
+      const requesterId = userData ? JSON.parse(userData)?.user_id : null;
       const response = await fetch(
         `${API_URL}/parent/update_application_status.php`,
         {
@@ -450,6 +465,7 @@ export default function ApplicantProfile() {
             application_id: applicationId,
             status: applicant?.status,
             parent_notes: notes,
+            requester_id: requesterId,
           }),
         }
       );
@@ -533,6 +549,8 @@ export default function ApplicantProfile() {
         onChangeOtherBenefits={setHireOtherBenefits}
         debtAgreement={hireDebtAgreement}
         onChangeDebtAgreement={setHireDebtAgreement}
+        debtAmount={hireDebtAmount}
+        onChangeDebtAmount={setHireDebtAmount}
         deploymentAgreement={hireDeploymentAgreement}
         onChangeDeploymentAgreement={setHireDeploymentAgreement}
         terminationConditions={hireTerminationConditions}

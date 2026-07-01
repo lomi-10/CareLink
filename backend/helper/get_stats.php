@@ -133,6 +133,7 @@ ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/ownership_guard.php';
 
 if (!isset($_GET['user_id']) || empty($_GET['user_id'])) {
     echo json_encode(["success" => false, "message" => "Missing user_id parameter"]);
@@ -140,6 +141,7 @@ if (!isset($_GET['user_id']) || empty($_GET['user_id'])) {
 }
 
 $user_id = intval($_GET['user_id']);
+$requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
 
 // Initialize stats array based strictly on your React Native hook expectations
 $stats = [
@@ -152,6 +154,7 @@ try {
     if (!$conn) {
         throw new Exception("Database connection failed");
     }
+    carelink_require_self($requester_id, $user_id, 'You are not allowed to view these stats.');
 
     // 1. Get total Job Applications using your existing 'job_applications' table
     $app_sql = "SELECT COUNT(*) as count FROM job_applications WHERE helper_id = ?";

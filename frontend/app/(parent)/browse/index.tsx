@@ -59,7 +59,6 @@ export default function BrowseHelpers() {
   const referenceJob = useMemo(() => pickPrimaryOpenJob(jobs), [jobs]);
 
   const recommendedHelpers = useMemo(() => {
-    if (!referenceJob) return [];
     const notHired = helpers.filter((h) => !hiredHelperIds.has(String(h.user_id)));
     return [...notHired]
       .map((h) => ({ helper: h, match: computeHelperJobMatch(h, referenceJob) }))
@@ -70,7 +69,6 @@ export default function BrowseHelpers() {
 
   const rankedHelpers = useMemo(() => {
     const notHired = helpers.filter((h) => !hiredHelperIds.has(String(h.user_id)));
-    if (!referenceJob) return notHired;
     return [...notHired].sort((a, b) =>
       computeHelperJobMatch(b, referenceJob).score - computeHelperJobMatch(a, referenceJob).score
     );
@@ -123,7 +121,7 @@ export default function BrowseHelpers() {
         visible={profileModalVisible}
         helper={selectedHelper}
         referenceJob={referenceJob}
-        match={selectedHelper && referenceJob ? computeHelperJobMatch(selectedHelper, referenceJob) : null}
+        match={selectedHelper ? computeHelperJobMatch(selectedHelper, referenceJob) : null}
         onInvite={handleInviteFromProfile}
         onMessage={handleMessageHelper}
         onClose={() => setProfileModalVisible(false)}
@@ -148,13 +146,24 @@ export default function BrowseHelpers() {
           <Ionicons name="sparkles" size={18} color={CARAMEL} />
         </View>
         <View style={s.recHeaderText}>
-          <Text style={s.recTitle}>Recommended for Your Needs</Text>
-          <Text style={s.recSubtitle} numberOfLines={1}>
-            Top matches for{' '}
-            <Text style={s.recSubtitleAccent}>
-              {referenceJob?.title || referenceJob?.custom_job_title || 'your open role'}
-            </Text>
-          </Text>
+          {referenceJob ? (
+            <>
+              <Text style={s.recTitle}>Best Match for Your Job</Text>
+              <Text style={s.recSubtitle} numberOfLines={1}>
+                Top matches for{' '}
+                <Text style={s.recSubtitleAccent}>
+                  {referenceJob.title || referenceJob.custom_job_title || 'your open role'}
+                </Text>
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={s.recTitle}>Top Helpers in Ormoc</Text>
+              <Text style={s.recSubtitle} numberOfLines={1}>
+                Most capable and trustworthy helpers available right now
+              </Text>
+            </>
+          )}
         </View>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.recScroll}>
@@ -243,8 +252,8 @@ export default function BrowseHelpers() {
               <View style={s.desktopCardWrapper}>
                 <HelperCard
                   helper={item}
-                  matchScore={referenceJob ? match.score : undefined}
-                  matchReasons={referenceJob ? match.reasons : undefined}
+                  matchScore={match.score}
+                  matchReasons={match.reasons}
                   onPress={() => handleViewProfile(item)}
                   onInvite={() => handleInviteHelper(item)}
                 />
@@ -253,8 +262,8 @@ export default function BrowseHelpers() {
               <View style={s.mobileCardWrapper}>
                 <CompactHelperCard
                   helper={item}
-                  matchScore={referenceJob ? match.score : undefined}
-                  matchReason={referenceJob ? match.reasons?.[0] : undefined}
+                  matchScore={match.score}
+                  matchReason={match.reasons?.[0]}
                   onPress={() => handleViewProfile(item)}
                 />
               </View>

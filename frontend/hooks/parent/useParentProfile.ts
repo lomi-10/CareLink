@@ -87,7 +87,7 @@ export function useParentProfile() {
       const parsed = JSON.parse(userData);
       setUserId(parsed.user_id);
 
-      const url = `${API_URL}/parent/get_profile.php?user_id=${parsed.user_id}`;
+      const url = `${API_URL}/parent/get_profile.php?user_id=${parsed.user_id}&requester_id=${parsed.user_id}`;
       const response = await fetch(url);
 
       if (!response.ok) {

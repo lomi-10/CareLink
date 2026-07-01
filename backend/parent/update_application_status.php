@@ -21,6 +21,7 @@ ini_set('log_errors', 1);
 ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/ownership_guard.php';
 
 // 2. Standardized Response Function
 function sendResponse($success, $message, $data = null) {
@@ -46,11 +47,27 @@ try {
     $application_id = isset($input['application_id']) ? intval($input['application_id']) : null;
     $new_status = $input['status'] ?? null;
     $parent_notes = $input['parent_notes'] ?? null;
-    
+    $requester_id = isset($input['requester_id']) ? intval($input['requester_id']) : 0;
+
     if (!$application_id || !$new_status) {
         throw new Exception('Application ID and status are required');
     }
-    
+
+    // This endpoint previously had NO ownership scoping at all — any
+    // application_id could have its status changed by anyone. Look up the
+    // application's real owning parent and require the caller to be them.
+    $ownerStmt = $conn->prepare('
+        SELECT jp.parent_id
+        FROM job_applications ja
+        INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+        WHERE ja.application_id = ?
+    ');
+    $ownerStmt->bind_param('i', $application_id);
+    $ownerStmt->execute();
+    $ownerRow = $ownerStmt->get_result()->fetch_assoc();
+    $ownerStmt->close();
+    carelink_require_self($requester_id, $ownerRow ? (int) $ownerRow['parent_id'] : 0, 'You are not allowed to update this application.');
+
     // 4. Server-side Validation
     $valid_statuses = ['Pending', 'Reviewed', 'Shortlisted', 'Interview Scheduled', 'Accepted', 'Rejected', 'Withdrawn', 'contract_pending', 'hired', 'auto_rejected'];
     if (!in_array($new_status, $valid_statuses)) {

@@ -134,7 +134,7 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
       const parsed = JSON.parse(userData);
       setUserId(parsed.user_id);
 
-      const response = await fetch(`${API_URL}/parent/get_profile.php?user_id=${parsed.user_id}`);
+      const response = await fetch(`${API_URL}/parent/get_profile.php?user_id=${parsed.user_id}&requester_id=${parsed.user_id}`);
       const data = await response.json();
 
       if (!data.success) throw new Error(data.message || 'Failed to load profile data');
@@ -228,6 +228,7 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
     try {
       const fd = new FormData();
       fd.append('user_id', userId || '');
+      fd.append('requester_id', userId || '');
       fd.append('contact_number', contactNumber.trim());
       fd.append('province', province.trim());
       fd.append('municipality', municipality.trim());

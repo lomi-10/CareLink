@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 // Get JSON input
 $input = json_decode(file_get_contents('php://input'), true);
@@ -20,6 +21,14 @@ $input = json_decode(file_get_contents('php://input'), true);
 $job_post_id = isset($input['job_post_id']) ? intval($input['job_post_id']) : 0;
 $helper_id = isset($input['helper_id']) ? intval($input['helper_id']) : 0;
 $cover_letter = isset($input['cover_letter']) ? trim($input['cover_letter']) : '';
+$requester_id = isset($input['requester_id']) ? intval($input['requester_id']) : 0;
+
+try {
+    carelink_require_self($requester_id, $helper_id, 'You are not allowed to apply on behalf of this helper account.');
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    exit;
+}
 
 // Documents the helper explicitly chose to share with this employer (consent is per-application)
 $shared_document_ids = [];

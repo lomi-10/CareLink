@@ -199,17 +199,21 @@ export function HelperProfileModal({ visible, helper, onInvite, onSave, onMessag
             {/* OVERVIEW */}
             {activeTab === 'overview' && (
               <>
-                {referenceJob && match && match.score > 0 && (
+                {match && match.score > 0 && (
                   <View style={st.matchCard}>
                     <View style={st.matchCardHead}>
                       <View style={st.matchCardIcon}>
                         <Ionicons name="analytics-outline" size={18} color={BROWN} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={st.matchCardTitle}>Match for your open role</Text>
-                        <Text style={st.matchCardJob} numberOfLines={1}>
-                          {referenceJob.title || referenceJob.custom_job_title || 'Open job'}
+                        <Text style={st.matchCardTitle}>
+                          {referenceJob ? 'Match for your open role' : 'Why this helper stands out'}
                         </Text>
+                        {referenceJob && (
+                          <Text style={st.matchCardJob} numberOfLines={1}>
+                            {referenceJob.title || referenceJob.custom_job_title || 'Open job'}
+                          </Text>
+                        )}
                       </View>
                       <Text style={st.matchScore}>{match.score}%</Text>
                     </View>

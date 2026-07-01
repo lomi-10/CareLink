@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 }
 
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 try {
     // Get JSON input
@@ -21,10 +22,12 @@ try {
 
     $helper_id = isset($input['helper_id']) ? intval($input['helper_id']) : 0;
     $job_post_id = isset($input['job_post_id']) ? intval($input['job_post_id']) : 0;
+    $requester_id = isset($input['requester_id']) ? intval($input['requester_id']) : 0;
 
     if ($helper_id <= 0 || $job_post_id <= 0) {
         throw new Exception('Helper ID and Job Post ID are required');
     }
+    carelink_require_self($requester_id, $helper_id, 'You are not allowed to modify saved jobs for this account.');
 
     // Delete the saved job
     $deleteStmt = $conn->prepare("

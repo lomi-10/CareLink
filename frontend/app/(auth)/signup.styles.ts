@@ -150,6 +150,20 @@ export const s = StyleSheet.create({
     fontSize: 16,
   },
 
+  // ── Privacy consent ─────────────────────────────────────────────────────────
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 14,
+  },
+  consentText: {
+    flex: 1,
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+
   // ── Footer ──────────────────────────────────────────────────────────────────
   footerTxt: {
     fontFamily: FontFamily.fredokaRegular,

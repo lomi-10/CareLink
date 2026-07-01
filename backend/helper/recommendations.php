@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit();
 ini_set('display_errors', 0);
 error_reporting(0);
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Haversine distance (km) between two lat/lng pairs
@@ -26,8 +27,10 @@ function haversine($lat1, $lon1, $lat2, $lon2) {
 try {
     $helper_id = isset($_GET['helper_id']) ? intval($_GET['helper_id']) : 0;
     $limit     = isset($_GET['limit'])     ? intval($_GET['limit'])     : 10;
+    $requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
 
     if ($helper_id <= 0) throw new Exception('helper_id required');
+    carelink_require_self($requester_id, $helper_id, 'You are not allowed to view these recommendations.');
 
     // ── 1. Helper profile (location, preferences, experience) ────────────────
     // NOTE: province/municipality live in helper_profiles, NOT users
@@ -49,8 +52,6 @@ try {
     $hProvince       = $helper['province']       ?? '';
     $hMunicipality   = $helper['municipality']   ?? '';
     $hExpYears       = (int)($helper['experience_years'] ?? 0);
-    $hEmployType     = $helper['employment_type'] ?? 'Any';
-    $hWorkSchedule   = $helper['work_schedule']   ?? 'Any';
     $hExpectedSalary = floatval($helper['expected_salary'] ?? 6000);
     $hSalaryPeriod   = $helper['salary_period']   ?? 'Monthly';
 
@@ -150,7 +151,8 @@ try {
         $skillNames = array_values(array_filter(array_map(fn($id) => $refSkills[$id] ?? null, $jobSkillIds)));
 
         // ── WEIGHTED SCORING ─────────────────────────────────────────────
-        // Max: 25 + 20 + 20 + 15 + 10 + 5 + 5 = 100
+        // Max: 25 (category) + 15 (job role) + 15 (skills) + 10 (location)
+        //    + 10 (experience) + 15 (salary) + 10 (employer rating) = 100
         $score   = 0;
         $reasons = [];
 
@@ -160,26 +162,26 @@ try {
             $reasons[] = 'Category matches your specialty';
         }
 
-        // 2. Job role match (20 pts) — proportion of overlapping job roles
+        // 2. Job role match (15 pts) — proportion of overlapping job roles
         if (!empty($jobJobIds) && !empty($helperJobIds)) {
             $overlap = count(array_intersect($jobJobIds, $helperJobIds));
-            $pts     = (int)round(($overlap / count($jobJobIds)) * 20);
+            $pts     = (int)round(($overlap / count($jobJobIds)) * 15);
             if ($pts > 0) { $score += $pts; $reasons[] = 'Job roles align with yours'; }
         } elseif (in_array($jobCatId, $helperCatIds)) {
             // no specific roles required — partial credit if category matched
-            $score += 10;
+            $score += 8;
         }
 
-        // 3. Skills match (20 pts) — proportion of required skills the helper has
+        // 3. Skills match (15 pts) — proportion of required skills the helper has
         if (!empty($jobSkillIds)) {
             $matching = count(array_intersect($jobSkillIds, $helperSkillIds));
-            $pts      = (int)round(($matching / count($jobSkillIds)) * 20);
+            $pts      = (int)round(($matching / count($jobSkillIds)) * 15);
             if ($pts > 0) { $score += $pts; $reasons[] = "$matching/" . count($jobSkillIds) . " required skills match"; }
         } else {
-            $score += 10; // no specific skills required
+            $score += 8; // no specific skills required
         }
 
-        // 4. Location match (15 pts) — real GPS when available, text fallback otherwise
+        // 4. Location match (10 pts) — real GPS when available, text fallback otherwise
         $jobMunicipality = $job['municipality'] ?? '';
         $jobProvince     = $job['province']      ?? '';
         $jobLat          = !empty($job['job_lat']) ? floatval($job['job_lat']) : null;
@@ -192,20 +194,20 @@ try {
             // ── Real GPS distance ──────────────────────────────────────────────
             $distance = haversine($hLat, $hLng, $jobLat, $jobLng);
             if ($distance <= 5) {
-                $score += 15; $reasons[] = 'Very close (~' . $distance . ' km away)';
+                $score += 10; $reasons[] = 'Very close (~' . $distance . ' km away)';
             } elseif ($distance <= 20) {
-                $score += 10; $reasons[] = 'Nearby (~' . $distance . ' km away)';
+                $score += 7; $reasons[] = 'Nearby (~' . $distance . ' km away)';
             } elseif ($distance <= 50) {
-                $score += 5;  $reasons[] = 'Within the province (~' . $distance . ' km)';
+                $score += 3;  $reasons[] = 'Within the province (~' . $distance . ' km)';
             }
             // > 50 km: no location points
         } else {
             // ── Text fallback (no GPS stored yet) ─────────────────────────────
             if ($jobMunicipality && $hMunicipality && strtolower($jobMunicipality) === strtolower($hMunicipality)) {
-                $score += 15; $distance = rand(1, 5);
+                $score += 10; $distance = rand(1, 5);
                 $reasons[] = 'Same city/municipality';
             } elseif ($jobProvince && $hProvince && strtolower($jobProvince) === strtolower($hProvince)) {
-                $score += 8;  $distance = rand(10, 50);
+                $score += 5;  $distance = rand(10, 50);
                 $reasons[] = 'Same province';
             } else {
                 $distance = rand(50, 200);
@@ -221,27 +223,33 @@ try {
             $reasons[] = 'Nearly meets experience requirement';
         }
 
-        // 6. Work type / schedule match (5 pts)
-        $jobEmployType  = $job['employment_type'] ?? 'Any';
-        $jobWorkSched   = $job['work_schedule']   ?? 'Any';
-        $typeMatch   = $hEmployType  === 'Any' || $jobEmployType  === 'Any' || strtolower($hEmployType)  === strtolower($jobEmployType);
-        $schedMatch  = $hWorkSchedule === 'Any' || $jobWorkSched   === 'Any' || strtolower($hWorkSchedule) === strtolower($jobWorkSched);
-        if ($typeMatch && $schedMatch) { $score += 5; }
-        elseif ($typeMatch || $schedMatch) { $score += 2; }
-
-        // 7. Salary compatibility (5 pts)
+        // 6. Salary compatibility (15 pts) — raised from 5: protects helpers from
+        // being matched into underpaid placements despite a strong skills/category fit.
         $jobMonthlySalary = ($job['salary_period'] === 'Daily') ? floatval($job['salary_offered']) * 26 : floatval($job['salary_offered']);
         $helperMonthly    = ($hSalaryPeriod === 'Daily') ? $hExpectedSalary * 26 : $hExpectedSalary;
         if ($jobMonthlySalary >= $helperMonthly) {
-            $score += 5;
+            $score += 15;
             $reasons[] = 'Salary meets or exceeds your expectation';
         } elseif ($jobMonthlySalary >= $helperMonthly * 0.85) {
-            $score += 3;
+            $score += 9;
         }
 
-        // Recency bonus (no label — silently adds up to 5 pts)
+        // 7. Employer (parent) reputation (10 pts) — proportional to their average
+        // rating from past placements; small neutral credit if they have no reviews yet.
+        $parentRating = (float) ($job['parent_rating'] ?? 0);
+        if ($parentRating > 0) {
+            $score += (int) round(($parentRating / 5) * 10);
+            if ($parentRating >= 4.5) {
+                $reasons[] = 'Highly rated employer (' . number_format($parentRating, 1) . '★)';
+            }
+        } else {
+            $score += 5;
+        }
+
+        // Recency no longer affects the score — surfaced as a separate "is_new"
+        // flag instead, so the UI can show a badge without inflating the percentage.
         $daysSince = floor((time() - strtotime($job['posted_at'])) / 86400);
-        if ($daysSince <= 3) $score += 5;
+        $isNew = $daysSince <= 3;
 
         $finalScore = min(100, $score);
 
@@ -298,6 +306,7 @@ try {
                 'match_score'    => $finalScore,
                 'match_reasons'  => array_values(array_unique($reasons)),
                 'is_saved'       => (bool)$job['is_saved'],
+                'is_new'         => $isNew,
             ];
         }
     }

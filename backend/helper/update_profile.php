@@ -22,6 +22,7 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/sync_profile_completed.php';
 include_once __DIR__ . '/../shared/create_notification.php';
+include_once __DIR__ . '/../shared/ownership_guard.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -53,6 +54,8 @@ try {
     }
 
     $user_id = intval($_POST['user_id']);
+    $requester_id = isset($_POST['requester_id']) ? intval($_POST['requester_id']) : 0;
+    carelink_require_self($requester_id, $user_id, 'You are not allowed to update this profile.');
     error_log("=== UPDATE HELPER PROFILE === User ID: $user_id");
 
     // ========================================================================

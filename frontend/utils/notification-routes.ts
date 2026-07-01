@@ -28,8 +28,8 @@ async function findApplicationPartner(
     const user = JSON.parse(raw);
 
     const url = role === 'helper'
-      ? `${API_URL}/helper/my_applications.php?helper_id=${user.user_id}`
-      : `${API_URL}/parent/get_job_applications.php?parent_id=${user.user_id}`;
+      ? `${API_URL}/helper/my_applications.php?helper_id=${user.user_id}&requester_id=${user.user_id}`
+      : `${API_URL}/parent/get_job_applications.php?parent_id=${user.user_id}&requester_id=${user.user_id}`;
 
     const res = await fetch(url);
     const data = await res.json();

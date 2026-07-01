@@ -8,10 +8,19 @@ header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
 ini_set('display_errors', 0);
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
-$user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+$user_id      = isset($_POST['user_id'])      ? intval($_POST['user_id'])      : 0;
+$requester_id = isset($_POST['requester_id']) ? intval($_POST['requester_id']) : 0;
 if (!$user_id) {
     echo json_encode(['success' => false, 'message' => 'user_id required']);
+    exit();
+}
+
+try {
+    carelink_require_self($requester_id, $user_id, 'You are not allowed to upload an image for this account.');
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     exit();
 }
 

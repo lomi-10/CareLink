@@ -21,6 +21,7 @@ ini_set('log_errors', 1);
 ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/file_security.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -52,8 +53,14 @@ try {
     $user_id = intval($_GET['user_id']);
     error_log("=== GET PARENT DOCUMENTS === User ID: $user_id");
 
+    // Ownership check — see the matching comment in helper/get_documents.php.
+    $requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
+    if ($requester_id <= 0 || $requester_id !== $user_id) {
+        throw new Exception("You are not allowed to view documents for this account.");
+    }
+
     // Fetch ALL documents for this parent
-    $sql = "SELECT 
+    $sql = "SELECT
                 document_id,
                 user_id,
                 document_type,
@@ -61,23 +68,29 @@ try {
                 id_type,
                 status,
                 rejection_reason,
+                ai_verification_status,
+                ai_confidence_score,
+                didit_extracted_data,
+                didit_checked_at,
                 uploaded_at
-            FROM user_documents 
-            WHERE user_id = ? 
+            FROM user_documents
+            WHERE user_id = ?
             ORDER BY document_type ASC, uploaded_at DESC";
-    
+
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     $documents = array();
-    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'];
-    
+
     while ($row = $result->fetch_assoc()) {
-        $row['file_url'] = "$protocol://$host/carelink_api/uploads/documents/" . $row['file_path'];
         $row['document_id'] = intval($row['document_id']);
+        // Signed, time-limited link instead of a raw static file path — see
+        // shared/serve_document.php and shared/file_security.php.
+        $row['file_url'] = carelink_signed_document_url($row['document_id']);
+        $row['didit_extracted_data'] = $row['didit_extracted_data'] ? json_decode($row['didit_extracted_data'], true) : null;
+        $row['didit_checked_at'] = $row['didit_checked_at'] ? date('Y-m-d H:i:s', strtotime($row['didit_checked_at'])) : null;
         $documents[] = $row;
     }
     

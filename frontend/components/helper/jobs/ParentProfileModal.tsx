@@ -1,5 +1,6 @@
 // components/helper/jobs/ParentProfileModal.tsx
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -337,7 +338,9 @@ export function ParentProfileModal({
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const res  = await fetch(`${API_URL}/helper/get_parent_profile.php?parent_id=${parentId}`);
+      const raw = await AsyncStorage.getItem('user_data');
+      const requesterId = raw ? JSON.parse(raw)?.user_id : '';
+      const res  = await fetch(`${API_URL}/helper/get_parent_profile.php?parent_id=${parentId}&requester_id=${requesterId}`);
       const json = await res.json();
       if (json.success) setData(json.data);
     } catch (e) {

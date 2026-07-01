@@ -24,6 +24,7 @@ ini_set('log_errors', 1);
 ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/ownership_guard.php';
 
 function sendResponse($success, $message, $data = null)
 {
@@ -68,10 +69,12 @@ try {
     $job_post_id = isset($input['job_post_id']) ? intval($input['job_post_id']) : null;
     $parent_id = isset($input['parent_id']) ? intval($input['parent_id']) : null;
     $helper_id = isset($input['helper_id']) ? intval($input['helper_id']) : null;
+    $requester_id = isset($input['requester_id']) ? intval($input['requester_id']) : 0;
 
     if (!$application_id || !$job_post_id || !$parent_id || !$helper_id) {
         throw new Exception('Missing required fields');
     }
+    carelink_require_self($requester_id, $parent_id, 'You are not allowed to edit this contract.');
 
     $verifyStmt = $conn->prepare('
         SELECT ja.job_post_id
@@ -107,6 +110,7 @@ try {
     $payment_schedule       = isset($input['payment_schedule'])       ? trim((string) $input['payment_schedule'])       : null;
     $other_benefits         = isset($input['other_benefits'])         ? trim((string) $input['other_benefits'])         : null;
     $debt_agreement         = isset($input['debt_agreement'])         ? trim((string) $input['debt_agreement'])         : null;
+    $debt_amount            = isset($input['debt_amount']) && $input['debt_amount'] !== '' ? (float) $input['debt_amount'] : null;
     $deployment_agreement   = isset($input['deployment_agreement'])   ? trim((string) $input['deployment_agreement'])   : null;
     $termination_conditions = isset($input['termination_conditions']) ? trim((string) $input['termination_conditions']) : null;
 
@@ -228,6 +232,7 @@ try {
         'payment_schedule'       => $payment_schedule,
         'other_benefits'         => $other_benefits,
         'debt_agreement'         => $debt_agreement,
+        'debt_amount'            => $debt_amount,
         'deployment_agreement'   => $deployment_agreement,
         'termination_conditions' => $termination_conditions,
     ]);
@@ -259,6 +264,7 @@ try {
         $payment_schedule,
         $other_benefits,
         $debt_agreement,
+        $debt_amount,
         $deployment_agreement,
         $termination_conditions
     );

@@ -100,7 +100,7 @@ export function SalaryInputCard({
         </View>
       </View>
 
-      <Text style={styles.minimumNote}>Minimum: ₱7,000/month (RA 10361 — Kasambahay Law)</Text>
+      <Text style={styles.minimumNote}>Minimum: ₱7,000/month (CareLink platform standard)</Text>
       {suggested && (
         <Text style={styles.suggestedText}>
           Suggested range for this role: ₱{suggested.min.toLocaleString()} - ₱{suggested.max.toLocaleString()} / month

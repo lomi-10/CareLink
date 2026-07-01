@@ -152,7 +152,7 @@ export function JobPostModal({
       return { isValid: false, error: "Please enter the minimum salary" };
     }
     if (salaryMin < 7000) {
-      return { isValid: false, error: "Minimum salary must be at least ₱7,000 (RA 10361)" };
+      return { isValid: false, error: "Minimum salary must be at least ₱7,000 (CareLink platform standard)" };
     }
     if (formData.salary_max) {
       const salaryMax = parseFloat(formData.salary_max);
@@ -297,7 +297,7 @@ export function JobPostModal({
       const user = JSON.parse(userData);
 
       // Others logic: auto-generate custom category name if empty
-      let submissionData = { ...getSubmissionData(), parent_id: user.user_id };
+      let submissionData = { ...getSubmissionData(), parent_id: user.user_id, requester_id: user.user_id };
       if (formData.category_id === othersCat?.category_id.toString() && !formData.custom_category) {
         submissionData.custom_category = "Specialized Work";
       }

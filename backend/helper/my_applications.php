@@ -8,9 +8,11 @@ header('Access-Control-Allow-Methods: GET');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 // Get helper_id from query params
 $helper_id = isset($_GET['helper_id']) ? intval($_GET['helper_id']) : 0;
+$requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
 
 if ($helper_id === 0) {
     echo json_encode([
@@ -21,6 +23,7 @@ if ($helper_id === 0) {
 }
 
 try {
+    carelink_require_self($requester_id, $helper_id, 'You are not allowed to view these applications.');
     // Pre-fetch ref_jobs titles
     $allRefJobs = [];
     $rjRes = $conn->query("SELECT job_id, job_title FROM ref_jobs");
@@ -40,6 +43,10 @@ try {
             c.contract_duration,
             c.payment_schedule,
             c.other_benefits,
+            c.debt_agreement,
+            c.debt_amount,
+            c.deployment_agreement,
+            c.debt_acknowledged_at,
             c.pdf_file_path,
             jp.title as job_title,
             jp.description as job_description,
@@ -150,6 +157,10 @@ try {
             'contract_duration'      => $app['contract_duration'] ?? null,
             'payment_schedule'       => $app['payment_schedule'] ?? null,
             'other_benefits'         => $app['other_benefits'] ?? null,
+            'debt_agreement'         => $app['debt_agreement'] ?? null,
+            'debt_amount'            => $app['debt_amount'] !== null ? (float)$app['debt_amount'] : null,
+            'deployment_agreement'   => $app['deployment_agreement'] ?? null,
+            'debt_acknowledged_at'   => $app['debt_acknowledged_at'] ?? null,
             'pdf_file_path'          => $app['pdf_file_path'] ?? null,
             'interview_id'           => $app['interview_id'] !== null ? (int)$app['interview_id'] : null,
             'interview_date'         => $app['interview_date'] ?? null,

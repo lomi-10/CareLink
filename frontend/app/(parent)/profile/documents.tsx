@@ -1,38 +1,52 @@
 // app/(parent)/profile/documents.tsx
-// Documents & Verification screen — list, status, upload.
-// PHP: parent/get_profile.php (via useParentProfile), upload via ParentDocumentModal
+// Documents & Verification — fixed document cards (Valid ID, Barangay Clearance).
+// Each card uploads its file in place, then opens the Document Details screen
+// where AI scanning starts automatically.
+// PHP: parent/get_profile.php (list), parent/upload_documents.php (upload),
+//      parent/get_documents.php (resolve new id), helper/scan_id.php (AI scan)
 
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator, ScrollView, Text, TouchableOpacity, View,
+  ActivityIndicator, Platform, ScrollView, StyleSheet,
+  Text, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import API_URL from '@/constants/api';
 import { useParentProfile } from '@/hooks/parent';
 import { ParentTabBar } from '@/components/parent/home';
-import { DocumentViewer } from '@/components/parent/profile';
-import ParentDocumentModal from '@/components/parent/profile/ParentDocumentModal';
+import { NotificationModal } from '@/components/shared';
 import { BG, BROWN, CARAMEL, DARK, MUTED, GREEN, SUCCESS_BG, ICON_BG } from '@/components/parent/home/parentWarmTheme';
 import { s } from './documents.styles';
 
-// ─── Document icon config ─────────────────────────────────────────────────────
-
-const DOC_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string }> = {
-  'Barangay Clearance': { icon: 'document-text-outline', color: GREEN,    bg: SUCCESS_BG },
-  'Valid ID':           { icon: 'card-outline',          color: '#2563EB', bg: '#DBEAFE' },
-  'default':            { icon: 'document-outline',      color: MUTED,    bg: ICON_BG },
+// ─── The required documents (fixed order) ─────────────────────────────────────
+type DocSlot = {
+  type: string;
+  field: string; // parent/upload_documents.php form field name
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  bg: string;
+  desc: string;
 };
-const getDocIcon = (type: string) => DOC_ICONS[type] ?? DOC_ICONS['default'];
+
+const DOC_SLOTS: DocSlot[] = [
+  { type: 'Valid ID',           field: 'valid_id',           icon: 'card-outline',          color: '#2563EB', bg: '#DBEAFE',  desc: 'Government-issued ID' },
+  { type: 'Barangay Clearance', field: 'barangay_clearance', icon: 'document-text-outline', color: GREEN,     bg: SUCCESS_BG, desc: 'Issued by your barangay' },
+];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-
 export default function DocumentsScreen() {
   const router = useRouter();
   const { profileData, loading, refresh } = useParentProfile();
 
-  const [uploadOpen,  setUploadOpen]  = useState(false);
-  const [viewingFile, setViewingFile] = useState<{ url: string; type: 'image' | 'pdf' } | null>(null);
+  const [busyType, setBusyType] = useState<string | null>(null);
+  const [notice, setNotice]     = useState<{ visible: boolean; title?: string; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({ visible: false, message: '', type: 'info' });
+
+  const showNotice = (message: string, type: typeof notice.type = 'error', title?: string) =>
+    setNotice({ visible: true, title, message, type });
 
   if (loading || !profileData) {
     return (
@@ -43,30 +57,88 @@ export default function DocumentsScreen() {
   }
 
   const documents = profileData.documents ?? [];
+  const getDoc = (type: string): any => documents.find((d: any) => d.document_type === type);
 
-  const handleViewDoc = (doc: any) => {
-    if (!doc.file_url) return;
-    const isPdf = (doc.file_path || doc.file_url).toLowerCase().endsWith('.pdf');
-    setViewingFile({ url: doc.file_url, type: isPdf ? 'pdf' : 'image' });
-  };
-
-  const handleOpenDetail = (doc: any) => {
+  const goToDetail = (doc: any, autoscan: boolean) => {
     router.push({
       pathname: '/(parent)/profile/document-detail',
       params: {
-        document_id:   doc.document_id  ?? '',
-        document_type: doc.document_type ?? '',
-        file_url:      doc.file_url      ?? '',
-        file_path:     doc.file_path     ?? '',
-        status:        doc.status        ?? 'Pending',
-        uploaded_at:   doc.uploaded_at   ?? '',
-        // Extended fields from backend (if available)
+        document_id:      doc.document_id      ?? '',
+        document_type:    doc.document_type    ?? '',
+        file_url:         doc.file_url         ?? '',
+        file_path:        doc.file_path        ?? '',
+        status:           doc.status           ?? 'Pending',
+        uploaded_at:      doc.uploaded_at       ?? '',
+        autoscan:         autoscan ? '1' : '',
+        ai_status:        doc.ai_verification_status ?? '',
         expiry_date:      doc.expiry_date      ?? '',
         verified_by:      doc.verified_by      ?? '',
         verified_at:      doc.verified_at      ?? '',
         rejection_reason: doc.rejection_reason ?? '',
       },
     } as never);
+  };
+
+  const fetchDocByType = async (userId: string, type: string) => {
+    try {
+      const res = await fetch(`${API_URL}/parent/get_documents.php?user_id=${encodeURIComponent(userId)}&requester_id=${encodeURIComponent(userId)}`);
+      const data = await res.json();
+      const list = Array.isArray(data?.documents) ? data.documents : [];
+      return list.find((d: any) => d.document_type === type) ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  const pickAndUpload = async (slot: DocSlot) => {
+    if (busyType) return;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+
+      setBusyType(slot.type);
+      const userData = await AsyncStorage.getItem('user_data');
+      const userId = String(JSON.parse(userData || '{}')?.user_id || '');
+      if (!userId) throw new Error('Please sign in again.');
+
+      let name = asset.name || 'file';
+      const mime = asset.mimeType || (name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+      if (!/\.[a-z0-9]+$/i.test(name)) {
+        name += mime.includes('pdf') ? '.pdf' : mime.includes('png') ? '.png' : '.jpg';
+      }
+
+      const fd = new FormData();
+      fd.append('user_id', userId);
+      fd.append('requester_id', userId);
+      if (Platform.OS === 'web') {
+        const blob = await (await fetch(asset.uri)).blob();
+        fd.append(slot.field, blob, name);
+      } else {
+        // @ts-ignore — RN FormData file shape
+        fd.append(slot.field, { uri: asset.uri, name, type: mime });
+      }
+
+      const res = await fetch(`${API_URL}/parent/upload_documents.php`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || 'Upload failed. Please try again.');
+
+      const newDoc = await fetchDocByType(userId, slot.type);
+      refresh();
+      if (newDoc) {
+        goToDetail(newDoc, true);
+      } else {
+        showNotice('Uploaded, but we could not open the scan screen. Please tap the card.', 'warning', 'Uploaded');
+      }
+    } catch (e: any) {
+      showNotice(e?.message || 'Could not upload this document.', 'error');
+    } finally {
+      setBusyType(null);
+    }
   };
 
   return (
@@ -97,108 +169,140 @@ export default function DocumentsScreen() {
             </View>
           </View>
 
-          {documents.length === 0 ? (
-            <View style={s.emptyWrap}>
-              <Ionicons name="folder-open-outline" size={52} color={MUTED} />
-              <Text style={s.emptyTitle}>No documents yet</Text>
-              <Text style={s.emptySub}>Upload your clearance and valid ID to verify your household profile.</Text>
-            </View>
-          ) : (
-            <View style={s.docList}>
-              {documents.map((doc: any, i: number) => {
-                const cfg        = getDocIcon(doc.document_type);
-                const isVerified = doc.status === 'Verified';
-                const isRejected = doc.status === 'Rejected';
-                const uploadDate = doc.uploaded_at
-                  ? new Date(doc.uploaded_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
-                  : null;
+          {/* Document cards */}
+          <View style={c.grid}>
+            {DOC_SLOTS.map((slot) => {
+              const doc = getDoc(slot.type);
+              const uploaded = !!doc;
+              const isVerified = doc?.status === 'Verified';
+              const isRejected = doc?.status === 'Rejected';
+              const busy = busyType === slot.type;
+              const uploadDate = doc?.uploaded_at
+                ? new Date(doc.uploaded_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+                : null;
+              const scanStatus = doc?.ai_verification_status;
+              const scanned = scanStatus && scanStatus !== 'Unchecked';
 
-                return (
-                  <React.Fragment key={doc.document_id ?? i}>
-                    {/* Tap entire row → document detail */}
-                    <TouchableOpacity
-                      style={s.docRow}
-                      onPress={() => handleOpenDetail(doc)}
-                      activeOpacity={0.78}
-                    >
-                      <View style={[s.docIcon, { backgroundColor: cfg.bg }]}>
-                        <Ionicons name={cfg.icon} size={20} color={cfg.color} />
-                      </View>
-                      <View style={s.docInfo}>
-                        <Text style={s.docName}>{doc.document_type}</Text>
-                        {uploadDate && (
-                          <Text style={s.docDate}>Uploaded on {uploadDate}</Text>
-                        )}
-                      </View>
-                      <View style={s.docRight}>
+              return (
+                <TouchableOpacity
+                  key={slot.type}
+                  style={[c.card, uploaded ? c.cardFilled : c.cardEmpty]}
+                  activeOpacity={uploaded ? 0.85 : 1}
+                  onPress={uploaded ? () => goToDetail(doc, false) : () => pickAndUpload(slot)}
+                  disabled={busy}
+                >
+                  <View style={[c.icon, { backgroundColor: uploaded ? slot.bg : '#F1E7D6' }]}>
+                    <Ionicons name={slot.icon} size={22} color={uploaded ? slot.color : '#C2A988'} />
+                  </View>
+
+                  <View style={c.info}>
+                    <Text style={c.name}>{slot.type}</Text>
+                    {uploaded ? (
+                      <View style={c.statusLine}>
                         <View style={[
-                          s.verifiedBadge,
-                          !isVerified && !isRejected && s.pendingBadge,
-                          isRejected && s.rejectedBadge,
+                          c.pill,
+                          isVerified ? c.pillVerified : isRejected ? c.pillRejected : c.pillPending,
                         ]}>
                           <Text style={[
-                            s.verifiedText,
-                            !isVerified && !isRejected && s.pendingText,
-                            isRejected && s.rejectedText,
+                            c.pillText,
+                            isVerified ? { color: GREEN } : isRejected ? { color: '#DC2626' } : { color: '#B45309' },
                           ]}>
-                            {isVerified ? 'Verified ✓' : doc.status ?? 'Pending'}
+                            {isVerified ? 'Verified ✓' : isRejected ? 'Rejected' : 'Pending'}
                           </Text>
                         </View>
-                        {isRejected && (
-                          <TouchableOpacity
-                            style={s.reuploadBtn}
-                            onPress={(e) => { e.stopPropagation(); setUploadOpen(true); }}
-                            hitSlop={6}
-                          >
-                            <Ionicons name="refresh-outline" size={13} color={BROWN} />
-                            <Text style={s.reuploadText}>Re-upload</Text>
-                          </TouchableOpacity>
-                        )}
-                        <View style={s.docActions}>
-                          {/* Eye → full-screen viewer */}
-                          <TouchableOpacity
-                            onPress={(e) => { e.stopPropagation(); handleViewDoc(doc); }}
-                            hitSlop={8}
-                          >
-                            <Ionicons name="eye-outline" size={20} color={MUTED} />
-                          </TouchableOpacity>
-                          <Ionicons name="chevron-forward" size={16} color={MUTED} />
-                        </View>
+                        {scanned ? (
+                          <View style={c.aiPill}>
+                            <Ionicons name="sparkles" size={10} color={CARAMEL} />
+                            <Text style={c.aiPillText}>AI {scanStatus === 'Passed' ? 'verified' : 'checked'}</Text>
+                          </View>
+                        ) : null}
                       </View>
-                    </TouchableOpacity>
-                    {i < documents.length - 1 && <View style={s.docDivider} />}
-                  </React.Fragment>
-                );
-              })}
-            </View>
-          )}
+                    ) : (
+                      <Text style={c.desc}>{slot.desc}</Text>
+                    )}
+                    {uploaded && uploadDate ? <Text style={c.date}>Uploaded {uploadDate}</Text> : null}
+                  </View>
 
-          {/* Upload section */}
-          <View style={s.uploadCard}>
-            <Ionicons name="cloud-upload-outline" size={40} color={CARAMEL} />
-            <Text style={s.uploadTitle}>Upload new document</Text>
-            <Text style={s.uploadSub}>PDF, JPG, or PNG (Max. 5MB)</Text>
-            <TouchableOpacity style={s.uploadBtn} onPress={() => setUploadOpen(true)} activeOpacity={0.88}>
-              <Text style={s.uploadBtnText}>Upload Document</Text>
-            </TouchableOpacity>
+                  {uploaded ? (
+                    <View style={c.rightCol}>
+                      <TouchableOpacity
+                        style={c.replaceBtn}
+                        onPress={(e) => { e.stopPropagation(); pickAndUpload(slot); }}
+                        disabled={busy}
+                        hitSlop={6}
+                      >
+                        {busy ? <ActivityIndicator size="small" color={MUTED} /> : <Ionicons name="cloud-upload-outline" size={18} color={MUTED} />}
+                      </TouchableOpacity>
+                      <Ionicons name="chevron-forward" size={18} color={MUTED} />
+                    </View>
+                  ) : (
+                    <View style={[c.uploadBtn, busy && { opacity: 0.6 }]}>
+                      {busy ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <>
+                          <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+                          <Text style={c.uploadBtnText}>Upload</Text>
+                        </>
+                      )}
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+
+            <View style={c.hint}>
+              <Ionicons name="sparkles-outline" size={15} color={MUTED} />
+              <Text style={c.hintText}>
+                Upload an image or PDF (max 5MB). We’ll scan it with AI and PESO will verify it.
+              </Text>
+            </View>
           </View>
         </ScrollView>
 
         <ParentTabBar />
       </SafeAreaView>
 
-      <ParentDocumentModal
-        visible={uploadOpen}
-        onClose={() => setUploadOpen(false)}
-        onSaveSuccess={() => { setUploadOpen(false); refresh(); }}
-      />
-
-      <DocumentViewer
-        visible={!!viewingFile}
-        fileUrl={viewingFile?.url ?? null}
-        fileType={viewingFile?.type ?? 'image'}
-        onClose={() => setViewingFile(null)}
+      <NotificationModal
+        visible={notice.visible}
+        title={notice.title}
+        message={notice.message}
+        type={notice.type}
+        onClose={() => setNotice((n) => ({ ...n, visible: false }))}
       />
     </View>
   );
 }
+
+// ─── Local styles (parent warm theme) ─────────────────────────────────────────
+const c = StyleSheet.create({
+  grid: { gap: 12 },
+  card: {
+    flexDirection: 'row', alignItems: 'center', gap: 13,
+    backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, borderWidth: 1,
+  },
+  cardFilled: { borderColor: '#F0E2CF' },
+  cardEmpty: { borderColor: '#EAD9C0', borderStyle: 'dashed', backgroundColor: '#FFFCF7' },
+  icon: { width: 46, height: 46, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  info: { flex: 1, gap: 3 },
+  name: { fontSize: 14.5, fontWeight: '800', color: '#3B2A18' },
+  desc: { fontSize: 12, color: '#7E6347' },
+  date: { fontSize: 11, color: '#A98C6B', marginTop: 1 },
+  statusLine: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  pill: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8 },
+  pillVerified: { backgroundColor: SUCCESS_BG },
+  pillPending: { backgroundColor: '#FEF3C7' },
+  pillRejected: { backgroundColor: '#FECACA' },
+  pillText: { fontSize: 11, fontWeight: '800' },
+  aiPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: ICON_BG, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
+  aiPillText: { fontSize: 10, fontWeight: '800', color: '#8B5A2B' },
+  rightCol: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  replaceBtn: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F6ECDD' },
+  uploadBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: CARAMEL, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 11, minWidth: 96, justifyContent: 'center',
+  },
+  uploadBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  hint: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, paddingTop: 4 },
+  hintText: { flex: 1, fontSize: 11.5, color: '#7E6347', lineHeight: 16 },
+});

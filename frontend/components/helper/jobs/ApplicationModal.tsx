@@ -95,7 +95,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
         if (!userData) return;
         const user = JSON.parse(userData);
 
-        const response = await fetch(`${API_URL}/helper/get_documents.php?user_id=${user.user_id}`);
+        const response = await fetch(`${API_URL}/helper/get_documents.php?user_id=${user.user_id}&requester_id=${user.user_id}`);
         const data = await response.json();
         if (!cancelled && data.success) {
           const verified: VerifiedDocument[] = (data.data?.documents ?? [])
@@ -170,6 +170,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
           helper_id:           user.user_id,
           cover_letter:        letterToSend,
           shared_document_ids: selectedDocIds,
+          requester_id:        user.user_id,
         }),
       });
 

@@ -25,7 +25,7 @@ export function useRecommendations() {
       const user = JSON.parse(userData);
 
       // Call API
-      const response = await fetch(`${API_URL}/helper/recommendations.php?helper_id=${user.user_id}&limit=10`);
+      const response = await fetch(`${API_URL}/helper/recommendations.php?helper_id=${user.user_id}&limit=10&requester_id=${user.user_id}`);
       const data = await response.json();
 
       if (data.success) {
@@ -63,7 +63,7 @@ export function useRecommendations() {
       await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_post_id: jobId, helper_id: user.user_id }),
+        body: JSON.stringify({ job_post_id: jobId, helper_id: user.user_id, requester_id: user.user_id }),
       });
     } catch (err) {
       console.error('Error toggling save job:', err);

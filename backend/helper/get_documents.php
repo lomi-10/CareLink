@@ -20,6 +20,7 @@ ini_set('log_errors', 1);
 ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/file_security.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -49,11 +50,20 @@ try {
     $user_id = intval($_GET['user_id']);
     error_log("=== GET DOCUMENTS === User ID: $user_id");
 
+    // Ownership check: this endpoint always means "show me MY OWN
+    // documents" — the app passes requester_id (the logged-in user) and it
+    // must match user_id. Before this check, anyone could read
+    // ?user_id=1, ?user_id=2, ... and get every user's ID photos back.
+    $requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
+    if ($requester_id <= 0 || $requester_id !== $user_id) {
+        throw new Exception("You are not allowed to view documents for this account.");
+    }
+
     // ========================================================================
     // QUERY: Get all documents for this user
     // ========================================================================
     
-    $sql = "SELECT 
+    $sql = "SELECT
                 document_id,
                 user_id,
                 document_type,
@@ -64,6 +74,11 @@ try {
                 rejection_reason,
                 verified_by,
                 verified_at,
+                ai_verification_status,
+                ai_confidence_score,
+                didit_session_id,
+                didit_extracted_data,
+                didit_checked_at,
                 uploaded_at,
                 updated_at
             FROM user_documents
@@ -82,23 +97,27 @@ try {
     $result = $stmt->get_result();
     
     $documents = array();
-    
-    // Base URL for file access
-    $base_url = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/documents/";
-    
+
     while ($row = $result->fetch_assoc()) {
         // Convert to integers
         $row['document_id'] = intval($row['document_id']);
         $row['user_id'] = intval($row['user_id']);
-        
-        // Add full file URL
-        $row['file_url'] = $base_url . $row['file_path'];
+
+        // Signed, time-limited link instead of a raw static file path — see
+        // shared/serve_document.php and shared/file_security.php.
+        $row['file_url'] = carelink_signed_document_url($row['document_id']);
         
         // Parse dates
         $row['uploaded_at'] = $row['uploaded_at'] ? date('Y-m-d H:i:s', strtotime($row['uploaded_at'])) : null;
         $row['updated_at'] = $row['updated_at'] ? date('Y-m-d H:i:s', strtotime($row['updated_at'])) : null;
         $row['verified_at'] = $row['verified_at'] ? date('Y-m-d H:i:s', strtotime($row['verified_at'])) : null;
-        
+        $row['didit_checked_at'] = $row['didit_checked_at'] ? date('Y-m-d H:i:s', strtotime($row['didit_checked_at'])) : null;
+
+        // Decode the extracted-ID JSON so the app/PESO can read the scanned name.
+        $row['didit_extracted_data'] = $row['didit_extracted_data']
+            ? json_decode($row['didit_extracted_data'], true)
+            : null;
+
         $documents[] = $row;
     }
     

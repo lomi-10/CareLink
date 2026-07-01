@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
@@ -43,10 +44,12 @@ export default function CreateAdminUserScreen() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/admin_create_user.php`, {
+      const raw = await AsyncStorage.getItem("user_data");
+      const adminUserId = raw ? JSON.parse(raw)?.user_id : null;
+      const response = await fetch(`${API_URL}/admin/admin_create_user.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, admin_user_id: adminUserId }),
       });
 
       const data = await response.json();

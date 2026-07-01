@@ -34,6 +34,10 @@ export interface JobPost {
   min_age?: number;
   max_age?: number;
   min_experience_years?: number;
+  job_ids?: (string | number)[];
+  skill_ids?: (string | number)[];
+  /** Comma-separated specific-role names required by this job (server-computed) */
+  role_names?: string;
   require_police_clearance?: number | boolean;
   prefer_tesda_nc2?: number | boolean;
   provides_meals?: number | boolean;
@@ -76,7 +80,7 @@ export function useParentJobs() {
       const user = JSON.parse(userData);
 
       const response = await fetch(
-        `${API_URL}/parent/get_posted_jobs.php?parent_id=${user.user_id}`
+        `${API_URL}/parent/get_posted_jobs.php?parent_id=${user.user_id}&requester_id=${user.user_id}`
       );
       const data = await response.json();
 

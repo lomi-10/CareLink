@@ -123,7 +123,12 @@ export default function HelperProfileMain() {
       iconBg: '#DBEAFE', iconColor: '#2563EB',
       title: 'Personal Information',
       subtitle: 'Work preferences included',
-      status: profile?.gender ? 'Complete' : 'Incomplete',
+      // Complete only when the core personal fields are filled (same required
+      // set the backend uses for profile strength) — not just gender, which is
+      // set at signup and would mark it "Complete" before the user starts.
+      status: ((profile as any)?.contact_number && profile?.birth_date && profile?.gender
+        && (profile as any)?.province && (profile as any)?.municipality && (profile as any)?.barangay)
+        ? 'Complete' : 'Incomplete',
       route: '/(helper)/profile/personal',
     },
     {

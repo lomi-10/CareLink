@@ -139,8 +139,10 @@ export default function ViewUserProfile() {
       const typeQ = userTypeParam
         ? `&user_type=${encodeURIComponent(String(userTypeParam))}`
         : "";
+      const raw = await AsyncStorage.getItem("user_data");
+      const staffUserId = raw ? JSON.parse(raw)?.user_id : "";
       const res  = await fetch(
-        `${API_URL}/peso/get_user_details.php?user_id=${encodeURIComponent(String(userIdParam))}${typeQ}`
+        `${API_URL}/peso/get_user_details.php?user_id=${encodeURIComponent(String(userIdParam))}${typeQ}&staff_user_id=${encodeURIComponent(String(staffUserId))}`
       );
       const text = await res.text();
       const data = JSON.parse(text);

@@ -38,7 +38,9 @@ try {
     $salary_max = isset($data['salary_max']) && $data['salary_max'] !== null ? floatval($data['salary_max']) : null;
     $salary = $salary_min;
 
-    if ($salary < 7000) throw new Exception('Minimum salary is ₱7,000 as required by RA 10361 (Kasambahay Law).');
+    // See parent/post_job.php for why this is framed as a platform standard,
+    // not a direct restatement of the Region VIII statutory minimum.
+    if ($salary < 7000) throw new Exception('CareLink enforces a minimum salary of ₱7,000/month as a platform standard to promote fair compensation.');
 
     $job_ids_json = json_encode(is_array($data['job_ids'] ?? null) ? $data['job_ids'] : []);
     $skill_ids_json = json_encode(is_array($data['skill_ids'] ?? null) ? $data['skill_ids'] : []);

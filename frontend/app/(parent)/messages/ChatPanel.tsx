@@ -76,7 +76,7 @@ export default function ChatPanel({
       const raw = await AsyncStorage.getItem('user_data');
       if (!raw) return;
       const user = JSON.parse(raw);
-      const res  = await fetch(`${API_URL}/parent/get_job_applications.php?parent_id=${user.user_id}`);
+      const res  = await fetch(`${API_URL}/parent/get_job_applications.php?parent_id=${user.user_id}&requester_id=${user.user_id}`);
       const data = await res.json();
       if (!data.success) return;
       const apps = data.applications ?? [];
@@ -177,7 +177,7 @@ export default function ChatPanel({
       const raw = await AsyncStorage.getItem('user_data');
       if (!raw) return;
       const user = JSON.parse(raw);
-      const res  = await fetch(`${API_URL}/parent/get_job_applications.php?parent_id=${user.user_id}`);
+      const res  = await fetch(`${API_URL}/parent/get_job_applications.php?parent_id=${user.user_id}&requester_id=${user.user_id}`);
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Failed to load applications');
       const apps = data.applications ?? [];
@@ -329,6 +329,7 @@ export default function ChatPanel({
     hirePaymentSchedule, setHirePaymentSchedule,
     hireOtherBenefits, setHireOtherBenefits,
     hireDebtAgreement, setHireDebtAgreement,
+    hireDebtAmount, setHireDebtAmount,
     hireDeploymentAgreement, setHireDeploymentAgreement,
     hireTerminationConditions, setHireTerminationConditions,
     hireContractEndDate,
@@ -515,6 +516,8 @@ export default function ChatPanel({
         onChangeOtherBenefits={setHireOtherBenefits}
         debtAgreement={hireDebtAgreement}
         onChangeDebtAgreement={setHireDebtAgreement}
+        debtAmount={hireDebtAmount}
+        onChangeDebtAmount={setHireDebtAmount}
         deploymentAgreement={hireDeploymentAgreement}
         onChangeDeploymentAgreement={setHireDeploymentAgreement}
         terminationConditions={hireTerminationConditions}

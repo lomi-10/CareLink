@@ -514,7 +514,7 @@ export default function HelperProfileScreen() {
     setLoading(true);
     try {
       const [ctRes, todayRes, tasksRes] = await Promise.all([
-        fetch(`${API_URL}/parent/get_contract_terms.php?application_id=${applicationId}&parent_id=${parentId}`)
+        fetch(`${API_URL}/parent/get_contract_terms.php?application_id=${applicationId}&parent_id=${parentId}&requester_id=${parentId}`)
           .then(r => r.json()).catch(() => null),
         fetchAttendanceToday(applicationId, helperId).catch(() => null),
         fetchApplicationTasks(applicationId, parentId, 'parent').catch(() => null),

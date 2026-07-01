@@ -20,11 +20,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 $input          = json_decode(file_get_contents('php://input'), true) ?? [];
 $application_id = isset($input['application_id']) ? intval($input['application_id']) : 0;
 $helper_id      = isset($input['helper_id'])      ? intval($input['helper_id'])      : 0;
 $cover_letter   = isset($input['cover_letter'])   ? trim($input['cover_letter'])     : '';
+$requester_id   = isset($input['requester_id'])   ? intval($input['requester_id'])   : 0;
 $shared_doc_ids = [];
 if (isset($input['shared_document_ids']) && is_array($input['shared_document_ids'])) {
     $shared_doc_ids = array_values(array_unique(array_map('intval', $input['shared_document_ids'])));
@@ -32,6 +34,13 @@ if (isset($input['shared_document_ids']) && is_array($input['shared_document_ids
 
 if ($application_id <= 0 || $helper_id <= 0) {
     echo json_encode(['success' => false, 'message' => 'application_id and helper_id are required']);
+    exit;
+}
+
+try {
+    carelink_require_self($requester_id, $helper_id, 'You are not allowed to edit this application.');
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     exit;
 }
 

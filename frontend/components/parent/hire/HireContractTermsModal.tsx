@@ -62,6 +62,8 @@ type Props = {
   onChangeOtherBenefits: (v: string) => void;
   debtAgreement: string;
   onChangeDebtAgreement: (v: string) => void;
+  debtAmount: string;
+  onChangeDebtAmount: (v: string) => void;
   deploymentAgreement: string;
   onChangeDeploymentAgreement: (v: string) => void;
   terminationConditions: string;
@@ -110,6 +112,8 @@ export function HireContractTermsModal({
   onChangeOtherBenefits,
   debtAgreement,
   onChangeDebtAgreement,
+  debtAmount,
+  onChangeDebtAmount,
   deploymentAgreement,
   onChangeDeploymentAgreement,
   terminationConditions,
@@ -138,6 +142,15 @@ export function HireContractTermsModal({
 
   const salaryNum = parseFloat(confirmedSalary.trim());
   const showLowSalaryWarning = !isPartTime && !isNaN(salaryNum) && salaryNum > 0 && salaryNum < 7000;
+
+  // RA 10364 (Anti-Trafficking) safeguard: flag debt/deployment amounts that
+  // exceed one month's salary — a classic debt-bondage risk indicator.
+  const debtAmountNum = parseFloat(debtAmount.trim());
+  const monthlySalaryEquivalent = isPartTime ? NaN : salaryNum;
+  const showDebtWarning =
+    !isNaN(debtAmountNum) && debtAmountNum > 0 &&
+    !isNaN(monthlySalaryEquivalent) && monthlySalaryEquivalent > 0 &&
+    debtAmountNum > monthlySalaryEquivalent;
 
   const filledAdditionalCount = [
     overtimeRate,
@@ -306,7 +319,7 @@ export function HireContractTermsModal({
               <Text style={s.hint}>
                 {isPartTime
                   ? 'For part-time, enter hourly or daily rate.'
-                  : 'Minimum ₱7,000/month as required by RA 10361.'}
+                  : 'Minimum ₱7,000/month — a CareLink platform standard for fair compensation.'}
               </Text>
               <View style={s.salaryRow}>
                 <View style={s.currencyBox}>
@@ -325,7 +338,7 @@ export function HireContractTermsModal({
                 <View style={s.warningBanner}>
                   <Ionicons name="warning-outline" size={16} color={BROWN} />
                   <Text style={s.warningBannerText}>
-                    Minimum wage for kasambahay is ₱7,000/month under RA 10361.
+                    CareLink requires at least ₱7,000/month as a platform standard for fair compensation.
                   </Text>
                 </View>
               )}
@@ -548,6 +561,32 @@ export function HireContractTermsModal({
                     maxLength={2000}
                     textAlignVertical="top"
                   />
+
+                  <Text style={[s.label, { marginTop: 10 }]}>Debt amount, if any (₱)</Text>
+                  <Text style={s.hint}>Numeric total — used to warn if it exceeds one month's salary.</Text>
+                  <View style={s.salaryRow}>
+                    <View style={s.currencyBox}>
+                      <Text style={s.currencyText}>₱</Text>
+                    </View>
+                    <TextInput
+                      style={[s.input, s.salaryInput]}
+                      value={debtAmount}
+                      onChangeText={onChangeDebtAmount}
+                      placeholder="Leave blank if none"
+                      placeholderTextColor={SUBTLE}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  {showDebtWarning && (
+                    <View style={s.warningBanner}>
+                      <Ionicons name="warning-outline" size={16} color={BROWN} />
+                      <Text style={s.warningBannerText}>
+                        This debt amount exceeds one month's salary. The helper will need to explicitly
+                        acknowledge this before signing — large debt obligations are a recognized risk
+                        factor under RA 10364 (Anti-Trafficking Act).
+                      </Text>
+                    </View>
+                  )}
 
                   <Text style={[s.label, { marginTop: 10 }]}>Deployment cost agreement (optional)</Text>
                   <Text style={s.hint}>Recoverable only if the helper leaves before completing 6 months.</Text>

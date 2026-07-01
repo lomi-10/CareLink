@@ -1,6 +1,6 @@
 import API_URL from '@/constants/api';
 
-export type ComplaintCategory = 'conduct' | 'payment' | 'safety' | 'contract' | 'other';
+export type ComplaintCategory = 'conduct' | 'payment' | 'unsafe_conditions' | 'abuse_or_mistreatment' | 'contract' | 'other';
 
 export async function submitComplaint(body: {
   application_id: number;

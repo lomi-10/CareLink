@@ -15,6 +15,7 @@ import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { ParentTabBar } from '@/components/parent/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
+import { DocumentAIScan } from '@/components/shared/DocumentAIScan';
 import { DARK, MUTED, GREEN } from '@/components/parent/home/parentWarmTheme';
 import { s } from './document-detail.styles';
 
@@ -27,16 +28,18 @@ import { s } from './document-detail.styles';
 
 const STEPS = [
   { label: 'Uploaded',     desc: 'Your document was submitted successfully.' },
+  { label: 'AI Scanned',   desc: 'Our AI checked this document for legitimacy and clarity.' },
   { label: 'Under Review', desc: 'PESO staff are reviewing your document.' },
   { label: 'Verified',     desc: 'PESO confirmed your document is valid.' },
   { label: 'Active',       desc: 'This document is active and counted toward your verification.' },
 ] as const;
 
-function statusToStep(status: string): number {
+// currentStep = index of the furthest completed step (done = i <= currentStep).
+function computeStep(status: string, scanned: boolean): number {
   switch (status?.toLowerCase()) {
-    case 'verified': return 3; // Verified + Active both complete
+    case 'verified': return 4; // Verified + Active both complete
     case 'rejected': return -1; // not shown on the stepper — uses the rejected banner instead
-    default:         return 1;  // Pending — uploaded, awaiting PESO review
+    default:         return scanned ? 2 : 0; // Pending: at Under Review once AI-scanned, else just Uploaded
   }
 }
 
@@ -51,6 +54,8 @@ export default function DocumentDetailScreen() {
     file_path?:     string;
     status?:        string;
     uploaded_at?:   string;
+    autoscan?:      string;
+    ai_status?:     string;
     // extended fields (returned by backend when available)
     expiry_date?:      string;
     verified_by?:      string;
@@ -62,13 +67,21 @@ export default function DocumentDetailScreen() {
     document_id      = '',
     document_type    = 'Document',
     file_url         = '',
+    file_path        = '',
     status           = 'Pending',
     uploaded_at      = '',
+    autoscan         = '',
+    ai_status        = '',
     expiry_date,
     verified_by,
     verified_at,
     rejection_reason,
   } = params;
+
+  // Live status — updated when the AI scan finishes (e.g. auto-reject of a fake).
+  const [docStatus, setDocStatus] = useState<string>(status || 'Pending');
+  const [aiStatus, setAiStatus]   = useState<string>(ai_status || '');
+  const [aiReason, setAiReason]   = useState<string>('');
 
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -83,10 +96,12 @@ export default function DocumentDetailScreen() {
     setNotice({ visible: true, title, message, type });
   };
 
-  const statusKey  = (status ?? '').toLowerCase();
+  const statusKey  = (docStatus ?? '').toLowerCase();
   const isVerified = statusKey === 'verified';
   const isRejected = statusKey === 'rejected';
-  const stepIndex  = statusToStep(status ?? '');
+  const scanned    = !!aiStatus && aiStatus !== 'Unchecked';
+  const stepIndex  = computeStep(docStatus ?? '', scanned);
+  const rejectReason = aiReason || rejection_reason;
   const isPdf      = file_url.toLowerCase().endsWith('.pdf');
   const hasImage   = !!file_url && !isPdf;
 
@@ -180,7 +195,7 @@ export default function DocumentDetailScreen() {
                 {isVerified
                   ? 'This document has been reviewed and verified by PESO.'
                   : isRejected
-                    ? (rejection_reason || 'This document was rejected. Please re-upload a corrected copy.')
+                    ? (rejectReason || 'This document was rejected. Please re-upload a corrected copy.')
                     : 'This document is currently being reviewed by PESO.'}
               </Text>
             </View>
@@ -250,6 +265,25 @@ export default function DocumentDetailScreen() {
             </View>
           </View>
 
+          {/* ── AI Document Scan ── */}
+          {document_id ? (
+            <View style={s.statusSection}>
+              <Text style={s.statusTitle}>AI Document Scan</Text>
+              <DocumentAIScan
+                doc={{ document_id, document_type, file_url, file_path }}
+                themeKey="parent"
+                autoStart={autoscan === '1'}
+                onScanned={(res) => {
+                  if (res?.ai_verification_status) setAiStatus(res.ai_verification_status);
+                  if (res?.doc_status) setDocStatus(res.doc_status);
+                  if (res?.auto_rejected) {
+                    setAiReason('Our AI could not confirm this is a genuine document, so it was not sent for PESO verification. Please re-upload a clear, authentic copy.');
+                  }
+                }}
+              />
+            </View>
+          ) : null}
+
           {/* ── Verification Details ── */}
           <View style={s.verifyCard}>
             <Text style={s.verifyCardTitle}>Verification Details</Text>
@@ -269,8 +303,8 @@ export default function DocumentDetailScreen() {
                       ? `Rejected by PESO${verified_by ? ` (${verified_by})` : ''}`
                       : 'Pending PESO verification'}
                 </Text>
-                {isRejected && rejection_reason ? (
-                  <Text style={[s.verifyDate, { color: '#DC2626' }]}>{rejection_reason}</Text>
+                {isRejected && rejectReason ? (
+                  <Text style={[s.verifyDate, { color: '#DC2626' }]}>{rejectReason}</Text>
                 ) : verifiedLabel ? (
                   <Text style={s.verifyDate}>on {verifiedLabel}</Text>
                 ) : null}

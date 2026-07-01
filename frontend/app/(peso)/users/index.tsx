@@ -7,16 +7,19 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import API_URL from "../../../constants/api";
 import { theme } from "@/constants/theme";
+import UserDetailPanel from "@/components/peso/UserDetailPanel";
 
 export interface VerificationUser {
   user_id: number;
@@ -41,6 +44,8 @@ type FilterStatus = (typeof FILTER_TABS)[number];
 
 export default function UserVerification() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const twoPane = Platform.OS === "web" && width >= 1024;
 
   const [users, setUsers]             = useState<VerificationUser[]>([]);
   const [loading, setLoading]         = useState(true);
@@ -48,6 +53,7 @@ export default function UserVerification() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("Pending");
   const [activeRole, setActiveRole]   = useState<"helper" | "parent">("helper");
+  const [selected, setSelected]       = useState<VerificationUser | null>(null);
 
   useEffect(() => { fetchUsers(); }, []);
 
@@ -104,17 +110,19 @@ export default function UserVerification() {
     const joinDate  = item.created_at
       ? new Date(item.created_at).toLocaleDateString("en-PH", { month: "short", year: "numeric" })
       : null;
+    const isSelected = twoPane && selected?.user_id === item.user_id;
 
     return (
       <TouchableOpacity
-        style={[styles.card, index === 0 && { marginTop: 0 }]}
+        style={[styles.card, index === 0 && { marginTop: 0 }, isSelected && styles.cardSelected]}
         activeOpacity={0.78}
-        onPress={() =>
-          router.push({
+        onPress={() => {
+          if (twoPane) setSelected(item);
+          else router.push({
             pathname: "/(peso)/users/view_profile",
             params: { user_id: item.user_id, user_type: item.user_type },
-          })
-        }
+          });
+        }}
       >
         {/* Avatar */}
         <View style={[styles.avatarRing, { backgroundColor: ringBg, borderColor: ringColor + "55" }]}>
@@ -164,6 +172,8 @@ export default function UserVerification() {
 
   return (
     <View style={styles.container}>
+     <View style={twoPane ? styles.splitRow : styles.flex1}>
+      <View style={twoPane ? styles.leftPane : styles.flex1}>
 
       {/* ── PAGE HEADER ── */}
       <View style={styles.pageHeader}>
@@ -329,12 +339,55 @@ export default function UserVerification() {
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         />
       )}
+      </View>
+
+      {twoPane && (
+        <View style={styles.rightPane}>
+          {selected ? (
+            <UserDetailPanel
+              key={selected.user_id}
+              userId={selected.user_id}
+              userType={selected.user_type}
+              onChanged={fetchUsers}
+              onClose={() => setSelected(null)}
+            />
+          ) : (
+            <View style={styles.detailEmpty}>
+              <View style={styles.detailEmptyIcon}>
+                <Ionicons name="person-circle-outline" size={56} color={theme.color.subtle} />
+              </View>
+              <Text style={styles.detailEmptyTitle}>Select an account to review</Text>
+              <Text style={styles.detailEmptyBody}>
+                Pick a user from the list to view their profile, documents, and job posts.
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+     </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
+  flex1: { flex: 1, minHeight: 0 },
+  splitRow: { flex: 1, flexDirection: "row", minHeight: 0 },
+  leftPane: { flex: 1, minWidth: 0, minHeight: 0 },
+  rightPane: {
+    width: 460,
+    borderLeftWidth: 1,
+    borderLeftColor: theme.color.line,
+    backgroundColor: theme.color.surfaceElevated,
+  },
+  detailEmpty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40, gap: 10 },
+  detailEmptyIcon: {
+    width: 96, height: 96, borderRadius: 48, alignItems: "center", justifyContent: "center",
+    backgroundColor: theme.color.surface, borderWidth: 1, borderColor: theme.color.line,
+  },
+  detailEmptyTitle: { fontSize: 17, fontWeight: "800", color: theme.color.ink, marginTop: 6 },
+  detailEmptyBody: { fontSize: 13, color: theme.color.muted, textAlign: "center", lineHeight: 19, maxWidth: 280 },
+  cardSelected: { borderColor: theme.color.peso, borderWidth: 1.5, ...theme.shadow.card },
 
   pageHeader: {
     flexDirection: "row",

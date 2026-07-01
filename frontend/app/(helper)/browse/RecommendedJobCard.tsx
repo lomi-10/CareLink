@@ -34,10 +34,15 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
-  matchBadge: {
+  topBadgeRow: {
     position: 'absolute',
     top: 10,
     left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  matchBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -47,6 +52,17 @@ const s = StyleSheet.create({
     borderRadius: 999,
   },
   matchText: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 11,
+    color: '#FFFFFF',
+  },
+  newBadge: {
+    backgroundColor: '#1A5C40',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  newBadgeText: {
     fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 11,
     color: '#FFFFFF',
@@ -148,11 +164,18 @@ export function RecommendedJobCard({ job, topColor, onPress, onSave }: Props) {
 
       {/* ── Warm top area ── */}
       <View style={[s.top, { backgroundColor: topColor }]}>
-        {pct > 0 && (
-          <View style={s.matchBadge}>
-            <Text style={s.matchText}>{pct}% Match</Text>
-          </View>
-        )}
+        <View style={s.topBadgeRow}>
+          {pct > 0 && (
+            <View style={s.matchBadge}>
+              <Text style={s.matchText}>{pct}% Match</Text>
+            </View>
+          )}
+          {job.is_new && (
+            <View style={s.newBadge}>
+              <Text style={s.newBadgeText}>New</Text>
+            </View>
+          )}
+        </View>
         <TouchableOpacity style={s.heartBtn} onPress={onSave} hitSlop={8}>
           <Ionicons
             name={job.is_saved ? 'heart' : 'heart-outline'}

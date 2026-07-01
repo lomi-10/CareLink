@@ -12,6 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit();
 ini_set('display_errors', 0);
 error_reporting(0);
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/ownership_guard.php';
+include_once __DIR__ . '/../shared/file_security.php';
 
 function send($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -24,6 +26,10 @@ function send($success, $message, $data = null) {
 try {
     if (!isset($_GET['parent_id'])) throw new Exception('parent_id is required');
     $parent_id = intval($_GET['parent_id']);
+    $requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
+    // Deliberately cross-user (helpers browse employer profiles before
+    // applying) — just requires a real logged-in account, not ownership.
+    carelink_require_authenticated_user($conn, $requester_id);
 
     // ── 1. Basic user info ──────────────────────────────────────────────────
     $uStmt = $conn->prepare(
@@ -119,21 +125,19 @@ try {
 
     // ── 8. Documents (Barangay Clearance + Valid ID only) ───────────────────
     $docStmt = $conn->prepare(
-        "SELECT document_type, file_path, status FROM user_documents
+        "SELECT document_id, document_type, file_path, status FROM user_documents
          WHERE user_id = ? AND status = 'Verified'
          ORDER BY FIELD(document_type, 'Barangay Clearance', 'Valid ID')"
     );
     $docStmt->bind_param("i", $parent_id);
     $docStmt->execute();
     $docRes = $docStmt->get_result();
-    $doc_base = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/documents/";
     $documents = [];
     while ($doc = $docRes->fetch_assoc()) {
-        $fp = $doc['file_path'];
         $documents[] = [
             'document_type' => $doc['document_type'],
             'status'        => $doc['status'],
-            'file_url'      => (stripos($fp, 'http') === 0) ? $fp : $doc_base . $fp,
+            'file_url'      => $doc['file_path'] ? carelink_signed_document_url((int) $doc['document_id']) : null,
         ];
     }
     $docStmt->close();

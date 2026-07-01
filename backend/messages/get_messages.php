@@ -9,15 +9,22 @@ header('Access-Control-Allow-Headers: Content-Type');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
 ini_set('display_errors', 0);
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
-$user_id    = isset($_GET['user_id'])    ? intval($_GET['user_id'])    : 0;
-$partner_id = isset($_GET['partner_id']) ? intval($_GET['partner_id']) : 0;
+$user_id      = isset($_GET['user_id'])      ? intval($_GET['user_id'])      : 0;
+$partner_id   = isset($_GET['partner_id'])   ? intval($_GET['partner_id'])   : 0;
+$requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
 if (!$user_id || !$partner_id) {
     echo json_encode(['success' => false, 'message' => 'user_id and partner_id required']);
     exit();
 }
 
 try {
+    // Only the conversation's own participant can read it — this is private
+    // 1-on-1 messaging, not something either party should be able to view
+    // for the other.
+    carelink_require_self($requester_id, $user_id, 'You are not allowed to view this conversation.');
+
     // Mark messages from partner as read
     $markStmt = $conn->prepare(
         "UPDATE messages SET is_read = 1, read_at = NOW()

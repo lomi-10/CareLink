@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit();
 ini_set('display_errors', 0);
 error_reporting(0);
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Haversine distance (km) between two lat/lng pairs
@@ -27,8 +28,10 @@ function haversine($lat1, $lon1, $lat2, $lon2) {
 try {
     $parent_id = isset($_GET['parent_id']) ? intval($_GET['parent_id']) : 0;
     $limit     = isset($_GET['limit'])     ? intval($_GET['limit'])     : 10;
+    $requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
 
     if ($parent_id <= 0) throw new Exception('parent_id required');
+    carelink_require_self($requester_id, $parent_id, 'You are not allowed to view these recommendations.');
 
     // ── 1. Parent profile (location, household needs) ────────────────────────
     $stmt = $conn->prepare("
@@ -105,11 +108,12 @@ try {
     while ($helper = $helpersResult->fetch_assoc()) {
         $profile_id = (int)$helper['profile_id'];
 
-        // Helper's category + job-role IDs
+        // Helper's category + job-role IDs/names
         $helperCatIds = [];
         $helperJobIds = [];
+        $helperJobNames = [];
         $catStmt = $conn->prepare("
-            SELECT DISTINCT rc.category_id, rc.category_name, hj.job_id
+            SELECT DISTINCT rc.category_id, rc.category_name, hj.job_id, rj.job_title
             FROM helper_jobs hj
             JOIN ref_jobs rj ON hj.job_id = rj.job_id
             JOIN ref_categories rc ON rj.category_id = rc.category_id
@@ -123,8 +127,23 @@ try {
             $cid = (int)$r['category_id'];
             if (!in_array($cid, $helperCatIds)) { $helperCatIds[] = $cid; $categoryNames[] = $r['category_name']; }
             $helperJobIds[] = (int)$r['job_id'];
+            $helperJobNames[] = $r['job_title'];
         }
         $catStmt->close();
+
+        // Helper's skill names (used by the no-job-post "Top Helpers" feed)
+        $helperSkillNames = [];
+        $skillStmt = $conn->prepare("
+            SELECT rs.skill_name
+            FROM helper_skills hs
+            JOIN ref_skills rs ON hs.skill_id = rs.skill_id
+            WHERE hs.profile_id = ?
+        ");
+        $skillStmt->bind_param("i", $profile_id);
+        $skillStmt->execute();
+        $skillRes = $skillStmt->get_result();
+        while ($r = $skillRes->fetch_assoc()) { $helperSkillNames[] = $r['skill_name']; }
+        $skillStmt->close();
 
         $score   = 0;
         $reasons = [];
@@ -135,6 +154,12 @@ try {
             if ($catOverlap > 0) {
                 $score += 25;
                 $reasons[] = 'Specializes in care your family has hired for before';
+            } else {
+                // Has posted jobs before, but never in a category this helper
+                // specializes in — small neutral credit instead of zero, since
+                // no overlap isn't necessarily a mismatch (e.g. only hired
+                // cooks before, browsing for elderly care now).
+                $score += 8;
             }
             if (!empty($parentJobIds) && !empty($helperJobIds)) {
                 $jobOverlap = count(array_intersect($parentJobIds, $helperJobIds));
@@ -143,7 +168,7 @@ try {
                 }
             }
         } else {
-            $score += 12; // no hiring history yet — partial credit so new parents still see results
+            $score += 20; // no hiring history yet — generous credit so new parents still see strong matches
         }
 
         // 2. Distance (20 pts) — real GPS when available, text fallback otherwise
@@ -184,7 +209,7 @@ try {
                 $score += 8;
             }
         } else {
-            $score += 8;
+            $score += 13; // no salary history either — raised from 8 so the new-parent ceiling isn't artificially low
         }
 
         // 4. Experience (15 pts)
@@ -241,6 +266,8 @@ try {
                 'distance_exact'      => ($pLat !== null && $hLat !== null),
                 'category_ids'        => $helperCatIds,
                 'categories'          => $categoryNames,
+                'jobs'                => array_values(array_unique($helperJobNames)),
+                'skills'              => $helperSkillNames,
                 'verification_status' => $helper['verification_status'],
                 'is_verified'         => ($helper['verification_status'] ?? '') === 'Verified',
                 'rating_average'      => $rating,

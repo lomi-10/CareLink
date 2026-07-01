@@ -26,6 +26,8 @@ export interface RecommendedHelper {
   distance_exact:       boolean;
   category_ids:         number[];
   categories:           string[];
+  jobs?:                string[];
+  skills?:              string[];
   verification_status?: string;
   is_verified:          boolean;
   rating_average:       number;
@@ -48,7 +50,7 @@ export function useParentRecommendations() {
       if (!userData) throw new Error('Not logged in');
       const user = JSON.parse(userData);
 
-      const response = await fetch(`${API_URL}/parent/recommended_helpers.php?parent_id=${user.user_id}&limit=10`);
+      const response = await fetch(`${API_URL}/parent/recommended_helpers.php?parent_id=${user.user_id}&limit=10&requester_id=${user.user_id}`);
       const data = await response.json();
 
       if (data.success) {

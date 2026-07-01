@@ -15,6 +15,7 @@ ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 include_once '../dbcon.php';
+include_once __DIR__ . '/ownership_guard.php';
 
 if (!isset($_GET['user_id']) || empty($_GET['user_id'])) {
     echo json_encode(["success" => false, "message" => "Missing user_id parameter"]);
@@ -22,11 +23,13 @@ if (!isset($_GET['user_id']) || empty($_GET['user_id'])) {
 }
 
 $user_id = intval($_GET['user_id']);
+$requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
 
 try {
     if (!$conn) {
         throw new Exception("Database connection failed");
     }
+    carelink_require_self($requester_id, $user_id, 'You are not allowed to view this account status.');
 
     // 1. Get base user status and find out their user_type
     $user_sql = "SELECT status, profile_completed, user_type FROM users WHERE user_id = ?";

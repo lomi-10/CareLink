@@ -12,15 +12,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit(0);
 }
 
-require_once '../dbcon.php'; 
+require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 try {
     $helper_id = isset($_GET['helper_id']) ? intval($_GET['helper_id']) : 0;
+    $requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
     $sort = isset($_GET['sort']) ? $_GET['sort'] : 'recent'; // recent, match, nearest, salary
 
     if ($helper_id <= 0) {
         throw new Exception('Helper ID is required');
     }
+    carelink_require_self($requester_id, $helper_id, 'You are not allowed to view these saved jobs.');
 
     // 1. Get helper's profile and location
     $helperStmt = $conn->prepare("

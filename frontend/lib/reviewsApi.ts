@@ -7,7 +7,7 @@ export type PendingReview = {
 };
 
 export async function fetchPendingReviews(userId: number, userType: 'parent' | 'helper') {
-  const qs = new URLSearchParams({ user_id: String(userId), user_type: userType });
+  const qs = new URLSearchParams({ user_id: String(userId), user_type: userType, requester_id: String(userId) });
   const res = await fetch(`${API_URL}/shared/placement_review_pending.php?${qs}`);
   return res.json() as Promise<{ success: boolean; pending?: PendingReview[]; message?: string }>;
 }

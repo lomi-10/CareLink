@@ -35,7 +35,7 @@ export function useHelperStats() {
       const userId = user.user_id;
 
       // TODO: Replace with actual API endpoint
-      const response = await fetch(`${API_URL}/helper/get_stats.php?user_id=${userId}`);
+      const response = await fetch(`${API_URL}/helper/get_stats.php?user_id=${userId}&requester_id=${userId}`);
       const data = await response.json();
       
       if (data.success) {

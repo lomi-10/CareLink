@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 ini_set('display_errors', 0);
 error_reporting(0);
 include_once '../dbcon.php';
+include_once __DIR__ . '/../shared/ownership_guard.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -34,19 +35,27 @@ try {
     if (!$conn) throw new Exception("Database connection failed");
 
     $parent_id = isset($_GET['parent_id']) ? intval($_GET['parent_id']) : null;
+    $requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
     if (!$parent_id) throw new Exception('Parent ID is required');
+    carelink_require_self($requester_id, $parent_id, 'You are not allowed to view these job posts.');
 
     $sql = "
         SELECT
             jp.*,
             rc.category_name,
             rl.language_name as preferred_language_name,
-            (SELECT GROUP_CONCAT(skill_name SEPARATOR ', ') 
-             FROM ref_skills 
+            (SELECT GROUP_CONCAT(skill_name SEPARATOR ', ')
+             FROM ref_skills
              WHERE skill_id IN (SELECT JSON_UNQUOTE(JSON_EXTRACT(skill_ids, CONCAT('$[', seq, ']')))
-                                FROM (SELECT 0 AS seq UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 
+                                FROM (SELECT 0 AS seq UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
                                       UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) seqs
                                 WHERE seq < JSON_LENGTH(jp.skill_ids))) as skill_names,
+            (SELECT GROUP_CONCAT(job_title SEPARATOR ', ')
+             FROM ref_jobs
+             WHERE job_id IN (SELECT JSON_UNQUOTE(JSON_EXTRACT(job_ids, CONCAT('$[', seq, ']')))
+                                FROM (SELECT 0 AS seq UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
+                                      UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) seqs
+                                WHERE seq < JSON_LENGTH(jp.job_ids))) as role_names,
             (SELECT COUNT(*) FROM job_applications WHERE job_post_id = jp.job_post_id) as application_count,
             (SELECT COUNT(*) FROM job_applications WHERE job_post_id = jp.job_post_id AND status = 'Pending') as new_application_count
         FROM job_posts jp

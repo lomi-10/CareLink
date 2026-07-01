@@ -39,6 +39,13 @@ try {
         exit();
     }
 
+    // RA 10173 (Data Privacy Act) / NPC Circular 16-01: registration must not
+    // proceed without the user explicitly consenting to data collection/processing.
+    if (empty($data['privacy_consent'])) {
+        echo json_encode(["success" => false, "message" => "You must agree to the data privacy consent to create an account."]);
+        exit();
+    }
+
     // Clean the input data
     $first_name = trim($data['first_name']);
     $middle_name = trim($data['middle_name'] ?? '');
@@ -81,13 +88,13 @@ try {
     $status = "pending";
 
     // Notice we are inserting first_name, middle_name, and last_name now!
-    $insertQuery = "INSERT INTO users (first_name, middle_name, last_name, username, email, password, user_type, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-    
+    $insertQuery = "INSERT INTO users (first_name, middle_name, last_name, username, email, password, user_type, status, privacy_consent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+
     $stmt = $conn->prepare($insertQuery);
     if (!$stmt) {
         throw new Exception("SQL Prepare Error (Users): " . $conn->error);
     }
-    
+
     $stmt->bind_param("ssssssss", $first_name, $middle_name, $last_name, $username, $email, $hashedPassword, $user_type, $status);
 
     if (!$stmt->execute()) {

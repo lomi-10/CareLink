@@ -218,7 +218,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       const parsed = JSON.parse(userData);
       setUserId(parsed.user_id);
       
-      const response = await fetch(`${API_URL}/helper/get_profile.php?user_id=${parsed.user_id}`);
+      const response = await fetch(`${API_URL}/helper/get_profile.php?user_id=${parsed.user_id}&requester_id=${parsed.user_id}`);
       const text = await response.text();
       const data = JSON.parse(text);
       
@@ -419,6 +419,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
     try {
       const formData = new FormData();
       formData.append('user_id', userId || '');
+      formData.append('requester_id', userId || '');
       formData.append('first_name', firstName);
       formData.append('middle_name', middleName);
       formData.append('last_name', lastName);

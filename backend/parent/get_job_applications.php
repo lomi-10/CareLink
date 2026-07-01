@@ -11,15 +11,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit(0);
 }
 
-require_once '../dbcon.php'; 
+require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 // Support two modes:
 //   ?job_post_id=X  — applications for a specific job
 //   ?parent_id=X    — ALL applications across all of a parent's jobs
-$job_post_id = isset($_GET['job_post_id']) && $_GET['job_post_id'] !== ''
+$job_post_id  = isset($_GET['job_post_id']) && $_GET['job_post_id'] !== ''
     ? (int)$_GET['job_post_id'] : null;
-$parent_id   = isset($_GET['parent_id'])   && $_GET['parent_id']   !== ''
+$parent_id    = isset($_GET['parent_id'])   && $_GET['parent_id']   !== ''
     ? (int)$_GET['parent_id']   : null;
+$requester_id = isset($_GET['requester_id']) ? (int)$_GET['requester_id'] : 0;
 
 if (!$job_post_id && !$parent_id) {
     echo json_encode(['success' => false, 'message' => 'job_post_id or parent_id required']);
@@ -27,6 +29,19 @@ if (!$job_post_id && !$parent_id) {
 }
 
 try {
+    // This list contains applicant PII (contact number, salary, address) —
+    // only the parent who owns the job post(s) may view it.
+    if ($parent_id) {
+        carelink_require_self($requester_id, $parent_id, 'You are not allowed to view these applications.');
+    } else {
+        $ownerStmt = $conn->prepare("SELECT parent_id FROM job_posts WHERE job_post_id = ?");
+        $ownerStmt->bind_param('i', $job_post_id);
+        $ownerStmt->execute();
+        $ownerRow = $ownerStmt->get_result()->fetch_assoc();
+        $ownerStmt->close();
+        carelink_require_self($requester_id, $ownerRow ? (int)$ownerRow['parent_id'] : 0, 'You are not allowed to view these applications.');
+    }
+
     // 1. Fetch Application + User + Helper Profile Data
     if ($job_post_id) {
         $where = "a.job_post_id = $job_post_id";

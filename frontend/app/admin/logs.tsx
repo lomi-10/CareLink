@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_URL from "../../constants/api";
 
 export default function AdminLogsScreen() {
@@ -29,7 +30,9 @@ export default function AdminLogsScreen() {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/admin/admin_get_logs.php`);
+      const raw = await AsyncStorage.getItem("user_data");
+      const adminUserId = raw ? JSON.parse(raw)?.user_id : "";
+      const response = await fetch(`${API_URL}/admin/admin_get_logs.php?admin_user_id=${adminUserId}`);
       const data = await response.json();
       setLogs(Array.isArray(data) ? data : []);
     } catch (error) {

@@ -25,6 +25,7 @@ export function useSignupForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
 
   // NEW: Single state for the NotificationModal!
   const [notification, setNotification] = useState({
@@ -71,11 +72,16 @@ export function useSignupForm() {
       return;
     }
 
+    if (!privacyConsent) {
+      setNotification({ visible: true, message: "Please agree to the data privacy consent to continue.", type: "warning" });
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/auth/signup.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, privacy_consent: privacyConsent }),
       });
 
       const data = await response.json();
@@ -105,6 +111,7 @@ export function useSignupForm() {
   return {
     role, form, handleChange, showPassword, setShowPassword,
     showConfirmPassword, setShowConfirmPassword, isPasswordValid,
+    privacyConsent, setPrivacyConsent,
     notification, closeNotification, handleSignUpScreen, router
   };
 }

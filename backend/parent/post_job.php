@@ -15,6 +15,7 @@ ini_set('display_errors', 0);
 error_reporting(0);
 ob_start();
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -36,12 +37,19 @@ try {
     }
 
     $parent_id = intval($data['parent_id']);
+    $requester_id = isset($data['requester_id']) ? intval($data['requester_id']) : 0;
+    carelink_require_self($requester_id, $parent_id, 'You are not allowed to post jobs for this employer account.');
     $category_id = isset($data['category_id']) ? intval($data['category_id']) : null;
     $salary_min = isset($data['salary_min']) ? floatval($data['salary_min']) : (isset($data['salary_offered']) ? floatval($data['salary_offered']) : 0);
     $salary_max = isset($data['salary_max']) && $data['salary_max'] !== null ? floatval($data['salary_max']) : null;
     $salary = $salary_min; // backward compat: salary_offered = salary_min
 
-    if ($salary < 7000) throw new Exception('Minimum salary is ₱7,000 as required by RA 10361 (Kasambahay Law).');
+    // ₱7,000 is a CareLink platform standard to promote fair compensation — it is
+    // set above the actual Region VIII kasambahay minimum wage (Wage Order
+    // VIII-DW-06: ₱6,400/mo for chartered cities & 1st-class municipalities,
+    // ₱5,800/mo elsewhere). RA 10361 establishes that minimum wages are set by
+    // regional wage boards; it does not itself mandate this specific figure.
+    if ($salary < 7000) throw new Exception('CareLink enforces a minimum salary of ₱7,000/month as a platform standard to promote fair compensation.');
 
     $job_ids_json = json_encode(is_array($data['job_ids'] ?? null) ? $data['job_ids'] : []);
     $skill_ids_json = json_encode(is_array($data['skill_ids'] ?? null) ? $data['skill_ids'] : []);
