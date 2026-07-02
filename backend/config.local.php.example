@@ -1,0 +1,23 @@
+<?php
+/**
+ * config.local.php.example — TEMPLATE.
+ *
+ * COPY this file to  backend/config.local.php  and fill in real values.
+ * config.local.php is gitignored — it must NEVER be committed (it holds secrets).
+ *
+ * Only needed on hosts WITHOUT an env-var dashboard (e.g. InfinityFree).
+ * On Railway / a VPS you can set these as real environment variables instead
+ * and skip this file entirely — real env vars always win.
+ */
+
+return [
+    // ── MySQL (from your host's control panel → MySQL Databases) ──
+    'DB_HOST'     => 'sqlXXX.your-host.com', // e.g. InfinityFree: sqlXXX.epizy.com / .infinityfree.com
+    'DB_USERNAME' => 'if0_XXXXXXXX',
+    'DB_PASSWORD' => 'your_db_password',
+    'DB_DATABASE' => 'if0_XXXXXXXX_carelink',
+    'DB_PORT'     => '3306',
+
+    // ── Google Gemini (same key your chatbot already uses) ──
+    'GEMINI_API_KEY' => 'AIza...your_key...',
+];

@@ -93,7 +93,8 @@ function carelink_gemini_doc_guidance(string $documentType): string
  */
 function carelink_gemini_scan_document(string $filePath, string $documentType, ?string $mime = null): array
 {
-    $key = trim((string) (getenv('GEMINI_API_KEY') ?: ''));
+    require_once __DIR__ . '/../load_config.php';
+    $key = trim((string) carelink_cfg('GEMINI_API_KEY', ''));
     if ($key === '') {
         return ['ok' => false, 'message' => 'AI scanning is not enabled on the server yet (GEMINI_API_KEY missing).'];
     }

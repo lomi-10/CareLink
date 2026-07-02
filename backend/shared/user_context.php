@@ -23,11 +23,12 @@ function carelink_user_safe_context(int $userId): ?array
 {
     if ($userId < 1) return null;
 
-    $host = getenv('DB_HOST') ?: 'localhost';
-    $user = getenv('DB_USERNAME') ?: 'root';
-    $pass = getenv('DB_PASSWORD') ?: '';
-    $db   = getenv('DB_DATABASE') ?: 'carelink';
-    $port = (int) (getenv('DB_PORT') ?: 3306);
+    require_once __DIR__ . '/../load_config.php';
+    $host = carelink_cfg('DB_HOST', 'localhost');
+    $user = carelink_cfg('DB_USERNAME', 'root');
+    $pass = carelink_cfg('DB_PASSWORD', '');
+    $db   = carelink_cfg('DB_DATABASE', 'carelink');
+    $port = (int) carelink_cfg('DB_PORT', 3306);
 
     if (function_exists('mysqli_report')) {
         mysqli_report(MYSQLI_REPORT_OFF); // return false/null instead of throwing

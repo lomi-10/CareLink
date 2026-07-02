@@ -281,7 +281,8 @@ function carelink_chatbot_rate_limited(string $bucket, int $maxPerWindow, int $w
     return false;
 }
 
-$key = trim((string) (getenv('GEMINI_API_KEY') ?: ''));
+require_once __DIR__ . '/load_config.php';
+$key = trim((string) carelink_cfg('GEMINI_API_KEY', ''));
 if ($key === '') {
     echo json_encode([
         'success' => false,

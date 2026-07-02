@@ -2,6 +2,8 @@
  * Unsigned upload to Cloudinary (set EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME + EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET).
  * Create an unsigned upload preset in the Cloudinary dashboard and enable unsigned uploads.
  */
+import { Platform } from 'react-native';
+
 export async function uploadImageToCloudinary(localUri: string): Promise<string | null> {
   const cloud = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
   const preset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
@@ -11,11 +13,17 @@ export async function uploadImageToCloudinary(localUri: string): Promise<string 
   }
 
   const form = new FormData();
-  form.append('file', {
-    uri: localUri,
-    name: 'task.jpg',
-    type: 'image/jpeg',
-  } as unknown as Blob);
+  if (Platform.OS === 'web') {
+    // Browsers need a real Blob/File — the RN { uri } object becomes "[object Object]".
+    const blob = await (await fetch(localUri)).blob();
+    form.append('file', blob, 'task.jpg');
+  } else {
+    form.append('file', {
+      uri: localUri,
+      name: 'task.jpg',
+      type: 'image/jpeg',
+    } as unknown as Blob);
+  }
   form.append('upload_preset', preset);
 
   const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/image/upload`, {

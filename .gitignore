@@ -49,3 +49,6 @@ Thumbs.db
 .env.*.local
 
 
+
+# Portable host config (DB creds + API key) — NEVER commit
+backend/config.local.php

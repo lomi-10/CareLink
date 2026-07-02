@@ -11,12 +11,14 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 // Start output buffering
 ob_start();
 
-// Load environment variables if available (PRODUCTION USES THESE!)
-$host = getenv('DB_HOST') ?: 'localhost';
-$username = getenv('DB_USERNAME') ?: 'root';
-$password = getenv('DB_PASSWORD') ?: '';
-$database = getenv('DB_DATABASE') ?: 'carelink';
-$port = getenv('DB_PORT') ?: 3306;
+// Portable config: real env vars (Railway/VPS) first, else backend/config.local.php.
+require_once __DIR__ . '/load_config.php';
+
+$host = carelink_cfg('DB_HOST', 'localhost');
+$username = carelink_cfg('DB_USERNAME', 'root');
+$password = carelink_cfg('DB_PASSWORD', '');
+$database = carelink_cfg('DB_DATABASE', 'carelink');
+$port = (int) carelink_cfg('DB_PORT', 3306);
 
 // Create connection
 $conn = mysqli_connect($host, $username, $password, $database, $port);
