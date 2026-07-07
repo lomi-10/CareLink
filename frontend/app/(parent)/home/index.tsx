@@ -290,7 +290,7 @@ export default function ParentHome() {
                   openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
                 }
               />
-              <RecommendedHelpersSection />
+              {profileData?.profile?.verification_status === 'Verified' && <RecommendedHelpersSection />}
               <SectionHeader title="My Hiring Activity" />
               {renderStatsGrid()}
               <SafetyBanner />
@@ -352,7 +352,7 @@ export default function ParentHome() {
               openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
             }
           />
-          <RecommendedHelpersSection />
+          {profileData?.profile?.verification_status === 'Verified' && <RecommendedHelpersSection />}
           <SectionHeader title="My Hiring Activity" />
           {renderStatsGrid(true)}
           <SafetyBanner />

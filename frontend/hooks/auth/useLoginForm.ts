@@ -82,14 +82,9 @@ export function useLoginForm() {
         setAttemptsLeft(5);
         setNotification({ visible: true, message: data.message || "Welcome Back!", type: "success" });
 
-        const go =
-          data.user_type === "helper"
-            ? !isProfileCompleted(mergedUser)
-              ? "/(helper)/profile"
-              : "/(helper)/home"
-            : !isProfileCompleted(mergedUser)
-              ? "/(parent)/profile"
-              : "/(parent)/home";
+        // Always land on Home — the guided profile-setup coach lives there, so
+        // incomplete users see exactly what to do next instead of a bare profile.
+        const go = data.user_type === "helper" ? "/(helper)/home" : "/(parent)/home";
 
         setTimeout(() => {
           setNotification(prev => ({ ...prev, visible: false }));
@@ -120,16 +115,7 @@ export function useLoginForm() {
 
           setNotification({ visible: true, message: "Account pending. Complete your profile and documents for PESO review.", type: "info" });
 
-          const go =
-            data.user_type === "helper"
-              ? !isProfileCompleted(mergedUser)
-                ? "/(helper)/profile"
-                : "/(helper)/home"
-              : data.user_type === "parent"
-                ? !isProfileCompleted(mergedUser)
-                  ? "/(parent)/profile"
-                  : "/(parent)/home"
-                : "/(parent)/home";
+          const go = data.user_type === "helper" ? "/(helper)/home" : "/(parent)/home";
 
           setTimeout(() => {
             setNotification(prev => ({ ...prev, visible: false }));

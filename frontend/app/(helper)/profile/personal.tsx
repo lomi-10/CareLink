@@ -36,10 +36,23 @@ export default function PersonalInfoScreen() {
 
   const profile = profileData?.profile;
 
+  // Age is computed from the birth date so it's always accurate (never blank).
+  const computeAge = (dob?: string | null): number | null => {
+    if (!dob) return null;
+    const d = new Date(String(dob).replace(' ', 'T'));
+    if (isNaN(d.getTime())) return null;
+    const now = new Date();
+    let a = now.getFullYear() - d.getFullYear();
+    const m = now.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < d.getDate())) a--;
+    return a >= 0 && a < 120 ? a : null;
+  };
+  const helperAge = (profile?.age as number | undefined) ?? computeAge(profile?.date_of_birth ?? profile?.birth_date);
+
   const personalRows: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }[] = [
     { icon: 'male',              label: 'Gender',          value: profile?.gender           || '—' },
     { icon: 'calendar',          label: 'Date of Birth',   value: profile?.date_of_birth    || '—' },
-    { icon: 'person',            label: 'Age',             value: profile?.age ? `${profile.age} years old` : '—' },
+    { icon: 'person',            label: 'Age',             value: helperAge != null ? `${helperAge} years old` : '—' },
     { icon: 'heart-outline',     label: 'Civil Status',    value: profile?.civil_status     || '—' },
     { icon: 'business-outline',  label: 'Religion',        value: profile?.religion         || '—' },
     { icon: 'school-outline',    label: 'Education Level', value: profile?.education_level  || '—' },

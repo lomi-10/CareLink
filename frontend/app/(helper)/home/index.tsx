@@ -297,7 +297,7 @@ export default function HelperHome() {
                   color={GREEN} onPress={() => router.push('/(helper)/applications')} />
               </View>
 
-              <RecommendationsSection />
+              {profileData?.profile?.verification_status === 'Verified' && <RecommendationsSection />}
             </>
           )}
         </ScrollView>
@@ -425,7 +425,7 @@ export default function HelperHome() {
             />
 
             {/* Recommended for you */}
-            <RecommendationsSection />
+            {profileData?.profile?.verification_status === 'Verified' && <RecommendationsSection />}
 
             {/* Quick Actions */}
             <SectionHeader title="Quick Actions" />

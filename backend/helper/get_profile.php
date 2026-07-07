@@ -339,50 +339,37 @@ try {
     // Calculate profile completeness
     // ========================================================================
 
+    // Weighted out of 100. The ESSENTIALS a helper needs to be PESO-verifiable
+    // (identity, address, work, documents, photo) sum to 90; optional polish
+    // fields make up the final 10. So a properly set-up profile reads 90% — the
+    // threshold we ask helpers to reach before verification — and 100% when fully
+    // fleshed out.
     $completeness = 0;
     if ($profile !== null) {
-        $total = 0;
         $completed = 0;
 
-        // Required fields (8 points each)
-        $requiredFields = ['contact_number', 'birth_date', 'gender', 'province', 'municipality', 'barangay'];
-        foreach ($requiredFields as $field) {
-            $total += 8;
-            if (!empty($profile[$field])) $completed += 8;
-        }
+        // Personal identity + address (36)
+        $core = ['contact_number' => 7, 'birth_date' => 7, 'gender' => 6, 'province' => 5, 'municipality' => 5, 'barangay' => 6];
+        foreach ($core as $f => $w) if (!empty($profile[$f])) $completed += $w;
 
-        // Optional profile fields (5 points each)
-        $optionalFields = ['bio', 'education_level', 'religion', 'landmark'];
-        foreach ($optionalFields as $field) {
-            $total += 5;
-            if (!empty($profile[$field])) $completed += 5;
-        }
+        // Profile photo (8)
+        if (!empty($profile['profile_image'])) $completed += 8;
 
-        // Profile image (10 points)
-        $total += 10;
-        if (!empty($profile['profile_image'])) $completed += 10;
+        // Work & skills (18)
+        if (count($selected_jobs) > 0)      $completed += 8;
+        if (count($selected_skills) > 0)    $completed += 6;
+        if (count($selected_languages) > 0) $completed += 4;
 
-        // Jobs (10 points)
-        $total += 10;
-        if (count($selected_jobs) > 0) $completed += 10;
-
-        // Skills (10 points)
-        $total += 10;
-        if (count($selected_skills) > 0) $completed += 10;
-
-        // Languages (10 points)
-        $total += 10;
-        if (count($selected_languages) > 0) $completed += 10;
-
-        // Documents — required for PESO verification (Barangay Clearance, Valid ID): 10 points each
+        // Required documents (28)
         $uploadedDocTypes = array_column($documents, 'document_type');
-        $requiredDocs = ['Barangay Clearance', 'Valid ID'];
-        foreach ($requiredDocs as $docType) {
-            $total += 10;
-            if (in_array($docType, $uploadedDocTypes, true)) $completed += 10;
-        }
+        if (in_array('Valid ID', $uploadedDocTypes, true))           $completed += 14;
+        if (in_array('Barangay Clearance', $uploadedDocTypes, true)) $completed += 14;
 
-        $completeness = $total > 0 ? round(($completed / $total) * 100) : 0;
+        // Optional polish — the final 10
+        $optional = ['bio' => 4, 'education_level' => 3, 'religion' => 2, 'landmark' => 1];
+        foreach ($optional as $f => $w) if (!empty($profile[$f])) $completed += $w;
+
+        $completeness = min(100, $completed);
     }
 
     // ========================================================================
