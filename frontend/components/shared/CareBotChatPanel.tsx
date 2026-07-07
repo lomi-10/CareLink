@@ -1,7 +1,7 @@
 import AnimatedPressable from '@/components/shared/AnimatedPressable';
 import FadeInView from '@/components/shared/FadeInView';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Platform, ActivityIndicator, Alert, FlatList, TextInput, KeyboardAvoidingView, type TextStyle, type ListRenderItemInfo } from 'react-native';
+import { View, Text, StyleSheet, Platform, ActivityIndicator, Alert, FlatList, TextInput, KeyboardAvoidingView, ScrollView, TouchableOpacity, type TextStyle, type ListRenderItemInfo } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -224,6 +224,25 @@ export function CareBotChatPanel({
   const router = useRouter();
   const accentColor = accent === 'helper' ? HELPER_ACCENT : theme.color.parent;
 
+  // Tappable starter questions so users don't have to type the common ones.
+  const QUICK_QUESTIONS = accent === 'parent'
+    ? [
+        'How do I post a job?',
+        'How do I review applicants?',
+        'How do I hire a helper?',
+        'How do I upload my documents?',
+        'How does helper matching work?',
+        'How do I message a helper?',
+      ]
+    : [
+        'How do I upload my documents?',
+        'Where do I find my documents?',
+        'How do I apply for a job?',
+        'How do I get PESO-verified?',
+        'How is my match percentage computed?',
+        'How do I message an employer?',
+      ];
+
   const goToAction = useCallback(
     (route: string) => {
       onRequestClose?.();
@@ -232,8 +251,8 @@ export function CareBotChatPanel({
     [onRequestClose, router],
   );
 
-  const submitDraft = useCallback(async () => {
-    const trimmed = draftRef.current.trim();
+  const submitDraft = useCallback(async (textArg?: string) => {
+    const trimmed = (textArg ?? draftRef.current).trim();
     if (!trimmed) return;
     if (userId < 1) {
       Alert.alert('CareBot', 'Please sign in to use the assistant.');
@@ -421,6 +440,21 @@ export function CareBotChatPanel({
               <Text style={styles.typingText}>CareBot is typing…</Text>
             </View>
           ) : null}
+          {lines.length <= 3 && !isTyping ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
+              {QUICK_QUESTIONS.map((q) => (
+                <TouchableOpacity
+                  key={q}
+                  style={[styles.presetChip, { borderColor: accentColor }]}
+                  onPress={() => submitDraft(q)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="sparkles-outline" size={12} color={accentColor} />
+                  <Text style={[styles.presetChipText, { color: accentColor }]}>{q}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : null}
           <View style={styles.inputBar}>
             <TextInput
               style={styles.textInput}
@@ -524,6 +558,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingLeft: 4,
   },
+  presetRow: { paddingHorizontal: 12, paddingBottom: 8, gap: 8, flexDirection: 'row' },
+  presetChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8,
+    backgroundColor: 'rgba(0,0,0,0.02)',
+  },
+  presetChipText: { fontSize: 12.5, fontWeight: '600' },
   actionChip: {
     flexDirection: 'row',
     alignItems: 'center',
