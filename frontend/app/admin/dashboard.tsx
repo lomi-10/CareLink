@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({ total: 0, pending: 0, peso: 0, logs: 0, complaintsOpen: 0 });
   const [complaints, setComplaints] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
+  const [overview, setOverview] = useState<{ activeContracts: number; peso: any[] }>({ activeContracts: 0, peso: [] });
 
   useEffect(() => { loadUser(); fetchAll(); }, []);
 
@@ -89,6 +90,9 @@ export default function AdminDashboard() {
         const open = list.filter((c: any) => c.status === "Pending");
         setComplaints(open.slice(0, 4));
         setStats((p) => ({ ...p, complaintsOpen: open.length }));
+
+        const ov = await (await fetch(`${API_URL}/admin/admin_get_overview.php?admin_user_id=${adminUid}`)).json().catch(() => null);
+        if (ov?.success) setOverview({ activeContracts: ov.active_contracts ?? 0, peso: ov.peso_performance ?? [] });
       }
     } catch (e) {
       console.error("admin dashboard:", e);
@@ -106,11 +110,12 @@ export default function AdminDashboard() {
   const today = new Date().toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" });
 
   const STAT_CARDS = [
-    { icon: "people" as const, color: BLUE,   value: stats.total,          label: "Total Users",          sub: "All system users" },
-    { icon: "business" as const, color: PURPLE, value: stats.peso,          label: "PESO Accounts",        sub: "Verified staff" },
-    { icon: "time" as const, color: AMBER,    value: stats.pending,         label: "Pending Verifications", sub: "Awaiting review" },
-    { icon: "warning" as const, color: RED,   value: stats.complaintsOpen,  label: "Open Complaints",      sub: "Requires attention" },
-    { icon: "pulse" as const, color: GREEN,   value: stats.logs,            label: "Audit Log Entries",    sub: "Recorded actions" },
+    { icon: "people" as const, color: BLUE,        value: stats.total,          label: "Total Users",          sub: "All system users" },
+    { icon: "business" as const, color: PURPLE,    value: stats.peso,           label: "PESO Accounts",        sub: "Verified staff" },
+    { icon: "document-text" as const, color: "#0EA5E9", value: overview.activeContracts, label: "Active Contracts", sub: "Ongoing placements" },
+    { icon: "time" as const, color: AMBER,         value: stats.pending,        label: "Pending Verifications", sub: "Awaiting review" },
+    { icon: "warning" as const, color: RED,        value: stats.complaintsOpen, label: "Open Complaints",      sub: "Requires attention" },
+    { icon: "pulse" as const, color: GREEN,        value: stats.logs,           label: "Audit Log Entries",    sub: "Recorded actions" },
   ];
 
   // ── Sidebar ──
@@ -287,22 +292,29 @@ export default function AdminDashboard() {
                   ))}
                 </Panel>
 
-                {/* Quick Actions */}
-                <Panel title="Quick Actions" style={wide ? { flex: 1 } : {}}>
-                  {[
-                    { icon: "person-add" as const, label: "Create PESO / Admin account", color: PURPLE, to: "/admin/create_admin_user" },
-                    { icon: "people" as const, label: "Review user verifications", color: BLUE, to: "/admin/user_management" },
-                    { icon: "warning" as const, label: "Manage complaints", color: RED, to: "/admin/complaints" },
-                    { icon: "list" as const, label: "View full audit trail", color: GREEN, to: "/admin/logs" },
-                  ].map((a) => (
-                    <TouchableOpacity key={a.label} style={ps.qaRow} onPress={() => router.push(a.to as any)} activeOpacity={0.8}>
-                      <View style={[ps.qaIcon, { backgroundColor: a.color + "22" }]}>
-                        <Ionicons name={a.icon} size={16} color={a.color} />
+                {/* PESO Staff Performance */}
+                <Panel title="PESO Staff Performance" style={wide ? { flex: 1 } : {}}>
+                  {overview.peso.length === 0 ? (
+                    <Text style={ps.empty}>No PESO staff accounts yet.</Text>
+                  ) : (
+                    <>
+                      <View style={ps.tHead}>
+                        <Text style={[ps.th, { flex: 2 }]}>Officer</Text>
+                        <Text style={ps.th}>Helpers</Text>
+                        <Text style={ps.th}>Docs</Text>
+                        <Text style={ps.th}>Jobs</Text>
                       </View>
-                      <Text style={ps.qaLabel}>{a.label}</Text>
-                      <Ionicons name="chevron-forward" size={16} color={SUBTLE} />
-                    </TouchableOpacity>
-                  ))}
+                      {overview.peso.map((p) => (
+                        <View key={p.user_id} style={ps.tRow}>
+                          <Text style={[ps.tName, { flex: 2 }]} numberOfLines={1}>{p.name}</Text>
+                          <Text style={ps.td}>{p.verified_helpers}</Text>
+                          <Text style={ps.td}>{p.verified_docs}</Text>
+                          <Text style={ps.td}>{p.verified_jobs}</Text>
+                        </View>
+                      ))}
+                      <Text style={ps.tHint}>Counts of helpers, documents & job posts each officer has verified.</Text>
+                    </>
+                  )}
                 </Panel>
               </View>
             </>
@@ -401,6 +413,13 @@ const ps = StyleSheet.create({
   qaRow: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 11, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: BORDER },
   qaIcon: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   qaLabel: { flex: 1, color: TEXT, fontSize: 13, fontWeight: "600" },
+
+  tHead: { flexDirection: "row", alignItems: "center", paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: BORDER },
+  th: { flex: 1, color: MUTED, fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.3, textAlign: "center" },
+  tRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: BORDER },
+  tName: { color: TEXT, fontSize: 13, fontWeight: "700" },
+  td: { flex: 1, color: TEXT, fontSize: 13, fontWeight: "600", textAlign: "center" },
+  tHint: { color: SUBTLE, fontSize: 11, marginTop: 10, lineHeight: 15 },
 });
 
 // ── Modal styles ──
