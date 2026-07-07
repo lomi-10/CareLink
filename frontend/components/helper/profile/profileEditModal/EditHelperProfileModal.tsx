@@ -262,26 +262,52 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   };
 
   // ── Toggle handlers ─────────────────────────────────────────────────────────
+  // General Househelp (id 1) is the "all-around" category; Others (id 6) is the
+  // catch-all and is NEVER auto-included. Selecting General Househelp checks all
+  // 5 PESO categories (1–5) AND auto-selects every job role under them.
+  const GENERAL_ID = 1;
+  const OTHERS_ID  = 6;
+  const jobIdsIn = (catIds: number[]) => availableJobs.filter(j => catIds.includes(j.category_id)).map(j => j.job_id);
+
   const toggleCategory = (id: number) => {
-    const isGeneral = id === 1;
-    const allOther  = availableCategories.filter(c => c.category_id !== 1).map(c => c.category_id);
-    if (selectedCategoryIds.includes(id)) {
-      if (isGeneral) { setSelectedCategoryIds([]); setSelectedJobIds([]); setSelectedSkillIds([]); }
-      else {
-        const next = selectedCategoryIds.filter(x => x !== id && x !== 1);
-        setSelectedCategoryIds(next);
-        const rmJobs   = availableJobs.filter(j => j.category_id === id).map(j => j.job_id);
-        setSelectedJobIds(selectedJobIds.filter(x => !rmJobs.includes(x)));
-        const rmSkills = availableSkills.filter(s => rmJobs.includes(s.job_id)).map(s => s.skill_id);
-        setSelectedSkillIds(selectedSkillIds.filter(x => !rmSkills.includes(x)));
-      }
-    } else {
-      if (isGeneral) {
-        setSelectedCategoryIds(availableCategories.map(c => c.category_id));
+    const pesoFive = availableCategories.filter(c => c.category_id !== OTHERS_ID).map(c => c.category_id); // [1..5]
+    const selected = selectedCategoryIds.includes(id);
+
+    if (id === GENERAL_ID) {
+      if (selected) {
+        // Deselect all-around → keep only Others if it was picked; drop the rest + their jobs/skills
+        const keep = selectedCategoryIds.filter(x => x === OTHERS_ID);
+        setSelectedCategoryIds(keep);
+        const keepJobs = jobIdsIn(keep);
+        setSelectedJobIds(selectedJobIds.filter(x => keepJobs.includes(x)));
+        const keepSkills = availableSkills.filter(s => keepJobs.includes(s.job_id)).map(s => s.skill_id);
+        setSelectedSkillIds(selectedSkillIds.filter(x => keepSkills.includes(x)));
       } else {
-        const next = [...selectedCategoryIds, id];
-        const others = next.filter(x => x !== 1).length;
-        setSelectedCategoryIds(others === allOther.length ? [...allOther, 1] : next);
+        // Select all-around → all 5 categories + ALL their job roles auto-checked
+        const cats = selectedCategoryIds.includes(OTHERS_ID) ? [...pesoFive, OTHERS_ID] : pesoFive;
+        setSelectedCategoryIds(cats);
+        setSelectedJobIds(Array.from(new Set([...selectedJobIds, ...jobIdsIn(pesoFive)])));
+      }
+      return;
+    }
+
+    // A specific (non-general) category
+    if (selected) {
+      const next = selectedCategoryIds.filter(x => x !== id && x !== GENERAL_ID);
+      setSelectedCategoryIds(next);
+      const rmJobs = availableJobs.filter(j => j.category_id === id).map(j => j.job_id);
+      setSelectedJobIds(selectedJobIds.filter(x => !rmJobs.includes(x)));
+      const rmSkills = availableSkills.filter(s => rmJobs.includes(s.job_id)).map(s => s.skill_id);
+      setSelectedSkillIds(selectedSkillIds.filter(x => !rmSkills.includes(x)));
+    } else {
+      const next = [...selectedCategoryIds, id];
+      // If all 5 PESO categories end up selected, promote to General + auto-select all their roles
+      if (pesoFive.every(c => next.includes(c))) {
+        const cats = next.includes(OTHERS_ID) ? [...pesoFive, OTHERS_ID] : pesoFive;
+        setSelectedCategoryIds(cats);
+        setSelectedJobIds(Array.from(new Set([...selectedJobIds, ...jobIdsIn(pesoFive)])));
+      } else {
+        setSelectedCategoryIds(next);
       }
     }
   };
@@ -398,7 +424,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         if (!province || !municipality || !barangay) return 'Province, municipality and barangay are required';
         return null;
       case 'professional':
-        if (!bio.trim() || bio.trim().length < 15) return 'Bio must be at least 15 characters';
+        // Bio is optional — only validate length if the helper actually typed one.
+        if (bio.trim() && bio.trim().length < 15) return 'If you add a bio, please make it at least 15 characters';
         return null;
       case 'skills':
         if (!selectedCategoryIds.length) return 'Select at least one job category';
@@ -841,6 +868,11 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       {/* Selection modals */}
       <SelectionModal
         visible={jobModalVisible} onClose={() => setJobModalVisible(false)} title="Select Job Roles"
+        subtitle={isGeneralHousehelpSelected
+          ? 'All-around — roles across every category'
+          : selectedCategories.length
+            ? `Roles under: ${selectedCategories.map((c: any) => c.category_name).join(', ')}`
+            : 'Pick a category first'}
         data={filteredJobs} selectedIds={selectedJobIds} onToggle={toggleJob}
         searchValue={jobSearch} onSearchChange={setJobSearch} idKey="job_id" nameKey="job_title" showSearch
         customData={customJobs} onAddCustom={(j: string) => setCustomJobs([...customJobs, j])}

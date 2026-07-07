@@ -7,6 +7,7 @@ import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { FontFamily } from '@/constants/GlobalStyles';
 import type { JobPost } from '@/hooks/helper/useBrowseJobs';
 import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
+import { getCategoryIcon } from '@/app/(helper)/browse/browseHelpers';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -96,7 +97,7 @@ export function RecommendedJobCard({
 
       {/* Category icon */}
       <View style={s.iconCircle}>
-        <Ionicons name="home" size={20} color="#FFFFFF" />
+        <Ionicons name={getCategoryIcon(job) as any} size={20} color="#FFFFFF" />
       </View>
 
       {/* Info */}

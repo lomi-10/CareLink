@@ -6,7 +6,7 @@ import { styles } from './EditProfile.styles';
 const isWeb = Platform.OS === 'web';
 
 export function SelectionModal({
-  visible, onClose, title, data, selectedIds, onToggle,
+  visible, onClose, title, subtitle, data, selectedIds, onToggle,
   searchValue, onSearchChange, idKey, nameKey, showSearch = true,
   customData = [], onAddCustom, onRemoveCustom
 }: any) {
@@ -15,7 +15,10 @@ export function SelectionModal({
       <View style={isWeb ? styles.webOverlay : { flex: 1 }}>
         <View style={[styles.modalContainer, isWeb && styles.webSmallContainer]}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{title}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.modalTitle}>{title}</Text>
+              {!!subtitle && <Text style={{ fontSize: 12.5, color: '#8A6C4E', marginTop: 2 }}>{subtitle}</Text>}
+            </View>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color="#333" />
             </TouchableOpacity>

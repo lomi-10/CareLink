@@ -40,15 +40,20 @@ export function fmtPeriodShort(p: string): string {
   return p;
 }
 
-/** Maps a job's first category to an Ionicons glyph name. */
+/** Maps a job's category (one of the 5 PESO categories + Others) to an Ionicons glyph. */
 export function getCategoryIcon(job: JobPost): string {
   const cat = ((job.categories?.[0] ?? job.category_name ?? '')).toLowerCase();
-  if (cat.includes('garden'))                        return 'leaf-outline';
-  if (cat.includes('child') || cat.includes('baby')) return 'happy-outline';
-  if (cat.includes('cook') || cat.includes('food'))  return 'restaurant-outline';
-  if (cat.includes('driver'))                        return 'car-outline';
-  if (cat.includes('elder') || cat.includes('nurs')) return 'medkit-outline';
-  return 'home-outline';
+  if (cat.includes('yaya') || cat.includes('nanny') || cat.includes('child') || cat.includes('baby')) return 'happy-outline';
+  if (cat.includes('cook') || cat.includes('food'))          return 'restaurant-outline';
+  if (cat.includes('garden') || cat.includes('landscape'))   return 'leaf-outline';
+  if (cat.includes('laundry') || cat.includes('iron'))       return 'shirt-outline';
+  if (cat.includes('general') || cat.includes('househelp'))  return 'home-outline';
+  // "Others" — non-standard jobs like Driving, Errands, Pet care → gear/tools
+  if (cat.includes('other'))                                 return 'construct-outline';
+  // job-level fallbacks (when only a job title is available)
+  if (cat.includes('driver'))                                return 'car-outline';
+  if (cat.includes('elder') || cat.includes('nurs'))         return 'medkit-outline';
+  return 'construct-outline';
 }
 
 // ─── Data grouping ────────────────────────────────────────────────────────────
