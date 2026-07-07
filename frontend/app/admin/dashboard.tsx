@@ -3,84 +3,99 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
-    ActivityIndicator,
+  ActivityIndicator, Modal, SafeAreaView, ScrollView, StatusBar,
+  StyleSheet, Text, TouchableOpacity, useWindowDimensions, View,
 } from "react-native";
 import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import API_URL from "../../constants/api";
 import { fetchAdminComplaints } from "@/lib/complaintsApi";
 
+// ── Dark palette (reference) ──────────────────────────────────────────────────
+const BG      = "#0B1526";
+const PANEL   = "#132038";
+const PANEL2  = "#0F1A2E";
+const BORDER  = "rgba(255,255,255,0.08)";
+const TEXT    = "#EAF0F8";
+const MUTED   = "#8595AD";
+const SUBTLE  = "#5C6B85";
+const BLUE    = "#3B82F6";
+const GREEN   = "#22C55E";
+const RED     = "#EF4444";
+const AMBER   = "#F59E0B";
+const PURPLE  = "#8B5CF6";
+
+function timeAgo(iso?: string): string {
+  if (!iso) return "";
+  const t = new Date(iso.replace(" ", "T")).getTime();
+  if (isNaN(t)) return "";
+  const s = Math.floor((Date.now() - t) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+const HEALTH = [
+  { label: "API Gateway", icon: "git-network-outline" as const },
+  { label: "Database", icon: "server-outline" as const },
+  { label: "Messaging Service", icon: "chatbubbles-outline" as const },
+  { label: "AI Matching Service", icon: "sparkles-outline" as const },
+  { label: "File Storage", icon: "folder-outline" as const },
+];
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const isWideScreen = width > 768;
+  const wide = width > 900;
 
-  const [adminName, setAdminName] = useState("Super Admin");
+  const [adminName, setAdminName] = useState("Admin");
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
-  const [stats, setStats] = useState({ total: 0, pending: 0, logs: 0, complaints: 0 });
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ total: 0, pending: 0, peso: 0, logs: 0, complaintsOpen: 0 });
+  const [complaints, setComplaints] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
 
-  useEffect(() => {
-    loadUser();
-    fetchStats();
-  }, []);
+  useEffect(() => { loadUser(); fetchAll(); }, []);
 
   const loadUser = async () => {
-    const userData = await AsyncStorage.getItem("user_data");
-    if (userData) {
-      const user = JSON.parse(userData);
-      setAdminName(user.first_name || "Super Admin");
-    }
+    const raw = await AsyncStorage.getItem("user_data");
+    if (raw) setAdminName(JSON.parse(raw)?.first_name || "Admin");
   };
 
-  const fetchStats = async () => {
+  const fetchAll = async () => {
     try {
       const raw = await AsyncStorage.getItem("user_data");
-      const adminUserId = raw ? JSON.parse(raw)?.user_id : "";
+      const adminUid = raw ? Number(JSON.parse(raw)?.user_id) : 0;
 
-      // Fetch users count
-      const userResponse = await fetch(`${API_URL}/admin_get_users.php`);
-      const users = await userResponse.json();
+      const users = await (await fetch(`${API_URL}/admin_get_users.php`)).json().catch(() => []);
       if (Array.isArray(users)) {
-        setStats(prev => ({
-          ...prev,
+        setStats((p) => ({
+          ...p,
           total: users.length,
-          pending: users.filter(u => u.status === 'pending').length
+          pending: users.filter((u: any) => u.status === "pending").length,
+          peso: users.filter((u: any) => u.user_type === "peso").length,
         }));
       }
 
-      // Fetch logs count
-      const logResponse = await fetch(`${API_URL}/admin/admin_get_logs.php?admin_user_id=${adminUserId}`);
-      const logs = await logResponse.json();
-      if (Array.isArray(logs)) {
-        setStats(prev => ({ ...prev, logs: logs.length }));
+      const logList = await (await fetch(`${API_URL}/admin/admin_get_logs.php?admin_user_id=${adminUid}`)).json().catch(() => []);
+      if (Array.isArray(logList)) {
+        setLogs(logList.slice(0, 5));
+        setStats((p) => ({ ...p, logs: logList.length }));
       }
 
-      const userRaw = await AsyncStorage.getItem("user_data");
-      const adminUid = userRaw ? Number(JSON.parse(userRaw).user_id) : 0;
       if (adminUid) {
         const cRes = await fetchAdminComplaints(adminUid);
         const list = cRes.success && cRes.complaints ? cRes.complaints : [];
-        const open = list.filter((c) => c.status === "Pending").length;
-        setStats((prev) => ({ ...prev, complaints: open }));
+        const open = list.filter((c: any) => c.status === "Pending");
+        setComplaints(open.slice(0, 4));
+        setStats((p) => ({ ...p, complaintsOpen: open.length }));
       }
-      
-    } catch (error) {
-      console.error("Error fetching stats:", error);
+    } catch (e) {
+      console.error("admin dashboard:", e);
     } finally {
       setLoading(false);
     }
   };
-
-  const handleLogout = () => setLogoutModalVisible(true);
 
   const confirmLogout = async () => {
     await AsyncStorage.clear();
@@ -88,139 +103,225 @@ export default function AdminDashboard() {
     router.replace("/welcome");
   };
 
-  const SidebarItem = ({ icon, label, onPress, isActive = false }: any) => (
-    <TouchableOpacity 
-      style={[styles.sidebarItem, isActive && styles.sidebarItemActive]} 
-      onPress={onPress}
-    >
-      <Ionicons 
-        name={icon} 
-        size={22} 
-        color={isActive ? "#5856D6" : "#666"} 
-        style={{ marginRight: 12 }}
-      />
-      <Text style={[styles.sidebarText, isActive && styles.sidebarTextActive]}>
-        {label}
-      </Text>
+  const today = new Date().toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" });
+
+  const STAT_CARDS = [
+    { icon: "people" as const, color: BLUE,   value: stats.total,          label: "Total Users",          sub: "All system users" },
+    { icon: "business" as const, color: PURPLE, value: stats.peso,          label: "PESO Accounts",        sub: "Verified staff" },
+    { icon: "time" as const, color: AMBER,    value: stats.pending,         label: "Pending Verifications", sub: "Awaiting review" },
+    { icon: "warning" as const, color: RED,   value: stats.complaintsOpen,  label: "Open Complaints",      sub: "Requires attention" },
+    { icon: "pulse" as const, color: GREEN,   value: stats.logs,            label: "Audit Log Entries",    sub: "Recorded actions" },
+  ];
+
+  // ── Sidebar ──
+  const NavItem = ({ icon, label, active, badge, onPress }: any) => (
+    <TouchableOpacity style={[ns.item, active && ns.itemActive]} onPress={onPress} activeOpacity={0.8}>
+      <Ionicons name={icon} size={18} color={active ? "#fff" : MUTED} />
+      <Text style={[ns.itemText, active && { color: "#fff" }]}>{label}</Text>
+      {badge > 0 && <View style={ns.badge}><Text style={ns.badgeText}>{badge}</Text></View>}
     </TouchableOpacity>
   );
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-      
-      <View style={[styles.container, isWideScreen ? styles.containerRow : styles.containerCol]}>
-        
-        {/* SIDEBAR */}
-        <View style={[styles.sidebar, isWideScreen ? styles.sidebarWide : styles.sidebarMobile]}>
-          <View style={styles.sidebarHeader}>
-            <CareLinkLogoMark size={36} containerStyle={{ marginRight: 10 }} />
-            <View>
-              <Text style={styles.logoText}>CareLink</Text>
-              <Text style={styles.logoSubtext}>Super Admin Portal</Text>
-            </View>
-          </View>
-
-          <ScrollView style={styles.navItems}>
-            <Text style={styles.navLabel}>SYSTEM</Text>
-            <SidebarItem icon="grid" label="Dashboard" isActive={true} onPress={() => {}} />
-            <SidebarItem icon="list" label="Log Trail" onPress={() => router.push("/admin/logs")} />
-            <SidebarItem icon="warning" label="Complaints" onPress={() => router.push("/admin/complaints")} />
-            
-            <Text style={[styles.navLabel, { marginTop: 20 }]}>MANAGEMENT</Text>
-            <SidebarItem 
-              icon="people" 
-              label="User Verification" 
-              onPress={() => router.push("/admin/user_management")} 
-            />
-            <SidebarItem 
-              icon="person-add" 
-              label="Create Admin/PESO" 
-              onPress={() => router.push("/admin/create_admin_user")} 
-            />
-          </ScrollView>
-
-          <TouchableOpacity style={styles.sidebarLogout} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={22} color="#FF3B30" />
-            <Text style={styles.logoutTextSide}>Log Out</Text>
-          </TouchableOpacity>
+  const Sidebar = () => (
+    <View style={[ns.sidebar, wide ? { width: 250 } : { width: "100%" }]}>
+      <View style={ns.brandRow}>
+        <CareLinkLogoMark size={34} containerStyle={{ marginRight: 10 }} />
+        <View>
+          <Text style={ns.brand}>CareLink</Text>
+          <Text style={ns.brandSub}>Super Admin Portal</Text>
         </View>
+      </View>
 
-        {/* MAIN CONTENT */}
-        <View style={styles.mainContent}>
-          <View style={styles.contentHeader}>
-            <View>
-              <Text style={styles.pageTitle}>Admin Dashboard</Text>
-              <Text style={styles.pageSubtitle}>System Administrator: {adminName}</Text>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <Text style={ns.group}>OVERVIEW</Text>
+        <NavItem icon="grid" label="Dashboard" active onPress={() => {}} />
+
+        <Text style={ns.group}>USER & ADMIN</Text>
+        <NavItem icon="people" label="User Verification" onPress={() => router.push("/admin/user_management")} />
+        <NavItem icon="person-add" label="Admin & PESO Accounts" onPress={() => router.push("/admin/create_admin_user")} />
+
+        <Text style={ns.group}>SYSTEM</Text>
+        <NavItem icon="list" label="Audit Trail" onPress={() => router.push("/admin/logs")} />
+        <NavItem icon="warning" label="Complaints" badge={stats.complaintsOpen} onPress={() => router.push("/admin/complaints")} />
+      </ScrollView>
+
+      <TouchableOpacity style={ns.logout} onPress={() => setLogoutModalVisible(true)} activeOpacity={0.85}>
+        <Ionicons name="log-out-outline" size={18} color={RED} />
+        <Text style={ns.logoutText}>Log Out</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const Panel = ({ title, badge, children, onMore, style }: any) => (
+    <View style={[ps.panel, style]}>
+      <View style={ps.panelHead}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text style={ps.panelTitle}>{title}</Text>
+          {badge > 0 && <View style={ps.headBadge}><Text style={ps.headBadgeText}>{badge}</Text></View>}
+        </View>
+        {onMore && (
+          <TouchableOpacity onPress={onMore} activeOpacity={0.7}>
+            <Text style={ps.more}>View all →</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {children}
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
+      <StatusBar barStyle="light-content" />
+      <View style={{ flex: 1, flexDirection: wide ? "row" : "column" }}>
+        <Sidebar />
+
+        {/* MAIN */}
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: wide ? 26 : 16, paddingBottom: 60 }}>
+          {/* Header */}
+          <View style={hs.header}>
+            <View style={{ flex: 1 }}>
+              <Text style={hs.hello}>Welcome back, {adminName}! 👋</Text>
+              <Text style={hs.helloSub}>Super Administrator Dashboard Overview</Text>
             </View>
-            <View style={styles.profilePill}>
-              <Ionicons name="person-circle" size={32} color="#ccc" />
+            <View style={hs.headerRight}>
+              <View style={hs.datePill}>
+                <Ionicons name="calendar-outline" size={14} color={MUTED} />
+                <Text style={hs.dateText}>{today}</Text>
+              </View>
+              <TouchableOpacity style={hs.bell} onPress={() => router.push("/admin/complaints")} activeOpacity={0.8}>
+                <Ionicons name="notifications-outline" size={18} color={TEXT} />
+                {stats.complaintsOpen > 0 && <View style={hs.bellDot} />}
+              </TouchableOpacity>
+              <View style={hs.avatar}><Ionicons name="person" size={18} color="#fff" /></View>
             </View>
           </View>
 
           {loading ? (
-            <ActivityIndicator size="large" color="#5856D6" style={{ marginTop: 50 }} />
+            <ActivityIndicator size="large" color={BLUE} style={{ marginTop: 80 }} />
           ) : (
-            <ScrollView contentContainerStyle={{paddingBottom: 50}}>
-              <View style={styles.statsGrid}>
-                <View style={styles.statCard}>
-                  <View style={[styles.statIcon, { backgroundColor: '#EBEBF5' }]}>
-                    <Ionicons name="list" size={24} color="#5856D6" />
+            <>
+              {/* Stat cards */}
+              <View style={cs.statRow}>
+                {STAT_CARDS.map((c) => (
+                  <View key={c.label} style={cs.statCard}>
+                    <View style={[cs.statIcon, { backgroundColor: c.color + "22" }]}>
+                      <Ionicons name={c.icon} size={20} color={c.color} />
+                    </View>
+                    <Text style={cs.statValue}>{Number(c.value).toLocaleString()}</Text>
+                    <Text style={cs.statLabel}>{c.label}</Text>
+                    <Text style={cs.statSub}>{c.sub}</Text>
                   </View>
-                  <View>
-                    <Text style={styles.statNumber}>{stats.logs}</Text>
-                    <Text style={styles.statLabel}>Audit Logs</Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.statCard}
-                  onPress={() => router.push("/admin/complaints")}
-                  activeOpacity={0.85}
-                >
-                  <View style={[styles.statIcon, { backgroundColor: '#FFD6D6' }]}>
-                    <Ionicons name="warning" size={24} color="#FF3B30" />
-                  </View>
-                  <View>
-                    <Text style={styles.statNumber}>{stats.complaints}</Text>
-                    <Text style={styles.statLabel}>Open Complaints</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <View style={styles.statCard}>
-                  <View style={[styles.statIcon, { backgroundColor: '#E8F5E9' }]}>
-                    <Ionicons name="people" size={24} color="#34C759" />
-                  </View>
-                  <View>
-                    <Text style={styles.statNumber}>{stats.total}</Text>
-                    <Text style={styles.statLabel}>Total Users</Text>
-                  </View>
-                </View>
+                ))}
               </View>
 
-              <View style={styles.sectionBox}>
-                <Text style={styles.sectionTitle}>Recent System Activity</Text>
-                <View style={styles.placeholderBox}>
-                  <Text style={{color: '#999'}}>System logs and audit trails will appear here</Text>
-                </View>
+              {/* Panels grid */}
+              <View style={[ps.grid, !wide && { flexDirection: "column" }]}>
+                {/* Platform Health */}
+                <Panel title="Platform Health" style={wide ? { flex: 1 } : {}}>
+                  {HEALTH.map((h) => (
+                    <View key={h.label} style={ps.healthRow}>
+                      <Ionicons name={h.icon} size={16} color={MUTED} />
+                      <Text style={ps.healthLabel}>{h.label}</Text>
+                      <View style={ps.opPill}>
+                        <View style={ps.opDot} />
+                        <Text style={ps.opText}>Operational</Text>
+                      </View>
+                    </View>
+                  ))}
+                  <View style={ps.healthFooter}>
+                    <Ionicons name="checkmark-circle" size={15} color={GREEN} />
+                    <Text style={ps.healthFooterText}>All systems operational</Text>
+                  </View>
+                </Panel>
+
+                {/* High Priority Complaints */}
+                <Panel title="Open Complaints" badge={stats.complaintsOpen}
+                  onMore={() => router.push("/admin/complaints")} style={wide ? { flex: 1 } : {}}>
+                  {complaints.length === 0 ? (
+                    <Text style={ps.empty}>No open complaints 🎉</Text>
+                  ) : complaints.map((c) => {
+                    const sev = (c.severity || "").toLowerCase();
+                    const sc = sev === "high" ? RED : sev === "medium" ? AMBER : SUBTLE;
+                    return (
+                      <View key={c.complaint_id} style={ps.listRow}>
+                        <View style={[ps.dot, { backgroundColor: sc }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={ps.listTitle} numberOfLines={1}>{c.subject || "Complaint"}</Text>
+                          <Text style={ps.listMeta} numberOfLines={1}>
+                            Case #{c.complaint_id} · {c.category || "general"}
+                          </Text>
+                        </View>
+                        <View style={{ alignItems: "flex-end" }}>
+                          {!!c.severity && (
+                            <View style={[ps.sevPill, { backgroundColor: sc + "22" }]}>
+                              <Text style={[ps.sevText, { color: sc }]}>{c.severity}</Text>
+                            </View>
+                          )}
+                          <Text style={ps.timeText}>{timeAgo(c.created_at)}</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </Panel>
               </View>
-            </ScrollView>
+
+              <View style={[ps.grid, !wide && { flexDirection: "column" }]}>
+                {/* Recent Audit Activity */}
+                <Panel title="Recent Audit Activity" onMore={() => router.push("/admin/logs")} style={wide ? { flex: 1 } : {}}>
+                  {logs.length === 0 ? (
+                    <Text style={ps.empty}>No recent activity.</Text>
+                  ) : logs.map((l) => (
+                    <View key={l.log_id} style={ps.listRow}>
+                      <View style={[ps.auditIcon, { backgroundColor: (l.status === "Failed" ? RED : BLUE) + "22" }]}>
+                        <Ionicons name={l.status === "Failed" ? "alert-circle" : "checkmark-circle"} size={15}
+                          color={l.status === "Failed" ? RED : BLUE} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={ps.listTitle} numberOfLines={1}>{l.action || "Action"}</Text>
+                        <Text style={ps.listMeta} numberOfLines={1}>
+                          {l.username ? `${l.username}` : "System"}{l.role ? ` · ${l.role}` : ""}
+                        </Text>
+                      </View>
+                      <Text style={ps.timeText}>{timeAgo(l.timestamp)}</Text>
+                    </View>
+                  ))}
+                </Panel>
+
+                {/* Quick Actions */}
+                <Panel title="Quick Actions" style={wide ? { flex: 1 } : {}}>
+                  {[
+                    { icon: "person-add" as const, label: "Create PESO / Admin account", color: PURPLE, to: "/admin/create_admin_user" },
+                    { icon: "people" as const, label: "Review user verifications", color: BLUE, to: "/admin/user_management" },
+                    { icon: "warning" as const, label: "Manage complaints", color: RED, to: "/admin/complaints" },
+                    { icon: "list" as const, label: "View full audit trail", color: GREEN, to: "/admin/logs" },
+                  ].map((a) => (
+                    <TouchableOpacity key={a.label} style={ps.qaRow} onPress={() => router.push(a.to as any)} activeOpacity={0.8}>
+                      <View style={[ps.qaIcon, { backgroundColor: a.color + "22" }]}>
+                        <Ionicons name={a.icon} size={16} color={a.color} />
+                      </View>
+                      <Text style={ps.qaLabel}>{a.label}</Text>
+                      <Ionicons name="chevron-forward" size={16} color={SUBTLE} />
+                    </TouchableOpacity>
+                  ))}
+                </Panel>
+              </View>
+            </>
           )}
-        </View>
+        </ScrollView>
       </View>
 
-      {/* Logout Modal */}
-      <Modal animationType="fade" transparent={true} visible={logoutModalVisible}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Logout</Text>
-            <Text style={styles.modalMessage}>Are you sure you want to log out?</Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setLogoutModalVisible(false)}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+      {/* Logout modal */}
+      <Modal animationType="fade" transparent visible={logoutModalVisible}>
+        <View style={ms.overlay}>
+          <View style={ms.box}>
+            <Text style={ms.title}>Log Out</Text>
+            <Text style={ms.msg}>Are you sure you want to log out?</Text>
+            <View style={ms.btns}>
+              <TouchableOpacity style={[ms.btn, ms.cancel]} onPress={() => setLogoutModalVisible(false)}>
+                <Text style={ms.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalButton, styles.logoutButton]} onPress={confirmLogout}>
-                <Text style={styles.logoutButtonText}>Logout</Text>
+              <TouchableOpacity style={[ms.btn, ms.confirm]} onPress={confirmLogout}>
+                <Text style={ms.confirmText}>Log Out</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -230,255 +331,88 @@ export default function AdminDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F8F9FA", // Light background
-  },
-  // Layout Containers
-  container: {
-    flex: 1,
-  },
-  containerRow: {
-    flexDirection: "row", // Side by Side for Web/Tablet
-  },
-  containerCol: {
-    flexDirection: "column", // Stacked for Mobile
-  },
+// ── Sidebar styles ──
+const ns = StyleSheet.create({
+  sidebar: { backgroundColor: PANEL2, borderRightWidth: 1, borderRightColor: BORDER, padding: 16, height: "100%" },
+  brandRow: { flexDirection: "row", alignItems: "center", marginBottom: 22, paddingHorizontal: 4 },
+  brand: { fontSize: 18, fontWeight: "900", color: "#fff" },
+  brandSub: { fontSize: 10, color: MUTED, fontWeight: "700", letterSpacing: 0.5, marginTop: 1 },
+  group: { fontSize: 10.5, fontWeight: "800", color: SUBTLE, letterSpacing: 1, marginTop: 18, marginBottom: 8, marginLeft: 6 },
+  item: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 10 },
+  itemActive: { backgroundColor: BLUE },
+  itemText: { fontSize: 14, fontWeight: "600", color: MUTED, flex: 1 },
+  badge: { backgroundColor: RED, borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" },
+  badgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
+  logout: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: BORDER, marginTop: 8 },
+  logoutText: { color: RED, fontSize: 14, fontWeight: "700" },
+});
 
-  // --- SIDEBAR ---
-  sidebar: {
-    backgroundColor: "#fff",
-    borderRightWidth: 1,
-    borderRightColor: "#E5E5EA",
-    paddingVertical: 20,
-    paddingHorizontal: 15,
-    justifyContent: "space-between",
-  },
-  sidebarWide: {
-    width: 260, // Fixed width for sidebar
-    height: "100%",
-  },
-  sidebarMobile: {
-    width: "100%",
-    height: "auto",
-    paddingBottom: 10,
-    borderRightWidth: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5EA",
-  },
-  sidebarHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 30,
-    paddingHorizontal: 10,
-  },
-  logoText: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#004080",
-  },
-  logoSubtext: {
-    fontSize: 10,
-    color: "#666",
-    fontWeight: "600",
-    letterSpacing: 0.5,
-  },
-  navLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#999",
-    marginBottom: 10,
-    marginLeft: 10,
-    letterSpacing: 1,
-  },
-  navItems: {
-    flex: 1,
-  },
-  sidebarItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-    marginBottom: 5,
-  },
-  sidebarItemActive: {
-    backgroundColor: "#F0F7FF",
-  },
-  sidebarText: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#444",
-  },
-  sidebarTextActive: {
-    color: "#007AFF",
-    fontWeight: "bold",
-  },
-  sidebarLogout: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    marginTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  logoutTextSide: {
-    marginLeft: 10,
-    color: '#FF3B30',
-    fontWeight: '600',
-  },
+// ── Header styles ──
+const hs = StyleSheet.create({
+  header: { flexDirection: "row", alignItems: "center", marginBottom: 22, gap: 12, flexWrap: "wrap" },
+  hello: { fontSize: 24, fontWeight: "900", color: TEXT },
+  helloSub: { fontSize: 13, color: MUTED, marginTop: 3 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
+  datePill: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: PANEL, borderWidth: 1, borderColor: BORDER, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
+  dateText: { color: TEXT, fontSize: 12.5, fontWeight: "600" },
+  bell: { width: 40, height: 40, borderRadius: 10, backgroundColor: PANEL, borderWidth: 1, borderColor: BORDER, alignItems: "center", justifyContent: "center" },
+  bellDot: { position: "absolute", top: 9, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: RED, borderWidth: 1.5, borderColor: PANEL },
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: BLUE, alignItems: "center", justifyContent: "center" },
+});
 
-  // --- MAIN CONTENT ---
-  mainContent: {
-    flex: 1,
-    backgroundColor: "#F8F9FA",
-    padding: 20,
-  },
-  contentHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 25,
-  },
-  pageTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  pageSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 4,
-  },
-  profilePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+// ── Stat card styles ──
+const cs = StyleSheet.create({
+  statRow: { flexDirection: "row", gap: 14, flexWrap: "wrap", marginBottom: 16 },
+  statCard: { flex: 1, minWidth: 150, backgroundColor: PANEL, borderWidth: 1, borderColor: BORDER, borderRadius: 16, padding: 16 },
+  statIcon: { width: 40, height: 40, borderRadius: 11, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  statValue: { fontSize: 26, fontWeight: "900", color: TEXT },
+  statLabel: { fontSize: 13, fontWeight: "700", color: TEXT, marginTop: 2 },
+  statSub: { fontSize: 11.5, color: MUTED, marginTop: 2 },
+});
 
-  // Stats
-  statsGrid: {
-    flexDirection: "row",
-    gap: 15,
-    flexWrap: "wrap", // Allows wrapping on mobile
-    marginBottom: 30,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: 140, // Ensure cards don't get too small
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 15,
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "#666",
-  },
+// ── Panel styles ──
+const ps = StyleSheet.create({
+  grid: { flexDirection: "row", gap: 14, marginBottom: 14 },
+  panel: { backgroundColor: PANEL, borderWidth: 1, borderColor: BORDER, borderRadius: 16, padding: 16 },
+  panelHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  panelTitle: { fontSize: 15, fontWeight: "800", color: TEXT },
+  headBadge: { backgroundColor: RED, borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" },
+  headBadgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
+  more: { fontSize: 12.5, fontWeight: "700", color: BLUE },
+  empty: { color: MUTED, fontSize: 13, paddingVertical: 16, textAlign: "center" },
 
-  // Sections
-  sectionBox: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-  },
-  placeholderBox: {
-    height: 150,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderStyle: 'dashed',
-  },
+  healthRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
+  healthLabel: { flex: 1, color: TEXT, fontSize: 13, fontWeight: "600" },
+  opPill: { flexDirection: "row", alignItems: "center", gap: 6 },
+  opDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: GREEN },
+  opText: { color: GREEN, fontSize: 12, fontWeight: "700" },
+  healthFooter: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: BORDER },
+  healthFooterText: { color: GREEN, fontSize: 12.5, fontWeight: "700" },
 
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  modalContainer: {
-    backgroundColor: "#fff",
-    padding: 25,
-    borderRadius: 12,
-    width: "85%",
-    maxWidth: 350,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-    color: "#333",
-  },
-  modalMessage: {
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 20,
-    color: "#666",
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    gap: 10,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  cancelButton: { 
-    backgroundColor: "#E5E5EA" 
-  },
-  logoutButton: { 
-    backgroundColor: "#FF3B30" 
-  },
-  cancelButtonText: { 
-    color: "#333", 
-    fontWeight: "600", 
-    fontSize: 16 
-  },
-  logoutButtonText: { 
-    color: "#fff", 
-    fontWeight: "600", 
-    fontSize: 16 
-  },
+  listRow: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 9, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: BORDER },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  auditIcon: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  listTitle: { color: TEXT, fontSize: 13, fontWeight: "700" },
+  listMeta: { color: MUTED, fontSize: 11.5, marginTop: 1 },
+  sevPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  sevText: { fontSize: 10.5, fontWeight: "800" },
+  timeText: { color: SUBTLE, fontSize: 11, marginTop: 3 },
+
+  qaRow: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 11, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: BORDER },
+  qaIcon: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  qaLabel: { flex: 1, color: TEXT, fontSize: 13, fontWeight: "600" },
+});
+
+// ── Modal styles ──
+const ms = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 22 },
+  box: { backgroundColor: PANEL, borderWidth: 1, borderColor: BORDER, borderRadius: 18, padding: 22, width: "100%", maxWidth: 360, alignItems: "center" },
+  title: { fontSize: 18, fontWeight: "900", color: TEXT },
+  msg: { fontSize: 14, color: MUTED, textAlign: "center", marginTop: 8, marginBottom: 18 },
+  btns: { flexDirection: "row", gap: 10, alignSelf: "stretch" },
+  btn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
+  cancel: { backgroundColor: PANEL2, borderWidth: 1, borderColor: BORDER },
+  cancelText: { color: TEXT, fontWeight: "800", fontSize: 14 },
+  confirm: { backgroundColor: RED },
+  confirmText: { color: "#fff", fontWeight: "800", fontSize: 14 },
 });
