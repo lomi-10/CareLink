@@ -22,6 +22,7 @@ import {
   HelperStatsCard, HelperQuickActions,
 } from '@/components/helper/home';
 import { WorkModeDashboard, WorkModeTabBar } from '@/components/helper/work';
+import { ProfileSetupGuide } from '@/components/helper/home/ProfileSetupGuide';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { ymdLocal } from '@/lib/helperWorkApi';
 import type { PendingReview } from '@/lib/reviewsApi';
@@ -207,6 +208,8 @@ export default function HelperHome() {
                 profileImage={profileImage}
               />
 
+              <ProfileSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
+
               <PendingPlacementReviewsBanner
                 userType="helper"
                 accentColor={ORANGE}
@@ -344,6 +347,8 @@ export default function HelperHome() {
                 userName={getFullName()}
                 profileImage={profileImage}
               />
+
+            <ProfileSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
 
             <PendingPlacementReviewsBanner
               userType="helper"

@@ -3,8 +3,8 @@
 // PHP: helper/get_profile.php (via useHelperProfile)
 
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator, ScrollView,
   Text, TouchableOpacity, View,
@@ -22,6 +22,9 @@ export default function PersonalInfoScreen() {
   const router = useRouter();
   const { profileData, loading, refresh } = useHelperProfile();
   const [editOpen, setEditOpen] = useState(false);
+  // Guided onboarding deep-links here with ?edit=1 to open the editor directly.
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  useEffect(() => { if (edit === '1') setEditOpen(true); }, [edit]);
 
   if (loading) {
     return (
