@@ -181,7 +181,7 @@ try {
             'helper_photo' => $row['profile_image']
                 ? (stripos($row['profile_image'], 'http') === 0
                     ? $row['profile_image']
-                    : "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/" . $row['profile_image'])
+                    : carelink_url_scheme() . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/" . $row['profile_image'])
                 : null,
             'helper_age' => $age,
             'helper_gender' => $row['gender'],

@@ -163,7 +163,7 @@ try {
                 $targetFilePath = $uploadDir . $newFileName;
 
                 if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $targetFilePath)) {
-                    $profile_image_url = "http://" . $_SERVER['SERVER_NAME'] . "/carelink_api/uploads/profiles/" . $newFileName;
+                    $profile_image_url = carelink_url_scheme() . $_SERVER['SERVER_NAME'] . "/carelink_api/uploads/profiles/" . $newFileName;
                     error_log("✅ Image uploaded: $profile_image_url");
                 } else {
                     error_log("❌ Move failed. Check folder permissions for: $uploadDir");

@@ -21,7 +21,7 @@ try {
     if ($parent_id <= 0) hist_out(false, 'parent_id required');
     carelink_require_self($requester_id, $parent_id, 'You are not allowed to view this placement history.');
 
-    $base_url = 'http://' . $_SERVER['HTTP_HOST'] . '/carelink_api/uploads/profiles/';
+    $base_url = carelink_url_scheme() . $_SERVER['HTTP_HOST'] . '/carelink_api/uploads/profiles/';
 
     $sql = "
         SELECT

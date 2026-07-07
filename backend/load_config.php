@@ -23,6 +23,23 @@ if (!isset($GLOBALS['__carelink_cfg'])) {
     }
 }
 
+if (!function_exists('carelink_url_scheme')) {
+    /**
+     * Correct URL scheme for building absolute asset URLs. Returns 'https://'
+     * when the request is served over HTTPS (Hostinger/SSL, or behind a proxy),
+     * else 'http://' (local Laragon). Avoids mixed-content blocking of images
+     * when the frontend is on HTTPS.
+     */
+    function carelink_url_scheme(): string
+    {
+        $https =
+            (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+            || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443);
+        return $https ? 'https://' : 'http://';
+    }
+}
+
 if (!function_exists('carelink_cfg')) {
     /**
      * Read a config value: environment variable first, then config.local.php,

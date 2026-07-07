@@ -59,7 +59,7 @@ try {
         if (stripos($img, 'http') === 0) {
             $profile['profile_image'] = $img;
         } else {
-            $profile['profile_image'] = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/" . $img;
+            $profile['profile_image'] = carelink_url_scheme() . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/" . $img;
         }
     }
 

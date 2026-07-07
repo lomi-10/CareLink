@@ -66,8 +66,8 @@ try {
     }
     
     $documents = array();
-    $doc_base_url = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/documents/";
-    $profile_base_url = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
+    $doc_base_url = carelink_url_scheme() . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/documents/";
+    $profile_base_url = carelink_url_scheme() . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
     
     while ($row = $result->fetch_assoc()) {
         $row['document_id'] = intval($row['document_id']);

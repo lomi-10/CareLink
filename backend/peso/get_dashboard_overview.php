@@ -52,7 +52,7 @@ function buildProfileImageUrl(?string $img): ?string
     if (stripos($img, 'http://') === 0 || stripos($img, 'https://') === 0) {
         return $img;
     }
-    return 'http://' . $_SERVER['HTTP_HOST'] . '/carelink_api/uploads/profiles/' . $img;
+    return carelink_url_scheme() . $_SERVER['HTTP_HOST'] . '/carelink_api/uploads/profiles/' . $img;
 }
 
 function timeAgoLabel(string $datetime): string

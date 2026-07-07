@@ -126,7 +126,7 @@ try {
     }
     
     $users = array();
-    $base_url = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
+    $base_url = carelink_url_scheme() . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
     
     while ($row = $result->fetch_assoc()) {
         $row['user_id'] = intval($row['user_id']);

@@ -21,7 +21,7 @@ try {
     // Only the inbox's own owner can list their conversations.
     carelink_require_self($requester_id, $user_id, 'You are not allowed to view this inbox.');
 
-    $base = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
+    $base = carelink_url_scheme() . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
     $conversations = [];
     $seenPartners  = [];
 

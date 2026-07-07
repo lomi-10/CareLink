@@ -125,7 +125,7 @@ try {
                 if (stripos($img, 'http://') === 0 || stripos($img, 'https://') === 0) {
                     $profile['profile_image'] = $img;
                 } else {
-                    $base_url = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
+                    $base_url = carelink_url_scheme() . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
                     $profile['profile_image'] = $base_url . $img;
                 }
             }
@@ -154,7 +154,7 @@ try {
                 if (stripos($img, 'http://') === 0 || stripos($img, 'https://') === 0) {
                     $profile['profile_image'] = $img;
                 } else {
-                    $base_url = "http://" . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
+                    $base_url = carelink_url_scheme() . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
                     $profile['profile_image'] = $base_url . $img;
                 }
             }
