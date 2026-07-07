@@ -2,20 +2,24 @@
 // Horizontal-scroll card shown in the "Recommended for You" section.
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
 import type { JobPost } from '@/hooks/helper';
 import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
 import { fmtPeriod, fmtTag, getCategoryIcon } from './browseHelpers';
-import { CARD_BG, DARK, DIVIDER, GREEN, MUTED, ORANGE, TAG_BORDER } from './browseJobs.theme';
+import { useBrowseTheme, type BrowseTheme } from './browseJobs.theme';
 
 // ─── Warm background tones per card slot (no green) ──────────────────────────
 export const REC_TOPS = ['#F5E3C8', '#EDD9C2', '#F0E0CC'] as const;
+// Elements that always sit on the warm peach "hero" top stay dark in both themes.
+const TOP_INK = '#2A1608';
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const makeStyles = (t: BrowseTheme) => {
+  const { CARD_BG, DARK, GREEN, MUTED, ORANGE, TAG_BORDER } = t;
+  return StyleSheet.create({
   card: {
     width: 200,
     backgroundColor: CARD_BG,
@@ -83,7 +87,7 @@ const s = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: DARK,
+    backgroundColor: TOP_INK,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -130,7 +134,7 @@ const s = StyleSheet.create({
     color: MUTED,
   },
   viewBtn: {
-    backgroundColor: DARK,
+    backgroundColor: ORANGE,
     borderRadius: 12,
     paddingVertical: 10,
     alignItems: 'center',
@@ -141,7 +145,8 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: '#FFFFFF',
   },
-});
+  });
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -153,6 +158,8 @@ interface Props {
 }
 
 export function RecommendedJobCard({ job, topColor, onPress, onSave }: Props) {
+  const t = useBrowseTheme();
+  const s = useMemo(() => makeStyles(t), [t]);
   const pct  = Math.round(Number(job.match_score ?? 0));
   const icon = getCategoryIcon(job) as any;
   const [showMatch, setShowMatch] = useState(false);
@@ -183,7 +190,7 @@ export function RecommendedJobCard({ job, topColor, onPress, onSave }: Props) {
           <Ionicons
             name={job.is_saved ? 'heart' : 'heart-outline'}
             size={17}
-            color={job.is_saved ? '#DC2626' : DARK}
+            color={job.is_saved ? '#DC2626' : TOP_INK}
           />
         </TouchableOpacity>
         <View style={s.iconCircle}>
@@ -200,12 +207,12 @@ export function RecommendedJobCard({ job, topColor, onPress, onSave }: Props) {
             {job.parent_name ?? 'Employer'}
           </Text>
           {job.parent_verified && (
-            <Ionicons name="shield-checkmark" size={13} color={GREEN} />
+            <Ionicons name="shield-checkmark" size={13} color={t.GREEN} />
           )}
         </View>
 
         <View style={s.locationRow}>
-          <Ionicons name="location-outline" size={12} color={MUTED} />
+          <Ionicons name="location-outline" size={12} color={t.MUTED} />
           <Text style={s.locationText} numberOfLines={1}>{job.municipality}</Text>
         </View>
 

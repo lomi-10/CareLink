@@ -1,8 +1,9 @@
 import { StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { DARK, MUTED, PAGE_BG } from '@/components/helper/home/helperWarmTheme';
+import { makeHelperWarm, type HelperWarm } from '@/components/helper/home/helperWarmTheme';
 
-export function createHelperSettingsStyles() {
+export function createHelperSettingsStyles(w: HelperWarm = makeHelperWarm()) {
+  const { DARK, MUTED, PAGE_BG } = w;
   return StyleSheet.create({
     desktopRoot: { flex: 1, flexDirection: 'row', backgroundColor: PAGE_BG },
     desktopMain: { flex: 1 },

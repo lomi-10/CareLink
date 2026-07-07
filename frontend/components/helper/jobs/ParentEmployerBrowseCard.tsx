@@ -4,20 +4,13 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
 import type { JobPost } from '@/hooks/helper';
+import { useBrowseTheme, type BrowseTheme } from '@/app/(helper)/browse/browseJobs.theme';
 
-// ─── Theme tokens (mirrors browseJobs.theme.ts) ───────────────────────────────
-const DARK      = '#2A1608';
-const MUTED     = '#7A5C3E';
-const ORANGE    = '#E86019';
-const GREEN     = '#059669';
-const CARD_BG   = '#FFFFFF';
-const DIVIDER   = '#EDE0D0';
-const ICON_BG   = '#F5E6CC';
-const TAG_BG    = '#FFF3EC';
+type Styles = ReturnType<typeof makeStyles>;
 
 const MATCH_REASON_THRESHOLD = 70;
 const MAX_SCROLL_JOBS = 8;   // max shown in horizontal scroll
@@ -69,14 +62,16 @@ function fmtPeriod(p: string) {
 interface JobCellProps {
   job: JobPost;
   verified: boolean;
+  s: Styles;
+  t: BrowseTheme;
 }
 
-function JobCell({ job, verified }: JobCellProps) {
+function JobCell({ job, verified, s, t }: JobCellProps) {
   const matchPct = Math.round(Number(job.match_score ?? 0));
   return (
     <>
       <View style={s.jobTitleRow}>
-        <Ionicons name={getCategoryIcon(job) as any} size={14} color={MUTED} />
+        <Ionicons name={getCategoryIcon(job) as any} size={14} color={t.MUTED} />
         <Text style={s.jobTitle} numberOfLines={1}>{job.title}</Text>
       </View>
 
@@ -88,7 +83,7 @@ function JobCell({ job, verified }: JobCellProps) {
 
       {verified && (
         <View style={s.pesoRow}>
-          <Ionicons name="shield-checkmark" size={10} color={GREEN} />
+          <Ionicons name="shield-checkmark" size={10} color={t.GREEN} />
           <Text style={s.pesoText}>PESO Verified</Text>
         </View>
       )}
@@ -106,7 +101,10 @@ function JobCell({ job, verified }: JobCellProps) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const makeStyles = (t: BrowseTheme) => {
+  const { DARK, MUTED, ORANGE, GREEN, CARD_BG, DIVIDER, ICON_BG } = t;
+  const TAG_BG = ICON_BG;
+  return StyleSheet.create({
   wrap: { marginBottom: 12 },
   card: {
     backgroundColor: CARD_BG,
@@ -244,7 +242,8 @@ const s = StyleSheet.create({
   },
   reasonRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   reasonText: { fontFamily: FontFamily.fredokaRegular, flex: 1, fontSize: 12, color: MUTED, lineHeight: 17 },
-});
+  });
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -259,6 +258,8 @@ export function ParentEmployerBrowseCard({
   jobs = [],
   onPress,
 }: ParentEmployerBrowseCardProps) {
+  const t           = useBrowseTheme();
+  const s           = useMemo(() => makeStyles(t), [t]);
   const pct         = Math.min(100, Math.max(0, Math.round(matchPercent)));
   const showReasons = pct >= MATCH_REASON_THRESHOLD && matchReasons && matchReasons.length > 0;
   const distance    = jobs[0]?.distance;
@@ -290,7 +291,7 @@ export function ParentEmployerBrowseCard({
 
             {verified && (
               <View style={s.pesoPill}>
-                <Ionicons name="shield-checkmark" size={11} color={GREEN} />
+                <Ionicons name="shield-checkmark" size={11} color={t.GREEN} />
                 <Text style={s.pesoPillText}>PESO Verified</Text>
               </View>
             )}
@@ -306,7 +307,7 @@ export function ParentEmployerBrowseCard({
 
             {distance != null && distance > 0 && (
               <View style={s.distanceRow}>
-                <Ionicons name="location-outline" size={12} color={MUTED} />
+                <Ionicons name="location-outline" size={12} color={t.MUTED} />
                 <Text style={s.distanceText}>
                   {distance < 1 ? '<1' : distance.toFixed(0)} km away
                 </Text>
@@ -314,7 +315,7 @@ export function ParentEmployerBrowseCard({
             )}
           </View>
 
-          <Ionicons name="chevron-forward" size={20} color="#C4A882" />
+          <Ionicons name="chevron-forward" size={20} color={t.SUBTLE} />
         </View>
 
         {/* ── Job section ── */}
@@ -324,7 +325,7 @@ export function ParentEmployerBrowseCard({
             {/* 1 job — full width */}
             {layout === 'single' && (
               <View style={s.singleCell}>
-                <JobCell job={displayJobs[0]} verified={verified} />
+                <JobCell job={displayJobs[0]} verified={verified} s={s} t={t} />
               </View>
             )}
 
@@ -332,11 +333,11 @@ export function ParentEmployerBrowseCard({
             {layout === 'dual' && (
               <View style={s.dualRow}>
                 <View style={s.dualCell}>
-                  <JobCell job={displayJobs[0]} verified={verified} />
+                  <JobCell job={displayJobs[0]} verified={verified} s={s} t={t} />
                 </View>
                 <View style={s.dualDivider} />
                 <View style={s.dualCell}>
-                  <JobCell job={displayJobs[1]} verified={verified} />
+                  <JobCell job={displayJobs[1]} verified={verified} s={s} t={t} />
                 </View>
               </View>
             )}
@@ -353,7 +354,7 @@ export function ParentEmployerBrowseCard({
                     key={job.job_post_id}
                     style={[s.scrollCell, idx === displayJobs.length - 1 && s.scrollCellLast]}
                   >
-                    <JobCell job={job} verified={verified} />
+                    <JobCell job={job} verified={verified} s={s} t={t} />
                   </View>
                 ))}
               </ScrollView>
@@ -376,7 +377,7 @@ export function ParentEmployerBrowseCard({
             <Text style={s.reasonsTitle}>Why this employer fits you</Text>
             {(matchReasons ?? []).slice(0, 3).map((reason, idx) => (
               <View key={idx} style={s.reasonRow}>
-                <Ionicons name="checkmark-circle" size={13} color={GREEN} style={{ marginTop: 2 }} />
+                <Ionicons name="checkmark-circle" size={13} color={t.GREEN} style={{ marginTop: 2 }} />
                 <Text style={s.reasonText}>{reason}</Text>
               </View>
             ))}

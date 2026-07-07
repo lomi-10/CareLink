@@ -1,7 +1,7 @@
  // app/(helper)/saved_jobs.tsx
 // Saved Jobs Screen - View and manage saved job postings
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -30,13 +30,16 @@ import {
 import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared/';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { PAGE_BG, BAR_BG, DARK, MUTED, SUBTLE, ORANGE, CARD_BG, DIVIDER, ICON_BG } from './browseJobs.theme';
+import { useBrowseTheme, type BrowseTheme } from './browseJobs.theme';
 
 const DANGER = '#DC2626';
 const DANGER_BG = '#FEF2F2';
 
 export default function SavedJobs() {
   const router = useRouter();
+  const t = useBrowseTheme();
+  const { DARK, MUTED, SUBTLE, ORANGE } = t;
+  const styles = useMemo(() => makeStyles(t), [t]);
   const { isDesktop } = useResponsive();
   const { handleLogout } = useAuth();
   const { ready, isWorkMode } = useHelperWorkMode();
@@ -464,7 +467,9 @@ export default function SavedJobs() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: BrowseTheme) => {
+  const { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, CARD_BG, DIVIDER, ICON_BG } = t;
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: PAGE_BG,
@@ -670,4 +675,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
   },
-});
+  });
+};

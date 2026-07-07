@@ -1,9 +1,7 @@
 // app/(helper)/browse/browse_jobs.styles.ts
 import { Platform, StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import {
-  PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, CARD_BG, DIVIDER, ICON_BG,
-} from './browseJobs.theme';
+import { makeBrowseTheme, type BrowseTheme } from './browseJobs.theme';
 
 const CARD_SHADOW = Platform.select({
   ios:     { shadowColor: '#8B5E3C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
@@ -11,7 +9,9 @@ const CARD_SHADOW = Platform.select({
   default: { boxShadow: '0 4px 14px rgba(139,94,60,0.08)' } as any,
 });
 
-export function createHelperBrowseJobsStyles() {
+export function createHelperBrowseJobsStyles(t: BrowseTheme = makeBrowseTheme()) {
+  const { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, DIVIDER, ICON_BG } = t;
+  const SOFT_ACCENT = ICON_BG;
   return StyleSheet.create({
 
     // ── Screen shells ──────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ export function createHelperBrowseJobsStyles() {
       borderRadius: 12,
       borderWidth: 1.5,
       borderColor: ORANGE + '66',
-      backgroundColor: '#FFF3EC',
+      backgroundColor: SOFT_ACCENT,
     },
     applicationsBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: ORANGE },
 
@@ -74,7 +74,7 @@ export function createHelperBrowseJobsStyles() {
     mobileTitleWrap:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
     mobileTitle:      { fontFamily: FontFamily.fredokaSemiBold, fontSize: 17, color: DARK },
     mobileCountBadge: {
-      backgroundColor: '#FFF3EC',
+      backgroundColor: SOFT_ACCENT,
       borderRadius: 999,
       paddingHorizontal: 9,
       paddingVertical: 2,
@@ -198,7 +198,7 @@ export function createHelperBrowseJobsStyles() {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      backgroundColor: DARK,
+      backgroundColor: ORANGE,
       paddingHorizontal: 24,
       paddingVertical: 13,
       borderRadius: 12,

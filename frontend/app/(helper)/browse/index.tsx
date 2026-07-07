@@ -29,7 +29,7 @@ import { useHelperWorkMode }                           from '@/contexts/HelperWo
 
 // ── Local modules ─────────────────────────────────────────────────────────────
 import { createHelperBrowseJobsStyles }  from './browse_jobs.styles';
-import { DARK, MUTED, ORANGE }           from './browseJobs.theme';
+import { useBrowseTheme }                from './browseJobs.theme';
 import { groupJobsByParent, type ParentBrowseRow } from './browseHelpers';
 import { RecommendedJobCard, REC_TOPS }  from './RecommendedJobCard';
 
@@ -37,7 +37,9 @@ import { RecommendedJobCard, REC_TOPS }  from './RecommendedJobCard';
 
 export default function BrowseJobs() {
   const router          = useRouter();
-  const s               = useMemo(() => createHelperBrowseJobsStyles(), []);
+  const t               = useBrowseTheme();
+  const { DARK, MUTED, ORANGE } = t;
+  const s               = useMemo(() => createHelperBrowseJobsStyles(t), [t]);
   const { isDesktop }  = useResponsive();
   const { handleLogout } = useAuth();
   const { unreadCount }  = useNotifications('helper');

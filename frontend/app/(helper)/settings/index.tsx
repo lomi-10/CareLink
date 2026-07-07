@@ -21,7 +21,7 @@ import { Sidebar, MobileMenu, HelperTabBar } from '@/components/helper/home';
 import { PARENT_THEME_OPTIONS, type ParentThemeId } from '@/constants/parentThemePalettes';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import WelcomeGuideModal from '@/components/shared/WelcomeGuideModal';
-import { DARK, MUTED, ORANGE, ICON_BG, DIVIDER, SURFACE, PAGE_BG } from '@/components/helper/home/helperWarmTheme';
+import { useHelperWarm } from '@/components/helper/home/helperWarmTheme';
 
 import { createHelperSettingsStyles } from './settings.styles';
 
@@ -58,9 +58,11 @@ export default function HelperSettingsScreen() {
   const { isDesktop } = useResponsive();
   const { isWorkMode, activeHire } = useHelperWorkMode();
   const { themeId, setThemeId } = useHelperTheme();
+  const w = useHelperWarm();
+  const { DARK, MUTED, ORANGE, ICON_BG, DIVIDER, SURFACE, PAGE_BG } = w;
   const accent = ORANGE;
 
-  const styles = useMemo(() => createHelperSettingsStyles(), []);
+  const styles = useMemo(() => createHelperSettingsStyles(w), [w]);
   const { handleLogout } = useAuth();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
