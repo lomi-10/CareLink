@@ -103,7 +103,7 @@ try {
         $reason = "Our AI could not confirm this is a genuine {$documentType}. Please re-upload a clear, authentic document.";
         $upd = $conn->prepare("
             UPDATE user_documents
-            SET ai_verification_status = ?, ai_confidence_score = ?, didit_extracted_data = ?, didit_checked_at = NOW(),
+            SET ai_verification_status = ?, ai_confidence_score = ?, ai_extracted_data = ?, ai_checked_at = NOW(),
                 status = 'Rejected', rejection_reason = ?
             WHERE document_id = ? AND user_id = ?
         ");
@@ -112,7 +112,7 @@ try {
     } elseif ($autoRecover) {
         $upd = $conn->prepare("
             UPDATE user_documents
-            SET ai_verification_status = ?, ai_confidence_score = ?, didit_extracted_data = ?, didit_checked_at = NOW(),
+            SET ai_verification_status = ?, ai_confidence_score = ?, ai_extracted_data = ?, ai_checked_at = NOW(),
                 status = 'Pending', rejection_reason = NULL
             WHERE document_id = ? AND user_id = ?
         ");
@@ -122,7 +122,7 @@ try {
         // Store the AI result; leave PESO's status as-is.
         $upd = $conn->prepare("
             UPDATE user_documents
-            SET ai_verification_status = ?, ai_confidence_score = ?, didit_extracted_data = ?, didit_checked_at = NOW()
+            SET ai_verification_status = ?, ai_confidence_score = ?, ai_extracted_data = ?, ai_checked_at = NOW()
             WHERE document_id = ? AND user_id = ?
         ");
         $upd->bind_param("sdsii", $mapped, $quality, $payloadJson, $document_id, $user_id);

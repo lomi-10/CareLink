@@ -3,8 +3,8 @@
  * load_config.php — portable configuration loader.
  *
  * Lets the backend run on hosts WITHOUT an environment-variable dashboard
- * (e.g. free shared hosting like InfinityFree) while still preferring real
- * environment variables when they exist (e.g. Railway / a VPS).
+ * (typical shared hosting such as Hostinger) while still preferring real
+ * environment variables when they exist (e.g. a VPS / PaaS).
  *
  * Precedence: real env var (getenv) → backend/config.local.php → default.
  *

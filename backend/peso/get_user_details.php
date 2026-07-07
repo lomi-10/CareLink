@@ -299,8 +299,8 @@ try {
                         verified_at,
                         ai_verification_status,
                         ai_confidence_score,
-                        didit_extracted_data,
-                        didit_checked_at
+                        ai_extracted_data,
+                        ai_checked_at
                     FROM user_documents
                     WHERE user_id = ?
                     ORDER BY FIELD(document_type, 'Barangay Clearance', 'Valid ID', 'Police Clearance', 'TESDA NC2')";
@@ -324,8 +324,8 @@ try {
         $row['ai_legitimacy_score'] = null;
         $row['ai_fields'] = array();
         $row['ai_warnings'] = array();
-        if (!empty($row['didit_extracted_data'])) {
-            $decoded = json_decode($row['didit_extracted_data'], true);
+        if (!empty($row['ai_extracted_data'])) {
+            $decoded = json_decode($row['ai_extracted_data'], true);
             if (is_array($decoded)) {
                 $row['ai_legitimacy_score'] = isset($decoded['legitimacy_score']) && $decoded['legitimacy_score'] !== null
                     ? (float) $decoded['legitimacy_score'] : null;
@@ -333,8 +333,8 @@ try {
                 if (isset($decoded['warnings']) && is_array($decoded['warnings'])) $row['ai_warnings'] = $decoded['warnings'];
             }
         }
-        unset($row['didit_extracted_data']);
-        $row['didit_checked_at'] = $row['didit_checked_at'] ? date('Y-m-d H:i:s', strtotime($row['didit_checked_at'])) : null;
+        unset($row['ai_extracted_data']);
+        $row['ai_checked_at'] = $row['ai_checked_at'] ? date('Y-m-d H:i:s', strtotime($row['ai_checked_at'])) : null;
 
         $documents[] = $row;
     }

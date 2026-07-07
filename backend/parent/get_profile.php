@@ -170,8 +170,8 @@ try {
                     ud.verified_at,
                     ud.ai_verification_status,
                     ud.ai_confidence_score,
-                    ud.didit_extracted_data,
-                    ud.didit_checked_at,
+                    ud.ai_extracted_data,
+                    ud.ai_checked_at,
                     ud.uploaded_at,
                     CONCAT(v.first_name, ' ', IFNULL(v.last_name, '')) AS verified_by_name
                 FROM user_documents ud
@@ -190,8 +190,8 @@ try {
         $row['expiry_date'] = $row['expiry_date'] ? date('Y-m-d', strtotime($row['expiry_date'])) : null;
         $row['verified_at'] = $row['verified_at'] ? date('Y-m-d H:i:s', strtotime($row['verified_at'])) : null;
         $row['verified_by'] = trim((string) $row['verified_by_name']) !== '' ? trim($row['verified_by_name']) : null;
-        $row['didit_extracted_data'] = $row['didit_extracted_data'] ? json_decode($row['didit_extracted_data'], true) : null;
-        $row['didit_checked_at'] = $row['didit_checked_at'] ? date('Y-m-d H:i:s', strtotime($row['didit_checked_at'])) : null;
+        $row['ai_extracted_data'] = $row['ai_extracted_data'] ? json_decode($row['ai_extracted_data'], true) : null;
+        $row['ai_checked_at'] = $row['ai_checked_at'] ? date('Y-m-d H:i:s', strtotime($row['ai_checked_at'])) : null;
         unset($row['verified_by_name']);
         $documents[] = $row;
     }

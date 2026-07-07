@@ -70,8 +70,8 @@ try {
                 rejection_reason,
                 ai_verification_status,
                 ai_confidence_score,
-                didit_extracted_data,
-                didit_checked_at,
+                ai_extracted_data,
+                ai_checked_at,
                 uploaded_at
             FROM user_documents
             WHERE user_id = ?
@@ -89,8 +89,8 @@ try {
         // Signed, time-limited link instead of a raw static file path — see
         // shared/serve_document.php and shared/file_security.php.
         $row['file_url'] = carelink_signed_document_url($row['document_id']);
-        $row['didit_extracted_data'] = $row['didit_extracted_data'] ? json_decode($row['didit_extracted_data'], true) : null;
-        $row['didit_checked_at'] = $row['didit_checked_at'] ? date('Y-m-d H:i:s', strtotime($row['didit_checked_at'])) : null;
+        $row['ai_extracted_data'] = $row['ai_extracted_data'] ? json_decode($row['ai_extracted_data'], true) : null;
+        $row['ai_checked_at'] = $row['ai_checked_at'] ? date('Y-m-d H:i:s', strtotime($row['ai_checked_at'])) : null;
         $documents[] = $row;
     }
     

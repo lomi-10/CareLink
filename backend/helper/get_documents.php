@@ -76,9 +76,8 @@ try {
                 verified_at,
                 ai_verification_status,
                 ai_confidence_score,
-                didit_session_id,
-                didit_extracted_data,
-                didit_checked_at,
+                ai_extracted_data,
+                ai_checked_at,
                 uploaded_at,
                 updated_at
             FROM user_documents
@@ -111,11 +110,11 @@ try {
         $row['uploaded_at'] = $row['uploaded_at'] ? date('Y-m-d H:i:s', strtotime($row['uploaded_at'])) : null;
         $row['updated_at'] = $row['updated_at'] ? date('Y-m-d H:i:s', strtotime($row['updated_at'])) : null;
         $row['verified_at'] = $row['verified_at'] ? date('Y-m-d H:i:s', strtotime($row['verified_at'])) : null;
-        $row['didit_checked_at'] = $row['didit_checked_at'] ? date('Y-m-d H:i:s', strtotime($row['didit_checked_at'])) : null;
+        $row['ai_checked_at'] = $row['ai_checked_at'] ? date('Y-m-d H:i:s', strtotime($row['ai_checked_at'])) : null;
 
         // Decode the extracted-ID JSON so the app/PESO can read the scanned name.
-        $row['didit_extracted_data'] = $row['didit_extracted_data']
-            ? json_decode($row['didit_extracted_data'], true)
+        $row['ai_extracted_data'] = $row['ai_extracted_data']
+            ? json_decode($row['ai_extracted_data'], true)
             : null;
 
         $documents[] = $row;
