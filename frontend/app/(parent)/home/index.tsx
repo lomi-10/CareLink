@@ -63,6 +63,10 @@ export default function ParentHome() {
   };
 
   const isWorkMode = portalMode === 'work';
+  // Work Mode is only usable once the parent has an active hire. They can still
+  // toggle into it (they can "see" it) but it stays locked until then.
+  const hasActiveHire = (stats?.active_placements ?? 0) > 0;
+  const workModeUnlocked = isWorkMode && hasActiveHire;
 
   // ── Misc state ──────────────────────────────────────────────────────────────
   const [isMobileMenuOpen,         setIsMobileMenuOpen]         = useState(false);
@@ -205,6 +209,27 @@ export default function ParentHome() {
     </View>
   );
 
+  // ── Work Mode locked state (no active hire yet) ─────────────────────────────
+  const renderWorkModeLocked = () => (
+    <View style={ms.lockedWrap}>
+      <View style={ms.lockedIcon}>
+        <Ionicons name="lock-closed" size={32} color={CARAMEL} />
+      </View>
+      <Text style={ms.lockedTitle}>Work Mode is locked</Text>
+      <Text style={ms.lockedBody}>
+        You haven’t hired a helper yet. Once you hire someone, Work Mode unlocks task management,
+        attendance, schedules, and salary.
+      </Text>
+      <TouchableOpacity style={ms.lockedBtn} onPress={() => switchMode('recruitment')} activeOpacity={0.88}>
+        <Ionicons name="search" size={16} color="#fff" />
+        <Text style={ms.lockedBtnText}>Back to Recruitment</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={ms.lockedLink} onPress={() => router.push('/(parent)/browse')} activeOpacity={0.7}>
+        <Text style={ms.lockedLinkText}>Browse helpers to hire →</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   // ─── DESKTOP ────────────────────────────────────────────────────────────────
   if (isDesktop) {
     return (
@@ -244,11 +269,15 @@ export default function ParentHome() {
           {renderModeToggle()}
 
           {isWorkMode ? (
-            <ParentWorkDashboard
-              userName={getFullName()}
-              profileImage={profileImage}
-              onSwitchToRecruitment={() => switchMode('recruitment')}
-            />
+            workModeUnlocked ? (
+              <ParentWorkDashboard
+                userName={getFullName()}
+                profileImage={profileImage}
+                onSwitchToRecruitment={() => switchMode('recruitment')}
+              />
+            ) : (
+              renderWorkModeLocked()
+            )
           ) : (
             <>
               <GreetingCard userName={getFullName()} profileImage={profileImage} />
@@ -295,11 +324,15 @@ export default function ParentHome() {
       {isWorkMode ? (
         <>
           {renderModeToggle()}
-          <ParentWorkDashboard
-            userName={getFullName()}
-            profileImage={profileImage}
-            onSwitchToRecruitment={() => switchMode('recruitment')}
-          />
+          {workModeUnlocked ? (
+            <ParentWorkDashboard
+              userName={getFullName()}
+              profileImage={profileImage}
+              onSwitchToRecruitment={() => switchMode('recruitment')}
+            />
+          ) : (
+            renderWorkModeLocked()
+          )}
         </>
       ) : (
         <ScrollView
@@ -343,7 +376,7 @@ export default function ParentHome() {
       )}
 
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
-      {isWorkMode ? <ParentWorkModeTabBar /> : <ParentTabBar />}
+      {workModeUnlocked ? <ParentWorkModeTabBar /> : <ParentTabBar />}
       {renderModals()}
     </SafeAreaView>
   );
@@ -380,4 +413,19 @@ const ms = StyleSheet.create({
     marginTop: 6,
     lineHeight: 17,
   },
+
+  lockedWrap: { alignItems: 'center', paddingHorizontal: 28, paddingTop: 40, paddingBottom: 24 },
+  lockedIcon: {
+    width: 76, height: 76, borderRadius: 38, backgroundColor: ICON_BG,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  lockedTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 18, color: DARK, marginBottom: 8 },
+  lockedBody: { fontFamily: FontFamily.fredokaRegular, fontSize: 13.5, color: MUTED, textAlign: 'center', lineHeight: 20, maxWidth: 340 },
+  lockedBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: CARAMEL,
+    paddingVertical: 13, paddingHorizontal: 22, borderRadius: 13, marginTop: 22,
+  },
+  lockedBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5, color: '#fff' },
+  lockedLink: { marginTop: 14, paddingVertical: 6 },
+  lockedLinkText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: BROWN },
 });

@@ -272,7 +272,7 @@ export default function DocumentDetailScreen() {
               <DocumentAIScan
                 doc={{ document_id, document_type, file_url, file_path }}
                 themeKey="parent"
-                autoStart={autoscan === '1'}
+                autoStart={autoscan === '1' || !scanned}
                 onScanned={(res) => {
                   if (res?.ai_verification_status) setAiStatus(res.ai_verification_status);
                   if (res?.doc_status) setDocStatus(res.doc_status);

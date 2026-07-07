@@ -474,7 +474,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         <Label>Civil Status <Req /></Label>
         <ToggleRow options={['Single', 'Married', 'Widowed', 'Separated']} value={civilStatus} onChange={setCivilStatus} />
         <Label>Religion <OptTag /></Label>
-        <StyledInput value={religion} onChangeText={setReligion} placeholder="e.g. Catholic" />
+        <DropdownField value={religion} onChange={setReligion} options={RELIGION_OPTIONS} placeholder="Select religion" />
       </>
     );
     if (step === 3) return (
@@ -963,9 +963,47 @@ function ToggleRow({ options, value, onChange, disabledOptions = [] }: {
   );
 }
 
+const RELIGION_OPTIONS = [
+  'Roman Catholic', 'Christian', 'Iglesia ni Cristo', 'Islam',
+  'Protestant', 'Seventh-day Adventist', 'Born Again', 'Buddhist',
+  'Aglipayan', 'Other', 'Prefer not to say',
+];
+
+function DropdownField({ value, onChange, options, placeholder }: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <View>
+      <TouchableOpacity style={[s.input, s.dropdownField]} onPress={() => setOpen(o => !o)} activeOpacity={0.8}>
+        <Text style={[s.dropdownValue, !value && { color: '#B8956A' }]}>{value || placeholder || 'Select'}</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={MUTED} />
+      </TouchableOpacity>
+      {open && (
+        <View style={s.dropdownList}>
+          {options.map(opt => (
+            <TouchableOpacity key={opt} style={s.dropdownItem} onPress={() => { onChange(opt); setOpen(false); }} activeOpacity={0.7}>
+              <Text style={[s.dropdownItemText, value === opt && { color: ORANGE, fontFamily: FontFamily.fredokaSemiBold }]}>{opt}</Text>
+              {value === opt && <Ionicons name="checkmark" size={16} color={ORANGE} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
+  dropdownField: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dropdownValue: { fontFamily: FontFamily.fredokaRegular, fontSize: 15, color: DARK },
+  dropdownList: { marginTop: 6, borderWidth: 1, borderColor: '#EDE0D0', borderRadius: 12, overflow: 'hidden', backgroundColor: '#FFFBF5' },
+  dropdownItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 11, paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#EDE0D0' },
+  dropdownItemText: { fontFamily: FontFamily.fredokaRegular, fontSize: 14.5, color: DARK },
   // Containers
   modal:      { flex: 1, backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
   bottomSheet:{ height: '93%', borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden', backgroundColor: '#FFFFFF' },

@@ -21,6 +21,7 @@ import { computeHelperJobMatch, pickPrimaryOpenJob } from '@/lib/parentHelperMat
 import { useAuth, useJobReferences, useResponsive, useNotifications } from '@/hooks/shared';
 
 import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
+import { RecommendedHelperCard } from '@/components/parent/home/RecommendedHelperCard';
 import {
   FilterBar,
   HelperCard,
@@ -167,44 +168,16 @@ export default function BrowseHelpers() {
         </View>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.recScroll}>
-        {recommendedHelpers.map(({ helper, match }) => (
-          <TouchableOpacity
+        {recommendedHelpers.map(({ helper, match }, idx) => (
+          <RecommendedHelperCard
             key={helper.profile_id}
-            style={s.recCard}
+            helper={{ ...helper, is_verified: (helper as any).is_verified ?? helper.verification_status === 'Verified' } as any}
+            isTopMatch={idx === 0}
+            matchPercentage={match.score}
+            matchReasons={match.reasons}
+            topReason={match.reasons?.[0]}
             onPress={() => handleViewProfile(helper)}
-            activeOpacity={0.85}
-          >
-            <View style={s.recTopRow}>
-              {helper.profile_image ? (
-                <Image source={{ uri: helper.profile_image }} style={s.recAvatar} />
-              ) : (
-                <View style={s.recAvatarFallback}>
-                  <Text style={s.recInitials}>{getInitials(helper.full_name)}</Text>
-                </View>
-              )}
-              <View style={s.recInfo}>
-                <Text style={s.recName} numberOfLines={1}>{helper.full_name}</Text>
-                <Text style={s.recMeta} numberOfLines={1}>
-                  {helper.experience_years ? `${helper.experience_years} yrs exp` : 'New helper'}
-                  {helper.distance != null
-                    ? ` · ${helper.distance < 1 ? `${(helper.distance * 1000).toFixed(0)}m` : `${helper.distance.toFixed(1)} km`} away`
-                    : ''}
-                </Text>
-              </View>
-            </View>
-            <View style={s.recMatchBadge}>
-              <Text style={s.recMatchText}>{match.score}% Match</Text>
-            </View>
-            {helper.categories?.length > 0 && (
-              <View style={s.recChipsRow}>
-                {helper.categories.slice(0, 2).map((cat, idx) => (
-                  <View key={idx} style={s.recChip}>
-                    <Text style={s.recChipText}>{cat}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </TouchableOpacity>
+          />
         ))}
       </ScrollView>
     </View>
@@ -264,6 +237,7 @@ export default function BrowseHelpers() {
                   helper={item}
                   matchScore={match.score}
                   matchReason={match.reasons?.[0]}
+                  matchReasons={match.reasons}
                   onPress={() => handleViewProfile(item)}
                 />
               </View>

@@ -20,6 +20,16 @@ export function RecommendedHelpersSection() {
   const { jobs } = useParentJobs();
   const referenceJob = useMemo(() => pickPrimaryOpenJob(jobs), [jobs]);
 
+  // Rank by the SAME score we display (client matcher), so the Top Match badge
+  // always sits on the genuinely highest-scoring helper — not the backend's
+  // history-based order. Keeps dashboard and Browse in the same order too.
+  const ranked = useMemo(
+    () => recommendations
+      .map((helper) => ({ helper, match: computeHelperJobMatch(helper, referenceJob) }))
+      .sort((a, b) => b.match.score - a.match.score),
+    [recommendations, referenceJob],
+  );
+
   if (loading) {
     return (
       <View style={s.loadingWrap}>
@@ -67,23 +77,17 @@ export function RecommendedHelpersSection() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={s.scroll}
       >
-        {recommendations.slice(0, 6).map((helper, idx) => {
-          // Same computeHelperJobMatch formula used on Browse Helpers / Work Management,
-          // so the percentage matches across screens. Internally switches between
-          // job-specific matching and the "Top Helpers" feed based on referenceJob.
-          const match = computeHelperJobMatch(helper, referenceJob);
-          const pct = match.score;
-          return (
-            <RecommendedHelperCard
-              key={helper.user_id}
-              helper={helper}
-              isTopMatch={idx === 0}
-              matchPercentage={pct}
-              topReason={match?.reasons?.[0]}
-              onPress={() => router.push('/(parent)/browse')}
-            />
-          );
-        })}
+        {ranked.slice(0, 6).map(({ helper, match }, idx) => (
+          <RecommendedHelperCard
+            key={helper.user_id}
+            helper={helper}
+            isTopMatch={idx === 0}
+            matchPercentage={match.score}
+            topReason={match?.reasons?.[0]}
+            matchReasons={match.reasons}
+            onPress={() => router.push('/(parent)/browse')}
+          />
+        ))}
       </ScrollView>
     </View>
   );

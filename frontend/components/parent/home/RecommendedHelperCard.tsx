@@ -9,6 +9,7 @@ import React, { useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
 import type { RecommendedHelper } from '@/hooks/parent';
+import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
 import { BROWN, CARAMEL, GOLD, CARD_BG, DARK, MUTED, DIVIDER, ICON_BG, SUCCESS_BG, GREEN } from './parentWarmTheme';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -18,6 +19,7 @@ interface RecommendedHelperCardProps {
   isTopMatch?:      boolean;
   matchPercentage?: number;   // 0–100
   topReason?:       string;   // short "why this match" caption
+  matchReasons?:    string[]; // full list for the breakdown modal
   onPress:          () => void;
 }
 
@@ -34,9 +36,11 @@ export function RecommendedHelperCard({
   isTopMatch = false,
   matchPercentage,
   topReason,
+  matchReasons,
   onPress,
 }: RecommendedHelperCardProps) {
   const [saved, setSaved] = useState(false);
+  const [showMatch, setShowMatch] = useState(false);
   const initials = `${helper.first_name?.[0] ?? ''}${helper.last_name?.[0] ?? ''}`.toUpperCase();
   const location = [helper.municipality, helper.province].filter(Boolean).join(', ');
 
@@ -49,7 +53,7 @@ export function RecommendedHelperCard({
     : null;
 
   return (
-    <View style={s.card}>
+    <TouchableOpacity style={s.card} activeOpacity={0.92} onPress={() => setShowMatch(true)}>
 
       {/* ── Big top photo + favorite heart + match badge ── */}
       <View style={s.photoWrap}>
@@ -156,7 +160,17 @@ export function RecommendedHelperCard({
       <TouchableOpacity style={s.viewBtn} onPress={onPress} activeOpacity={0.88}>
         <Text style={s.viewBtnText}>View Profile</Text>
       </TouchableOpacity>
-    </View>
+
+      <MatchBreakdownModal
+        visible={showMatch}
+        onClose={() => setShowMatch(false)}
+        score={matchPercentage ?? 0}
+        reasons={matchReasons}
+        jobTitle={helper.full_name}
+        themeKey="parent"
+        subjectLabel="helper"
+      />
+    </TouchableOpacity>
   );
 }
 

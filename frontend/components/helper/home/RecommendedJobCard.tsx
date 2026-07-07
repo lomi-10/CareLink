@@ -2,10 +2,11 @@
 // Individual job card in the "Recommended for you" horizontal scroll.
 
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
 import type { JobPost } from '@/hooks/helper/useBrowseJobs';
+import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,8 @@ export function RecommendedJobCard({
   onSave,
 }: RecommendedJobCardProps) {
   const saved = !!job.is_saved;
+  const [showMatch, setShowMatch] = useState(false);
+  const pct = matchPercentage ?? Math.round(Number(job.match_score ?? 0));
 
   const salaryLabel = (() => {
     const p = job.salary_period === 'monthly' ? '/ month'
@@ -54,26 +57,26 @@ export function RecommendedJobCard({
   const location = [job.municipality, job.province].filter(Boolean).join(', ');
 
   return (
-    <View style={s.card}>
+    <TouchableOpacity style={s.card} activeOpacity={0.92} onPress={() => setShowMatch(true)}>
 
       {/* ── Top row: badge(s) + heart ── */}
       <View style={s.topRow}>
         <View style={s.badgeGroup}>
-          {isTopMatch ? (
-            <View style={s.topMatchBadge}>
-              <Ionicons name="star" size={10} color="#FFF" />
-              <Text style={s.topMatchText}>Top Match</Text>
-              {matchPercentage !== undefined && (
-                <Text style={s.topMatchPct}> · {matchPercentage}%</Text>
-              )}
-            </View>
-          ) : (
-            <View style={s.matchBadgeOutline}>
-              {matchPercentage !== undefined && (
-                <Text style={s.matchBadgeOutlineText}>{matchPercentage}% Match</Text>
-              )}
-            </View>
-          )}
+          <TouchableOpacity onPress={() => setShowMatch(true)} activeOpacity={0.75}>
+            {isTopMatch ? (
+              <View style={s.topMatchBadge}>
+                <Ionicons name="star" size={10} color="#FFF" />
+                <Text style={s.topMatchText}>Top Match</Text>
+                <Text style={s.topMatchPct}> · {pct}%</Text>
+                <Ionicons name="information-circle" size={11} color="rgba(255,255,255,0.85)" style={{ marginLeft: 3 }} />
+              </View>
+            ) : (
+              <View style={s.matchBadgeOutline}>
+                <Text style={s.matchBadgeOutlineText}>{pct}% Match</Text>
+                <Ionicons name="information-circle-outline" size={12} color={ACCENT} style={{ marginLeft: 3 }} />
+              </View>
+            )}
+          </TouchableOpacity>
 
           {isNew && (
             <View style={s.newBadge}>
@@ -119,7 +122,16 @@ export function RecommendedJobCard({
       <TouchableOpacity style={s.viewBtn} onPress={onPress} activeOpacity={0.88}>
         <Text style={s.viewBtnText}>View Job</Text>
       </TouchableOpacity>
-    </View>
+
+      <MatchBreakdownModal
+        visible={showMatch}
+        onClose={() => setShowMatch(false)}
+        score={pct}
+        reasons={job.match_reasons}
+        jobTitle={job.title}
+        subjectLabel="job"
+      />
+    </TouchableOpacity>
   );
 }
 

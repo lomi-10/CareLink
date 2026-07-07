@@ -31,15 +31,21 @@ try {
     $parent_id = isset($_GET['parent_id']) ? intval($_GET['parent_id']) : 0;
     $pLat = null;
     $pLng = null;
+    $pMunicipality = '';
+    $pProvince = '';
     if ($parent_id > 0) {
-        $pStmt = $conn->prepare("SELECT latitude, longitude FROM parent_profiles WHERE user_id = ?");
+        $pStmt = $conn->prepare("SELECT latitude, longitude, municipality, province FROM parent_profiles WHERE user_id = ?");
         $pStmt->bind_param("i", $parent_id);
         $pStmt->execute();
         $pRow = $pStmt->get_result()->fetch_assoc();
         $pStmt->close();
-        if ($pRow && $pRow['latitude'] !== null && $pRow['longitude'] !== null) {
-            $pLat = (float) $pRow['latitude'];
-            $pLng = (float) $pRow['longitude'];
+        if ($pRow) {
+            if ($pRow['latitude'] !== null && $pRow['longitude'] !== null) {
+                $pLat = (float) $pRow['latitude'];
+                $pLng = (float) $pRow['longitude'];
+            }
+            $pMunicipality = $pRow['municipality'] ?? '';
+            $pProvince = $pRow['province'] ?? '';
         }
     }
 
@@ -130,10 +136,19 @@ try {
         // (see application_document_shares / parent/get_applicant_profile.php). Public browsing must
         // never return document file paths.
 
-        // --- DISTANCE FROM REQUESTING PARENT (if known) ---
+        // --- DISTANCE FROM REQUESTING PARENT (matches recommended_helpers.php
+        //     exactly so the client match % is identical on both screens) ---
         $distance = null;
         if ($pLat !== null && $pLng !== null && $row['latitude'] !== null && $row['longitude'] !== null) {
             $distance = carelink_browse_haversine($pLat, $pLng, (float) $row['latitude'], (float) $row['longitude']);
+        } else {
+            $hMuni = $row['municipality'] ?? '';
+            $hProv = $row['province'] ?? '';
+            if ($hMuni && $pMunicipality && strtolower($hMuni) === strtolower($pMunicipality)) {
+                $distance = 3.0;
+            } elseif ($hProv && $pProvince && strtolower($hProv) === strtolower($pProvince)) {
+                $distance = 25.0;
+            }
         }
 
         // Build the JSON object exactly how your React app expects it

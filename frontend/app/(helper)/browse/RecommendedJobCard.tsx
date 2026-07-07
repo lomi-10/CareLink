@@ -2,10 +2,11 @@
 // Horizontal-scroll card shown in the "Recommended for You" section.
 
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
 import type { JobPost } from '@/hooks/helper';
+import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
 import { fmtPeriod, fmtTag, getCategoryIcon } from './browseHelpers';
 import { CARD_BG, DARK, DIVIDER, GREEN, MUTED, ORANGE, TAG_BORDER } from './browseJobs.theme';
 
@@ -154,21 +155,23 @@ interface Props {
 export function RecommendedJobCard({ job, topColor, onPress, onSave }: Props) {
   const pct  = Math.round(Number(job.match_score ?? 0));
   const icon = getCategoryIcon(job) as any;
+  const [showMatch, setShowMatch] = useState(false);
 
   const tags: string[] = [];
   if (job.employment_type) tags.push(fmtTag(job.employment_type));
   if (job.categories?.[0]) tags.push(job.categories[0]);
 
   return (
-    <View style={s.card}>
+    <TouchableOpacity style={s.card} activeOpacity={0.92} onPress={() => setShowMatch(true)}>
 
       {/* ── Warm top area ── */}
       <View style={[s.top, { backgroundColor: topColor }]}>
         <View style={s.topBadgeRow}>
           {pct > 0 && (
-            <View style={s.matchBadge}>
+            <TouchableOpacity style={s.matchBadge} onPress={() => setShowMatch(true)} activeOpacity={0.75}>
               <Text style={s.matchText}>{pct}% Match</Text>
-            </View>
+              <Ionicons name="information-circle" size={12} color="#fff" style={{ marginLeft: 3 }} />
+            </TouchableOpacity>
           )}
           {job.is_new && (
             <View style={s.newBadge}>
@@ -224,6 +227,15 @@ export function RecommendedJobCard({ job, topColor, onPress, onSave }: Props) {
           <Text style={s.viewBtnText}>View Job</Text>
         </TouchableOpacity>
       </View>
-    </View>
+
+      <MatchBreakdownModal
+        visible={showMatch}
+        onClose={() => setShowMatch(false)}
+        score={pct}
+        reasons={job.match_reasons}
+        jobTitle={job.title}
+        subjectLabel="job"
+      />
+    </TouchableOpacity>
   );
 }

@@ -1,8 +1,9 @@
 // components/parent/browse/CompactHelperCard.tsx — Mobile 2-col grid card (warm palette)
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FontFamily } from '@/constants/GlobalStyles';
+import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
 import {
   BROWN, CARAMEL, GOLD, DARK, MUTED, DIVIDER, ICON_BG, SURFACE, GREEN, SUCCESS_BG,
 } from '@/components/parent/home/parentWarmTheme';
@@ -19,9 +20,11 @@ interface CompactHelperCardProps {
   onPress: () => void;
   matchScore?: number;
   matchReason?: string;
+  matchReasons?: string[];
 }
 
-export function CompactHelperCard({ helper, onPress, matchScore, matchReason }: CompactHelperCardProps) {
+export function CompactHelperCard({ helper, onPress, matchScore, matchReason, matchReasons }: CompactHelperCardProps) {
+  const [showMatch, setShowMatch] = useState(false);
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       {/* Photo */}
@@ -47,9 +50,14 @@ export function CompactHelperCard({ helper, onPress, matchScore, matchReason }: 
         <Text style={styles.name} numberOfLines={1}>{helper.first_name}</Text>
 
         {matchScore != null && matchScore > 0 && (
-          <View style={styles.matchBadge}>
+          <TouchableOpacity
+            style={styles.matchBadge}
+            onPress={() => setShowMatch(true)}
+            activeOpacity={0.7}
+          >
             <Text style={styles.matchText}>{matchScore}% match</Text>
-          </View>
+            <Ionicons name="information-circle-outline" size={11} color={GREEN} style={{ marginLeft: 2 }} />
+          </TouchableOpacity>
         )}
 
         {helper.experience_years != null && (
@@ -84,6 +92,16 @@ export function CompactHelperCard({ helper, onPress, matchScore, matchReason }: 
           </View>
         )}
       </View>
+
+      <MatchBreakdownModal
+        visible={showMatch}
+        onClose={() => setShowMatch(false)}
+        score={matchScore ?? 0}
+        reasons={matchReasons ?? (matchReason ? [matchReason] : [])}
+        jobTitle={helper.first_name}
+        themeKey="parent"
+        subjectLabel="helper"
+      />
     </TouchableOpacity>
   );
 }
@@ -121,6 +139,7 @@ const styles = StyleSheet.create({
   info: { padding: 10, gap: 5 },
   name: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: DARK },
   matchBadge: {
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: SUCCESS_BG, borderRadius: 6,
     paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start',
   },

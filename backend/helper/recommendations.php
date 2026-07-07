@@ -12,6 +12,7 @@ ini_set('display_errors', 0);
 error_reporting(0);
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
+require_once __DIR__ . '/../shared/job_match.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Haversine distance (km) between two lat/lng pairs
@@ -150,108 +151,15 @@ try {
         $jobNames   = array_values(array_filter(array_map(fn($id) => $refJobs[$id] ?? null, $jobJobIds)));
         $skillNames = array_values(array_filter(array_map(fn($id) => $refSkills[$id] ?? null, $jobSkillIds)));
 
-        // ── WEIGHTED SCORING ─────────────────────────────────────────────
-        // Max: 25 (category) + 15 (job role) + 15 (skills) + 10 (location)
-        //    + 10 (experience) + 15 (salary) + 10 (employer rating) = 100
-        $score   = 0;
-        $reasons = [];
+        // ── WEIGHTED SCORING (shared with browse_jobs.php) ───────────────
+        $m = carelink_score_job_for_helper($helper, $helperCatIds, $helperJobIds, $helperSkillIds, $job);
+        $finalScore = $m['score'];
+        $reasons    = $m['reasons'];
+        $distance   = $m['distance'];
+        $isNew      = $m['is_new'];
 
-        // 1. Category match (25 pts) — does job category match helper specialties?
-        if (in_array($jobCatId, $helperCatIds)) {
-            $score += 25;
-            $reasons[] = 'Category matches your specialty';
-        }
-
-        // 2. Job role match (15 pts) — proportion of overlapping job roles
-        if (!empty($jobJobIds) && !empty($helperJobIds)) {
-            $overlap = count(array_intersect($jobJobIds, $helperJobIds));
-            $pts     = (int)round(($overlap / count($jobJobIds)) * 15);
-            if ($pts > 0) { $score += $pts; $reasons[] = 'Job roles align with yours'; }
-        } elseif (in_array($jobCatId, $helperCatIds)) {
-            // no specific roles required — partial credit if category matched
-            $score += 8;
-        }
-
-        // 3. Skills match (15 pts) — proportion of required skills the helper has
-        if (!empty($jobSkillIds)) {
-            $matching = count(array_intersect($jobSkillIds, $helperSkillIds));
-            $pts      = (int)round(($matching / count($jobSkillIds)) * 15);
-            if ($pts > 0) { $score += $pts; $reasons[] = "$matching/" . count($jobSkillIds) . " required skills match"; }
-        } else {
-            $score += 8; // no specific skills required
-        }
-
-        // 4. Location match (10 pts) — real GPS when available, text fallback otherwise
         $jobMunicipality = $job['municipality'] ?? '';
-        $jobProvince     = $job['province']      ?? '';
-        $jobLat          = !empty($job['job_lat']) ? floatval($job['job_lat']) : null;
-        $jobLng          = !empty($job['job_lng']) ? floatval($job['job_lng']) : null;
-        $hLat            = !empty($helper['latitude'])  ? floatval($helper['latitude'])  : null;
-        $hLng            = !empty($helper['longitude']) ? floatval($helper['longitude']) : null;
-        $distance        = null; // null = unknown
-
-        if ($hLat !== null && $hLng !== null && $jobLat !== null && $jobLng !== null) {
-            // ── Real GPS distance ──────────────────────────────────────────────
-            $distance = haversine($hLat, $hLng, $jobLat, $jobLng);
-            if ($distance <= 5) {
-                $score += 10; $reasons[] = 'Very close (~' . $distance . ' km away)';
-            } elseif ($distance <= 20) {
-                $score += 7; $reasons[] = 'Nearby (~' . $distance . ' km away)';
-            } elseif ($distance <= 50) {
-                $score += 3;  $reasons[] = 'Within the province (~' . $distance . ' km)';
-            }
-            // > 50 km: no location points
-        } else {
-            // ── Text fallback (no GPS stored yet) ─────────────────────────────
-            if ($jobMunicipality && $hMunicipality && strtolower($jobMunicipality) === strtolower($hMunicipality)) {
-                $score += 10; $distance = rand(1, 5);
-                $reasons[] = 'Same city/municipality';
-            } elseif ($jobProvince && $hProvince && strtolower($jobProvince) === strtolower($hProvince)) {
-                $score += 5;  $distance = rand(10, 50);
-                $reasons[] = 'Same province';
-            } else {
-                $distance = rand(50, 200);
-            }
-        }
-
-        // 5. Experience match (10 pts)
-        $reqExp = (int)($job['min_experience_years'] ?? 0);
-        if ($hExpYears >= $reqExp) {
-            $score += 10;
-        } elseif ($hExpYears >= $reqExp - 1) {
-            $score += 5;
-            $reasons[] = 'Nearly meets experience requirement';
-        }
-
-        // 6. Salary compatibility (15 pts) — raised from 5: protects helpers from
-        // being matched into underpaid placements despite a strong skills/category fit.
-        $jobMonthlySalary = ($job['salary_period'] === 'Daily') ? floatval($job['salary_offered']) * 26 : floatval($job['salary_offered']);
-        $helperMonthly    = ($hSalaryPeriod === 'Daily') ? $hExpectedSalary * 26 : $hExpectedSalary;
-        if ($jobMonthlySalary >= $helperMonthly) {
-            $score += 15;
-            $reasons[] = 'Salary meets or exceeds your expectation';
-        } elseif ($jobMonthlySalary >= $helperMonthly * 0.85) {
-            $score += 9;
-        }
-
-        // 7. Employer (parent) reputation (10 pts) — proportional to their average
-        // rating from past placements; small neutral credit if they have no reviews yet.
-        $parentRating = (float) ($job['parent_rating'] ?? 0);
-        if ($parentRating > 0) {
-            $score += (int) round(($parentRating / 5) * 10);
-            if ($parentRating >= 4.5) {
-                $reasons[] = 'Highly rated employer (' . number_format($parentRating, 1) . '★)';
-            }
-        } else {
-            $score += 5;
-        }
-
-        // Recency no longer affects the score — surfaced as a separate "is_new"
-        // flag instead, so the UI can show a badge without inflating the percentage.
-        $daysSince = floor((time() - strtotime($job['posted_at'])) / 86400);
-        $isNew = $daysSince <= 3;
-
-        $finalScore = min(100, $score);
+        $jobProvince     = $job['province']     ?? '';
 
         if ($finalScore >= 15) { // only include meaningful matches
             $scored[] = [
@@ -267,7 +175,7 @@ try {
                 'municipality'  => $jobMunicipality,
                 'barangay'      => $job['barangay'] ?? '',
                 'distance'      => $distance,   // km (null if unknown)
-                'distance_exact'=> ($hLat !== null && $jobLat !== null), // true = GPS, false = estimate
+                'distance_exact'=> $m['distance_exact'], // true = GPS, false = estimate
                 'category_id'   => $jobCatId,
                 'category_name' => $catName,
                 'categories'    => [$catName],

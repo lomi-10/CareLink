@@ -186,16 +186,16 @@ try {
                 $score += 7;  $reasons[] = 'Within the province (~' . $distance . ' km)';
             }
         } else {
+            // Deterministic estimates (no rand) so the same helper reports the
+            // SAME distance here and in browse.php — the client match % depends on it.
             $hMunicipality = $helper['municipality'] ?? '';
             $hProvince     = $helper['province']      ?? '';
             if ($hMunicipality && $pMunicipality && strtolower($hMunicipality) === strtolower($pMunicipality)) {
-                $score += 20; $distance = rand(1, 5);
+                $score += 20; $distance = 3.0;
                 $reasons[] = 'Same city/municipality';
             } elseif ($hProvince && $pProvince && strtolower($hProvince) === strtolower($pProvince)) {
-                $score += 10; $distance = rand(10, 50);
+                $score += 10; $distance = 25.0;
                 $reasons[] = 'Same province';
-            } else {
-                $distance = rand(50, 200);
             }
         }
 

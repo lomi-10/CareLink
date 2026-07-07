@@ -20,7 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-require_once '../dbcon.php'; 
+require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/job_match.php';
 
 try {
     $helper_id = isset($_GET['helper_id']) ? intval($_GET['helper_id']) : 0;
@@ -74,6 +75,16 @@ try {
         $skillStmt->execute();
         $skillRes = $skillStmt->get_result();
         while ($row = $skillRes->fetch_assoc()) $helperSkills[] = (string)$row['skill_id'];
+    }
+
+    // Helper's job-role ids (needed by the shared scorer for the job-role weight)
+    $helperJobs = [];
+    $hjStmt = $conn->prepare("SELECT job_id FROM helper_jobs WHERE profile_id = ?");
+    if ($hjStmt) {
+        $hjStmt->bind_param("i", $helper['profile_id']);
+        $hjStmt->execute();
+        $hjRes = $hjStmt->get_result();
+        while ($row = $hjRes->fetch_assoc()) $helperJobs[] = (int)$row['job_id'];
     }
 
     $jobQuery = "
@@ -137,50 +148,11 @@ try {
             }
         }
 
-        $matchScore = 0;
-        $matchReasons = [];
-        
-        $categoryMatch = count(array_intersect($category_ids, $helperCats));
-        if ($categoryMatch > 0) {
-            $matchScore += 30;
-            $matchReasons[] = "Category matches your profile";
-        }
-        
-        $skillMatch = count(array_intersect($skill_ids, $helperSkills));
-        if ($skillMatch > 0) {
-            $matchScore += 20;
-            $matchReasons[] = "Required skills match yours";
-        }
-        
-        $sameProvince = ($job['province'] == $helper['province']);
-        $sameMunicipality = ($job['municipality'] == $helper['municipality']);
-        
-        $distance = rand(50, 100);
-        if ($sameMunicipality) {
-            $distance = rand(1, 5); 
-            $matchScore += 15;
-            $matchReasons[] = "Very close to your location";
-        } elseif ($sameProvince) {
-            $distance = rand(10, 30);
-            $matchScore += 10;
-            $matchReasons[] = "Location nearby";
-        }
-        
-        $monthlySalary = ($job['salary_period'] == 'Daily') ? $job['salary_offered'] * 26 : $job['salary_offered'];
-        $helperExpectedSalary = $helper['expected_salary'] ?? 8000;
-        
-        if ($monthlySalary >= $helperExpectedSalary * 0.8 && $monthlySalary <= $helperExpectedSalary * 1.2) {
-            $matchScore += 15;
-            $matchReasons[] = "Salary in your range";
-        } elseif ($monthlySalary > $helperExpectedSalary * 1.2) {
-            $matchScore += 10;
-            $matchReasons[] = "Salary above your range";
-        }
-        
-        $helperPreferredSchedule = $helper['work_schedule'] ?? 'any';
-        if (strtolower($helperPreferredSchedule) == 'any' || strtolower($job['work_schedule']) == strtolower($helperPreferredSchedule)) {
-            $matchScore += 10;
-        }
+        // ── WEIGHTED SCORING (shared with recommendations.php) ────────────
+        $m = carelink_score_job_for_helper($helper, $helperCats, $helperJobs, $helperSkills, $job);
+        $matchScore   = $m['score'];
+        $matchReasons = $m['reasons'];
+        $distance     = $m['distance'];
 
         // FETCH PARENT DOCUMENTS
         $docs_query = "SELECT document_type, file_path FROM user_documents WHERE user_id = " . (int)$job['parent_id'];
@@ -255,8 +227,10 @@ try {
             'parent_verified' => ($job['parent_account_status'] === 'approved'),
             'parent_rating' => floatval($job['parent_rating']),
             
-            'match_score' => min(100, $matchScore),
+            'match_score' => $matchScore,
             'match_reasons' => $matchReasons,
+            'distance_exact' => $m['distance_exact'],
+            'is_new' => $m['is_new'],
             
             'is_saved' => (bool)$job['is_saved'],
             'saved_at' => $job['saved_at']
