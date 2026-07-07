@@ -79,6 +79,8 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
   const [error,         setError]         = useState<string | null>(null);
   const [pickedFile,    setPickedFile]    = useState<{ name: string; size: number | null; uri: string; mimeType?: string | null } | null>(null);
   const [pickingFile,   setPickingFile]   = useState(false);
+  const [expanded,      setExpanded]      = useState(false); // full-screen cover-letter editor
+  const [confirming,    setConfirming]    = useState(false); // read-first review before submit
   const hasAttachment = !!pickedFile;
 
   // Documents the helper may choose to share with this specific employer
@@ -143,7 +145,23 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
     );
   };
 
-  const handleSubmit = async () => {
+  // Validate, then ask the helper to review their letter first (read-first warning).
+  const handleSubmitPress = () => {
+    if (!job) return;
+    const hasText = coverLetter.trim().length >= 50;
+    if (!hasText && !hasAttachment) {
+      setError('Please write a cover letter (min 50 characters) or attach a file');
+      return;
+    }
+    setError(null);
+    if (hasText) {
+      setConfirming(true); // show the review dialog
+    } else {
+      doSubmit(); // attachment only — nothing to re-read here
+    }
+  };
+
+  const doSubmit = async () => {
     if (!job) return;
 
     const hasText = coverLetter.trim().length >= 50;
@@ -180,6 +198,8 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
         setCoverLetter('');
         setPickedFile(null);
         setSelectedDocIds([]);
+        setConfirming(false);
+        setExpanded(false);
         onSubmit();
         onClose();
       } else {
@@ -261,12 +281,18 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
                   textAlignVertical="top"
                 />
                 <View style={s.charCountRow}>
-                  <Text style={[s.charCount, charCount < 50 && charCount > 0 && s.charCountWarn]}>
-                    {charCount}/1000
-                  </Text>
-                  {charCount < 50 && charCount > 0 && (
-                    <Text style={s.charMin}>min 50 chars</Text>
-                  )}
+                  <TouchableOpacity style={s.expandBtn} onPress={() => setExpanded(true)} activeOpacity={0.8} hitSlop={6}>
+                    <Ionicons name="expand-outline" size={14} color={ORANGE} />
+                    <Text style={s.expandBtnText}>Expand & read</Text>
+                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    {charCount < 50 && charCount > 0 && (
+                      <Text style={s.charMin}>min 50 chars</Text>
+                    )}
+                    <Text style={[s.charCount, charCount < 50 && charCount > 0 && s.charCountWarn]}>
+                      {charCount}/1000
+                    </Text>
+                  </View>
                 </View>
               </View>
 
@@ -383,7 +409,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
           <SafeAreaView style={s.footer}>
             <TouchableOpacity
               style={[s.submitBtn, !canSubmit && s.submitBtnDisabled]}
-              onPress={handleSubmit}
+              onPress={handleSubmitPress}
               disabled={!canSubmit}
               activeOpacity={0.85}
             >
@@ -399,6 +425,77 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
           </SafeAreaView>
         </View>
       </View>
+
+      {/* ── Full-screen cover-letter editor (zoom) ── */}
+      <Modal visible={expanded} animationType="slide" onRequestClose={() => setExpanded(false)}>
+        <SafeAreaView style={s.editorPage}>
+          <View style={s.editorHeader}>
+            <Text style={s.editorTitle}>Cover Letter</Text>
+            <TouchableOpacity onPress={() => setExpanded(false)} style={s.editorDone} activeOpacity={0.85}>
+              <Text style={s.editorDoneText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={s.editorInput}
+            multiline
+            placeholder="Write your cover letter here…"
+            placeholderTextColor="#B0A090"
+            value={coverLetter}
+            onChangeText={text => { setCoverLetter(text); setError(null); }}
+            maxLength={1000}
+            textAlignVertical="top"
+            autoFocus
+          />
+          <View style={s.editorFooter}>
+            <TouchableOpacity
+              style={s.editorGenerate}
+              onPress={() => job && setCoverLetter(generateCoverLetter(job))}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="sparkles-outline" size={15} color={ORANGE} />
+              <Text style={s.editorGenerateText}>Regenerate</Text>
+            </TouchableOpacity>
+            <Text style={s.charCount}>{coverLetter.length}/1000</Text>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ── Read-first review before submitting ── */}
+      <Modal visible={confirming} animationType="fade" transparent onRequestClose={() => setConfirming(false)}>
+        <View style={s.confirmOverlay}>
+          <View style={s.confirmCard}>
+            <View style={s.confirmIcon}>
+              <Ionicons name="reader-outline" size={26} color={ORANGE} />
+            </View>
+            <Text style={s.confirmTitle}>Please read your letter first</Text>
+            <Text style={s.confirmSub}>
+              Review your cover letter below. Once submitted, the employer will see it exactly as written.
+            </Text>
+            <ScrollView style={s.confirmPreview} showsVerticalScrollIndicator>
+              <Text style={s.confirmPreviewText}>{coverLetter.trim()}</Text>
+            </ScrollView>
+            <View style={s.confirmBtns}>
+              <TouchableOpacity
+                style={s.confirmEdit}
+                onPress={() => { setConfirming(false); setExpanded(true); }}
+                activeOpacity={0.85}
+              >
+                <Text style={s.confirmEditText}>Keep editing</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.confirmSubmit, submitting && { opacity: 0.6 }]}
+                onPress={doSubmit}
+                disabled={submitting}
+                activeOpacity={0.85}
+              >
+                {submitting
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={s.confirmSubmitText}>I’ve read it — Submit</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 }
@@ -460,10 +557,37 @@ const s = StyleSheet.create({
   textareaWrap:  { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1.5, borderColor: DIVIDER, overflow: 'hidden' },
   textareaError: { borderColor: '#EF4444' },
   textarea:      { padding: 14, fontSize: 14, color: DARK, minHeight: 160, lineHeight: 21, fontFamily: FontFamily.fredokaRegular },
-  charCountRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 6, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#FBF5EC', borderTopWidth: 1, borderTopColor: DIVIDER },
+  charCountRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#FBF5EC', borderTopWidth: 1, borderTopColor: DIVIDER },
   charCount:     { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },
   charCountWarn: { color: ORANGE },
   charMin:       { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: ORANGE },
+  expandBtn:     { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  expandBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: ORANGE },
+
+  // full-screen editor
+  editorPage:        { flex: 1, backgroundColor: '#FBF5EC' },
+  editorHeader:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: DIVIDER },
+  editorTitle:       { fontFamily: FontFamily.fredokaSemiBold, fontSize: 18, color: DARK },
+  editorDone:        { backgroundColor: DARK, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 11 },
+  editorDoneText:    { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#fff' },
+  editorInput:       { flex: 1, padding: 20, fontSize: 16, lineHeight: 24, color: DARK, fontFamily: FontFamily.fredokaRegular, textAlignVertical: 'top' },
+  editorFooter:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12, borderTopWidth: 1, borderTopColor: DIVIDER, backgroundColor: '#fff' },
+  editorGenerate:    { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF3EC', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 11, borderWidth: 1, borderColor: ORANGE + '55' },
+  editorGenerateText:{ fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: ORANGE },
+
+  // read-first review
+  confirmOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 22 },
+  confirmCard:       { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 20, padding: 20, alignItems: 'center' },
+  confirmIcon:       { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF3EC', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  confirmTitle:      { fontFamily: FontFamily.fredokaSemiBold, fontSize: 17, color: DARK, textAlign: 'center' },
+  confirmSub:        { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED, textAlign: 'center', marginTop: 6, marginBottom: 14, lineHeight: 19 },
+  confirmPreview:    { alignSelf: 'stretch', maxHeight: 220, backgroundColor: '#FBF5EC', borderRadius: 12, borderWidth: 1, borderColor: DIVIDER, padding: 14 },
+  confirmPreviewText:{ fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: DARK, lineHeight: 21 },
+  confirmBtns:       { flexDirection: 'row', gap: 10, alignSelf: 'stretch', marginTop: 16 },
+  confirmEdit:       { flex: 1, paddingVertical: 13, borderRadius: 13, borderWidth: 1.5, borderColor: DIVIDER, alignItems: 'center' },
+  confirmEditText:   { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK },
+  confirmSubmit:     { flex: 1.4, paddingVertical: 13, borderRadius: 13, backgroundColor: DARK, alignItems: 'center', justifyContent: 'center' },
+  confirmSubmitText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#fff' },
 
   // error
   errorRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, backgroundColor: '#FEF2F2', padding: 10, borderRadius: 10 },
