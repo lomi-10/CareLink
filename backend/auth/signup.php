@@ -60,6 +60,19 @@ try {
         exit();
     }
 
+    // Email validation: correct format + the domain must actually accept mail
+    // (MX record). This rejects fake/typo domains without asking the user to
+    // confirm anything. It verifies the DOMAIN is real, not the exact inbox.
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(["success" => false, "message" => "Please enter a valid email address."]);
+        exit();
+    }
+    $emailDomain = substr(strrchr($email, '@'), 1);
+    if ($emailDomain === '' || (!checkdnsrr($emailDomain, 'MX') && !checkdnsrr($emailDomain, 'A'))) {
+        echo json_encode(["success" => false, "message" => "That email domain doesn't seem to exist. Please use a real, working email address."]);
+        exit();
+    }
+
     // 5. GENERATE USERNAME
     $username_base = explode('@', $email)[0];
     $username_base = preg_replace("/[^a-zA-Z0-9]/", "", $username_base);

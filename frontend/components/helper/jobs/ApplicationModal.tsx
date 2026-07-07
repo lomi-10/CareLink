@@ -5,7 +5,6 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import type { JobPost } from '@/hooks/helper';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as DocumentPicker from 'expo-document-picker';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -77,11 +76,8 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
   const [coverLetter,   setCoverLetter]   = useState('');
   const [submitting,    setSubmitting]    = useState(false);
   const [error,         setError]         = useState<string | null>(null);
-  const [pickedFile,    setPickedFile]    = useState<{ name: string; size: number | null; uri: string; mimeType?: string | null } | null>(null);
-  const [pickingFile,   setPickingFile]   = useState(false);
   const [expanded,      setExpanded]      = useState(false); // full-screen cover-letter editor
   const [confirming,    setConfirming]    = useState(false); // read-first review before submit
-  const hasAttachment = !!pickedFile;
 
   // Documents the helper may choose to share with this specific employer
   const [verifiedDocs,   setVerifiedDocs]   = useState<VerifiedDocument[]>([]);
@@ -113,32 +109,6 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
     return () => { cancelled = true; };
   }, [visible]);
 
-  const handlePickFile = async () => {
-    if (pickingFile) return;
-    setPickingFile(true);
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'image/jpeg', 'image/png'],
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
-      if (result.canceled || !result.assets?.length) return;
-
-      const asset = result.assets[0];
-      const MAX_BYTES = 5 * 1024 * 1024;
-      if (typeof asset.size === 'number' && asset.size > MAX_BYTES) {
-        setError('File is too large — max 5MB');
-        return;
-      }
-      setPickedFile({ name: asset.name, size: asset.size ?? null, uri: asset.uri, mimeType: asset.mimeType });
-      setError(null);
-    } catch {
-      setError('Could not open file picker. Please try again.');
-    } finally {
-      setPickingFile(false);
-    }
-  };
-
   const toggleDocShare = (documentId: number) => {
     setSelectedDocIds(prev =>
       prev.includes(documentId) ? prev.filter(id => id !== documentId) : [...prev, documentId]
@@ -148,25 +118,19 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
   // Validate, then ask the helper to review their letter first (read-first warning).
   const handleSubmitPress = () => {
     if (!job) return;
-    const hasText = coverLetter.trim().length >= 50;
-    if (!hasText && !hasAttachment) {
-      setError('Please write a cover letter (min 50 characters) or attach a file');
+    if (coverLetter.trim().length < 50) {
+      setError('Please write a cover letter (min 50 characters).');
       return;
     }
     setError(null);
-    if (hasText) {
-      setConfirming(true); // show the review dialog
-    } else {
-      doSubmit(); // attachment only — nothing to re-read here
-    }
+    setConfirming(true); // show the review dialog
   };
 
   const doSubmit = async () => {
     if (!job) return;
 
-    const hasText = coverLetter.trim().length >= 50;
-    if (!hasText && !hasAttachment) {
-      setError('Please write a cover letter (min 50 characters) or attach a file');
+    if (coverLetter.trim().length < 50) {
+      setError('Please write a cover letter (min 50 characters).');
       return;
     }
 
@@ -178,7 +142,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
       if (!userData) throw new Error('Not logged in');
 
       const user = JSON.parse(userData);
-      const letterToSend = hasText ? coverLetter.trim() : 'Cover letter submitted as an attachment.';
+      const letterToSend = coverLetter.trim();
 
       const response = await fetch(`${API_URL}/helper/apply_job.php`, {
         method: 'POST',
@@ -196,7 +160,6 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
 
       if (data.success) {
         setCoverLetter('');
-        setPickedFile(null);
         setSelectedDocIds([]);
         setConfirming(false);
         setExpanded(false);
@@ -216,7 +179,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
 
   const salary    = Number(job.salary_offered);
   const charCount = coverLetter.length;
-  const canSubmit = (charCount >= 50 || hasAttachment) && !submitting;
+  const canSubmit = charCount >= 50 && !submitting;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -256,7 +219,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
                 <Text style={s.sectionTitle}>Cover Letter</Text>
                 <Text style={s.required}>*</Text>
               </View>
-              <Text style={s.sectionSub}>Write or generate a cover letter, or attach one as a file</Text>
+              <Text style={s.sectionSub}>Write your own or generate one, then review it before submitting</Text>
 
               {/* Generate button */}
               <TouchableOpacity
@@ -295,46 +258,6 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
                   </View>
                 </View>
               </View>
-
-              {/* OR divider */}
-              <View style={s.orRow}>
-                <View style={s.orLine} />
-                <Text style={s.orText}>OR</Text>
-                <View style={s.orLine} />
-              </View>
-
-              {/* File upload alternative */}
-              <TouchableOpacity
-                style={[s.uploadBtn, hasAttachment && s.uploadBtnActive]}
-                onPress={handlePickFile}
-                activeOpacity={0.8}
-                disabled={pickingFile}
-              >
-                {pickingFile ? (
-                  <ActivityIndicator size="small" color={MUTED} />
-                ) : (
-                  <Ionicons
-                    name={hasAttachment ? 'document-attach' : 'cloud-upload-outline'}
-                    size={20}
-                    color={hasAttachment ? DARK : MUTED}
-                  />
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.uploadLabel, hasAttachment && { color: DARK }]} numberOfLines={1}>
-                    {hasAttachment ? pickedFile!.name : 'Attach cover letter file'}
-                  </Text>
-                  <Text style={s.uploadHint}>
-                    {hasAttachment
-                      ? `${pickedFile!.size ? `${(pickedFile!.size / 1024).toFixed(0)} KB · ` : ''}Tap the X to remove`
-                      : 'PDF, JPG or PNG · Max 5MB'}
-                  </Text>
-                </View>
-                {hasAttachment && (
-                  <TouchableOpacity onPress={() => setPickedFile(null)} hitSlop={6}>
-                    <Ionicons name="close-circle" size={18} color={MUTED} />
-                  </TouchableOpacity>
-                )}
-              </TouchableOpacity>
 
               {error && (
                 <View style={s.errorRow}>
@@ -387,8 +310,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
               <View style={s.receiveList}>
                 {[
                   { icon: 'person-circle-outline' as const, label: 'Your Profile' },
-                  { icon: 'chatbubble-outline' as const,    label: charCount >= 50 ? 'Cover Letter (text)' : 'Cover Letter' },
-                  ...(hasAttachment ? [{ icon: 'attach-outline' as const, label: 'Cover Letter File' }] : []),
+                  { icon: 'chatbubble-outline' as const,    label: 'Cover Letter' },
                   ...selectedDocIds.map(id => {
                     const doc = verifiedDocs.find(d => d.document_id === id);
                     return { icon: 'document-text-outline' as const, label: doc ? doc.document_type : 'Document' };

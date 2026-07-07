@@ -1,5 +1,6 @@
 // hooks/shared/useNotifications.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
 
@@ -53,6 +54,12 @@ export function useNotifications(role: 'helper' | 'parent' | 'peso') {
     pollRef.current = setInterval(fetchNotifications, POLL_INTERVAL_MS);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [fetchNotifications]);
+
+  // Refetch whenever a screen using this hook regains focus — so the badge
+  // updates immediately after "mark all as read" on the notifications screen.
+  useFocusEffect(
+    useCallback(() => { fetchNotifications(); }, [fetchNotifications])
+  );
 
   const markAllRead = async () => {
     try {
