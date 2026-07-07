@@ -1,10 +1,11 @@
 // app/(helper)/home/index.tsx
 // PHP: helper/get_stats.php (via useHelperStats), helper/recommendations.php (RecommendationsSection), shared/get_user_status.php
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View, ScrollView, RefreshControl, ActivityIndicator,
   SafeAreaView, Text, TouchableOpacity,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -15,6 +16,7 @@ import { useHelperStats, useHelperProfile } from '@/hooks/helper';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 
 import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard } from '@/components/shared';
+import WelcomeGuideModal from '@/components/shared/WelcomeGuideModal';
 import {
   Sidebar, MobileHeader, GreetingCard,
   StatCard, SectionHeader,
@@ -67,6 +69,21 @@ export default function HelperHome() {
     jobTitle?: string;
   } | null>(null);
 
+  // First-login walkthrough: show the paged guide once, then remember it was seen.
+  // Re-openable anytime from Settings → Guide.
+  const [welcomeVisible, setWelcomeVisible] = useState(false);
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem('helper_welcome_seen_v1').then((seen) => {
+      if (active && !seen) setWelcomeVisible(true);
+    });
+    return () => { active = false; };
+  }, []);
+  const closeWelcome = () => {
+    setWelcomeVisible(false);
+    AsyncStorage.setItem('helper_welcome_seen_v1', '1').catch(() => {});
+  };
+
   const openPlacementReview = (applicationId: number, counterpartyName: string, jobTitle?: string) => {
     setReviewTarget({ applicationId, counterpartyName, jobTitle });
     setReviewModalVisible(true);
@@ -110,6 +127,7 @@ export default function HelperHome() {
 
   const renderModals = () => (
     <>
+      <WelcomeGuideModal visible={welcomeVisible} onClose={closeWelcome} role="helper" accent={ORANGE} />
       <ConfirmationModal
         visible={confirmLogoutVisible}
         title="Log Out"
