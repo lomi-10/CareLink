@@ -121,11 +121,23 @@ try {
             $filePath = $uploadDir . $fileName;
 
             if (move_uploaded_file($_FILES['valid_id']['tmp_name'], $filePath)) {
+                // Optional BACK image (Valid ID is front + back).
+                $backName = null;
+                if (isset($_FILES['valid_id_back']) && $_FILES['valid_id_back']['error'] === UPLOAD_ERR_OK) {
+                    try {
+                        $backExt  = carelink_validate_uploaded_file($_FILES['valid_id_back'], 'Valid ID (Back)');
+                        $backName = carelink_random_doc_filename('valid_id_back', $user_id, $backExt);
+                        if (!move_uploaded_file($_FILES['valid_id_back']['tmp_name'], $uploadDir . $backName)) {
+                            $backName = null;
+                        }
+                    } catch (Exception $e) { $backName = null; }
+                }
                 $uploadedDocs['valid_id'] = array(
-                    'file_name' => $fileName,
-                    'id_type' => $id_type
+                    'file_name'  => $fileName,
+                    'file_back'  => $backName,
+                    'id_type'    => $id_type
                 );
-                error_log("✅ Valid ID uploaded: $fileName (Type: $id_type)");
+                error_log("✅ Valid ID uploaded: $fileName (Type: $id_type)" . ($backName ? " + back $backName" : ""));
             } else {
                 $errors[] = "Failed to save Valid ID";
             }
@@ -241,33 +253,31 @@ try {
             $checkStmt->execute();
             $checkResult = $checkStmt->get_result();
             
+            $vidBack = $uploadedDocs['valid_id']['file_back'];
             if ($checkResult->num_rows > 0) {
-                // Update existing
-                $updateSql = "UPDATE user_documents 
-                            SET file_path = ?, 
-                                id_type = ?,
-                                status = 'Pending', 
-                                uploaded_at = NOW(),
-                                updated_at = NOW()
-                            WHERE user_id = ? AND document_type = 'Valid ID'";
-                $updateStmt = $conn->prepare($updateSql);
-                $updateStmt->bind_param("ssi", 
-                    $uploadedDocs['valid_id']['file_name'], 
-                    $uploadedDocs['valid_id']['id_type'], 
-                    $user_id
-                );
+                // Update existing — only overwrite the back image if a new one was sent.
+                if ($vidBack !== null) {
+                    $updateSql = "UPDATE user_documents SET file_path = ?, file_path_back = ?, id_type = ?, status = 'Pending', uploaded_at = NOW(), updated_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'";
+                    $updateStmt = $conn->prepare($updateSql);
+                    $updateStmt->bind_param("sssi", $uploadedDocs['valid_id']['file_name'], $vidBack, $uploadedDocs['valid_id']['id_type'], $user_id);
+                } else {
+                    $updateSql = "UPDATE user_documents SET file_path = ?, id_type = ?, status = 'Pending', uploaded_at = NOW(), updated_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'";
+                    $updateStmt = $conn->prepare($updateSql);
+                    $updateStmt->bind_param("ssi", $uploadedDocs['valid_id']['file_name'], $uploadedDocs['valid_id']['id_type'], $user_id);
+                }
                 $updateStmt->execute();
                 $updateStmt->close();
                 error_log("Updated existing Valid ID");
             } else {
                 // Insert new
-                $insertSql = "INSERT INTO user_documents 
-                            (user_id, document_type, file_path, id_type, status, uploaded_at) 
-                            VALUES (?, 'Valid ID', ?, ?, 'Pending', NOW())";
+                $insertSql = "INSERT INTO user_documents
+                            (user_id, document_type, file_path, file_path_back, id_type, status, uploaded_at)
+                            VALUES (?, 'Valid ID', ?, ?, ?, 'Pending', NOW())";
                 $insertStmt = $conn->prepare($insertSql);
-                $insertStmt->bind_param("iss", 
-                    $user_id, 
+                $insertStmt->bind_param("isss",
+                    $user_id,
                     $uploadedDocs['valid_id']['file_name'],
+                    $vidBack,
                     $uploadedDocs['valid_id']['id_type']
                 );
                 $insertStmt->execute();

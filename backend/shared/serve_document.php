@@ -51,7 +51,7 @@ if (!carelink_verify_document_token($documentId, $expires, $token)) {
     deny(403, 'This document link is invalid or has expired. Please reopen it from the app.');
 }
 
-$stmt = $conn->prepare('SELECT file_path FROM user_documents WHERE document_id = ? LIMIT 1');
+$stmt = $conn->prepare('SELECT file_path, file_path_back FROM user_documents WHERE document_id = ? LIMIT 1');
 $stmt->bind_param('i', $documentId);
 $stmt->execute();
 $row = $stmt->get_result()->fetch_assoc();
@@ -61,8 +61,12 @@ if (!$row) {
     deny(404, 'Document not found.');
 }
 
+// ?side=back serves the optional back image (two-sided docs like a Valid ID).
+$side = isset($_GET['side']) && $_GET['side'] === 'back' ? 'back' : 'front';
+$relPath = ($side === 'back' && !empty($row['file_path_back'])) ? $row['file_path_back'] : $row['file_path'];
+
 $uploadDir = realpath(dirname(__DIR__) . '/uploads/documents');
-$filePath = realpath($uploadDir . '/' . $row['file_path']);
+$filePath = realpath($uploadDir . '/' . $relPath);
 
 // realpath() resolves any ".." segments — if the result isn't still inside
 // $uploadDir, something is wrong (e.g. a corrupted file_path) and we must

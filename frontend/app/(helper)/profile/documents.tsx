@@ -33,7 +33,7 @@ type DocSlot = {
 };
 
 const DOC_SLOTS: DocSlot[] = [
-  { type: 'Valid ID',           field: 'valid_id',           icon: 'card-outline',          color: '#2563EB', bg: '#DBEAFE', desc: 'Government-issued ID' },
+  { type: 'Valid ID',           field: 'valid_id',           icon: 'card-outline',          color: '#2563EB', bg: '#DBEAFE', desc: 'Government ID — front & back' },
   { type: 'Barangay Clearance', field: 'barangay_clearance', icon: 'document-text-outline', color: GREEN,     bg: '#D1FAE5', desc: 'Issued by your barangay' },
   { type: 'Police Clearance',   field: 'police_clearance',   icon: 'shield-outline',        color: '#7C3AED', bg: '#EDE9FE', desc: 'PNP police clearance' },
   { type: 'TESDA NC2',          field: 'tesda_nc2',          icon: 'ribbon-outline',        color: ORANGE,    bg: '#FEE2D5', desc: 'NC II certificate' },
@@ -97,38 +97,57 @@ export default function DocumentsScreen() {
     }
   };
 
+  // Pick a single image/PDF; returns null if cancelled.
+  const pickOne = async (fallbackName: string) => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['image/*', 'application/pdf'], copyToCacheDirectory: true, multiple: false,
+    });
+    if (result.canceled || !result.assets?.[0]) return null;
+    const asset = result.assets[0];
+    let name = asset.name || fallbackName;
+    const mime = asset.mimeType || (name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+    if (!/\.[a-z0-9]+$/i.test(name)) name += mime.includes('pdf') ? '.pdf' : mime.includes('png') ? '.png' : '.jpg';
+    return { uri: asset.uri, name, mime };
+  };
+
+  const appendFile = async (fd: FormData, field: string, f: { uri: string; name: string; mime: string }) => {
+    if (Platform.OS === 'web') {
+      const blob = await (await fetch(f.uri)).blob();
+      fd.append(field, blob, f.name);
+    } else {
+      // @ts-ignore — RN FormData file shape
+      fd.append(field, { uri: f.uri, name: f.name, type: f.mime });
+    }
+  };
+
   const pickAndUpload = async (slot: DocSlot) => {
     if (busyType) return;
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/*', 'application/pdf'],
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
-      if (result.canceled || !result.assets?.[0]) return;
-      const asset = result.assets[0];
+      const isValidId = slot.field === 'valid_id';
+
+      const front = await pickOne(`${slot.field}_front`);
+      if (!front) return;
+
+      // A Valid ID needs BOTH sides — the picker reopens for the back right away.
+      let back: { uri: string; name: string; mime: string } | null = null;
+      if (isValidId) {
+        back = await pickOne('valid_id_back');
+        if (!back) {
+          showNotice('A Valid ID needs both the front and back. Please upload again and pick both photos (front first, then back).', 'warning', 'Front & back required');
+          return;
+        }
+      }
 
       setBusyType(slot.type);
       const userData = await AsyncStorage.getItem('user_data');
       const userId = String(JSON.parse(userData || '{}')?.user_id || '');
       if (!userId) throw new Error('Please sign in again.');
 
-      let name = asset.name || 'file';
-      const mime = asset.mimeType || (name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-      if (!/\.[a-z0-9]+$/i.test(name)) {
-        name += mime.includes('pdf') ? '.pdf' : mime.includes('png') ? '.png' : '.jpg';
-      }
-
       const fd = new FormData();
       fd.append('user_id', userId);
       fd.append('requester_id', userId);
-      if (Platform.OS === 'web') {
-        const blob = await (await fetch(asset.uri)).blob();
-        fd.append(slot.field, blob, name);
-      } else {
-        // @ts-ignore — RN FormData file shape
-        fd.append(slot.field, { uri: asset.uri, name, type: mime });
-      }
+      await appendFile(fd, slot.field, front);
+      if (back) await appendFile(fd, 'valid_id_back', back);
 
       const res = await fetch(`${API_URL}/helper/upload_documents.php`, { method: 'POST', body: fd });
       const data = await res.json();

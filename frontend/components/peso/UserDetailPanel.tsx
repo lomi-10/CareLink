@@ -45,6 +45,7 @@ export default function UserDetailPanel({
   const [tab, setTab] = useState<TabKey>("overview");
 
   const [viewingDocument, setViewingDocument] = useState<any>(null);
+  const [viewBack, setViewBack] = useState(false);
   const [rejectUserModal, setRejectUserModal] = useState(false);
   const [rejectDocModal, setRejectDocModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -450,9 +451,14 @@ export default function UserDetailPanel({
                   )}
 
                   <View style={st.docActions}>
-                    <TouchableOpacity style={st.docViewBtn} onPress={() => setViewingDocument(doc)} activeOpacity={0.8}>
-                      <Ionicons name="eye-outline" size={15} color={theme.color.info} /><Text style={st.docViewText}>View</Text>
+                    <TouchableOpacity style={st.docViewBtn} onPress={() => { setViewBack(false); setViewingDocument(doc); }} activeOpacity={0.8}>
+                      <Ionicons name="eye-outline" size={15} color={theme.color.info} /><Text style={st.docViewText}>{doc.file_url_back ? 'Front' : 'View'}</Text>
                     </TouchableOpacity>
+                    {!!doc.file_url_back && (
+                      <TouchableOpacity style={st.docViewBtn} onPress={() => { setViewBack(true); setViewingDocument(doc); }} activeOpacity={0.8}>
+                        <Ionicons name="eye-outline" size={15} color={theme.color.info} /><Text style={st.docViewText}>Back</Text>
+                      </TouchableOpacity>
+                    )}
                     {isPending && (
                       <>
                         <TouchableOpacity style={st.docApprove} onPress={() => handleApproveDocument(doc)} activeOpacity={0.85}>
@@ -563,13 +569,13 @@ export default function UserDetailPanel({
         <View style={st.overlay}>
           <View style={st.viewerBox}>
             <View style={st.viewerHead}>
-              <Text style={st.viewerTitle}>{viewingDocument?.document_type}</Text>
+              <Text style={st.viewerTitle}>{viewingDocument?.document_type}{viewBack ? ' — Back' : viewingDocument?.file_url_back ? ' — Front' : ''}</Text>
               <TouchableOpacity onPress={() => setViewingDocument(null)} hitSlop={10}><Ionicons name="close" size={24} color="#fff" /></TouchableOpacity>
             </View>
             {viewingDocument?.file_path?.toLowerCase().endsWith(".pdf") ? (
               <View style={st.viewerPdf}><Ionicons name="document-text" size={64} color={theme.color.info} /><Text style={st.viewerPdfText}>PDF Document — open in a browser to view</Text></View>
             ) : (
-              <Image source={{ uri: viewingDocument?.file_url }} style={st.viewerImg} resizeMode="contain" />
+              <Image source={{ uri: viewBack ? viewingDocument?.file_url_back : viewingDocument?.file_url }} style={st.viewerImg} resizeMode="contain" />
             )}
           </View>
         </View>

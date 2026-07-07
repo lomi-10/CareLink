@@ -119,11 +119,14 @@ function carelink_verify_document_token(int $documentId, int $expires, string $t
  * Builds the full signed URL the frontend will use to actually view/download
  * a document, routed through serve_document.php instead of a raw static path.
  */
-function carelink_signed_document_url(int $documentId): string
+function carelink_signed_document_url(int $documentId, string $side = 'front'): string
 {
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     ['expires' => $expires, 'token' => $token] = carelink_sign_document_token($documentId);
+    // The token authorizes the whole document; ?side just picks which file of it
+    // (front image vs the optional back image, e.g. for a two-sided Valid ID).
+    $sideParam = $side === 'back' ? '&side=back' : '';
     return "{$protocol}://{$host}/carelink_api/shared/serve_document.php"
-        . "?document_id={$documentId}&expires={$expires}&token=" . urlencode($token);
+        . "?document_id={$documentId}&expires={$expires}&token=" . urlencode($token) . $sideParam;
 }
