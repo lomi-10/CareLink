@@ -321,6 +321,16 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const toggleSkill    = (id: number) => setSelectedSkillIds(selectedSkillIds.includes(id) ? selectedSkillIds.filter(x => x !== id) : [...selectedSkillIds, id]);
   const toggleLanguage = (id: number) => setSelectedLanguageIds(selectedLanguageIds.includes(id) ? selectedLanguageIds.filter(x => x !== id) : [...selectedLanguageIds, id]);
 
+  // Per-section completion + the next section to guide the helper to ("Start here").
+  const sectionDone: Record<string, boolean> = {
+    personal:     !!(firstName.trim() && lastName.trim() && contactNumber.trim() && birthDate),
+    address:      !!(province && municipality && barangay),
+    professional: !!(bio.trim() || educationLevel || parseInt(experienceYears || '0', 10) > 0),
+    skills:       selectedCategoryIds.length > 0 && selectedLanguageIds.length > 0,
+    preferences:  !!(expectedSalary && parseFloat(expectedSalary) >= 6000),
+  };
+  const nextSectionKey = SECTIONS.find(sec => !sectionDone[sec.key])?.key;
+
   // ── Submit profile (shared by section saves and photo auto-save) ───────────
   const submitProfile = async (successMessage: string, onSuccess?: () => void, photoOverride?: string) => {
     setSaving(true);
@@ -750,21 +760,41 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
               </View>
             </View>
 
-            {/* Sections */}
-            {SECTIONS.map(sec => (
-              <TouchableOpacity key={sec.key} style={s.sectionCard} onPress={() => openSection(sec.key)} activeOpacity={0.82}>
-                <View style={[s.secIconWrap, { backgroundColor: sec.iconBg }]}>
-                  <Ionicons name={sec.icon} size={20} color={sec.iconColor} />
-                </View>
-                <View style={s.secInfo}>
-                  <Text style={s.secTitle}>{sec.title}</Text>
-                  <Text style={s.secSub}>{sec.subtitle}</Text>
-                </View>
-                <View style={s.secEditBtn}>
-                  <Text style={s.secEditText}>Edit</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {/* Sections — guided: the next incomplete one shows a red "Start here" */}
+            {SECTIONS.map(sec => {
+              const done = sectionDone[sec.key];
+              const isNext = sec.key === nextSectionKey;
+              return (
+                <TouchableOpacity
+                  key={sec.key}
+                  style={[s.sectionCard, isNext && s.sectionCardActive]}
+                  onPress={() => openSection(sec.key)}
+                  activeOpacity={0.82}
+                >
+                  <View style={[s.secIconWrap, { backgroundColor: sec.iconBg }]}>
+                    <Ionicons name={sec.icon} size={20} color={sec.iconColor} />
+                  </View>
+                  <View style={s.secInfo}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={s.secTitle}>{sec.title}</Text>
+                      {done && <Ionicons name="checkmark-circle" size={15} color="#1A7F4B" />}
+                    </View>
+                    <Text style={[s.secSub, isNext && { color: '#C24E12', fontFamily: FontFamily.fredokaSemiBold }]}>
+                      {isNext ? '👉 Start here — do this next' : sec.subtitle}
+                    </Text>
+                  </View>
+                  {isNext ? (
+                    <View style={s.secStartBtn}>
+                      <Text style={s.secStartText}>Start here</Text>
+                    </View>
+                  ) : (
+                    <View style={s.secEditBtn}>
+                      <Text style={s.secEditText}>{done ? 'Edit' : 'Add'}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
 
             {/* Tips card */}
             <View style={s.tipsCard}>
@@ -1072,6 +1102,9 @@ const s = StyleSheet.create({
   secSub:      { fontFamily: FontFamily.fredokaRegular,  fontSize: 12, color: MUTED },
   secEditBtn:  { backgroundColor: '#FDF0D0', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1, borderColor: '#D4B896' },
   secEditText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK },
+  sectionCardActive: { borderWidth: 2, borderColor: ORANGE, backgroundColor: '#FFF8F1' },
+  secStartBtn:  { backgroundColor: '#E11D48', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7 },
+  secStartText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: '#fff' },
 
   // Tips card
   tipsCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#FEF6EE', borderRadius: 14, padding: 14, marginTop: 4 },
