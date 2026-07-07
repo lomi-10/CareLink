@@ -8,12 +8,8 @@ import React from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CareLinkLogoMark } from '@/components/branding/CareLinkLogoMark';
 import { FontFamily } from '@/constants/GlobalStyles';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const BG          = '#FFFBF5';    // warm cream
-const ICON_COLOR  = '#3B1A08';    // dark brown
-const ORANGE      = '#E86019';    // brand orange
+import { useMemo } from 'react';
+import { useHelperWarm, type HelperWarm } from './helperWarmTheme';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -32,12 +28,14 @@ export function MobileHeader({
   onNotificationPress,
   subtitle = 'HELPER PORTAL',
 }: MobileHeaderProps) {
+  const w = useHelperWarm();
+  const s = useMemo(() => makeStyles(w), [w]);
   return (
     <View style={s.bar}>
 
       {/* Hamburger */}
       <TouchableOpacity style={s.iconBtn} onPress={onMenuPress} activeOpacity={0.7}>
-        <Ionicons name="menu" size={26} color={ICON_COLOR} />
+        <Ionicons name="menu" size={26} color={w.DARK} />
       </TouchableOpacity>
 
       {/* Brand center */}
@@ -61,7 +59,7 @@ export function MobileHeader({
         onPress={onNotificationPress}
         disabled={!onNotificationPress}
       >
-        <Ionicons name="notifications-outline" size={24} color={ICON_COLOR} />
+        <Ionicons name="notifications-outline" size={24} color={w.DARK} />
         {notificationCount > 0 && (
           <View style={s.badge}>
             <Text style={s.badgeText}>
@@ -76,14 +74,14 @@ export function MobileHeader({
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const makeStyles = (w: HelperWarm) => StyleSheet.create({
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: BG,
+    backgroundColor: w.SURFACE,
     ...Platform.select({
       ios:     { shadowColor: '#8B5E3C', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6 },
       android: { elevation: 3 },
@@ -101,12 +99,12 @@ const s = StyleSheet.create({
   },
   brandText: { alignItems: 'center' },
   brandName: { fontSize: 18, letterSpacing: -0.2 },
-  brandCare: { fontFamily: FontFamily.fredokaSemiBold, color: ICON_COLOR },
-  brandLink: { fontFamily: FontFamily.fredokaSemiBold, color: ORANGE },
+  brandCare: { fontFamily: FontFamily.fredokaSemiBold, color: w.DARK },
+  brandLink: { fontFamily: FontFamily.fredokaSemiBold, color: w.ORANGE },
   subtitle: {
     fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 9,
-    color: ORANGE,
+    color: w.ORANGE,
     letterSpacing: 1.4,
     marginTop: 1,
   },
@@ -116,7 +114,7 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: 6,
     right: 6,
-    backgroundColor: ORANGE,
+    backgroundColor: w.ORANGE,
     borderRadius: 10,
     minWidth: 16,
     height: 16,

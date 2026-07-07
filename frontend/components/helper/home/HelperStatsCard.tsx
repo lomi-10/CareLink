@@ -5,8 +5,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
+import { useMemo } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { useHelperWarm, type HelperWarm } from './helperWarmTheme';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,13 +33,6 @@ interface HelperStatsCardProps {
   onStrength?:     () => void;
 }
 
-// ─── Colors ───────────────────────────────────────────────────────────────────
-
-const ACCENT   = '#E86019';
-const LABEL_C  = '#6B4F3A';
-const VALUE_C  = '#2A1608';
-const ICON_BG  = '#F5E6CC';
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function HelperStatsCard({
@@ -45,28 +40,30 @@ export function HelperStatsCard({
   onApplied, onSaved, onViews, onStrength,
 }: HelperStatsCardProps) {
   const router = useRouter();
+  const w = useHelperWarm();
+  const s = useMemo(() => makeStyles(w), [w]);
 
   const cols: StatCol[] = [
     {
-      icon: 'briefcase', iconBg: ICON_BG, iconColor: '#7A4E2A',
+      icon: 'briefcase', iconBg: w.ICON_BG, iconColor: w.ORANGE,
       value: applied, label: 'Applied',
       actionLabel: 'View all',
       onAction: onApplied ?? (() => router.push('/(helper)/applications')),
     },
     {
-      icon: 'bookmark', iconBg: ICON_BG, iconColor: '#7A4E2A',
+      icon: 'bookmark', iconBg: w.ICON_BG, iconColor: w.ORANGE,
       value: saved, label: 'Saved',
       actionLabel: 'View all',
       onAction: onSaved ?? (() => router.push('/(helper)/browse/saved_jobs')),
     },
     {
-      icon: 'eye', iconBg: '#D8F5EC', iconColor: '#059669',
+      icon: 'eye', iconBg: w.SUCCESS_BG, iconColor: w.GREEN,
       value: profileViews, label: 'Profile Views',
       actionLabel: 'View all',
       onAction: onViews,
     },
     {
-      icon: 'shield-checkmark', iconBg: ICON_BG, iconColor: '#E86019',
+      icon: 'shield-checkmark', iconBg: w.ICON_BG, iconColor: w.ORANGE,
       value: `${profileStrength}%`, label: 'Profile Strength',
       actionLabel: profileStrength < 100 ? 'Improve' : 'Perfect!',
       onAction: onStrength ?? (() => router.push('/(helper)/profile')),
@@ -78,7 +75,7 @@ export function HelperStatsCard({
       {cols.map((col, idx) => (
         <React.Fragment key={col.label}>
           {idx > 0 && <View style={s.divider} />}
-          <StatColumn {...col} />
+          <StatColumn {...col} styles={s} accent={w.ORANGE} disabledColor={w.SUBTLE} />
         </React.Fragment>
       ))}
     </View>
@@ -87,26 +84,28 @@ export function HelperStatsCard({
 
 // ─── Sub-component ────────────────────────────────────────────────────────────
 
-function StatColumn({ icon, iconBg, iconColor, value, label, actionLabel, onAction }: StatCol) {
+function StatColumn({ icon, iconBg, iconColor, value, label, actionLabel, onAction, styles, accent, disabledColor }: StatCol & {
+  styles: ReturnType<typeof makeStyles>; accent: string; disabledColor: string;
+}) {
   return (
-    <View style={s.col}>
-      <View style={[s.iconCircle, { backgroundColor: iconBg }]}>
+    <View style={styles.col}>
+      <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
         <Ionicons name={icon} size={18} color={iconColor} />
       </View>
-      <Text style={s.value}>{value}</Text>
-      <Text style={s.label}>{label}</Text>
+      <Text style={styles.value}>{value}</Text>
+      <Text style={styles.label}>{label}</Text>
       <TouchableOpacity
         onPress={onAction}
         disabled={!onAction}
         activeOpacity={0.7}
-        style={s.actionRow}
+        style={styles.actionRow}
         hitSlop={8}
       >
-        <Text style={[s.actionText, !onAction && { color: '#CBD5E1' }]}>
+        <Text style={[styles.actionText, !onAction && { color: disabledColor }]}>
           {actionLabel}
         </Text>
         {onAction && (
-          <Ionicons name="chevron-forward" size={11} color={ACCENT} />
+          <Ionicons name="chevron-forward" size={11} color={accent} />
         )}
       </TouchableOpacity>
     </View>
@@ -115,10 +114,10 @@ function StatColumn({ icon, iconBg, iconColor, value, label, actionLabel, onActi
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const makeStyles = (w: HelperWarm) => StyleSheet.create({
   card: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: w.SURFACE_ELEVATED,
     borderRadius: 18,
     marginHorizontal: 16,
     marginBottom: 20,
@@ -138,7 +137,7 @@ const s = StyleSheet.create({
 
   divider: {
     width: StyleSheet.hairlineWidth,
-    backgroundColor: '#EDE0D0',
+    backgroundColor: w.DIVIDER,
     marginVertical: 4,
   },
 
@@ -154,13 +153,13 @@ const s = StyleSheet.create({
   value: {
     fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 20,
-    color: VALUE_C,
+    color: w.DARK,
     letterSpacing: -0.3,
   },
   label: {
     fontFamily: FontFamily.fredokaRegular,
     fontSize: 11,
-    color: LABEL_C,
+    color: w.MUTED,
     textAlign: 'center',
     lineHeight: 14,
   },
@@ -173,6 +172,6 @@ const s = StyleSheet.create({
   actionText: {
     fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 11,
-    color: ACCENT,
+    color: w.ORANGE,
   },
 });

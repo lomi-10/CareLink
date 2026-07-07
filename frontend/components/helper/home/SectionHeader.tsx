@@ -4,7 +4,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { DARK, ORANGE } from './helperWarmTheme';
+import { useHelperWarm } from './helperWarmTheme';
 
 const styles = StyleSheet.create({
   container: {
@@ -16,7 +16,6 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 18,
-    color: DARK,
   },
   action: {
     fontFamily: FontFamily.fredokaSemiBold,
@@ -33,12 +32,13 @@ interface SectionHeaderProps {
 }
 
 export function SectionHeader({ title, action, onAction, actionColor }: SectionHeaderProps) {
+  const w = useHelperWarm();
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, { color: w.DARK }]}>{title}</Text>
       {action && onAction && (
         <TouchableOpacity onPress={onAction} activeOpacity={0.7}>
-          <Text style={[styles.action, { color: actionColor ?? ORANGE }]}>
+          <Text style={[styles.action, { color: actionColor ?? w.ORANGE }]}>
             {action} →
           </Text>
         </TouchableOpacity>

@@ -1,7 +1,7 @@
 // app/(helper)/home/home.styles.ts
 import { Platform, StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { DARK, MUTED, ORANGE, ICON_BG, DIVIDER, SURFACE, PAGE_BG } from '@/components/helper/home/helperWarmTheme';
+import { makeHelperWarm, type HelperWarm } from '@/components/helper/home/helperWarmTheme';
 
 const CARD_SHADOW = Platform.select({
   ios:     { shadowColor: '#8B5E3C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 12 },
@@ -9,7 +9,8 @@ const CARD_SHADOW = Platform.select({
   default: { boxShadow: '0 4px 14px rgba(139,94,60,0.07)' } as any,
 });
 
-export function createHelperHomeStyles() {
+export function createHelperHomeStyles(w: HelperWarm = makeHelperWarm()) {
+  const { DARK, MUTED, ORANGE, ICON_BG, DIVIDER, SURFACE, PAGE_BG } = w;
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: PAGE_BG },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: PAGE_BG },

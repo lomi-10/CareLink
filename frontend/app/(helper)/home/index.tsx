@@ -10,7 +10,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { createHelperHomeStyles } from './home.styles';
-import { MUTED, ORANGE, ICON_BG, GREEN, SUCCESS_BG, INFO, INFO_BG } from '@/components/helper/home/helperWarmTheme';
+import { useHelperWarm } from '@/components/helper/home/helperWarmTheme';
 
 import { useHelperStats, useHelperProfile } from '@/hooks/helper';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
@@ -36,7 +36,9 @@ function formatShortDate(ymd: string): string {
 
 export default function HelperHome() {
   const router = useRouter();
-  const layoutStyles = useMemo(() => createHelperHomeStyles(), []);
+  const w = useHelperWarm();
+  const { MUTED, ORANGE, ICON_BG, GREEN, SUCCESS_BG, INFO, INFO_BG } = w;
+  const layoutStyles = useMemo(() => createHelperHomeStyles(w), [w]);
 
   const { userData, loading: authLoading, handleLogout, getFullName } = useAuth();
   const { stats, loading: statsLoading, refresh } = useHelperStats();

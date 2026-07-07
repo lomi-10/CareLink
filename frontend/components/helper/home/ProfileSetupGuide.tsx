@@ -4,19 +4,12 @@
 // instruction and a big button that takes them straight into that editor —
 // so less tech-savvy users always know exactly where to press.
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { FontFamily } from '@/constants/GlobalStyles';
-
-const ORANGE = '#E86019';
-const INK = '#2A1608';
-const MUTED = '#8A6C4E';
-const GREEN = '#1A7F4B';
-const GREEN_BG = '#E6F4EC';
-const LINE = '#EFE2D0';
-const CARD = '#FFFFFF';
+import { useHelperWarm, type HelperWarm } from './helperWarmTheme';
 
 type Step = {
   key: string;
@@ -29,6 +22,8 @@ type Step = {
 
 export function ProfileSetupGuide({ profileData, firstName }: { profileData: any; firstName?: string }) {
   const router = useRouter();
+  const w = useHelperWarm();
+  const s = useMemo(() => makeStyles(w), [w]);
 
   const p = profileData?.profile;
   const jobs: any[] = profileData?.mappedSpecialties?.jobs ?? [];
@@ -89,14 +84,14 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
           const isFuture = !step.done && !isActive;
           return (
             <View key={step.key} style={[s.step, isActive && s.stepActive]}>
-              <View style={[s.stepIcon, step.done ? { backgroundColor: GREEN_BG } : isActive ? { backgroundColor: '#FEE2D5' } : { backgroundColor: '#F3EADB' }]}>
+              <View style={[s.stepIcon, step.done ? { backgroundColor: w.SUCCESS_BG } : isActive ? { backgroundColor: w.ICON_BG } : { backgroundColor: w.DIVIDER }]}>
                 {step.done
-                  ? <Ionicons name="checkmark" size={18} color={GREEN} />
-                  : <Ionicons name={step.icon} size={17} color={isActive ? ORANGE : '#C2A988'} />}
+                  ? <Ionicons name="checkmark" size={18} color={w.GREEN} />
+                  : <Ionicons name={step.icon} size={17} color={isActive ? w.ORANGE : w.SUBTLE} />}
               </View>
 
               <View style={{ flex: 1 }}>
-                <Text style={[s.stepTitle, step.done && { color: MUTED }, isFuture && { color: '#B49A7C' }]}>
+                <Text style={[s.stepTitle, step.done && { color: w.MUTED }, isFuture && { color: w.SUBTLE }]}>
                   {step.title}{step.done ? ' ✓' : ''}
                 </Text>
 
@@ -113,7 +108,7 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
 
               {step.done && (
                 <TouchableOpacity onPress={() => go(step.route)} hitSlop={8}>
-                  <Ionicons name="create-outline" size={16} color={MUTED} />
+                  <Ionicons name="create-outline" size={16} color={w.MUTED} />
                 </TouchableOpacity>
               )}
             </View>
@@ -124,10 +119,10 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (w: HelperWarm) => StyleSheet.create({
   card: {
-    backgroundColor: CARD, borderRadius: 18, padding: 16, marginBottom: 16,
-    borderWidth: 1, borderColor: LINE,
+    backgroundColor: w.SURFACE_ELEVATED, borderRadius: 18, padding: 16, marginBottom: 16,
+    borderWidth: 1, borderColor: w.DIVIDER,
     ...Platform.select({
       ios: { shadowColor: '#8B5A2B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
       android: { elevation: 3 },
@@ -135,28 +130,28 @@ const s = StyleSheet.create({
     }),
   },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  title: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 17, color: INK },
-  subtitle: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: MUTED, marginTop: 2 },
-  progressPill: { backgroundColor: '#FEE2D5', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  progressText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: ORANGE },
+  title: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 17, color: w.DARK },
+  subtitle: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: w.MUTED, marginTop: 2 },
+  progressPill: { backgroundColor: w.ICON_BG, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  progressText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: w.ORANGE },
 
-  bar: { height: 7, borderRadius: 4, backgroundColor: '#F3EADB', marginTop: 12, overflow: 'hidden' },
-  barFill: { height: '100%', borderRadius: 4, backgroundColor: ORANGE },
+  bar: { height: 7, borderRadius: 4, backgroundColor: w.ICON_BG, marginTop: 12, overflow: 'hidden' },
+  barFill: { height: '100%', borderRadius: 4, backgroundColor: w.ORANGE },
 
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 10, borderRadius: 12 },
-  stepActive: { backgroundColor: '#FFF8F1', borderWidth: 1, borderColor: '#F6D9C4' },
+  stepActive: { backgroundColor: w.ICON_BG, borderWidth: 1, borderColor: w.ORANGE + '44' },
   stepIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  stepTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5, color: INK, marginTop: 5 },
-  stepInstruction: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: MUTED, lineHeight: 18, marginTop: 5 },
+  stepTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5, color: w.DARK, marginTop: 5 },
+  stepInstruction: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: w.MUTED, lineHeight: 18, marginTop: 5 },
 
   cta: {
     alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7,
-    backgroundColor: INK, paddingVertical: 11, paddingHorizontal: 18, borderRadius: 12, marginTop: 12,
+    backgroundColor: w.ORANGE, paddingVertical: 11, paddingHorizontal: 18, borderRadius: 12, marginTop: 12,
   },
   ctaText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#fff' },
 
   doneRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   doneIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  doneTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15.5, color: INK },
-  doneSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: MUTED, marginTop: 2, lineHeight: 18 },
+  doneTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15.5, color: w.DARK },
+  doneSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: w.MUTED, marginTop: 2, lineHeight: 18 },
 });

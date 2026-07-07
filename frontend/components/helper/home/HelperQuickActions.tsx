@@ -4,8 +4,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
+import { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { useHelperWarm, type HelperWarm } from './helperWarmTheme';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +23,8 @@ interface Action {
 
 export function HelperQuickActions() {
   const router = useRouter();
+  const w = useHelperWarm();
+  const s = useMemo(() => makeStyles(w), [w]);
 
   const actions: Action[] = [
     {
@@ -71,7 +75,7 @@ export function HelperQuickActions() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const makeStyles = (w: HelperWarm) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -93,7 +97,7 @@ const s = StyleSheet.create({
   label: {
     fontFamily: FontFamily.fredokaRegular,
     fontSize: 11,
-    color: '#3B1A08',
+    color: w.DARK,
     textAlign: 'center',
     lineHeight: 14,
   },

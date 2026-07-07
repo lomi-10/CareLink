@@ -25,17 +25,17 @@ import {
   isHelperNavActive,
   type HelperNavItem,
 } from './helperPortalNav';
-import { DARK, MUTED, SUBTLE, ORANGE, ICON_BG, DIVIDER, SURFACE, OVERLAY, DANGER, DANGER_BG } from './helperWarmTheme';
+import { useHelperWarm, type HelperWarm } from './helperWarmTheme';
 
 const { width } = Dimensions.get('window');
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: OVERLAY, flexDirection: 'row' },
+const makeStyles = (w: HelperWarm) => StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: w.OVERLAY, flexDirection: 'row' },
   backgroundTap: { flex: 1 },
   drawer: {
     width: '85%',
     maxWidth: 340,
-    backgroundColor: SURFACE,
+    backgroundColor: w.SURFACE,
     height: '100%',
     paddingTop: Platform.OS === 'ios' ? 8 : 16,
     paddingHorizontal: 16,
@@ -56,15 +56,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: DIVIDER,
+    borderBottomColor: w.DIVIDER,
   },
-  brandTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 18, color: DARK },
-  brandSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginTop: 2 },
+  brandTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 18, color: w.DARK },
+  brandSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: w.MUTED, marginTop: 2 },
   header: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 8 },
   navLabel: {
     fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 10,
-    color: SUBTLE,
+    color: w.SUBTLE,
     marginBottom: 8,
     marginLeft: 4,
     letterSpacing: 1.2,
@@ -80,25 +80,25 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   drawerItemActive: {
-    backgroundColor: ICON_BG,
+    backgroundColor: w.ICON_BG,
     borderWidth: 1,
-    borderColor: ORANGE + '28',
+    borderColor: w.ORANGE + '28',
     borderLeftWidth: 3,
-    borderLeftColor: ORANGE,
+    borderLeftColor: w.ORANGE,
   },
   drawerItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  drawerItemText: { fontFamily: FontFamily.fredokaRegular, fontSize: 15, color: DARK },
-  drawerItemTextActive: { fontFamily: FontFamily.fredokaSemiBold, color: ORANGE },
+  drawerItemText: { fontFamily: FontFamily.fredokaRegular, fontSize: 15, color: w.DARK },
+  drawerItemTextActive: { fontFamily: FontFamily.fredokaSemiBold, color: w.ORANGE },
   hint: {
     fontFamily: FontFamily.fredokaRegular,
     fontSize: 12,
-    color: MUTED,
+    color: w.MUTED,
     lineHeight: 17,
     marginBottom: 12,
     paddingHorizontal: 4,
   },
   badge: {
-    backgroundColor: DANGER,
+    backgroundColor: w.DANGER,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
@@ -112,11 +112,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: DANGER_BG,
+    backgroundColor: w.DANGER_BG,
     gap: 10,
     marginTop: 16,
   },
-  logoutText: { fontFamily: FontFamily.fredokaSemiBold, color: DANGER, fontSize: 15 },
+  logoutText: { fontFamily: FontFamily.fredokaSemiBold, color: w.DANGER, fontSize: 15 },
 });
 
 export function MobileMenu({
@@ -137,6 +137,8 @@ export function MobileMenu({
   const { isWorkMode, activeHire } = useHelperWorkMode();
   const { unreadCount: hookUnread } = useNotifications('helper');
   const notif = notificationUnread ?? hookUnread;
+  const w = useHelperWarm();
+  const styles = useMemo(() => makeStyles(w), [w]);
 
   const workShell = isWorkMode && activeHire;
   const items: HelperNavItem[] = useMemo(
@@ -161,7 +163,7 @@ export function MobileMenu({
         <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} hitSlop={12} accessibilityLabel="Close menu">
-              <Ionicons name="close" size={28} color={DARK} />
+              <Ionicons name="close" size={28} color={w.DARK} />
             </TouchableOpacity>
           </View>
 
@@ -204,7 +206,7 @@ export function MobileMenu({
                     <Ionicons
                       name={helperNavIconName(item.baseIcon, active)}
                       size={22}
-                      color={active ? ORANGE : MUTED}
+                      color={active ? w.ORANGE : w.MUTED}
                     />
                     <Text style={[styles.drawerItemText, active && styles.drawerItemTextActive]} numberOfLines={1}>
                       {item.label}
@@ -220,7 +222,7 @@ export function MobileMenu({
             })}
 
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
-              <Ionicons name="log-out-outline" size={22} color={DANGER} />
+              <Ionicons name="log-out-outline" size={22} color={w.DANGER} />
               <Text style={styles.logoutText}>Log out</Text>
             </TouchableOpacity>
           </ScrollView>

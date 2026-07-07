@@ -5,7 +5,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { DARK, MUTED, DIVIDER, SURFACE } from './helperWarmTheme';
+import { useHelperWarm } from './helperWarmTheme';
 
 const CARD_SHADOW = Platform.select({
   ios:     { shadowColor: '#8B5E3C', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.07, shadowRadius: 10 },
@@ -16,11 +16,9 @@ const CARD_SHADOW = Platform.select({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: SURFACE,
     borderRadius: 16,
     padding: 24,
     borderWidth: 1,
-    borderColor: DIVIDER,
     ...CARD_SHADOW,
   },
   iconContainer: {
@@ -34,13 +32,11 @@ const styles = StyleSheet.create({
   value: {
     fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 32,
-    color: DARK,
     marginBottom: 4,
   },
   title: {
     fontFamily: FontFamily.fredokaRegular,
     fontSize: 14,
-    color: MUTED,
   },
 });
 
@@ -62,18 +58,19 @@ export function StatCard({
   onPress,
 }: StatCardProps) {
   const CardWrapper = onPress ? TouchableOpacity : View;
+  const w = useHelperWarm();
 
   return (
     <CardWrapper
-      style={styles.container}
+      style={[styles.container, { backgroundColor: w.SURFACE_ELEVATED, borderColor: w.DIVIDER }]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
       <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
         <Ionicons name={icon} size={24} color={iconColor} />
       </View>
-      <Text style={styles.value}>{value}</Text>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.value, { color: w.DARK }]}>{value}</Text>
+      <Text style={[styles.title, { color: w.MUTED }]}>{title}</Text>
     </CardWrapper>
   );
 }

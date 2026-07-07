@@ -9,18 +9,18 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import { useNotifications } from '@/hooks/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { isHelperNavActive } from './helperPortalNav';
-import { DARK, MUTED, SUBTLE, ORANGE, ICON_BG, DIVIDER, SURFACE, DANGER, DANGER_BG } from './helperWarmTheme';
+import { useHelperWarm, type HelperWarm } from './helperWarmTheme';
 
 interface SidebarProps {
   onLogout: () => void;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (w: HelperWarm) => StyleSheet.create({
   container: {
     width: 260,
-    backgroundColor: SURFACE,
+    backgroundColor: w.SURFACE,
     borderRightWidth: 1,
-    borderRightColor: DIVIDER,
+    borderRightColor: w.DIVIDER,
     paddingVertical: 24,
     justifyContent: 'space-between',
   },
@@ -31,14 +31,14 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     gap: 12,
   },
-  logoText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 18, color: DARK },
-  logoSubtext: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginTop: 1 },
+  logoText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 18, color: w.DARK },
+  logoSubtext: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: w.MUTED, marginTop: 1 },
 
   nav: { flex: 1, paddingHorizontal: 12 },
   navLabel: {
     fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 10,
-    color: SUBTLE,
+    color: w.SUBTLE,
     marginBottom: 10,
     marginLeft: 12,
     letterSpacing: 1.4,
@@ -54,13 +54,13 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     position: 'relative',
   },
-  navItemActive: { backgroundColor: ICON_BG },
+  navItemActive: { backgroundColor: w.ICON_BG },
   navItemContent: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  navItemText: { fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: MUTED },
-  navItemTextActive: { fontFamily: FontFamily.fredokaSemiBold, color: ORANGE },
+  navItemText: { fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: w.MUTED },
+  navItemTextActive: { fontFamily: FontFamily.fredokaSemiBold, color: w.ORANGE },
 
   badge: {
-    backgroundColor: DANGER,
+    backgroundColor: w.DANGER,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     marginTop: -10,
     width: 3,
     height: 20,
-    backgroundColor: ORANGE,
+    backgroundColor: w.ORANGE,
     borderTopLeftRadius: 3,
     borderBottomLeftRadius: 3,
   },
@@ -88,10 +88,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginHorizontal: 12,
     borderRadius: 10,
-    backgroundColor: DANGER_BG,
+    backgroundColor: w.DANGER_BG,
     gap: 10,
   },
-  logoutText: { fontFamily: FontFamily.fredokaSemiBold, color: DANGER, fontSize: 14 },
+  logoutText: { fontFamily: FontFamily.fredokaSemiBold, color: w.DANGER, fontSize: 14 },
 });
 
 export function Sidebar({ onLogout }: SidebarProps) {
@@ -99,6 +99,8 @@ export function Sidebar({ onLogout }: SidebarProps) {
   const pathname = usePathname() ?? '';
   const { unreadCount } = useNotifications('helper');
   const { isWorkMode } = useHelperWorkMode();
+  const w = useHelperWarm();
+  const styles = useMemo(() => makeStyles(w), [w]);
 
   const navItems = isWorkMode
     ? [
@@ -156,7 +158,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
                 <Ionicons
                   name={active ? item.icon : (`${item.icon}-outline` as React.ComponentProps<typeof Ionicons>['name'])}
                   size={20}
-                  color={active ? ORANGE : MUTED}
+                  color={active ? w.ORANGE : w.MUTED}
                 />
                 <Text style={[styles.navItemText, active && styles.navItemTextActive]}>{item.label}</Text>
               </View>
@@ -174,7 +176,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
       </ScrollView>
 
       <TouchableOpacity style={styles.logoutButton} onPress={onLogout} activeOpacity={0.75}>
-        <Ionicons name="log-out-outline" size={20} color={DANGER} />
+        <Ionicons name="log-out-outline" size={20} color={w.DANGER} />
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
     </View>
