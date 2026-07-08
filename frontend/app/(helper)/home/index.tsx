@@ -25,6 +25,7 @@ import {
 } from '@/components/helper/home';
 import { WorkModeDashboard, WorkModeTabBar } from '@/components/helper/work';
 import { ProfileSetupGuide } from '@/components/helper/home/ProfileSetupGuide';
+import { AwaitingVerificationCard } from '@/components/shared/AwaitingVerificationCard';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { ymdLocal } from '@/lib/helperWorkApi';
 import type { PendingReview } from '@/lib/reviewsApi';
@@ -86,6 +87,21 @@ export default function HelperHome() {
     AsyncStorage.setItem('helper_welcome_seen_v1', '1').catch(() => {});
   };
 
+  // One-time celebration when the profile first reaches 90%+ (verification-ready).
+  const [celebrateVisible, setCelebrateVisible] = useState(false);
+  useEffect(() => {
+    const pct = profileData?.profile_completeness ?? 0;
+    const vstatus = String(profileData?.profile?.verification_status ?? '');
+    if (pct >= 90 && vstatus !== 'Verified' && vstatus !== 'Rejected') {
+      AsyncStorage.getItem('helper_profile_complete_v1').then((seen) => {
+        if (!seen) {
+          setCelebrateVisible(true);
+          AsyncStorage.setItem('helper_profile_complete_v1', '1').catch(() => {});
+        }
+      });
+    }
+  }, [profileData?.profile_completeness, profileData?.profile?.verification_status]);
+
   const openPlacementReview = (applicationId: number, counterpartyName: string, jobTitle?: string) => {
     setReviewTarget({ applicationId, counterpartyName, jobTitle });
     setReviewModalVisible(true);
@@ -130,6 +146,14 @@ export default function HelperHome() {
   const renderModals = () => (
     <>
       <WelcomeGuideModal visible={welcomeVisible} onClose={closeWelcome} role="helper" accent={ORANGE} />
+      <NotificationModal
+        visible={celebrateVisible}
+        message="Profile complete! You're now awaiting PESO verification."
+        type="success"
+        autoClose
+        duration={2800}
+        onClose={() => setCelebrateVisible(false)}
+      />
       <ConfirmationModal
         visible={confirmLogoutVisible}
         title="Log Out"
@@ -229,6 +253,7 @@ export default function HelperHome() {
               />
 
               <ProfileSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
+              <AwaitingVerificationCard completeness={profileData?.profile_completeness} status={profileData?.profile?.verification_status} themeKey="helper" />
 
               <PendingPlacementReviewsBanner
                 userType="helper"
@@ -369,6 +394,7 @@ export default function HelperHome() {
               />
 
             <ProfileSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
+            <AwaitingVerificationCard completeness={profileData?.profile_completeness} status={profileData?.profile?.verification_status} themeKey="helper" />
 
             <PendingPlacementReviewsBanner
               userType="helper"

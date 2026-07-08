@@ -17,6 +17,7 @@ import { FontFamily } from '@/constants/GlobalStyles';
 
 import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal } from '@/components/shared';
 import WelcomeGuideModal from '@/components/shared/WelcomeGuideModal';
+import { AwaitingVerificationCard } from '@/components/shared/AwaitingVerificationCard';
 import {
   Sidebar, MobileMenu, GreetingCard, RecommendedHelpersSection, ParentSetupGuide,
   ParentTabBar, ParentStatTile, SafetyBanner, ParentWorkModeTabBar,
@@ -78,6 +79,21 @@ export default function ParentHome() {
     AsyncStorage.setItem('parent_welcome_seen_v1', '1').catch(() => {});
   };
 
+  // One-time celebration when the profile first reaches 90%+ (verification-ready).
+  const [celebrateVisible, setCelebrateVisible] = useState(false);
+  useEffect(() => {
+    const pct = profileData?.profile_completeness ?? 0;
+    const vstatus = String(profileData?.profile?.verification_status ?? '');
+    if (pct >= 90 && vstatus !== 'Verified' && vstatus !== 'Rejected') {
+      AsyncStorage.getItem('parent_profile_complete_v1').then((seen) => {
+        if (!seen) {
+          setCelebrateVisible(true);
+          AsyncStorage.setItem('parent_profile_complete_v1', '1').catch(() => {});
+        }
+      });
+    }
+  }, [profileData?.profile_completeness, profileData?.profile?.verification_status]);
+
   const isWorkMode = portalMode === 'work';
   // Work Mode is only usable once the parent has an active hire. They can still
   // toggle into it (they can "see" it) but it stays locked until then.
@@ -128,6 +144,14 @@ export default function ParentHome() {
   const renderModals = () => (
     <>
       <WelcomeGuideModal visible={welcomeVisible} onClose={closeWelcome} role="parent" accent={BROWN} />
+      <NotificationModal
+        visible={celebrateVisible}
+        message="Profile complete! You're now awaiting PESO verification."
+        type="success"
+        autoClose
+        duration={2800}
+        onClose={() => setCelebrateVisible(false)}
+      />
       <ConfirmationModal
         visible={confirmLogoutVisible}
         title="Log Out"
@@ -299,6 +323,7 @@ export default function ParentHome() {
             <>
               <GreetingCard userName={getFullName()} profileImage={profileImage} />
               <ParentSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
+              <AwaitingVerificationCard completeness={profileData?.profile_completeness} status={profileData?.profile?.verification_status} themeKey="parent" />
               <PendingPlacementReviewsBanner
                 userType="parent"
                 accentColor={BROWN}
@@ -362,6 +387,7 @@ export default function ParentHome() {
           {renderModeToggle()}
           <GreetingCard userName={getFullName()} profileImage={profileImage} />
           <ParentSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
+          <AwaitingVerificationCard completeness={profileData?.profile_completeness} status={profileData?.profile?.verification_status} themeKey="parent" />
           <PendingPlacementReviewsBanner
             userType="parent"
             accentColor={BROWN}
