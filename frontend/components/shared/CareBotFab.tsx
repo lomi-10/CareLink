@@ -95,7 +95,10 @@ export function CareBotFab() {
 
   const { width: winW, height: winH } = Dimensions.get('window');
   const modalMaxH = Math.min(winH * 0.86, 720);
-  const modalW = Math.min(440, winW * 0.92);
+  // On web CareBot uses a wide two-column layout (topics sidebar + chat), so the
+  // card needs room; on native it stays a compact bubble/sheet.
+  const isWideWeb = Platform.OS === 'web' && winW >= 720;
+  const modalW = isWideWeb ? Math.min(920, winW * 0.94) : Math.min(440, winW * 0.92);
   /** Explicit height fixes RN layout: a maxHeight-only card collapses so only a thin line shows. */
   const cardHeight = Math.min(
     modalMaxH,
@@ -136,11 +139,10 @@ export function CareBotFab() {
       paddingBottom: insets.bottom + 8,
     };
     if (Platform.OS === 'web') {
-      return {
-        ...base,
-        alignItems: 'flex-start' as const,
-        paddingLeft: Math.min(96, winW * 0.08),
-      };
+      // Wide layout is centered; the older narrow bubble stays anchored left.
+      return winW >= 720
+        ? { ...base, alignItems: 'center' as const, paddingHorizontal: 16 }
+        : { ...base, alignItems: 'flex-start' as const, paddingLeft: Math.min(96, winW * 0.08) };
     }
     return { ...base, alignItems: 'center' as const, paddingHorizontal: 12 };
   }, [insets.bottom, insets.top, useBottomSheet, winW]);
