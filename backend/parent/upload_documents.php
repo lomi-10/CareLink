@@ -64,7 +64,7 @@ try {
     $userCheck->close();
 
     // Ensure at least one file is uploaded
-    if (!isset($_FILES['valid_id']) && !isset($_FILES['barangay_clearance'])) {
+    if (!isset($_FILES['valid_id']) && !isset($_FILES['valid_id_back']) && !isset($_FILES['barangay_clearance'])) {
         throw new Exception("Please select at least one document to upload");
     }
 
@@ -78,24 +78,53 @@ try {
     $conn->begin_transaction();
 
     try {
-        // --- Process Valid ID ---
+        // --- Process Valid ID (front + back are independent uploads) ---
+        $pvFront = null;
+        $pvBack  = null;
         if (isset($_FILES['valid_id']) && $_FILES['valid_id']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['valid_id'];
             $fileExt = carelink_validate_uploaded_file($file, 'Valid ID');
             $newFileName = carelink_random_doc_filename('parent_validid', $user_id, $fileExt);
-
             if (move_uploaded_file($file['tmp_name'], $uploadDir . $newFileName)) {
-                $del = $conn->prepare("DELETE FROM user_documents WHERE user_id = ? AND document_type = 'Valid ID'");
-                $del->bind_param("i", $user_id);
-                $del->execute();
-                $del->close();
+                $pvFront = $newFileName;
+            }
+        }
+        if (isset($_FILES['valid_id_back']) && $_FILES['valid_id_back']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['valid_id_back'];
+            $backExt = carelink_validate_uploaded_file($file, 'Valid ID (Back)');
+            $backFileName = carelink_random_doc_filename('parent_validid_back', $user_id, $backExt);
+            if (move_uploaded_file($file['tmp_name'], $uploadDir . $backFileName)) {
+                $pvBack = $backFileName;
+            }
+        }
+        if ($pvFront !== null || $pvBack !== null) {
+            // Upsert — update only the side sent so the other side + its scan survive.
+            $chk = $conn->prepare("SELECT document_id FROM user_documents WHERE user_id = ? AND document_type = 'Valid ID' LIMIT 1");
+            $chk->bind_param("i", $user_id);
+            $chk->execute();
+            $exists = $chk->get_result()->num_rows > 0;
+            $chk->close();
 
-                $stmt = $conn->prepare("INSERT INTO user_documents (user_id, document_type, file_path, status, uploaded_at) VALUES (?, 'Valid ID', ?, 'Pending', NOW())");
-                $stmt->bind_param("is", $user_id, $newFileName);
+            if ($exists) {
+                if ($pvFront !== null && $pvBack !== null) {
+                    $stmt = $conn->prepare("UPDATE user_documents SET file_path = ?, file_path_back = ?, status = 'Pending', uploaded_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'");
+                    $stmt->bind_param("ssi", $pvFront, $pvBack, $user_id);
+                } elseif ($pvBack !== null) {
+                    $stmt = $conn->prepare("UPDATE user_documents SET file_path_back = ?, status = 'Pending', uploaded_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'");
+                    $stmt->bind_param("si", $pvBack, $user_id);
+                } else {
+                    $stmt = $conn->prepare("UPDATE user_documents SET file_path = ?, status = 'Pending', uploaded_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'");
+                    $stmt->bind_param("si", $pvFront, $user_id);
+                }
                 $stmt->execute();
                 $stmt->close();
-                $filesProcessed++;
+            } else {
+                $stmt = $conn->prepare("INSERT INTO user_documents (user_id, document_type, file_path, file_path_back, status, uploaded_at) VALUES (?, 'Valid ID', ?, ?, 'Pending', NOW())");
+                $stmt->bind_param("iss", $user_id, $pvFront, $pvBack);
+                $stmt->execute();
+                $stmt->close();
             }
+            $filesProcessed++;
         }
 
         // --- Process Barangay Clearance ---

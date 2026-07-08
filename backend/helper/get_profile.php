@@ -295,6 +295,7 @@ try {
                         ud.document_id,
                         ud.document_type,
                         ud.file_path,
+                        ud.file_path_back,
                         ud.id_type,
                         ud.status,
                         ud.expiry_date,
@@ -322,6 +323,7 @@ try {
     while ($row = $documentsResult->fetch_assoc()) {
         $row['document_id'] = intval($row['document_id']);
         $row['file_url'] = $row['file_path'] ? carelink_signed_document_url($row['document_id']) : null;
+        $row['file_url_back'] = !empty($row['file_path_back']) ? carelink_signed_document_url($row['document_id'], 'back') : null;
         $row['uploaded_at'] = $row['uploaded_at'] ? date('Y-m-d H:i:s', strtotime($row['uploaded_at'])) : null;
         $row['expiry_date'] = $row['expiry_date'] ? date('Y-m-d', strtotime($row['expiry_date'])) : null;
         $row['verified_at'] = $row['verified_at'] ? date('Y-m-d H:i:s', strtotime($row['verified_at'])) : null;

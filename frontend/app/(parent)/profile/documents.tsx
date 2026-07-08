@@ -19,6 +19,7 @@ import API_URL from '@/constants/api';
 import { useParentProfile } from '@/hooks/parent';
 import { ParentTabBar } from '@/components/parent/home';
 import { NotificationModal } from '@/components/shared';
+import { ValidIdUploadCard } from '@/components/shared/ValidIdUploadCard';
 import { BG, BROWN, CARAMEL, DARK, MUTED, GREEN, SUCCESS_BG, ICON_BG } from '@/components/parent/home/parentWarmTheme';
 import { s } from './documents.styles';
 
@@ -143,6 +144,57 @@ export default function DocumentsScreen() {
     }
   };
 
+  // Valid ID front & back are uploaded separately. The AI scan only runs once
+  // BOTH sides are present, so a half ID is never scanned twice.
+  const uploadValidIdSide = async (side: 'front' | 'back') => {
+    if (busyType) return;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: ['image/*', 'application/pdf'], copyToCacheDirectory: true, multiple: false });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+
+      setBusyType('Valid ID');
+      const userData = await AsyncStorage.getItem('user_data');
+      const userId = String(JSON.parse(userData || '{}')?.user_id || '');
+      if (!userId) throw new Error('Please sign in again.');
+
+      let name = asset.name || 'file';
+      const mime = asset.mimeType || (name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+      if (!/\.[a-z0-9]+$/i.test(name)) name += mime.includes('pdf') ? '.pdf' : mime.includes('png') ? '.png' : '.jpg';
+
+      const field = side === 'front' ? 'valid_id' : 'valid_id_back';
+      const fd = new FormData();
+      fd.append('user_id', userId);
+      fd.append('requester_id', userId);
+      if (Platform.OS === 'web') {
+        const blob = await (await fetch(asset.uri)).blob();
+        fd.append(field, blob, name);
+      } else {
+        // @ts-ignore — RN FormData file shape
+        fd.append(field, { uri: asset.uri, name, type: mime });
+      }
+
+      const res = await fetch(`${API_URL}/parent/upload_documents.php`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || 'Upload failed. Please try again.');
+
+      const newDoc = await fetchDocByType(userId, 'Valid ID');
+      refresh();
+      if (newDoc?.file_url && newDoc?.file_url_back) {
+        goToDetail(newDoc, true);
+      } else {
+        showNotice(
+          side === 'front' ? 'Front saved. Now upload the BACK of your ID.' : 'Back saved. Now upload the FRONT of your ID.',
+          'success', 'Saved',
+        );
+      }
+    } catch (e: any) {
+      showNotice(e?.message || 'Could not upload this document.', 'error');
+    } finally {
+      setBusyType(null);
+    }
+  };
+
   return (
     <View style={s.page}>
       <SafeAreaView style={{ flex: 1 }}>
@@ -184,6 +236,20 @@ export default function DocumentsScreen() {
                 : null;
               const scanStatus = doc?.ai_verification_status;
               const scanned = scanStatus && scanStatus !== 'Unchecked';
+
+              // Valid ID = front + back, uploaded one side at a time.
+              if (slot.field === 'valid_id') {
+                return (
+                  <ValidIdUploadCard
+                    key={slot.type}
+                    doc={doc}
+                    themeKey="parent"
+                    busy={busy}
+                    onUploadSide={uploadValidIdSide}
+                    onOpen={() => goToDetail(doc, false)}
+                  />
+                );
+              }
 
               return (
                 <TouchableOpacity

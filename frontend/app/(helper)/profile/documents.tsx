@@ -19,6 +19,7 @@ import API_URL from '@/constants/api';
 import { useHelperProfile } from '@/hooks/helper';
 import { HelperTabBar } from '@/components/helper/home';
 import { NotificationModal } from '@/components/shared';
+import { ValidIdUploadCard } from '@/components/shared/ValidIdUploadCard';
 import { useProfileTheme } from './profile.theme';
 import { createStyles } from './documents.styles';
 
@@ -125,23 +126,12 @@ export default function DocumentsScreen() {
     }
   };
 
+  // Single-file docs (Barangay / Police / TESDA). Valid ID uses uploadValidIdSide.
   const pickAndUpload = async (slot: DocSlot) => {
     if (busyType) return;
     try {
-      const isValidId = slot.field === 'valid_id';
-
       const front = await pickOne(`${slot.field}_front`);
       if (!front) return;
-
-      // A Valid ID needs BOTH sides — the picker reopens for the back right away.
-      let back: { uri: string; name: string; mime: string } | null = null;
-      if (isValidId) {
-        back = await pickOne('valid_id_back');
-        if (!back) {
-          showNotice('A Valid ID needs both the front and back. Please upload again and pick both photos (front first, then back).', 'warning', 'Front & back required');
-          return;
-        }
-      }
 
       setBusyType(slot.type);
       const userData = await AsyncStorage.getItem('user_data');
@@ -152,7 +142,6 @@ export default function DocumentsScreen() {
       fd.append('user_id', userId);
       fd.append('requester_id', userId);
       await appendFile(fd, slot.field, front);
-      if (back) await appendFile(fd, 'valid_id_back', back);
 
       const res = await fetch(`${API_URL}/helper/upload_documents.php`, { method: 'POST', body: fd });
       const data = await res.json();
@@ -164,6 +153,45 @@ export default function DocumentsScreen() {
         goToDetail(newDoc, true); // proceed to details + start scanning immediately
       } else {
         showNotice('Uploaded, but we could not open the scan screen. Please tap the card.', 'warning', 'Uploaded');
+      }
+    } catch (e: any) {
+      showNotice(e?.message || 'Could not upload this document.', 'error');
+    } finally {
+      setBusyType(null);
+    }
+  };
+
+  // Valid ID front & back are uploaded separately (one photo at a time). The AI
+  // scan only runs once BOTH sides are present, so we never scan a half ID twice.
+  const uploadValidIdSide = async (side: 'front' | 'back') => {
+    if (busyType) return;
+    try {
+      const picked = await pickOne(side === 'front' ? 'valid_id_front' : 'valid_id_back');
+      if (!picked) return;
+
+      setBusyType('Valid ID');
+      const userData = await AsyncStorage.getItem('user_data');
+      const userId = String(JSON.parse(userData || '{}')?.user_id || '');
+      if (!userId) throw new Error('Please sign in again.');
+
+      const fd = new FormData();
+      fd.append('user_id', userId);
+      fd.append('requester_id', userId);
+      await appendFile(fd, side === 'front' ? 'valid_id' : 'valid_id_back', picked);
+
+      const res = await fetch(`${API_URL}/helper/upload_documents.php`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || 'Upload failed. Please try again.');
+
+      const newDoc = await fetchDocByType(userId, 'Valid ID');
+      refresh();
+      if (newDoc?.file_url && newDoc?.file_url_back) {
+        goToDetail(newDoc, true); // both sides present → scan the complete ID
+      } else {
+        showNotice(
+          side === 'front' ? 'Front saved. Now upload the BACK of your ID.' : 'Back saved. Now upload the FRONT of your ID.',
+          'success', 'Saved',
+        );
       }
     } catch (e: any) {
       showNotice(e?.message || 'Could not upload this document.', 'error');
@@ -235,6 +263,20 @@ export default function DocumentsScreen() {
                   : null;
                 const scanStatus = doc?.ai_verification_status;
                 const scanned = scanStatus && scanStatus !== 'Unchecked';
+
+                // Valid ID = front + back, uploaded one side at a time.
+                if (slot.field === 'valid_id') {
+                  return (
+                    <ValidIdUploadCard
+                      key={slot.type}
+                      doc={doc}
+                      themeKey="helper"
+                      busy={busy}
+                      onUploadSide={uploadValidIdSide}
+                      onOpen={() => goToDetail(doc, false)}
+                    />
+                  );
+                }
 
                 return (
                   <TouchableOpacity

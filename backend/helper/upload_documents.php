@@ -113,37 +113,44 @@ try {
     
     // Get ID type from POST (PhilSys, Passport, Driver's License, etc.)
     $id_type = isset($_POST['id_type']) ? trim($_POST['id_type']) : 'PhilSys';
-    
+
+    // Valid ID = front + back. Each side is uploaded independently, so we accept
+    // a front-only, back-only, or both upload and update just the column(s) sent.
+    $vidFront = null;
+    $vidBack  = null;
+
     if (isset($_FILES['valid_id']) && $_FILES['valid_id']['error'] === UPLOAD_ERR_OK) {
         try {
             $fileExt = carelink_validate_uploaded_file($_FILES['valid_id'], 'Valid ID');
             $fileName = carelink_random_doc_filename('valid_id', $user_id, $fileExt);
-            $filePath = $uploadDir . $fileName;
-
-            if (move_uploaded_file($_FILES['valid_id']['tmp_name'], $filePath)) {
-                // Optional BACK image (Valid ID is front + back).
-                $backName = null;
-                if (isset($_FILES['valid_id_back']) && $_FILES['valid_id_back']['error'] === UPLOAD_ERR_OK) {
-                    try {
-                        $backExt  = carelink_validate_uploaded_file($_FILES['valid_id_back'], 'Valid ID (Back)');
-                        $backName = carelink_random_doc_filename('valid_id_back', $user_id, $backExt);
-                        if (!move_uploaded_file($_FILES['valid_id_back']['tmp_name'], $uploadDir . $backName)) {
-                            $backName = null;
-                        }
-                    } catch (Exception $e) { $backName = null; }
-                }
-                $uploadedDocs['valid_id'] = array(
-                    'file_name'  => $fileName,
-                    'file_back'  => $backName,
-                    'id_type'    => $id_type
-                );
-                error_log("✅ Valid ID uploaded: $fileName (Type: $id_type)" . ($backName ? " + back $backName" : ""));
+            if (move_uploaded_file($_FILES['valid_id']['tmp_name'], $uploadDir . $fileName)) {
+                $vidFront = $fileName;
+                error_log("✅ Valid ID (Front) uploaded: $fileName (Type: $id_type)");
             } else {
-                $errors[] = "Failed to save Valid ID";
+                $errors[] = "Failed to save Valid ID (Front)";
             }
-        } catch (Exception $e) {
-            $errors[] = $e->getMessage();
-        }
+        } catch (Exception $e) { $errors[] = $e->getMessage(); }
+    }
+
+    if (isset($_FILES['valid_id_back']) && $_FILES['valid_id_back']['error'] === UPLOAD_ERR_OK) {
+        try {
+            $backExt  = carelink_validate_uploaded_file($_FILES['valid_id_back'], 'Valid ID (Back)');
+            $backName = carelink_random_doc_filename('valid_id_back', $user_id, $backExt);
+            if (move_uploaded_file($_FILES['valid_id_back']['tmp_name'], $uploadDir . $backName)) {
+                $vidBack = $backName;
+                error_log("✅ Valid ID (Back) uploaded: $backName");
+            } else {
+                $errors[] = "Failed to save Valid ID (Back)";
+            }
+        } catch (Exception $e) { $errors[] = $e->getMessage(); }
+    }
+
+    if ($vidFront !== null || $vidBack !== null) {
+        $uploadedDocs['valid_id'] = array(
+            'file_name' => $vidFront,
+            'file_back' => $vidBack,
+            'id_type'   => $id_type,
+        );
     }
 
     // ========================================================================
@@ -253,33 +260,35 @@ try {
             $checkStmt->execute();
             $checkResult = $checkStmt->get_result();
             
-            $vidBack = $uploadedDocs['valid_id']['file_back'];
+            $vidFront = $uploadedDocs['valid_id']['file_name']; // may be null (back-only upload)
+            $vidBack  = $uploadedDocs['valid_id']['file_back']; // may be null (front-only upload)
+            $vidType  = $uploadedDocs['valid_id']['id_type'];
             if ($checkResult->num_rows > 0) {
-                // Update existing — only overwrite the back image if a new one was sent.
-                if ($vidBack !== null) {
+                // Update only the side(s) that were sent this time — front and back
+                // are independent uploads.
+                if ($vidFront !== null && $vidBack !== null) {
                     $updateSql = "UPDATE user_documents SET file_path = ?, file_path_back = ?, id_type = ?, status = 'Pending', uploaded_at = NOW(), updated_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'";
                     $updateStmt = $conn->prepare($updateSql);
-                    $updateStmt->bind_param("sssi", $uploadedDocs['valid_id']['file_name'], $vidBack, $uploadedDocs['valid_id']['id_type'], $user_id);
+                    $updateStmt->bind_param("sssi", $vidFront, $vidBack, $vidType, $user_id);
+                } elseif ($vidBack !== null) {
+                    $updateSql = "UPDATE user_documents SET file_path_back = ?, id_type = ?, status = 'Pending', uploaded_at = NOW(), updated_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'";
+                    $updateStmt = $conn->prepare($updateSql);
+                    $updateStmt->bind_param("ssi", $vidBack, $vidType, $user_id);
                 } else {
                     $updateSql = "UPDATE user_documents SET file_path = ?, id_type = ?, status = 'Pending', uploaded_at = NOW(), updated_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'";
                     $updateStmt = $conn->prepare($updateSql);
-                    $updateStmt->bind_param("ssi", $uploadedDocs['valid_id']['file_name'], $uploadedDocs['valid_id']['id_type'], $user_id);
+                    $updateStmt->bind_param("ssi", $vidFront, $vidType, $user_id);
                 }
                 $updateStmt->execute();
                 $updateStmt->close();
                 error_log("Updated existing Valid ID");
             } else {
-                // Insert new
+                // Insert new (whichever side was provided; the other stays null)
                 $insertSql = "INSERT INTO user_documents
                             (user_id, document_type, file_path, file_path_back, id_type, status, uploaded_at)
                             VALUES (?, 'Valid ID', ?, ?, ?, 'Pending', NOW())";
                 $insertStmt = $conn->prepare($insertSql);
-                $insertStmt->bind_param("isss",
-                    $user_id,
-                    $uploadedDocs['valid_id']['file_name'],
-                    $vidBack,
-                    $uploadedDocs['valid_id']['id_type']
-                );
+                $insertStmt->bind_param("isss", $user_id, $vidFront, $vidBack, $vidType);
                 $insertStmt->execute();
                 $insertStmt->close();
                 error_log("Inserted new Valid ID");
