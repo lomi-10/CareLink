@@ -195,30 +195,39 @@ export default function BrowseHelpers() {
         onOpenAdvanced={() => setFilterModalVisible(true)}
       />
 
-      {recommendedSection}
-
-      <View style={s.resultsBar}>
-        <Text style={s.resultsText}>
-          {rankedHelpers.length} verified {rankedHelpers.length === 1 ? 'helper' : 'helpers'} found
-          {hiredHelperIds.size > 0 ? ` · ${hiredHelperIds.size} hired hidden` : ''}
-        </Text>
-      </View>
-
       {rankedHelpers.length === 0 ? (
-        <View style={s.emptyState}>
-          <Ionicons name="people-outline" size={80} color={DIVIDER} />
-          <Text style={s.emptyText}>No helpers found</Text>
-          <Text style={s.emptySubtext}>Try adjusting your filters or check back later.</Text>
-          {activeFilterCount > 0 && (
-            <TouchableOpacity style={s.resetButton} onPress={resetFilters}>
-              <Text style={s.resetButtonText}>Reset Filters</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {recommendedSection}
+          <View style={s.emptyState}>
+            <Ionicons name="people-outline" size={80} color={DIVIDER} />
+            <Text style={s.emptyText}>No helpers found</Text>
+            <Text style={s.emptySubtext}>Try adjusting your filters or check back later.</Text>
+            {activeFilterCount > 0 && (
+              <TouchableOpacity style={s.resetButton} onPress={resetFilters}>
+                <Text style={s.resetButtonText}>Reset Filters</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
       ) : (
         <FlatList
           data={rankedHelpers}
           keyExtractor={(item) => item.profile_id}
+          // Top-3 + results bar scroll WITH the list (they were pinned above,
+          // eating the viewport on web); the filter bar stays fixed above.
+          ListHeaderComponent={
+            // Offset the list container's padding so the full-bleed top-3 band
+            // and results bar stay edge-to-edge and flush to the top.
+            <View style={{ marginHorizontal: -12, marginTop: -12, marginBottom: 12 }}>
+              {recommendedSection}
+              <View style={s.resultsBar}>
+                <Text style={s.resultsText}>
+                  {rankedHelpers.length} verified {rankedHelpers.length === 1 ? 'helper' : 'helpers'} found
+                  {hiredHelperIds.size > 0 ? ` · ${hiredHelperIds.size} hired hidden` : ''}
+                </Text>
+              </View>
+            </View>
+          }
           renderItem={({ item }) => {
             const match = computeHelperJobMatch(item, referenceJob);
             return isDesktop ? (
