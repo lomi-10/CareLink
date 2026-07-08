@@ -398,9 +398,15 @@ export function CareBotChatPanel({
           </View>
         </View>
       ) : null}
-      {/* Mobile suggested chips (web uses the sidebar instead) */}
+      {/* Mobile suggested chips (web uses the sidebar instead). flexGrow:0 stops
+          RN-Web from stretching this row to fill the column. */}
       {!wide && lines.length <= 2 && !isTyping ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipScroll}
+          contentContainerStyle={styles.chipRow}
+        >
           {topics.map((tp) => (
             <TouchableOpacity key={tp.label} style={styles.chip} onPress={() => submitDraft(tp.question)} activeOpacity={0.85}>
               <Ionicons name={tp.icon} size={13} color={accentColor} />
@@ -552,16 +558,17 @@ const styles = StyleSheet.create({
   typingBubble: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   typingText: { fontSize: 13, color: theme.color.muted },
 
-  chipRow: { paddingHorizontal: 12, paddingBottom: 10, gap: 8, flexDirection: 'row' },
+  chipScroll: { flexGrow: 0, flexShrink: 0, maxHeight: 52 },
+  chipRow: { paddingHorizontal: 12, paddingBottom: 10, gap: 8, flexDirection: 'row', alignItems: 'center' },
   chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 6, height: 34, paddingHorizontal: 12,
     borderRadius: 20, borderWidth: 1.2, borderColor: '#EAD9C0', backgroundColor: '#fff',
   },
   chipText: { fontSize: 12.5, fontWeight: '600' },
 
   inputBar: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8,
-    borderTopWidth: 1, borderTopColor: '#F0E4D3', backgroundColor: '#FFFDF9',
+    borderTopWidth: 1, borderTopColor: '#F0E4D3', backgroundColor: '#FFFDF9', flexShrink: 0,
   },
   textInput: {
     flex: 1, maxHeight: 110, minHeight: 44, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12,

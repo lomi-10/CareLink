@@ -8,19 +8,15 @@ import {
 } from '@/components/shared/calmMoti';
 import { MotiView } from 'moti';
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Modal, StyleSheet, Platform, Dimensions, TouchableWithoutFeedback } from 'react-native';
+import { View, Modal, StyleSheet, Platform, Dimensions, TouchableWithoutFeedback, Image } from 'react-native';
 import { usePathname, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useCareBot } from '@/contexts/CareBotContext';
 import { theme } from '@/constants/theme';
 import { CareBotChatPanel } from './CareBotChatPanel';
 
-const FAB_SIZE = 56;
-
-/** Warm orange accent for the helper portal — overrides the green `theme.color.helper`
- *  so CareBot matches the helper portal's warm theme without changing the global constant. */
-const HELPER_ACCENT = '#E86019';
+const FAB_SIZE = 60;
+const CAREBOT_ICON = require('../../assets/images/chatbot_icon.png');
 
 /** Slide duration for native bottom-sheet; must match dismiss timeout in requestClose(). */
 const MOBILE_SHEET_TRANSITION_MS = 280;
@@ -85,13 +81,6 @@ export function CareBotFab() {
   }, [segments, pathname]);
 
   const showFab = inParentOrHelperPortal;
-
-  const isHelperPortal = useMemo(() => {
-    const flat = segments.flat().map(String);
-    if (flat.some((s) => s === '(helper)' || s === 'helper' || s.includes('(helper)'))) return true;
-    const p = pathname.toLowerCase();
-    return pathname.includes('(helper)') || pathname.startsWith('/helper') || p.includes('/helper/');
-  }, [segments, pathname]);
 
   const { width: winW, height: winH } = Dimensions.get('window');
   const modalMaxH = Math.min(winH * 0.86, 720);
@@ -164,11 +153,11 @@ export function CareBotFab() {
         >
           <AnimatedPressable
             variant="primary"
-            style={[styles.fab, isHelperPortal && styles.fabHelper]}
+            style={styles.fab}
             onPress={open}
             accessibilityLabel="Open CareBot"
           >
-            <Ionicons name="sparkles" size={26} color="#fff" />
+            <Image source={CAREBOT_ICON} style={styles.fabIcon} />
           </AnimatedPressable>
         </View>
       ) : null}
@@ -234,7 +223,7 @@ const styles = StyleSheet.create({
     width: FAB_SIZE,
     height: FAB_SIZE,
     borderRadius: FAB_SIZE / 2,
-    backgroundColor: theme.color.parent,
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -242,11 +231,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.35)',
   },
-  fabHelper: {
-    backgroundColor: HELPER_ACCENT,
+  fabIcon: {
+    width: FAB_SIZE,
+    height: FAB_SIZE,
+    borderRadius: FAB_SIZE / 2,
   },
   modalRoot: {
     flex: 1,
