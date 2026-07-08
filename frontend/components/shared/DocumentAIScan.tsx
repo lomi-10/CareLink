@@ -75,17 +75,24 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ─── Public widget (placed on the Document Details screen) ────────────────────
 export function DocumentAIScan({
-  doc, themeKey = 'helper', autoStart = true, onScanned,
+  doc, themeKey = 'helper', autoStart = true, initialResult = null, onScanned,
 }: {
   doc: any;
   themeKey?: ScanThemeKey;
   autoStart?: boolean;
+  /** Persisted scan result from a previous scan — shown directly, no re-scan. */
+  initialResult?: ScanResult | null;
   onScanned?: (result: ScanResult) => void;
 }) {
   const t = THEMES[themeKey];
-  const [phase, setPhase] = useState<'idle' | 'scanning' | 'done' | 'error'>(autoStart ? 'scanning' : 'idle');
+  // If we already have a stored scan, show it — never re-scan (that would drain
+  // the AI). A fresh re-scan only happens after the user deletes and re-uploads.
+  const hasStored = !!initialResult;
+  const [phase, setPhase] = useState<'idle' | 'scanning' | 'done' | 'error'>(
+    hasStored ? 'done' : autoStart ? 'scanning' : 'idle',
+  );
   const [step, setStep] = useState(0);
-  const [result, setResult] = useState<ScanResult | null>(null);
+  const [result, setResult] = useState<ScanResult | null>(initialResult);
   const [err, setErr] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState<number | null>(null);
   const [showResults, setShowResults] = useState(false);
@@ -97,7 +104,7 @@ export function DocumentAIScan({
   const imgUri: string | null = !isPdf && doc?.file_url ? String(doc.file_url) : null;
 
   useEffect(() => {
-    if (autoStart && !startedRef.current) {
+    if (autoStart && !hasStored && !startedRef.current) {
       startedRef.current = true;
       runScan();
     }
@@ -295,15 +302,15 @@ export function DocumentAIScan({
         <Ionicons name="reader-outline" size={16} color="#fff" />
         <Text style={w.btnFilledText}>Scan Results</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={w.linkBtn} onPress={runScan} activeOpacity={0.7}>
-        <Ionicons name="refresh" size={14} color={t.muted} />
-        <Text style={[w.linkText, { color: t.muted }]}>Scan again</Text>
-      </TouchableOpacity>
+      {failed && (
+        <Text style={[w.sub, { color: t.muted, textAlign: 'center', marginTop: 8 }]}>
+          To try again, delete this document and upload a clearer copy.
+        </Text>
+      )}
 
       <ScanResultsModal
         visible={showResults}
         onClose={() => setShowResults(false)}
-        onRetake={() => { setShowResults(false); runScan(); }}
         t={t}
         result={result}
         imgUri={imgUri}
@@ -315,11 +322,10 @@ export function DocumentAIScan({
 
 // ─── Results modal (screenshot reference) ─────────────────────────────────────
 function ScanResultsModal({
-  visible, onClose, onRetake, t, result, imgUri, elapsed,
+  visible, onClose, t, result, imgUri, elapsed,
 }: {
   visible: boolean;
   onClose: () => void;
-  onRetake: () => void;
   t: ScanTheme;
   result: ScanResult | null;
   imgUri: string | null;
@@ -453,11 +459,7 @@ function ScanResultsModal({
 
             {/* actions */}
             <View style={r.actions}>
-              <TouchableOpacity style={[r.btnOutline, { borderColor: t.line }]} onPress={onRetake} activeOpacity={0.85}>
-                <Ionicons name="refresh" size={17} color={t.ink} />
-                <Text style={[r.btnOutlineText, { color: t.ink }]}>Retake Photo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[r.btnFilled, { backgroundColor: t.accent }]} onPress={onClose} activeOpacity={0.88}>
+              <TouchableOpacity style={[r.btnFilled, { backgroundColor: t.accent, flex: 1 }]} onPress={onClose} activeOpacity={0.88}>
                 <Text style={r.btnFilledText}>Continue</Text>
                 <Ionicons name="arrow-forward" size={17} color="#fff" />
               </TouchableOpacity>

@@ -80,6 +80,8 @@ export default function DocumentsScreen() {
         uploaded_at:      doc.uploaded_at       ?? '',
         autoscan:         autoscan ? '1' : '',
         ai_status:        doc.ai_verification_status ?? '',
+        ai_confidence_score: doc.ai_confidence_score != null ? String(doc.ai_confidence_score) : '',
+        ai_extracted_data:   doc.ai_extracted_data ? JSON.stringify(doc.ai_extracted_data) : '',
         expiry_date:      doc.expiry_date      ?? '',
         verified_by:      doc.verified_by      ?? '',
         verified_at:      doc.verified_at      ?? '',

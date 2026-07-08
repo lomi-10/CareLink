@@ -59,6 +59,8 @@ export default function DocumentDetailScreen() {
     uploaded_at?:   string;
     autoscan?:      string;
     ai_status?:     string;
+    ai_confidence_score?: string;
+    ai_extracted_data?:   string;
     // extended fields (returned by backend when available)
     expiry_date?:      string;
     verified_by?:      string;
@@ -75,6 +77,8 @@ export default function DocumentDetailScreen() {
     uploaded_at      = '',
     autoscan         = '',
     ai_status        = '',
+    ai_confidence_score = '',
+    ai_extracted_data   = '',
     expiry_date,
     verified_by,
     verified_at,
@@ -104,6 +108,26 @@ export default function DocumentDetailScreen() {
   const isRejected = statusKey === 'rejected';
   const isPending  = !isVerified && !isRejected;
   const scanned    = !!aiStatus && aiStatus !== 'Unchecked';
+
+  // Reconstruct the stored scan result so the widget shows it directly instead of
+  // re-scanning (which would drain the AI). A re-scan only happens after the user
+  // deletes a rejected document and uploads a fresh copy (autoscan=1).
+  const initialScan = React.useMemo(() => {
+    if (!scanned) return null;
+    let extra: any = {};
+    try { extra = ai_extracted_data ? JSON.parse(ai_extracted_data) : {}; } catch { extra = {}; }
+    return {
+      ai_verification_status: aiStatus,
+      legitimacy_score: extra?.legitimacy_score ?? null,
+      quality_score: ai_confidence_score ? Number(ai_confidence_score) : null,
+      fields: Array.isArray(extra?.fields) ? extra.fields : [],
+      warnings: Array.isArray(extra?.warnings) ? extra.warnings : [],
+      document_type,
+      document_guess: extra?.document_guess ?? '',
+      is_expected: extra?.is_expected ?? undefined,
+      doc_status: docStatus,
+    };
+  }, [scanned, aiStatus, ai_extracted_data, ai_confidence_score, document_type, docStatus]);
   const stepIndex  = computeStep(docStatus ?? '', scanned);
   const rejectReason = aiReason || rejection_reason;
   const isPdf      = file_url.toLowerCase().endsWith('.pdf');
@@ -276,7 +300,8 @@ export default function DocumentDetailScreen() {
               <DocumentAIScan
                 doc={{ document_id, document_type, file_url, file_path }}
                 themeKey="helper"
-                autoStart={autoscan === '1' || !scanned}
+                autoStart={autoscan === '1' && !scanned}
+                initialResult={initialScan}
                 onScanned={(res) => {
                   if (res?.ai_verification_status) setAiStatus(res.ai_verification_status);
                   if (res?.doc_status) setDocStatus(res.doc_status);
