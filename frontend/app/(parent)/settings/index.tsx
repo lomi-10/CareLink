@@ -18,6 +18,7 @@ import { useParentTheme } from '@/contexts/ParentThemeContext';
 import { useAuth, useResponsive } from '@/hooks/shared';
 import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
+import WelcomeGuideModal from '@/components/shared/WelcomeGuideModal';
 
 const APPEARANCE_OPTIONS: {
   value: ColorSchemePreference;
@@ -43,6 +44,7 @@ export default function SettingsScreen() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [successLogout, setSuccessLogout] = useState(false);
+  const [guideVisible, setGuideVisible] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -65,6 +67,7 @@ export default function SettingsScreen() {
 
   const renderModals = () => (
     <>
+      <WelcomeGuideModal visible={guideVisible} onClose={() => setGuideVisible(false)} role="parent" accent={BROWN} />
       <ConfirmationModal
         visible={confirmLogout}
         title="Log Out" message="Are you sure you want to log out?"
@@ -146,6 +149,21 @@ export default function SettingsScreen() {
             );
           })}
         </View>
+      </View>
+
+      {/* ── Help ── */}
+      <View style={ss.section}>
+        <Text style={ss.sectionTitle}>Help</Text>
+        <TouchableOpacity style={ss.optionRow} onPress={() => setGuideVisible(true)} activeOpacity={0.85}>
+          <View style={ss.optionIcon}>
+            <Ionicons name="help-buoy-outline" size={22} color={BROWN} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={ss.optionTitle}>Guide — how CareLink works</Text>
+            <Text style={ss.optionHint}>Replay the quick walkthrough for hiring helpers.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={MUTED} />
+        </TouchableOpacity>
       </View>
 
       {/* ── Activity log ── */}

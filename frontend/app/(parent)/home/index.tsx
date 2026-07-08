@@ -16,8 +16,9 @@ import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { FontFamily } from '@/constants/GlobalStyles';
 
 import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal } from '@/components/shared';
+import WelcomeGuideModal from '@/components/shared/WelcomeGuideModal';
 import {
-  Sidebar, MobileMenu, GreetingCard, RecommendedHelpersSection,
+  Sidebar, MobileMenu, GreetingCard, RecommendedHelpersSection, ParentSetupGuide,
   ParentTabBar, ParentStatTile, SafetyBanner, ParentWorkModeTabBar,
 } from '@/components/parent/home';
 import {
@@ -60,6 +61,21 @@ export default function ParentHome() {
   const switchMode = async (mode: PortalMode) => {
     await AsyncStorage.setItem(MODE_KEY, mode);
     setPortalMode(mode);
+  };
+
+  // First-login walkthrough: show the paged guide once, then remember it.
+  // Re-openable anytime from Settings → Guide.
+  const [welcomeVisible, setWelcomeVisible] = useState(false);
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem('parent_welcome_seen_v1').then((seen) => {
+      if (active && !seen) setWelcomeVisible(true);
+    });
+    return () => { active = false; };
+  }, []);
+  const closeWelcome = () => {
+    setWelcomeVisible(false);
+    AsyncStorage.setItem('parent_welcome_seen_v1', '1').catch(() => {});
   };
 
   const isWorkMode = portalMode === 'work';
@@ -111,6 +127,7 @@ export default function ParentHome() {
 
   const renderModals = () => (
     <>
+      <WelcomeGuideModal visible={welcomeVisible} onClose={closeWelcome} role="parent" accent={BROWN} />
       <ConfirmationModal
         visible={confirmLogoutVisible}
         title="Log Out"
@@ -281,6 +298,7 @@ export default function ParentHome() {
           ) : (
             <>
               <GreetingCard userName={getFullName()} profileImage={profileImage} />
+              <ParentSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
               <PendingPlacementReviewsBanner
                 userType="parent"
                 accentColor={BROWN}
@@ -343,6 +361,7 @@ export default function ParentHome() {
         >
           {renderModeToggle()}
           <GreetingCard userName={getFullName()} profileImage={profileImage} />
+          <ParentSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
           <PendingPlacementReviewsBanner
             userType="parent"
             accentColor={BROWN}

@@ -5,6 +5,7 @@
 export { Sidebar } from './Sidebar';
 export { MobileMenu } from './MobileMenu';
 export { GreetingCard } from './GreetingCard';
+export { ParentSetupGuide } from './ParentSetupGuide';
 export { ActiveHelpersSection } from './ActiveHelpersSection';
 export { RecommendedHelperCard } from './RecommendedHelperCard';
 export { RecommendedHelpersSection } from './RecommendedHelpersSection';
