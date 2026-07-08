@@ -58,8 +58,10 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
 
   const go = (route: string) => router.push(route as never);
 
-  // Once everything's done the guide disappears — no clutter for set-up users.
-  if (allDone) return null;
+  // The guide is only for getting set up. Once everything's done — or once PESO
+  // has verified the account — it disappears so verified users aren't nagged.
+  const verified = p?.verification_status === 'Verified';
+  if (allDone || verified) return null;
 
   return (
     <View style={s.card}>
