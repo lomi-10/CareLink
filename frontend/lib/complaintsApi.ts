@@ -3,7 +3,10 @@ import API_URL from '@/constants/api';
 export type ComplaintCategory = 'conduct' | 'payment' | 'unsafe_conditions' | 'abuse_or_mistreatment' | 'contract' | 'other';
 
 export async function submitComplaint(body: {
-  application_id: number;
+  // Pass application_id for a complaint tied to a hire/placement, OR respondent_id
+  // for a general complaint (while browsing or before a hire). One is required.
+  application_id?: number;
+  respondent_id?: number;
   user_id: number;
   user_type: 'parent' | 'helper';
   subject: string;
@@ -14,7 +17,8 @@ export async function submitComplaint(body: {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      application_id: body.application_id,
+      application_id: body.application_id ?? 0,
+      respondent_id: body.respondent_id ?? 0,
       user_id: body.user_id,
       user_type: body.user_type,
       subject: body.subject,
@@ -33,6 +37,8 @@ export type AdminComplaintRow = {
   respondent_id?: number | null;
   complainant_role: string | null;
   complainant_name: string;
+  respondent_name?: string;
+  is_general?: boolean;
   category: string | null;
   subject: string;
   body: string;

@@ -25,6 +25,7 @@ interface JobDetailsModalProps {
   onClose: () => void;
   onApply: () => void;
   onToggleSave?: () => void;
+  onReport?: () => void;
   job: any;
 }
 
@@ -66,7 +67,7 @@ function PerkPill({ icon, label }: { icon: React.ComponentProps<typeof Ionicons>
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, job }: JobDetailsModalProps) {
+export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onReport, job }: JobDetailsModalProps) {
   if (!job) return null;
 
   const isSaved = !!job.is_saved;
@@ -115,9 +116,11 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, job }
               <TouchableOpacity style={s.headerIconBtn} onPress={onToggleSave} hitSlop={8} disabled={!onToggleSave}>
                 <Ionicons name={isSaved ? 'heart' : 'heart-outline'} size={22} color={isSaved ? '#EF4444' : DARK} />
               </TouchableOpacity>
-              <TouchableOpacity style={s.headerIconBtn} hitSlop={8}>
-                <Ionicons name="share-social-outline" size={22} color={DARK} />
-              </TouchableOpacity>
+              {onReport ? (
+                <TouchableOpacity style={s.headerIconBtn} onPress={onReport} hitSlop={8} accessibilityLabel="Report this employer">
+                  <Ionicons name="flag-outline" size={20} color={DARK} />
+                </TouchableOpacity>
+              ) : null}
             </View>
 
             <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>

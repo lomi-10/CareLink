@@ -31,7 +31,7 @@ import {
   InviteHelperModal,
 } from '@/components/parent/browse/';
 
-import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared/';
+import { NotificationModal, LoadingSpinner, ConfirmationModal, SubmitComplaintModal } from '@/components/shared/';
 import { s, BG, BROWN, CARAMEL, DARK, MUTED, DIVIDER, ICON_BG } from './browse_helpers.styles';
 
 function getInitials(name?: string) {
@@ -80,6 +80,7 @@ export default function BrowseHelpers() {
   const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [complaintOpen, setComplaintOpen] = useState(false);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [selectedHelper, setSelectedHelper] = useState<any>(null);
   const [notification, setNotification] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
@@ -125,7 +126,15 @@ export default function BrowseHelpers() {
         match={selectedHelper ? computeHelperJobMatch(selectedHelper, referenceJob) : null}
         onInvite={handleInviteFromProfile}
         onMessage={handleMessageHelper}
+        onReport={() => { setProfileModalVisible(false); setComplaintOpen(true); }}
         onClose={() => setProfileModalVisible(false)}
+      />
+      <SubmitComplaintModal
+        visible={complaintOpen}
+        onClose={() => setComplaintOpen(false)}
+        respondentId={selectedHelper ? Number(selectedHelper.user_id) : undefined}
+        userType="parent"
+        counterpartyLabel={selectedHelper?.full_name || selectedHelper?.helper_name || 'this helper'}
       />
       <InviteHelperModal
         visible={inviteModalVisible}

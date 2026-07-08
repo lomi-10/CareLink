@@ -106,6 +106,32 @@ try {
     $rid = (int) $conn->insert_id;
     $st->close();
 
+    // Keep the reviewee's stored rating in sync so it shows on their profile and
+    // in browse/recommendation cards. helper_profiles caches rating_average/
+    // rating_count (the parent side reads these columns); recompute from scratch
+    // so the aggregate is always correct. Affects 0 rows when the reviewee is a
+    // parent (parent ratings are read live), so this is safe either way.
+    $agg = $conn->prepare(
+        'SELECT ROUND(AVG(rating), 2) AS avg_r, COUNT(*) AS cnt
+         FROM placement_reviews WHERE reviewee_id = ?'
+    );
+    if ($agg) {
+        $agg->bind_param('i', $reviewee);
+        $agg->execute();
+        $aggRow = $agg->get_result()->fetch_assoc();
+        $agg->close();
+        $avgVal = (float) ($aggRow['avg_r'] ?? 0);
+        $cntVal = (int) ($aggRow['cnt'] ?? 0);
+        $updHp = $conn->prepare(
+            'UPDATE helper_profiles SET rating_average = ?, rating_count = ? WHERE user_id = ?'
+        );
+        if ($updHp) {
+            $updHp->bind_param('dii', $avgVal, $cntVal, $reviewee);
+            $updHp->execute();
+            $updHp->close();
+        }
+    }
+
     out(true, 'Thank you — your review was saved.', ['review_id' => $rid]);
 } catch (Exception $e) {
     out(false, $e->getMessage());

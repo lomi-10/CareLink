@@ -106,7 +106,8 @@ export default function AdminComplaintsScreen() {
               </Text>
               <Text style={styles.meta}>
                 {item.complainant_role ?? "—"} · {item.complainant_name}
-                {item.application_id != null ? ` · App #${item.application_id}` : ""}
+                {item.respondent_name ? ` → ${item.respondent_name}` : ""}
+                {item.application_id != null ? ` · App #${item.application_id}` : " · General report"}
               </Text>
               <Text style={styles.meta}>
                 {item.status}

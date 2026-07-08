@@ -46,9 +46,11 @@ try {
         SELECT c.complaint_id, c.application_id, c.placement_id, c.complainant_id, c.respondent_id,
                c.complainant_role, c.category, c.subject, c.description, c.status,
                c.forwarded_by_admin_id, c.forwarded_at, c.admin_forward_note, c.created_at,
-               TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS complainant_name
+               TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS complainant_name,
+               TRIM(CONCAT(COALESCE(r.first_name, ''), ' ', COALESCE(r.last_name, ''))) AS respondent_name
         FROM complaints c
         INNER JOIN users u ON u.user_id = c.complainant_id
+        LEFT JOIN users r ON r.user_id = c.respondent_id
         ORDER BY c.created_at DESC
         LIMIT 200
     ";
@@ -67,6 +69,8 @@ try {
             'respondent_id' => $r['respondent_id'] !== null ? (int) $r['respondent_id'] : null,
             'complainant_role' => $r['complainant_role'],
             'complainant_name' => trim((string) $r['complainant_name']),
+            'respondent_name' => trim((string) ($r['respondent_name'] ?? '')),
+            'is_general' => $appId === null,
             'category' => $r['category'],
             'subject' => $r['subject'],
             'body' => (string) $r['description'],

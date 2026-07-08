@@ -24,7 +24,7 @@ import {
   JobDetailsModal, ParentEmployerBrowseCard,
   ParentProfileModal, SearchBar,
 }                                                       from '@/components/helper/jobs/';
-import { ConfirmationModal, LoadingSpinner, NotificationModal } from '@/components/shared/';
+import { ConfirmationModal, LoadingSpinner, NotificationModal, SubmitComplaintModal } from '@/components/shared/';
 import { useHelperWorkMode }                           from '@/contexts/HelperWorkModeContext';
 
 // ── Local modules ─────────────────────────────────────────────────────────────
@@ -74,6 +74,7 @@ export default function BrowseJobs() {
   const [successLogoutVisible, setSuccessLogout]  = useState(false);
   const [selectedJob,          setSelectedJob]    = useState<any>(null);
   const [jobDetailsVisible,    setJobDetails]     = useState(false);
+  const [complaintOpen,        setComplaintOpen]  = useState(false);
   const [applicationVisible,   setApplication]   = useState(false);
   const [advancedSearchVisible, setAdvancedSearch] = useState(false);
   const [notification, setNotification] = useState({
@@ -141,12 +142,20 @@ export default function BrowseJobs() {
         job={selectedJob}
         onApply={() => { setJobDetails(false); setApplication(true); }}
         onClose={() => setJobDetails(false)}
+        onReport={() => { setJobDetails(false); setComplaintOpen(true); }}
         onToggleSave={() => {
           if (selectedJob?.job_post_id) {
             toggleSaveJob(selectedJob.job_post_id);
             setSelectedJob((prev: any) => prev ? { ...prev, is_saved: !prev.is_saved } : prev);
           }
         }}
+      />
+      <SubmitComplaintModal
+        visible={complaintOpen}
+        onClose={() => setComplaintOpen(false)}
+        respondentId={selectedJob?.parent_id ? Number(selectedJob.parent_id) : undefined}
+        userType="helper"
+        counterpartyLabel={selectedJob?.parent_name || 'this employer'}
       />
       <ApplicationModal
         visible={applicationVisible}

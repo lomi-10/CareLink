@@ -112,6 +112,8 @@ export default function PesoComplaintsScreen() {
               </View>
               <Text style={styles.line}>
                 {item.complainant_name} ({item.complainant_role ?? 'user'})
+                {item.respondent_name ? ` → ${item.respondent_name}` : ''}
+                {item.application_id == null ? ' · General report' : ` · App #${item.application_id}`}
               </Text>
               <Text style={styles.body} numberOfLines={3}>{item.body}</Text>
               <Text style={styles.meta}>

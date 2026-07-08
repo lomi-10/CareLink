@@ -20,7 +20,10 @@ import { submitComplaint, type ComplaintCategory } from '@/lib/complaintsApi';
 type Props = {
   visible: boolean;
   onClose: () => void;
-  applicationId: number;
+  /** Placement complaint: the hire's application id. */
+  applicationId?: number;
+  /** General complaint (browsing / pre-hire): the reported user's id. */
+  respondentId?: number;
   userType: 'parent' | 'helper';
   counterpartyLabel?: string;
   onSubmitted?: () => void;
@@ -39,6 +42,7 @@ export function SubmitComplaintModal({
   visible,
   onClose,
   applicationId,
+  respondentId,
   userType,
   counterpartyLabel,
   onSubmitted,
@@ -70,10 +74,16 @@ export function SubmitComplaintModal({
     const userId = Number(user.user_id);
     if (!userId) return;
 
+    if (!applicationId && !respondentId) {
+      Alert.alert('Complaint', 'Could not identify who this report is about.');
+      return;
+    }
+
     setBusy(true);
     try {
       const res = await submitComplaint({
         application_id: applicationId,
+        respondent_id: respondentId,
         user_id: userId,
         user_type: userType,
         subject: sub,

@@ -24,6 +24,7 @@ interface Props {
   onInvite?: () => void;
   onSave?: () => void;
   onMessage?: () => void;
+  onReport?: () => void;
   onClose: () => void;
   referenceJob?: JobPost | null;
   match?: HelperJobMatch | null;
@@ -49,7 +50,7 @@ function getInitials(name?: string) {
   return p.length > 1 ? `${p[0][0]}${p[p.length - 1][0]}`.toUpperCase() : p[0][0].toUpperCase();
 }
 
-export function HelperProfileModal({ visible, helper, onInvite, onSave, onMessage, onClose, referenceJob, match }: Props) {
+export function HelperProfileModal({ visible, helper, onInvite, onSave, onMessage, onReport, onClose, referenceJob, match }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
   useEffect(() => {
@@ -101,9 +102,16 @@ export function HelperProfileModal({ visible, helper, onInvite, onSave, onMessag
           {/* Header bar */}
           <View style={st.header}>
             <Text style={st.headerTitle}>Helper Profile</Text>
-            <TouchableOpacity onPress={onClose} style={st.closeBtn}>
-              <Ionicons name="close" size={20} color={MUTED} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {onReport ? (
+                <TouchableOpacity onPress={onReport} style={st.closeBtn} hitSlop={6} accessibilityLabel="Report this helper">
+                  <Ionicons name="flag-outline" size={18} color={MUTED} />
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity onPress={onClose} style={st.closeBtn}>
+                <Ionicons name="close" size={20} color={MUTED} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* ── Hero ──────────────────────────────────────────────────────── */}
