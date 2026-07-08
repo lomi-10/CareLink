@@ -28,7 +28,9 @@ const ColorSchemePreferenceContext = createContext<
 
 export function ColorSchemePreferenceProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useSystemColorScheme() ?? 'light';
-  const [preference, setPreferenceState] = useState<ColorSchemePreference>('system');
+  // Default to light for both portals until the user explicitly chooses otherwise
+  // (a saved preference below overrides this; picking "System" opts back into the device).
+  const [preference, setPreferenceState] = useState<ColorSchemePreference>('light');
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
