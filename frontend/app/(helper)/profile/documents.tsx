@@ -20,6 +20,7 @@ import { useHelperProfile } from '@/hooks/helper';
 import { HelperTabBar } from '@/components/helper/home';
 import { NotificationModal } from '@/components/shared';
 import { ValidIdUploadCard } from '@/components/shared/ValidIdUploadCard';
+import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { useProfileTheme } from './profile.theme';
 import { createStyles } from './documents.styles';
 
@@ -361,21 +362,7 @@ export default function DocumentsScreen() {
               </View>
             </View>
           ) : (
-            <View style={s.historyWrap}>
-              <Ionicons name="time-outline" size={48} color="#D4B896" />
-              <Text style={s.historyTitle}>Verification History</Text>
-              <Text style={s.historySub}>
-                A record of all PESO verification actions on your documents will appear here.
-              </Text>
-              {verified > 0 && (
-                <View style={s.historyStats}>
-                  <Ionicons name="shield-checkmark" size={18} color={GREEN} />
-                  <Text style={s.historyStatsText}>
-                    {verified} document{verified !== 1 ? 's' : ''} verified
-                  </Text>
-                </View>
-              )}
-            </View>
+            <VerificationHistoryList documents={documents} themeKey="helper" />
           )}
         </ScrollView>
 

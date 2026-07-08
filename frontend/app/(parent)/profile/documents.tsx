@@ -16,10 +16,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
+import { FontFamily } from '@/constants/GlobalStyles';
 import { useParentProfile } from '@/hooks/parent';
 import { ParentTabBar } from '@/components/parent/home';
 import { NotificationModal } from '@/components/shared';
 import { ValidIdUploadCard } from '@/components/shared/ValidIdUploadCard';
+import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { BG, BROWN, CARAMEL, DARK, MUTED, GREEN, SUCCESS_BG, ICON_BG } from '@/components/parent/home/parentWarmTheme';
 import { s } from './documents.styles';
 
@@ -44,6 +46,7 @@ export default function DocumentsScreen() {
   const { profileData, loading, refresh } = useParentProfile();
 
   const [busyType, setBusyType] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'docs' | 'history'>('docs');
   const [notice, setNotice]     = useState<{ visible: boolean; title?: string; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({ visible: false, message: '', type: 'info' });
 
   const showNotice = (message: string, type: typeof notice.type = 'error', title?: string) =>
@@ -59,6 +62,7 @@ export default function DocumentsScreen() {
 
   const documents = profileData.documents ?? [];
   const getDoc = (type: string): any => documents.find((d: any) => d.document_type === type);
+  const uploadedCount = DOC_SLOTS.filter((slot) => documents.some((d: any) => d.document_type === slot.type)).length;
 
   const goToDetail = (doc: any, autoscan: boolean) => {
     router.push({
@@ -223,7 +227,20 @@ export default function DocumentsScreen() {
             </View>
           </View>
 
-          {/* Document cards */}
+          {/* Tab toggle */}
+          <View style={tab.row}>
+            <TouchableOpacity style={[tab.tab, activeTab === 'docs' && tab.tabActive]} onPress={() => setActiveTab('docs')} activeOpacity={0.85}>
+              <Text style={[tab.text, activeTab === 'docs' && tab.textActive]}>My Documents ({uploadedCount}/{DOC_SLOTS.length})</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[tab.tab, activeTab === 'history' && tab.tabActive]} onPress={() => setActiveTab('history')} activeOpacity={0.85}>
+              <Text style={[tab.text, activeTab === 'history' && tab.textActive]}>Verification History</Text>
+            </TouchableOpacity>
+          </View>
+
+          {activeTab === 'history' ? (
+            <VerificationHistoryList documents={documents} themeKey="parent" />
+          ) : (
+          /* Document cards */
           <View style={c.grid}>
             {DOC_SLOTS.map((slot) => {
               const doc = getDoc(slot.type);
@@ -326,6 +343,7 @@ export default function DocumentsScreen() {
               </Text>
             </View>
           </View>
+          )}
         </ScrollView>
 
         <ParentTabBar />
@@ -341,6 +359,15 @@ export default function DocumentsScreen() {
     </View>
   );
 }
+
+// ─── Tab toggle (My Documents / Verification History) ─────────────────────────
+const tab = StyleSheet.create({
+  row: { flexDirection: 'row', backgroundColor: '#F3E7D3', borderRadius: 12, padding: 4, marginBottom: 14 },
+  tab: { flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: 'center' },
+  tabActive: { backgroundColor: CARAMEL },
+  text: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: MUTED },
+  textActive: { color: '#FFFFFF' },
+});
 
 // ─── Local styles (parent warm theme) ─────────────────────────────────────────
 const c = StyleSheet.create({
