@@ -5,7 +5,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ActivityIndicator, Linking, SafeAreaView, ScrollView,
@@ -16,8 +16,8 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import { HelperTabBar } from '@/components/helper/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { DocumentAIScan } from '@/components/shared/DocumentAIScan';
-import { GREEN, MUTED, ORANGE } from './profile.theme';
-import { s } from './document-detail.styles';
+import { useProfileTheme } from './profile.theme';
+import { createStyles } from './document-detail.styles';
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 // Real lifecycle in the database is Pending → Verified (or → Rejected).
@@ -47,6 +47,9 @@ function computeStep(status: string, scanned: boolean): number {
 
 export default function DocumentDetailScreen() {
   const router = useRouter();
+  const t = useProfileTheme();
+  const { GREEN, MUTED, ORANGE } = t;
+  const s = useMemo(() => createStyles(t), [t]);
   const params = useLocalSearchParams<{
     document_id?:   string;
     document_type?: string;
@@ -375,6 +378,9 @@ export default function DocumentDetailScreen() {
 // ─── StatusProgress ───────────────────────────────────────────────────────────
 
 function StatusProgress({ currentStep }: { currentStep: number }) {
+  const t = useProfileTheme();
+  const { GREEN } = t;
+  const s = useMemo(() => createStyles(t), [t]);
   return (
     <View style={s.trackWrap}>
       {STEPS.map((step, i) => {

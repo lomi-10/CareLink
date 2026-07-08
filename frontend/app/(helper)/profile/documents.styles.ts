@@ -1,9 +1,11 @@
 // app/(helper)/profile/documents.styles.ts
 import { Platform, StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, GREEN, CARD_BG } from './profile.theme';
+import { makeProfileTheme, type ProfileTheme } from './profile.theme';
 
-export const s = StyleSheet.create({
+export function createStyles(t: ProfileTheme = makeProfileTheme()) {
+  const { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, GREEN, CARD_BG } = t;
+  return StyleSheet.create({
   page:   { flex: 1, backgroundColor: PAGE_BG },
   scroll: { padding: 16, paddingBottom: 32, gap: 12 },
 
@@ -22,7 +24,7 @@ export const s = StyleSheet.create({
   // Tab toggle
   tabRow:        { flexDirection: 'row', backgroundColor: '#F0E8DC', borderRadius: 14, padding: 4 },
   tab:           { flex: 1, paddingVertical: 10, borderRadius: 11, alignItems: 'center' },
-  tabActive:     { backgroundColor: DARK },
+  tabActive:     { backgroundColor: ORANGE },
   tabText:       { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: MUTED },
   tabTextActive: { color: '#FFFFFF' },
 
@@ -68,4 +70,5 @@ export const s = StyleSheet.create({
   historySub:       { fontFamily: FontFamily.fredokaRegular,  fontSize: 13, color: MUTED, textAlign: 'center', lineHeight: 20 },
   historyStats:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#D1FAE5', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, marginTop: 8 },
   historyStatsText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: GREEN },
-});
+  });
+}

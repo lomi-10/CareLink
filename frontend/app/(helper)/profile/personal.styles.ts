@@ -1,9 +1,11 @@
 // app/(helper)/profile/personal.styles.ts
 import { Platform, StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, CARD_BG, DIVIDER, ICON_BG } from './profile.theme';
+import { makeProfileTheme, type ProfileTheme } from './profile.theme';
 
-export const s = StyleSheet.create({
+export function createStyles(t: ProfileTheme = makeProfileTheme()) {
+  const { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, CARD_BG, DIVIDER, ICON_BG } = t;
+  return StyleSheet.create({
   page:   { flex: 1, backgroundColor: PAGE_BG },
   scroll: { padding: 16, paddingBottom: 32, gap: 12 },
 
@@ -39,4 +41,5 @@ export const s = StyleSheet.create({
   privacyIcon:  { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   privacyTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, marginBottom: 3 },
   privacySub:   { fontFamily: FontFamily.fredokaRegular,  fontSize: 12, color: MUTED, lineHeight: 17, flex: 1 },
-});
+  });
+}

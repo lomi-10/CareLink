@@ -1,9 +1,11 @@
 // app/(helper)/profile/document-detail.styles.ts
 import { Platform, StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, GREEN, CARD_BG } from './profile.theme';
+import { makeProfileTheme, type ProfileTheme } from './profile.theme';
 
-export const s = StyleSheet.create({
+export function createStyles(t: ProfileTheme = makeProfileTheme()) {
+  const { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, GREEN, CARD_BG } = t;
+  return StyleSheet.create({
   page:   { flex: 1, backgroundColor: PAGE_BG },
   scroll: { padding: 16, paddingBottom: 40, gap: 14 },
 
@@ -69,4 +71,5 @@ export const s = StyleSheet.create({
   downloadText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK },
   deleteBtn:    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#FFF5F5', borderRadius: 14, paddingVertical: 14, borderWidth: 1, borderColor: '#FCA5A5' },
   deleteText:   { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#DC2626' },
-});
+  });
+}

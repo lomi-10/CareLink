@@ -1,9 +1,11 @@
 // app/(helper)/profile/index.styles.ts
 import { Platform, StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, GREEN, CARD_BG } from './profile.theme';
+import { makeProfileTheme, type ProfileTheme } from './profile.theme';
 
-export const s = StyleSheet.create({
+export function createStyles(t: ProfileTheme = makeProfileTheme()) {
+  const { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, GREEN, CARD_BG } = t;
+  return StyleSheet.create({
   page:          { flex: 1, backgroundColor: PAGE_BG },
   bar:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: BAR_BG },
   barBtn:        { padding: 8, position: 'relative' },
@@ -83,4 +85,5 @@ export const s = StyleSheet.create({
   viewerTime:       { fontFamily: FontFamily.fredokaRegular,  fontSize: 11, color: MUTED, marginTop: 1 },
   viewersEmpty:     { paddingVertical: 20, alignItems: 'center', gap: 6 },
   viewersEmptyTxt:  { fontFamily: FontFamily.fredokaRegular,  fontSize: 13, color: MUTED },
-});
+  });
+}

@@ -8,7 +8,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ActivityIndicator, Platform, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
@@ -19,8 +19,8 @@ import API_URL from '@/constants/api';
 import { useHelperProfile } from '@/hooks/helper';
 import { HelperTabBar } from '@/components/helper/home';
 import { NotificationModal } from '@/components/shared';
-import { GREEN, MUTED, ORANGE, DARK } from './profile.theme';
-import { s } from './documents.styles';
+import { useProfileTheme } from './profile.theme';
+import { createStyles } from './documents.styles';
 
 // ─── The four required documents (fixed order) ────────────────────────────────
 type DocSlot = {
@@ -34,14 +34,17 @@ type DocSlot = {
 
 const DOC_SLOTS: DocSlot[] = [
   { type: 'Valid ID',           field: 'valid_id',           icon: 'card-outline',          color: '#2563EB', bg: '#DBEAFE', desc: 'Government ID — front & back' },
-  { type: 'Barangay Clearance', field: 'barangay_clearance', icon: 'document-text-outline', color: GREEN,     bg: '#D1FAE5', desc: 'Issued by your barangay' },
+  { type: 'Barangay Clearance', field: 'barangay_clearance', icon: 'document-text-outline', color: '#059669', bg: '#D1FAE5', desc: 'Issued by your barangay' },
   { type: 'Police Clearance',   field: 'police_clearance',   icon: 'shield-outline',        color: '#7C3AED', bg: '#EDE9FE', desc: 'PNP police clearance' },
-  { type: 'TESDA NC2',          field: 'tesda_nc2',          icon: 'ribbon-outline',        color: ORANGE,    bg: '#FEE2D5', desc: 'NC II certificate' },
+  { type: 'TESDA NC2',          field: 'tesda_nc2',          icon: 'ribbon-outline',        color: '#E86019', bg: '#FEE2D5', desc: 'NC II certificate' },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function DocumentsScreen() {
   const router = useRouter();
+  const t = useProfileTheme();
+  const { GREEN, MUTED, ORANGE, DARK } = t;
+  const s = useMemo(() => createStyles(t), [t]);
   const { profileData, loading, refresh } = useHelperProfile();
 
   const [activeTab, setActiveTab] = useState<'docs' | 'history'>('docs');
@@ -372,7 +375,7 @@ const c = StyleSheet.create({
   replaceBtn: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F7EEE0' },
   uploadBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: ORANGE, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 11, minWidth: 96, justifyContent: 'center',
+    backgroundColor: '#E86019', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 11, minWidth: 96, justifyContent: 'center',
   },
   uploadBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
   hint: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, paddingTop: 4 },

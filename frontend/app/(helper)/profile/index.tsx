@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ActivityIndicator, SafeAreaView,
   ScrollView, Text, Modal, StyleSheet,
@@ -23,8 +23,8 @@ import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { WorkModeTabBar } from '@/components/helper/work';
 import EditHelperProfileModal from '@/components/helper/profile/profileEditModal/EditHelperProfileModal';
-import { PAGE_BG, ORANGE, DARK, MUTED, GREEN, CARD_BG } from './profile.theme';
-import { s } from './index.styles';
+import { useProfileTheme } from './profile.theme';
+import { createStyles } from './index.styles';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -53,6 +53,9 @@ function relativeTime(iso: string): string {
 
 export default function HelperProfileMain() {
   const router = useRouter();
+  const t = useProfileTheme();
+  const { PAGE_BG, ORANGE, DARK, MUTED, GREEN, CARD_BG } = t;
+  const s = useMemo(() => createStyles(t), [t]);
   const { handleLogout } = useAuth();
   const { isDesktop }    = useResponsive();
   const { unreadCount }  = useNotifications('helper');
@@ -370,6 +373,8 @@ export default function HelperProfileMain() {
 // ─── StrengthRing ─────────────────────────────────────────────────────────────
 
 function StrengthRing({ percent }: { percent: number }) {
+  const t = useProfileTheme();
+  const s = useMemo(() => createStyles(t), [t]);
   const ringColor = percent >= 100 ? '#D4A017' : percent >= 75 ? '#E86019' : '#9CA3AF';
   return (
     <View style={[s.ringOuter, { borderColor: ringColor }]}>
@@ -386,6 +391,8 @@ function OverviewTile({ icon, iconBg, iconColor, value, label, onPress }: {
   value: string | number; label: string;
   onPress?: () => void;
 }) {
+  const t = useProfileTheme();
+  const s = useMemo(() => createStyles(t), [t]);
   const content = (
     <>
       <View style={[s.ovIcon, { backgroundColor: iconBg }]}>
@@ -427,15 +434,15 @@ function ProfileViewersModal({
               <Text style={vm.subtitle}>Parents who viewed you in the last 7 days</Text>
             </View>
             <TouchableOpacity style={vm.closeBtn} onPress={onClose} hitSlop={8}>
-              <Ionicons name="close" size={18} color={MUTED} />
+              <Ionicons name="close" size={18} color="#7A5C3E" />
             </TouchableOpacity>
           </View>
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
             {loading ? (
-              <View style={vm.empty}><ActivityIndicator color={ORANGE} /></View>
+              <View style={vm.empty}><ActivityIndicator color="#E86019" /></View>
             ) : viewers.length === 0 ? (
               <View style={vm.empty}>
-                <Ionicons name="eye-off-outline" size={36} color={MUTED} />
+                <Ionicons name="eye-off-outline" size={36} color="#7A5C3E" />
                 <Text style={vm.emptyTitle}>No views yet</Text>
                 <Text style={vm.emptySub}>Parents who browse your profile will appear here.</Text>
               </View>
@@ -448,7 +455,7 @@ function ProfileViewersModal({
                         <Image source={{ uri: v.viewer_photo }} style={vm.avatar} contentFit="cover" />
                       ) : (
                         <View style={vm.avatarFb}>
-                          <Ionicons name="person" size={20} color={MUTED} />
+                          <Ionicons name="person" size={20} color="#7A5C3E" />
                         </View>
                       )}
                       <View style={{ flex: 1 }}>
@@ -456,7 +463,7 @@ function ProfileViewersModal({
                         <Text style={vm.time}>{relativeTime(v.last_viewed_at)}</Text>
                       </View>
                       <View style={vm.eyeChip}>
-                        <Ionicons name="eye" size={12} color={GREEN} />
+                        <Ionicons name="eye" size={12} color="#059669" />
                         <Text style={vm.eyeChipText}>Viewed</Text>
                       </View>
                     </View>

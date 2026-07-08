@@ -5,16 +5,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHelperProfile } from '@/hooks/helper';
 import { HelperTabBar } from '@/components/helper/home';
-import { PAGE_BG, ORANGE, DARK, MUTED, GREEN } from './profile.theme';
-import { s } from './public-preview.styles';
+import { useProfileTheme } from './profile.theme';
+import { createStyles } from './public-preview.styles';
 
 export default function PublicProfilePreview() {
   const router = useRouter();
+  const t = useProfileTheme();
+  const { PAGE_BG, ORANGE, DARK, MUTED, GREEN } = t;
+  const s = useMemo(() => createStyles(t), [t]);
   const { profileData, loading, getFullName } = useHelperProfile();
 
   if (loading) {

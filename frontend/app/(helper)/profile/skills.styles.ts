@@ -1,9 +1,11 @@
 // app/(helper)/profile/skills.styles.ts
 import { Platform, StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, CARD_BG } from './profile.theme';
+import { makeProfileTheme, type ProfileTheme } from './profile.theme';
 
-export const s = StyleSheet.create({
+export function createStyles(t: ProfileTheme = makeProfileTheme()) {
+  const { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, CARD_BG } = t;
+  return StyleSheet.create({
   page:   { flex: 1, backgroundColor: PAGE_BG },
   scroll: { padding: 16, paddingBottom: 32, gap: 12 },
 
@@ -43,4 +45,5 @@ export const s = StyleSheet.create({
   expValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 18, color: DARK, marginBottom: 2 },
   expLabel: { fontFamily: FontFamily.fredokaRegular,  fontSize: 12, color: MUTED },
   expEdit:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: ORANGE },
-});
+  });
+}

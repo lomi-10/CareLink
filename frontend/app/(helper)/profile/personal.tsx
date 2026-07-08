@@ -4,7 +4,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ActivityIndicator, ScrollView,
   Text, TouchableOpacity, View,
@@ -13,13 +13,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHelperProfile } from '@/hooks/helper';
 import { HelperTabBar } from '@/components/helper/home';
 import EditHelperProfileModal from '@/components/helper/profile/profileEditModal/EditHelperProfileModal';
-import { DARK, MUTED, ORANGE, GREEN } from './profile.theme';
-import { s } from './personal.styles';
+import { useProfileTheme } from './profile.theme';
+import { createStyles } from './personal.styles';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
+  const t = useProfileTheme();
+  const { DARK, MUTED, ORANGE, GREEN } = t;
+  const s = useMemo(() => createStyles(t), [t]);
   const { profileData, loading, refresh } = useHelperProfile();
   const [editOpen, setEditOpen] = useState(false);
   // Guided onboarding deep-links here with ?edit=1 to open the editor directly.
@@ -156,6 +159,9 @@ function InfoRow({ icon, label, value }: {
   label: string;
   value: string;
 }) {
+  const t = useProfileTheme();
+  const { MUTED } = t;
+  const s = useMemo(() => createStyles(t), [t]);
   return (
     <View style={s.infoRow}>
       <View style={s.infoIconWrap}>

@@ -1,9 +1,11 @@
 // app/(helper)/profile/public-preview.styles.ts
 import { Platform, StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, GREEN, CARD_BG, DIVIDER, ICON_BG } from './profile.theme';
+import { makeProfileTheme, type ProfileTheme } from './profile.theme';
 
-export const s = StyleSheet.create({
+export function createStyles(t: ProfileTheme = makeProfileTheme()) {
+  const { PAGE_BG, BAR_BG, DARK, MUTED, ORANGE, GREEN, CARD_BG, DIVIDER, ICON_BG } = t;
+  return StyleSheet.create({
   page:   { flex: 1, backgroundColor: PAGE_BG },
   scroll: { padding: 16, paddingBottom: 40, gap: 14 },
 
@@ -51,4 +53,5 @@ export const s = StyleSheet.create({
   emptyNote: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, fontStyle: 'italic' },
 
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: DIVIDER },
-});
+  });
+}

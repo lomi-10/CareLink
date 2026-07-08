@@ -4,7 +4,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ActivityIndicator, ScrollView,
   Text, TouchableOpacity, View,
@@ -13,13 +13,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHelperProfile } from '@/hooks/helper';
 import { HelperTabBar } from '@/components/helper/home';
 import EditHelperProfileModal from '@/components/helper/profile/profileEditModal/EditHelperProfileModal';
-import { DARK, MUTED, ORANGE, GREEN } from './profile.theme';
-import { s } from './skills.styles';
+import { useProfileTheme } from './profile.theme';
+import { createStyles } from './skills.styles';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SkillsScreen() {
   const router = useRouter();
+  const t = useProfileTheme();
+  const { DARK, MUTED, ORANGE, GREEN } = t;
+  const s = useMemo(() => createStyles(t), [t]);
   const { profileData, loading, refresh } = useHelperProfile();
   const [editOpen, setEditOpen] = useState(false);
   // Guided onboarding deep-links here with ?edit=1 to open the editor directly.
@@ -112,7 +115,7 @@ export default function SkillsScreen() {
 
 // ─── PillSection ──────────────────────────────────────────────────────────────
 
-function PillSection({ title, count, items, highlightFirst = false, checkmark = false, accentColor = ORANGE }: {
+function PillSection({ title, count, items, highlightFirst = false, checkmark = false, accentColor }: {
   title:           string;
   count:           number;
   items:           string[];
@@ -120,6 +123,9 @@ function PillSection({ title, count, items, highlightFirst = false, checkmark = 
   checkmark?:      boolean;
   accentColor?:    string;
 }) {
+  const t = useProfileTheme();
+  const s = useMemo(() => createStyles(t), [t]);
+  const accent = accentColor ?? t.ORANGE;
   return (
     <View style={s.pillWrap}>
       <View style={s.pillHeader}>
@@ -140,15 +146,15 @@ function PillSection({ title, count, items, highlightFirst = false, checkmark = 
                 style={[
                   s.pill,
                   highlighted
-                    ? { backgroundColor: accentColor, borderColor: accentColor }
-                    : { backgroundColor: '#FFFFFF', borderColor: '#D4B896' },
+                    ? { backgroundColor: accent, borderColor: accent }
+                    : { backgroundColor: t.CARD_BG, borderColor: t.DIVIDER },
                 ]}
               >
-                <Text style={[s.pillText, { color: highlighted ? '#fff' : DARK }]}>
+                <Text style={[s.pillText, { color: highlighted ? '#fff' : t.DARK }]}>
                   {item}
                 </Text>
                 {checkmark && !highlighted && (
-                  <Ionicons name="checkmark-circle" size={13} color={accentColor} />
+                  <Ionicons name="checkmark-circle" size={13} color={accent} />
                 )}
                 {highlighted && (
                   <Ionicons name="checkmark-circle" size={13} color="rgba(255,255,255,0.8)" />
