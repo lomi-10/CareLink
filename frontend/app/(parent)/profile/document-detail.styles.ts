@@ -1,7 +1,7 @@
 // app/(parent)/profile/document-detail.styles.ts
 import { Platform, StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { BG, CARD_BG, DARK, MUTED } from '@/components/parent/home/parentWarmTheme';
+import { BG, CARD_BG, DARK, MUTED, CARAMEL } from '@/components/parent/home/parentWarmTheme';
 
 export const s = StyleSheet.create({
   page:   { flex: 1, backgroundColor: BG },
@@ -28,6 +28,14 @@ export const s = StyleSheet.create({
   docThumb:   { width: 110, height: 140, borderRadius: 12, backgroundColor: '#F0E4D4', overflow: 'hidden' },
   docThumbImg:{ width: 110, height: 140 },
   docThumbFallback: { width: 110, height: 140, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  sideBadge:  { position: 'absolute', top: 6, left: 6, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  sideBadgeText: { color: '#fff', fontFamily: FontFamily.fredokaSemiBold, fontSize: 10 },
+  flipBadge:  { position: 'absolute', bottom: 6, right: 6, width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  sideToggle: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  sideToggleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1, paddingVertical: 9, borderRadius: 10, borderWidth: 1.5, borderColor: '#EFE0CB', backgroundColor: '#FBF3E6' },
+  sideToggleBtnActive: { backgroundColor: CARAMEL, borderColor: CARAMEL },
+  sideToggleText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: MUTED },
+  sideToggleTextActive: { color: '#fff' },
   docDetails: { flex: 1, gap: 10 },
   docName:    { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: DARK, marginBottom: 4 },
   detailLabel:{ fontFamily: FontFamily.fredokaRegular,  fontSize: 11, color: MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },

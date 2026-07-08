@@ -54,6 +54,7 @@ export default function DocumentDetailScreen() {
     document_id?:   string;
     document_type?: string;
     file_url?:      string;
+    file_url_back?: string;
     file_path?:     string;
     status?:        string;
     uploaded_at?:   string;
@@ -72,6 +73,7 @@ export default function DocumentDetailScreen() {
     document_id      = '',
     document_type    = 'Document',
     file_url         = '',
+    file_url_back    = '',
     file_path        = '',
     status           = 'Pending',
     uploaded_at      = '',
@@ -89,6 +91,8 @@ export default function DocumentDetailScreen() {
   const [docStatus, setDocStatus] = useState<string>(status || 'Pending');
   const [aiStatus, setAiStatus]   = useState<string>(ai_status || '');
   const [aiReason, setAiReason]   = useState<string>('');
+  // Two-sided docs (Valid ID): flip the preview between front and back.
+  const [imgSide, setImgSide]     = useState<'front' | 'back'>('front');
 
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -132,6 +136,11 @@ export default function DocumentDetailScreen() {
   const rejectReason = aiReason || rejection_reason;
   const isPdf      = file_url.toLowerCase().endsWith('.pdf');
   const hasImage   = !!file_url && !isPdf;
+  // Back side (Valid ID). When present, the preview can flip between sides.
+  const hasBack     = !!file_url_back && !file_url_back.toLowerCase().endsWith('.pdf');
+  const shownUrl    = imgSide === 'back' && hasBack ? file_url_back : file_url;
+  const shownIsPdf  = shownUrl.toLowerCase().endsWith('.pdf');
+  const shownHasImage = !!shownUrl && !shownIsPdf;
 
   const uploadedLabel = uploaded_at
     ? new Date(uploaded_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -146,11 +155,12 @@ export default function DocumentDetailScreen() {
     : null;
 
   const handleDownload = () => {
-    if (!file_url) {
+    const openUrl = shownUrl || file_url;
+    if (!openUrl) {
       showNotice('This document has no file attached.', 'warning', 'No file');
       return;
     }
-    Linking.openURL(file_url).catch(() =>
+    Linking.openURL(openUrl).catch(() =>
       showNotice('Could not open the document. Please try again.', 'error')
     );
   };
@@ -232,18 +242,22 @@ export default function DocumentDetailScreen() {
           {/* ── Document info card ── */}
           <View style={s.docCard}>
             <View style={s.docRow}>
-              {/* Left: document thumbnail */}
-              <View style={s.docThumb}>
-                {hasImage ? (
+              {/* Left: document thumbnail (tap to flip front/back on a Valid ID) */}
+              <TouchableOpacity
+                style={s.docThumb}
+                activeOpacity={hasBack ? 0.85 : 1}
+                onPress={hasBack ? () => setImgSide((v) => (v === 'front' ? 'back' : 'front')) : undefined}
+              >
+                {shownHasImage ? (
                   <Image
-                    source={{ uri: file_url }}
+                    source={{ uri: shownUrl }}
                     style={s.docThumbImg}
                     contentFit="cover"
                   />
                 ) : (
                   <View style={s.docThumbFallback}>
                     <Ionicons
-                      name={isPdf ? 'document-text' : 'document-outline'}
+                      name={shownIsPdf ? 'document-text' : 'document-outline'}
                       size={40}
                       color="#B8956A"
                     />
@@ -251,11 +265,21 @@ export default function DocumentDetailScreen() {
                       fontFamily: FontFamily.fredokaSemiBold,
                       fontSize: 11, color: '#B8956A',
                     }}>
-                      {isPdf ? 'PDF' : 'No preview'}
+                      {shownIsPdf ? 'PDF' : 'No preview'}
                     </Text>
                   </View>
                 )}
-              </View>
+                {hasBack ? (
+                  <>
+                    <View style={s.sideBadge}>
+                      <Text style={s.sideBadgeText}>{imgSide === 'back' ? 'Back' : 'Front'}</Text>
+                    </View>
+                    <View style={s.flipBadge}>
+                      <Ionicons name="sync-outline" size={13} color="#fff" />
+                    </View>
+                  </>
+                ) : null}
+              </TouchableOpacity>
 
               {/* Right: document details */}
               <View style={s.docDetails}>
@@ -291,6 +315,28 @@ export default function DocumentDetailScreen() {
                 </View>
               </View>
             </View>
+
+            {/* Front / Back switch for two-sided IDs */}
+            {hasBack ? (
+              <View style={s.sideToggle}>
+                {(['front', 'back'] as const).map((side) => {
+                  const active = imgSide === side;
+                  return (
+                    <TouchableOpacity
+                      key={side}
+                      style={[s.sideToggleBtn, active && s.sideToggleBtnActive]}
+                      onPress={() => setImgSide(side)}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name={active ? 'card' : 'card-outline'} size={14} color={active ? '#fff' : MUTED} />
+                      <Text style={[s.sideToggleText, active && s.sideToggleTextActive]}>
+                        {side === 'front' ? 'Front' : 'Back'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : null}
           </View>
 
           {/* ── AI Document Scan ── */}

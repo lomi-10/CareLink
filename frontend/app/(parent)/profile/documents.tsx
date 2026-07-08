@@ -71,6 +71,7 @@ export default function DocumentsScreen() {
         document_id:      doc.document_id      ?? '',
         document_type:    doc.document_type    ?? '',
         file_url:         doc.file_url         ?? '',
+        file_url_back:    doc.file_url_back    ?? '',
         file_path:        doc.file_path        ?? '',
         status:           doc.status           ?? 'Pending',
         uploaded_at:      doc.uploaded_at       ?? '',
