@@ -41,10 +41,13 @@ export function useAuth() {
     }
   };
 
-  // Logout handler
+  // Logout handler — clear only the session keys, not the whole store. Wiping
+  // everything (AsyncStorage.clear) also reset theme/appearance prefs and the
+  // one-time flags (welcome guide, 90% celebration), so they re-fired on every
+  // login. Removing just the session keys logs the user out and keeps prefs.
   const handleLogout = async () => {
     try {
-      await AsyncStorage.clear();
+      await AsyncStorage.multiRemove(['user_data', 'user_token']);
       router.replace('/');
     } catch (error) {
       console.error('Error during logout:', error);

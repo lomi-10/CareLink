@@ -69,7 +69,9 @@ export function useNotifications(role: 'helper' | 'parent' | 'peso') {
       await fetch(`${API_URL}/shared/mark_read.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.user_id }),
+        // requester_id is required by the ownership guard — without it the
+        // server rejects the update and the badge silently comes back on refetch.
+        body: JSON.stringify({ user_id: user.user_id, requester_id: user.user_id }),
       });
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
@@ -86,7 +88,7 @@ export function useNotifications(role: 'helper' | 'parent' | 'peso') {
       await fetch(`${API_URL}/shared/mark_read.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.user_id, notification_id }),
+        body: JSON.stringify({ user_id: user.user_id, requester_id: user.user_id, notification_id }),
       });
       setNotifications(prev =>
         prev.map(n => n.notification_id === notification_id ? { ...n, is_read: true } : n)

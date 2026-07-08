@@ -76,12 +76,14 @@ export default function HelperHome() {
   // Re-openable anytime from Settings → Guide.
   const [welcomeVisible, setWelcomeVisible] = useState(false);
   useEffect(() => {
-    let active = true;
+    if (!profileData) return; // wait for the profile so we know the status
+    // Only new/unverified accounts get the welcome walkthrough — once PESO has
+    // verified them there's nothing left to onboard, so it never pops again.
+    if (profileData?.profile?.verification_status === 'Verified') return;
     AsyncStorage.getItem('helper_welcome_seen_v1').then((seen) => {
-      if (active && !seen) setWelcomeVisible(true);
+      if (!seen) setWelcomeVisible(true);
     });
-    return () => { active = false; };
-  }, []);
+  }, [profileData]);
   const closeWelcome = () => {
     setWelcomeVisible(false);
     AsyncStorage.setItem('helper_welcome_seen_v1', '1').catch(() => {});
