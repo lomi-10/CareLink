@@ -625,11 +625,25 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
             <Text style={s.emptyHintText}>Select a nature of work in the previous step first.</Text>
           </View>
         ) : (
-          <BadgePillGrid
-            items={availableJobsForSelection.map(j => ({ id: j.job_id, name: j.job_title }))}
-            selectedIds={selectedJobIds}
-            onToggle={toggleJob}
-          />
+          // Group roles under their category so it's clear which roles belong to
+          // which nature of work (e.g. Yaya vs Cook) instead of one mixed list.
+          selectedCategories.map((cat: any) => {
+            const catJobs = availableJobsForSelection.filter(j => j.category_id === cat.category_id);
+            if (catJobs.length === 0) return null;
+            return (
+              <View key={cat.category_id} style={s.jobGroup}>
+                <View style={s.jobGroupHeaderRow}>
+                  <View style={s.jobGroupDot} />
+                  <Text style={s.jobGroupHeader}>{cat.category_name}</Text>
+                </View>
+                <BadgePillGrid
+                  items={catJobs.map(j => ({ id: j.job_id, name: j.job_title }))}
+                  selectedIds={selectedJobIds}
+                  onToggle={toggleJob}
+                />
+              </View>
+            );
+          })
         )}
       </>
     );
@@ -1193,6 +1207,10 @@ const s = StyleSheet.create({
   },
 
   // ── Steps 2–4: Badge pills ─────────────────────────────────────────────────
+  jobGroup: { marginBottom: 16 },
+  jobGroupHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 9 },
+  jobGroupDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ORANGE },
+  jobGroupHeader: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: DARK, letterSpacing: 0.2 },
   badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   badgePill: {
     flexDirection: 'row',
