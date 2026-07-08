@@ -539,6 +539,14 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
     }
   };
 
+  // ── Guided "Start here" — highlight the next incomplete section ─────────────
+  const sectionDone: Record<SectionKey, boolean> = {
+    personal:  !!contactNumber.trim(),
+    address:   !!(province.trim() && municipality.trim() && barangay.trim()),
+    household: !!householdType,
+  };
+  const nextSectionKey = SECTIONS.find(sec => !sectionDone[sec.key])?.key;
+
   // ── RENDER ──────────────────────────────────────────────────────────────────
   const inner = (
     <View style={s.modal}>
@@ -586,21 +594,43 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
               </View>
             </View>
 
-            {/* Sections */}
-            {SECTIONS.map(sec => (
-              <TouchableOpacity key={sec.key} style={s.sectionCard} onPress={() => openSection(sec.key)} activeOpacity={0.82}>
-                <View style={[s.secIconWrap, { backgroundColor: sec.iconBg }]}>
-                  <Ionicons name={sec.icon} size={20} color={sec.iconColor} />
-                </View>
-                <View style={s.secInfo}>
-                  <Text style={s.secTitle}>{sec.title}</Text>
-                  <Text style={s.secSub}>{sec.subtitle}</Text>
-                </View>
-                <View style={s.secEditBtn}>
-                  <Text style={s.secEditText}>Edit</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {/* Sections — the next incomplete one is highlighted with a thick
+                border + red "Start here" badge so parents know where to begin. */}
+            {SECTIONS.map(sec => {
+              const done   = sectionDone[sec.key];
+              const active = sec.key === nextSectionKey;
+              return (
+                <TouchableOpacity
+                  key={sec.key}
+                  style={[s.sectionCard, active && s.sectionCardActive]}
+                  onPress={() => openSection(sec.key)}
+                  activeOpacity={0.82}
+                >
+                  <View style={[s.secIconWrap, { backgroundColor: sec.iconBg }]}>
+                    <Ionicons name={sec.icon} size={20} color={sec.iconColor} />
+                  </View>
+                  <View style={s.secInfo}>
+                    <Text style={s.secTitle}>{sec.title}</Text>
+                    <Text style={active ? s.secSubActive : s.secSub}>
+                      {active ? '👉 Start here — do this next' : sec.subtitle}
+                    </Text>
+                  </View>
+                  {done ? (
+                    <View style={s.secCheck}>
+                      <Ionicons name="checkmark-circle" size={22} color="#16A34A" />
+                    </View>
+                  ) : active ? (
+                    <View style={s.secStartBtn}>
+                      <Text style={s.secStartText}>Start here</Text>
+                    </View>
+                  ) : (
+                    <View style={s.secEditBtn}>
+                      <Text style={s.secEditText}>Edit</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
 
             {/* Tips card */}
             <View style={s.tipsCard}>
@@ -830,12 +860,17 @@ const s = StyleSheet.create({
 
   // Section cards (chooser)
   sectionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFBF5', borderRadius: 16, padding: 14, gap: 12, borderWidth: 1, borderColor: '#EDE0D0' },
+  sectionCardActive: { borderWidth: 2, borderColor: CARAMEL, backgroundColor: '#FFF6EA' },
   secIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   secInfo:     { flex: 1 },
   secTitle:    { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK, marginBottom: 2 },
   secSub:      { fontFamily: FontFamily.fredokaRegular,  fontSize: 12, color: MUTED },
+  secSubActive:{ fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: '#E11D48' },
   secEditBtn:  { backgroundColor: '#FDF0D0', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1, borderColor: '#D4B896' },
   secEditText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK },
+  secStartBtn: { backgroundColor: '#E11D48', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7 },
+  secStartText:{ fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: '#FFFFFF' },
+  secCheck:    { width: 36, alignItems: 'center', justifyContent: 'center' },
 
   // Tips card
   tipsCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#FEF6EE', borderRadius: 14, padding: 14, marginTop: 4 },
