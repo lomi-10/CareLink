@@ -40,7 +40,7 @@ try {
 
     carelink_require_self($requester_id, $user_id, 'You are not allowed to scan this document.');
 
-    $stmt = $conn->prepare("SELECT document_type, file_path, status, verified_by FROM user_documents WHERE document_id = ? AND user_id = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT document_type, file_path, file_path_back, status, verified_by FROM user_documents WHERE document_id = ? AND user_id = ? LIMIT 1");
     $stmt->bind_param("ii", $document_id, $user_id);
     $stmt->execute();
     $doc = $stmt->get_result()->fetch_assoc();
@@ -58,7 +58,16 @@ try {
         throw new Exception("The uploaded file could not be found on the server.");
     }
 
-    $result = carelink_gemini_scan_document($fullPath, $documentType);
+    // Optional BACK image (two-sided docs like a Valid ID) — scanned together.
+    $backFullPath = null;
+    if (!empty($doc['file_path_back'])) {
+        $cand = realpath($uploadDir . '/' . $doc['file_path_back']);
+        if ($cand !== false && strncmp($cand, $uploadDir, strlen($uploadDir)) === 0 && is_file($cand)) {
+            $backFullPath = $cand;
+        }
+    }
+
+    $result = carelink_gemini_scan_document($fullPath, $documentType, null, $backFullPath);
     if (!$result['ok']) { throw new Exception($result['message'] ?? 'The document scan could not be completed.'); }
 
     $quality  = $result['quality_score'] ?? null;        // clarity 0-100

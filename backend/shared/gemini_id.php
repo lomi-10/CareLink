@@ -91,7 +91,7 @@ function carelink_gemini_doc_guidance(string $documentType): string
  *   fields?:array<int,array{label:string,value:string}>, warnings?:array, message?:string
  * }
  */
-function carelink_gemini_scan_document(string $filePath, string $documentType, ?string $mime = null): array
+function carelink_gemini_scan_document(string $filePath, string $documentType, ?string $mime = null, ?string $backFilePath = null): array
 {
     require_once __DIR__ . '/../load_config.php';
     $key = trim((string) carelink_cfg('GEMINI_API_KEY', ''));
@@ -102,10 +102,15 @@ function carelink_gemini_scan_document(string $filePath, string $documentType, ?
         return ['ok' => false, 'message' => 'The uploaded file could not be read for scanning.'];
     }
 
-    if ($mime === null || $mime === '') {
+    $detectMime = function (string $p): string {
         $finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : null;
-        $mime = $finfo ? (finfo_file($finfo, $filePath) ?: 'image/jpeg') : 'image/jpeg';
+        $m = $finfo ? (finfo_file($finfo, $p) ?: 'image/jpeg') : 'image/jpeg';
         if ($finfo) finfo_close($finfo);
+        return $m;
+    };
+
+    if ($mime === null || $mime === '') {
+        $mime = $detectMime($filePath);
     }
 
     $bytes = file_get_contents($filePath);
@@ -114,22 +119,42 @@ function carelink_gemini_scan_document(string $filePath, string $documentType, ?
     }
     $b64 = base64_encode($bytes);
 
+    // Optional BACK image (two-sided documents like a Valid ID). Both sides are
+    // sent in one request so the AI reads details printed on either side and
+    // judges authenticity/clarity from the whole document.
+    $backB64 = null;
+    $backMime = null;
+    if ($backFilePath !== null && $backFilePath !== '' && is_readable($backFilePath)) {
+        $backBytes = file_get_contents($backFilePath);
+        if ($backBytes !== false) {
+            $backB64  = base64_encode($backBytes);
+            $backMime = $detectMime($backFilePath);
+        }
+    }
+    $twoSided = $backB64 !== null;
+
     $guidance = carelink_gemini_doc_guidance($documentType);
     $prompt =
         "You are a document verifier for CareLink, a Philippine domestic-helper recruitment platform. "
-        . "The user uploaded this document as their \"{$documentType}\". Examine the attached file and decide "
-        . "whether it genuinely matches that document type, assess its authenticity and clarity, and extract its "
-        . "key printed fields.\n\n"
+        . "The user uploaded this document as their \"{$documentType}\". "
+        . ($twoSided
+            ? "TWO images are attached: the FIRST is the FRONT and the SECOND is the BACK of the SAME document. "
+              . "Consider BOTH sides together — read printed fields from either side, and base authenticity and clarity "
+              . "on the whole document. "
+            : "Examine the attached file ")
+        . "and decide whether it genuinely matches that document type, assess its authenticity and clarity, and extract "
+        . "its key printed fields.\n\n"
         . $guidance . "\n\n"
         . "Return ONLY JSON matching the schema. Guidance:\n"
         . "- is_expected_document: true only if this really is a {$documentType}.\n"
         . "- template_match (0-100): how well it matches a genuine {$documentType} (layout, seals, official elements).\n"
-        . "- clarity (0-100): how readable/clear the file is (focus, lighting, glare, cropping).\n"
+        . "- clarity (0-100): how readable/clear the file is (focus, lighting, glare, cropping)"
+        . ($twoSided ? "; use the lower of the two sides if one is much worse.\n" : ".\n")
         . "- overall: 'Approved' if it clearly looks like a genuine, readable {$documentType}; 'Review' if unsure or "
         . "partly unclear; 'Declined' if it is NOT a {$documentType} or shows clear signs of tampering.\n"
         . "- tampering_signs: short notes for anything suspicious or mismatched (empty if none).\n"
-        . "- fields: an array of the printed details you can actually read, each as {label, value}. Use clear English "
-        . "labels (e.g. 'Full Name', 'ID Number'). Do NOT invent values — only include fields you can read.\n";
+        . "- fields: an array of the printed details you can actually read from EITHER side, each as {label, value}. Use "
+        . "clear English labels (e.g. 'Full Name', 'ID Number'). Do NOT invent values — only include fields you can read.\n";
 
     $schema = [
         'type' => 'object',
@@ -155,13 +180,19 @@ function carelink_gemini_scan_document(string $filePath, string $documentType, ?
         'required' => ['is_expected_document', 'template_match', 'clarity', 'overall'],
     ];
 
+    $parts = [
+        ['text' => $prompt],
+        ['inline_data' => ['mime_type' => $mime, 'data' => $b64]],
+    ];
+    if ($twoSided) {
+        $parts[] = ['text' => 'Above: FRONT. Below: BACK of the same document.'];
+        $parts[] = ['inline_data' => ['mime_type' => $backMime, 'data' => $backB64]];
+    }
+
     $payload = json_encode([
         'contents' => [[
             'role'  => 'user',
-            'parts' => [
-                ['text' => $prompt],
-                ['inline_data' => ['mime_type' => $mime, 'data' => $b64]],
-            ],
+            'parts' => $parts,
         ]],
         'generationConfig' => [
             'temperature'      => 0.1,
