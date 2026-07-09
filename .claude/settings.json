@@ -3,7 +3,8 @@
     "allow": [
       "Bash(ls components/shared/)",
       "Bash(ls components/)",
-      "Bash(grep -n '$completeness' helper/get_profile.php)"
+      "Bash(grep -n '$completeness' helper/get_profile.php)",
+      "Bash(php -l peso/get_job_details.php)"
     ]
   }
 }

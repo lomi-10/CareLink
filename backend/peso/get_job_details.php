@@ -28,11 +28,15 @@ try {
             j.*,
             CONCAT(u.first_name, ' ', u.last_name)   AS parent_name,
             u.email                                   AS parent_email,
+            u.created_at                              AS parent_since,
+            pp.contact_number                         AS parent_phone,
+            pp.profile_image                          AS parent_photo,
             c.category_name,
             CONCAT(vu.first_name, ' ', vu.last_name)  AS verified_by_name,
             vu.email                                  AS verified_by_email
         FROM job_posts j
         JOIN  users u  ON j.parent_id   = u.user_id
+        LEFT JOIN parent_profiles pp ON j.parent_id = pp.user_id
         LEFT JOIN ref_categories c  ON j.category_id  = c.category_id
         LEFT JOIN users vu ON j.verified_by = vu.user_id
         WHERE j.job_post_id = ?
