@@ -56,7 +56,6 @@ export function JobPostModal({
 }: JobPostModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [notification, setNotification] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
-  const [currentStep, setCurrentStep] = useState(1);
   const [modalStep, setModalStep] = useState(1); // 1: Job Setup, 2: Work Details, 3: Requirements, 4: Review
 
   // Estimated Matches (Review step)
@@ -93,7 +92,6 @@ export function JobPostModal({
       setModalStep(1);
     } else if (!existingJobData && visible) {
       reset();
-      setCurrentStep(1);
       setModalStep(1);
     }
   }, [existingJobData, visible]);
@@ -141,9 +139,7 @@ export function JobPostModal({
   };
 
   const validateStep2 = (): { isValid: boolean; error?: string } => {
-    if (!formData.description.trim()) {
-      return { isValid: false, error: "Please fill in the job description" };
-    }
+    // Description is optional — auto-written from the role if left blank (see handleNext).
     if (!formData.municipality.trim()) {
       return { isValid: false, error: "Please select a municipality" };
     }
@@ -152,7 +148,7 @@ export function JobPostModal({
       return { isValid: false, error: "Please enter the minimum salary" };
     }
     if (salaryMin < 7000) {
-      return { isValid: false, error: "Minimum salary must be at least ₱7,000 (CareLink platform standard)" };
+      return { isValid: false, error: "Minimum salary must be at least ₱7,000 / month (CareLink fair-pay standard)" };
     }
     if (formData.salary_max) {
       const salaryMax = parseFloat(formData.salary_max);
@@ -237,7 +233,6 @@ export function JobPostModal({
       custom_job_title: '',
       title: '',
     });
-    if (currentStep === 1) setCurrentStep(2);
   };
 
   const handleToggleJob = (jobId: string, jobTitle: string) => {
@@ -258,7 +253,6 @@ export function JobPostModal({
         .map((j: any) => j.job_title);
       updateField('title', selectedTitles.join(', '));
     }
-    if (currentStep === 2 && newJobs.length > 0) setCurrentStep(3);
   };
 
   const handleGenerateDescription = () => {
@@ -300,6 +294,12 @@ export function JobPostModal({
       let submissionData = { ...getSubmissionData(), parent_id: user.user_id, requester_id: user.user_id };
       if (formData.category_id === othersCat?.category_id.toString() && !formData.custom_category) {
         submissionData.custom_category = "Specialized Work";
+      }
+      // Safety net: never post an empty description — auto-write one from the role.
+      if (!String((submissionData as any).description || '').trim()) {
+        const selCat = categories.find(c => c.category_id.toString() === formData.category_id) || null;
+        const selJobs = jobs.filter(j => formData.job_ids.includes(j.job_id.toString()));
+        (submissionData as any).description = generateDescription(selCat, selJobs);
       }
 
       const endpoint = existingJobData ? '/parent/edit_job.php' : '/parent/post_job.php';
@@ -367,14 +367,7 @@ export function JobPostModal({
   const renderJobSetupStep = () => (
     <View style={styles.stepContent}>
       <Text style={styles.sectionHeader}>Define the Role</Text>
-
-      <View style={styles.selectionStepsContainer}>
-        {[1, 2, 3].map((s) => (
-          <View key={s} style={[styles.miniStep, currentStep >= s && styles.miniStepActive]}>
-            <Text style={[styles.miniStepText, currentStep >= s && styles.miniStepTextActive]}>{s}</Text>
-          </View>
-        ))}
-      </View>
+      <Text style={styles.sectionSub}>Pick a category, choose the role(s), and (optionally) add skills.</Text>
 
       <CategorySelector
         categories={categories}
@@ -686,6 +679,8 @@ export function JobPostModal({
     } else if (modalStep === 2) {
       const result = validateStep2();
       if (!result.isValid && result.error) return showStepError(result.error);
+      // Left the description blank? Auto-write one from the role so posting stays quick.
+      if (!formData.description.trim()) handleGenerateDescription();
     } else if (modalStep === 3) {
       const result = validateStep3();
       if (!result.isValid && result.error) return showStepError(result.error);
@@ -811,6 +806,7 @@ const styles = StyleSheet.create({
   formContainer: { paddingHorizontal: 24, paddingVertical: 12 },
 
   sectionHeader: { fontSize: 20, fontWeight: '800', color: DARK, marginBottom: 8 },
+  sectionSub: { fontSize: 13, color: MUTED, marginBottom: 16, marginTop: -2, lineHeight: 18 },
   sectionSubheader: { fontSize: 14, color: MUTED, marginBottom: 24 },
   divider: { height: 1, backgroundColor: DIVIDER, marginVertical: 32 },
   row: { flexDirection: 'row', alignItems: 'flex-start' },

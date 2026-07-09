@@ -183,9 +183,12 @@ const initialFormData: JobFormData = {
   benefits: '',
   provides_meals: false,
   provides_accommodation: false,
-  provides_sss: false,
-  provides_philhealth: false,
-  provides_pagibig: false,
+  // Government contributions are legally required under RA 10361 once the wage
+  // qualifies (CareLink's minimum salary is above that threshold), so they
+  // default to true and can't be turned off in the form.
+  provides_sss: true,
+  provides_philhealth: true,
+  provides_pagibig: true,
   vacation_days: 0,
   sick_days: 0,
   preferred_religion: '',
@@ -228,16 +231,13 @@ export function useJobForm() {
     }
 
     // 3. SKILLS ARE NOW OPTIONAL - no validation needed
-    
-    if (!formData.description.trim()) {
-      newErrors.description = 'Job description is required — describe the responsibilities';
-    }
-    
+    // Description is optional too — CareLink auto-writes one from the role if left blank.
+
     const salaryMin = parseFloat(formData.salary_min);
     if (!formData.salary_min || isNaN(salaryMin)) {
       newErrors.salary = 'Minimum salary is required — enter an amount';
     } else if (salaryMin < 7000) {
-      newErrors.salary = 'Salary is below minimum — must be at least ₱7,000 (CareLink platform standard)';
+      newErrors.salary = 'CareLink’s minimum is ₱7,000 / month (set above the legal minimum for fair pay)';
     }
     if (formData.salary_max) {
       const salaryMax = parseFloat(formData.salary_max);
@@ -298,9 +298,10 @@ export function useJobForm() {
       benefits: data.benefits || '',
       provides_meals: !!data.provides_meals,
       provides_accommodation: !!data.provides_accommodation,
-      provides_sss: !!data.provides_sss,
-      provides_philhealth: !!data.provides_philhealth,
-      provides_pagibig: !!data.provides_pagibig,
+      // Always required (RA 10361) — force on even for older posts that saved them off.
+      provides_sss: true,
+      provides_philhealth: true,
+      provides_pagibig: true,
       vacation_days: data.vacation_days || 0,
       sick_days: data.sick_days || 0,
       preferred_religion: data.preferred_religion || '',

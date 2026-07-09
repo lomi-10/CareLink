@@ -100,7 +100,9 @@ export function SalaryInputCard({
         </View>
       </View>
 
-      <Text style={styles.minimumNote}>Minimum: ₱7,000/month (CareLink platform standard)</Text>
+      <Text style={styles.minimumNote}>
+        Minimum ₱7,000 / month — CareLink’s fair-pay standard, set above the legal kasambahay minimum. SSS, PhilHealth &amp; Pag-IBIG are added on top (required by law).
+      </Text>
       {suggested && (
         <Text style={styles.suggestedText}>
           Suggested range for this role: ₱{suggested.min.toLocaleString()} - ₱{suggested.max.toLocaleString()} / month

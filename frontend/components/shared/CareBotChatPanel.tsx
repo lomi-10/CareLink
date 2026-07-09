@@ -78,7 +78,7 @@ const KB: KbEntry[] = [
     keys: ['post a job', 'post job', 'create a job', 'job post', 'how to post', 'hiring'],
     roles: ['parent'],
     answer:
-      'Posting a job is easy:\n1. Open the Jobs menu.\n2. Tap “Post a Job”.\n3. Fill in the duties, work schedule, and salary (at least ₱6,000/month or your regional Kasambahay minimum).\n4. Submit it for PESO verification.\n5. Once approved, PESO-verified helpers can see and apply to it.',
+      'Posting a job is easy:\n1. Open the Jobs menu.\n2. Tap “Post a Job”.\n3. Fill in the duties, work schedule, and salary (CareLink’s minimum is ₱7,000/month — a fair-pay standard above the legal kasambahay minimum). SSS, PhilHealth & Pag-IBIG are included on top.\n4. Submit it for PESO verification.\n5. Once approved, PESO-verified helpers can see and apply to it.',
   },
   {
     keys: ['review applicant', 'applicants', 'who applied', 'shortlist', 'review'],
