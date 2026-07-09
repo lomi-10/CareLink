@@ -16,6 +16,8 @@ backend/vendor/
 
 # Backend database dumps (contain real user data / password hashes — NEVER commit)
 backend/database/*.sql
+# ...except the reference-data seed (categories/jobs/skills/languages — no PII, needed for deploys)
+!backend/database/ref_seed.sql
 
 # Internal working notes — NOT for the public repo (security posture / stale guides)
 /SECURITY_NOTES_*.md
