@@ -106,7 +106,7 @@ export default function JobVerification() {
         <TextInput style={styles.searchInput} placeholder="Search jobs…" value={search} onChangeText={setSearch} placeholderTextColor={theme.color.subtle} />
         {!!search && <TouchableOpacity onPress={() => setSearch("")} hitSlop={8}><Ionicons name="close-circle" size={16} color={theme.color.subtle} /></TouchableOpacity>}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
         {STATUS_FILTERS.map((st) => {
           const active = filterStatus === st;
           return (
@@ -202,8 +202,9 @@ const styles = StyleSheet.create({
 
   searchBar: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: theme.color.canvasPeso, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, margin: 12, marginBottom: 8 },
   searchInput: { flex: 1, fontSize: 14, color: theme.color.ink },
-  filterRow: { flexDirection: "row", gap: 8, paddingHorizontal: 12, paddingBottom: 8 },
-  chip: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: theme.color.canvasPeso, borderWidth: 1, borderColor: theme.color.line },
+  filterScroll: { flexGrow: 0, flexShrink: 0 },
+  filterRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingBottom: 8 },
+  chip: { flexDirection: "row", alignItems: "center", height: 34, gap: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: theme.color.canvasPeso, borderWidth: 1, borderColor: theme.color.line },
   chipActive: { backgroundColor: theme.color.peso, borderColor: theme.color.peso },
   chipText: { fontSize: 12.5, fontWeight: "700", color: theme.color.muted },
   chipTextActive: { color: "#fff" },

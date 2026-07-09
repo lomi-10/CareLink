@@ -273,6 +273,7 @@ export default function UserVerification() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.filterChipsScroll}
         contentContainerStyle={styles.filterChipsRow}
       >
         {FILTER_TABS.map((status) => {
@@ -486,12 +487,13 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 14, color: theme.color.ink, fontWeight: "500" },
 
-  filterChipsRow: { flexDirection: "row", paddingHorizontal: 24, paddingBottom: 14, gap: 8 },
+  filterChipsScroll: { flexGrow: 0, flexShrink: 0 },
+  filterChipsRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 24, paddingBottom: 14, gap: 8 },
   filterChip: {
     flexDirection: "row",
     alignItems: "center",
+    height: 38,
     gap: 6,
-    paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 999,
     backgroundColor: theme.color.surfaceElevated,
