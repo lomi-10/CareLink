@@ -74,7 +74,7 @@ try {
 
     // ── RA 10361 compliance ─────────────────────────────────────────────────
     $avgSalary = round(scalar($conn, "SELECT AVG(salary_offered) FROM job_posts WHERE salary_offered > 0"));
-    $avgSalaryPrev = round(scalar($conn, "SELECT AVG(salary_offered) FROM job_posts WHERE salary_offered > 0 AND created_at < DATE_FORMAT(CURDATE(),'%Y-%m-01')"));
+    $avgSalaryPrev = round(scalar($conn, "SELECT AVG(salary_offered) FROM job_posts WHERE salary_offered > 0 AND posted_at < DATE_FORMAT(CURDATE(),'%Y-%m-01')"));
 
     $benCompliant = (int) scalar($conn, "SELECT COUNT(*) FROM job_posts WHERE provides_sss=1 AND provides_philhealth=1 AND provides_pagibig=1");
     $benPartial   = (int) scalar($conn, "SELECT COUNT(*) FROM job_posts WHERE (provides_sss + provides_philhealth + provides_pagibig) BETWEEN 1 AND 2");

@@ -6,7 +6,12 @@
       "Bash(grep -n '$completeness' helper/get_profile.php)",
       "Bash(php -l peso/get_job_details.php)",
       "Bash(grep -nE \"CREATE TABLE .complaints|\\\\`category\\\\`|\\\\`status\\\\`\" database/current.sql)",
-      "Bash(php -l peso/get_reports_analytics.php)"
+      "Bash(php -l peso/get_reports_analytics.php)",
+      "Bash(curl -s \"http://localhost/carelink_api/peso/get_reports_analytics.php?staff_user_id=1\")",
+      "Bash(mysql -u root carelink -N -e \"SELECT user_id, email, status FROM users WHERE user_type='peso' LIMIT 5;\")",
+      "Bash(php -r '$c=@mysqli_connect\\(\"127.0.0.1\",\"root\",\"\",\"carelink\",3306\\); if\\(!$c\\){echo \"NO DB: \".mysqli_connect_error\\(\\);exit;} $r=$c->query\\(\"SELECT user_id,email,status FROM users WHERE user_type=\\\\\"peso\\\\\" LIMIT 5\"\\); while\\($x=$r->fetch_assoc\\(\\)\\) echo $x[\"user_id\"].\" | \".$x[\"email\"].\" | \".$x[\"status\"].\"\\\\n\";')",
+      "Bash(curl -s \"http://localhost/carelink_api/peso/get_reports_analytics.php?staff_user_id=4\")",
+      "Bash(php -r '$c=mysqli_connect\\(\"127.0.0.1\",\"root\",\"\",\"carelink\",3306\\); foreach\\([\"job_posts\",\"placements\",\"complaints\"] as $t\\){ $r=$c->query\\(\"SHOW COLUMNS FROM $t LIKE \\\\\"%_at\\\\\"\"\\); $cols=[]; while\\($x=$r->fetch_assoc\\(\\)\\)$cols[]=$x[\"Field\"]; echo \"$t: \".implode\\(\", \",$cols\\).\"\\\\n\"; }')"
     ]
   }
 }
