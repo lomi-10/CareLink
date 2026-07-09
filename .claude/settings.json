@@ -4,7 +4,9 @@
       "Bash(ls components/shared/)",
       "Bash(ls components/)",
       "Bash(grep -n '$completeness' helper/get_profile.php)",
-      "Bash(php -l peso/get_job_details.php)"
+      "Bash(php -l peso/get_job_details.php)",
+      "Bash(grep -nE \"CREATE TABLE .complaints|\\\\`category\\\\`|\\\\`status\\\\`\" database/current.sql)",
+      "Bash(php -l peso/get_reports_analytics.php)"
     ]
   }
 }
