@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useHelperProfile } from '@/hooks/helper';
+import { HelperProfileWeb } from '@/components/helper/web/HelperProfileWeb';
 import { useHelperStats } from '@/hooks/helper';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { HelperTabBar, MobileMenu, Sidebar } from '@/components/helper/home';
@@ -292,15 +293,11 @@ export default function HelperProfileMain() {
   // ── DESKTOP ──────────────────────────────────────────────────────────────────
   if (isDesktop) {
     return (
-      <View style={[s.page, { flexDirection: 'row' }]}>
-        <Sidebar onLogout={initiateLogout} />
-        {content}
-        {viewersModal}
-        <EditHelperProfileModal
-          visible={editOpen}
-          onClose={() => setEditOpen(false)}
-          onSaveSuccess={() => { setEditOpen(false); refresh(); }}
-          onProfileUpdated={refresh}
+      <View style={{ flex: 1 }}>
+        <HelperProfileWeb
+          userName={fullName}
+          avatar={(profileData?.profile?.profile_image as string) ?? null}
+          onLogout={initiateLogout}
         />
         <ConfirmationModal
           visible={confirmLogout} title="Log Out"
