@@ -33,6 +33,42 @@ try {
     // otherwise anyone could impersonate any user in a chat.
     carelink_require_self($requester_id, $sender_id, 'You are not allowed to send messages as this account.');
 
+    // Once a helper is hired (a signed, active placement), only their employer may
+    // exchange messages with them — other parents who chatted earlier can no longer
+    // send, and the helper can only message their current employer here.
+    $roleRes = $conn->query("SELECT user_id, user_type FROM users WHERE user_id IN (" . $sender_id . ", " . $receiver_id . ")");
+    $types = [];
+    while ($roleRes && $rr = $roleRes->fetch_assoc()) { $types[(int) $rr['user_id']] = $rr['user_type']; }
+    $senderType   = $types[$sender_id]   ?? '';
+    $receiverType = $types[$receiver_id] ?? '';
+    $helperId     = $senderType === 'helper' ? $sender_id : ($receiverType === 'helper' ? $receiver_id : 0);
+    $partyParent  = $senderType === 'parent' ? $sender_id : ($receiverType === 'parent' ? $receiver_id : 0);
+
+    if ($helperId && $partyParent) {
+        $hireStmt = $conn->prepare(
+            "SELECT jp.parent_id FROM job_applications ja
+             INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+             WHERE ja.helper_id = ?
+               AND ja.status IN ('hired','Accepted','termination_pending')
+               AND ja.employer_signed_at IS NOT NULL AND ja.helper_signed_at IS NOT NULL
+             LIMIT 1"
+        );
+        $hireStmt->bind_param('i', $helperId);
+        $hireStmt->execute();
+        $hireRow = $hireStmt->get_result()->fetch_assoc();
+        $hireStmt->close();
+        if ($hireRow && (int) $hireRow['parent_id'] !== $partyParent) {
+            echo json_encode([
+                'success' => false,
+                'code'    => 'helper_unavailable',
+                'message' => $senderType === 'parent'
+                    ? 'This helper has already been hired and is no longer available to message. Browse other available helpers to hire.'
+                    : 'You are currently hired. You can only message your current employer here.',
+            ]);
+            exit();
+        }
+    }
+
     $stmt = $conn->prepare(
         "INSERT INTO messages (sender_id, receiver_id, job_post_id, message_text, message_type, image_url, sent_at)
          VALUES (?, ?, ?, ?, ?, ?, NOW())"

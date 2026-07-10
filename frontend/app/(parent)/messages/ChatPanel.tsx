@@ -36,7 +36,7 @@ export default function ChatPanel({
   jobPostId?: number | null; onBack?: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const { messages, loading, sending, myUserId, sendMessage, editMessage, sendImage, sendVideoCall, fetchMessages } = useChat(partnerId);
+  const { messages, loading, sending, sendError, clearSendError, myUserId, sendMessage, editMessage, sendImage, sendVideoCall, fetchMessages } = useChat(partnerId);
   const [text, setText]             = useState('');
   const [editTarget, setEditTarget] = useState<Message | null>(null);
   const [viewerUri, setViewerUri]   = useState<string | null>(null);
@@ -138,6 +138,11 @@ export default function ChatPanel({
   useEffect(() => {
     if (isHired) setActiveTab(prev => prev === 'interview' ? 'messages' : prev);
   }, [isHired]);
+
+  // Surface a blocked send (e.g. this helper is already hired by someone else).
+  useEffect(() => {
+    if (sendError) { showChatNotif(sendError, 'warning'); clearSendError(); }
+  }, [sendError]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const contractNeedsAction =
     !!resolvedApp &&

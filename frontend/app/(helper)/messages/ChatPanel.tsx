@@ -37,7 +37,7 @@ export default function ChatPanel({
 }) {
   const insets = useSafeAreaInsets();
   const { s } = useMessagesAppearance();
-  const { messages, loading, sending, myUserId, sendMessage, editMessage, sendImage, sendVideoCall, fetchMessages } = useChat(partnerId);
+  const { messages, loading, sending, sendError, clearSendError, myUserId, sendMessage, editMessage, sendImage, sendVideoCall, fetchMessages } = useChat(partnerId);
   const [text, setText]                   = useState('');
   const [editTarget, setEditTarget]       = useState<Message | null>(null);
   const [viewerUri,  setViewerUri]        = useState<string | null>(null);
@@ -135,6 +135,11 @@ export default function ChatPanel({
   useEffect(() => {
     if (isHired) setActiveTab(prev => prev === 'interview' ? 'messages' : prev);
   }, [isHired]);
+
+  // Surface a blocked send (e.g. messaging a helper who is already hired elsewhere).
+  useEffect(() => {
+    if (sendError) { showChatNotif(sendError, 'warning'); clearSendError(); }
+  }, [sendError]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = async () => {
     const t = text.trim();

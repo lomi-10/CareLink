@@ -54,7 +54,27 @@ try {
 
     }
 
+    // ── Self-heal ended employment (no cron dependency) ─────────────────────
+    // A termination whose last working day has passed becomes 'terminated', and
+    // a contract whose employment_end_date has passed ends too. This guarantees
+    // Work Mode turns off on time even if no scheduled job runs.
+    $endTerm = $conn->prepare(
+        "UPDATE job_applications SET status = 'terminated', updated_at = NOW()
+         WHERE helper_id = ? AND status = 'termination_pending'
+           AND termination_last_day IS NOT NULL AND termination_last_day < CURDATE()"
+    );
+    if ($endTerm) { $endTerm->bind_param('i', $helper_id); $endTerm->execute(); $endTerm->close(); }
 
+    $endNatural = $conn->prepare(
+        "UPDATE job_applications ja
+         INNER JOIN contracts c ON c.application_id = ja.application_id
+         SET ja.status = 'terminated',
+             ja.termination_last_day = COALESCE(ja.termination_last_day, c.employment_end_date),
+             ja.updated_at = NOW()
+         WHERE ja.helper_id = ? AND ja.status IN ('hired','Accepted')
+           AND c.employment_end_date IS NOT NULL AND c.employment_end_date < CURDATE()"
+    );
+    if ($endNatural) { $endNatural->bind_param('i', $helper_id); $endNatural->execute(); $endNatural->close(); }
 
     $sql = "
 
@@ -103,6 +123,12 @@ try {
         WHERE ja.helper_id = ?
 
           AND ja.status IN ('hired', 'Accepted', 'termination_pending')
+
+          AND c.contract_id IS NOT NULL
+
+          AND ja.employer_signed_at IS NOT NULL
+
+          AND ja.helper_signed_at IS NOT NULL
 
         ORDER BY ja.updated_at DESC, ja.application_id DESC
 

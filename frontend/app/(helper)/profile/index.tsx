@@ -190,7 +190,7 @@ export default function HelperProfileMain() {
             {isVerified && (
               <View style={s.pesoBadge}>
                 <Ionicons name="shield-checkmark" size={11} color="#fff" />
-                <Text style={s.pesoBadgeText}>PESO Verified</Text>
+                <Text style={s.pesoBadgeText}>PESO Verified Helper</Text>
                 <Ionicons name="checkmark-circle" size={11} color="#A7F3D0" />
               </View>
             )}

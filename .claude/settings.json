@@ -11,7 +11,22 @@
       "Bash(mysql -u root carelink -N -e \"SELECT user_id, email, status FROM users WHERE user_type='peso' LIMIT 5;\")",
       "Bash(php -r '$c=@mysqli_connect\\(\"127.0.0.1\",\"root\",\"\",\"carelink\",3306\\); if\\(!$c\\){echo \"NO DB: \".mysqli_connect_error\\(\\);exit;} $r=$c->query\\(\"SELECT user_id,email,status FROM users WHERE user_type=\\\\\"peso\\\\\" LIMIT 5\"\\); while\\($x=$r->fetch_assoc\\(\\)\\) echo $x[\"user_id\"].\" | \".$x[\"email\"].\" | \".$x[\"status\"].\"\\\\n\";')",
       "Bash(curl -s \"http://localhost/carelink_api/peso/get_reports_analytics.php?staff_user_id=4\")",
-      "Bash(php -r '$c=mysqli_connect\\(\"127.0.0.1\",\"root\",\"\",\"carelink\",3306\\); foreach\\([\"job_posts\",\"placements\",\"complaints\"] as $t\\){ $r=$c->query\\(\"SHOW COLUMNS FROM $t LIKE \\\\\"%_at\\\\\"\"\\); $cols=[]; while\\($x=$r->fetch_assoc\\(\\)\\)$cols[]=$x[\"Field\"]; echo \"$t: \".implode\\(\", \",$cols\\).\"\\\\n\"; }')"
+      "Bash(php -r '$c=mysqli_connect\\(\"127.0.0.1\",\"root\",\"\",\"carelink\",3306\\); foreach\\([\"job_posts\",\"placements\",\"complaints\"] as $t\\){ $r=$c->query\\(\"SHOW COLUMNS FROM $t LIKE \\\\\"%_at\\\\\"\"\\); $cols=[]; while\\($x=$r->fetch_assoc\\(\\)\\)$cols[]=$x[\"Field\"]; echo \"$t: \".implode\\(\", \",$cols\\).\"\\\\n\"; }')",
+      "Bash(php -r '$c=mysqli_connect\\(\"127.0.0.1\",\"root\",\"\",\"carelink\",3306\\); $r=$c->query\\(\"SHOW TABLES LIKE \\\\\"ref_%\\\\\"\"\\); $t=[]; while\\($x=$r->fetch_row\\(\\)\\)$t[]=$x[0]; foreach\\($t as $tb\\){ $n=$c->query\\(\"SELECT COUNT\\(*\\) c FROM $tb\"\\)->fetch_assoc\\(\\)[\"c\"]; echo \"$tb: $n rows\\\\n\"; }')",
+      "Bash(ls -la database/ref_seed.sql)",
+      "Bash(grep -n \"ref_seed\" .gitignore)",
+      "Bash(php -r ' *)",
+      "Bash(awk '/INSERT INTO `ref_categories`/{f=\"cat\"} /INSERT INTO `ref_jobs`/{f=\"job\"} /INSERT INTO `ref_skills`/{f=\"skill\"} /INSERT INTO `ref_languages`/{f=\"lang\"} /^\\\\\\(/{c[f]++} END{for\\(k in c\\)print k, c[k]}' backend/database/ref_seed.sql)",
+      "Bash(php -r '$c=mysqli_connect\\(\"127.0.0.1\",\"root\",\"\",\"carelink\",3306\\); foreach\\([\"contracts\",\"job_applications\"] as $t\\){ $r=$c->query\\(\"SHOW COLUMNS FROM $t LIKE \\\\\"%sign%\\\\\"\"\\); $f=[]; while\\($x=$r->fetch_assoc\\(\\)\\)$f[]=$x[\"Field\"]; echo \"$t: \".implode\\(\", \",$f\\).\"\\\\n\"; }')",
+      "Bash(php -r '$c=mysqli_connect\\(\"127.0.0.1\",\"root\",\"\",\"carelink\",3306\\); $r=$c->query\\(\"SELECT ja.application_id, ja.status, ja.employer_signed_at, ja.helper_signed_at, ct.contract_id FROM job_applications ja LEFT JOIN contracts ct ON ct.application_id=ja.application_id JOIN users h ON h.user_id=ja.helper_id WHERE h.first_name LIKE \\\\\"John Paul%\\\\\"\"\\); while\\($x=$r->fetch_assoc\\(\\)\\) print_r\\($x\\);')",
+      "Bash(php -r '$c=mysqli_connect\\(\"127.0.0.1\",\"root\",\"\",\"carelink\",3306\\); $r=$c->query\\(\"SELECT ja.application_id, ja.status, ja.termination_notice_date, ja.termination_last_day, ct.employment_start_date, ct.employment_end_date, CURDATE\\(\\) AS today FROM job_applications ja LEFT JOIN contracts ct ON ct.application_id=ja.application_id WHERE ja.application_id=11\"\\); print_r\\($r->fetch_assoc\\(\\)\\);')",
+      "Bash(php -l helper/get_work_context.php)",
+      "Bash(php -r '$c=mysqli_connect\\(\"127.0.0.1\",\"root\",\"\",\"carelink\",3306\\); $r=$c->query\\(\"SELECT ja.helper_id FROM job_applications ja WHERE ja.application_id=11\"\\); $hid=$r->fetch_assoc\\(\\)[\"helper_id\"]; echo \"helper_id=$hid\\\\n\";')",
+      "Bash(php -r '$c=mysqli_connect\\(\"127.0.0.1\",\"root\",\"\",\"carelink\",3306\\);echo $c->query\\(\"SELECT helper_id FROM job_applications WHERE application_id=11\"\\)->fetch_assoc\\(\\)[\"helper_id\"];')",
+      "Bash(curl -s http://localhost/carelink_api/helper/get_work_context.php?helper_id=__CMDSUB_OUTPUT__)",
+      "Bash(php -r '$d=json_decode\\(file_get_contents\\(\"php://stdin\"\\),true\\); echo \"is_work_mode=\".var_export\\($d[\"is_work_mode\"]??null,true\\).\" placement_status=\".\\($d[\"placement_status\"]??\"-\"\\).\"\\\\n\";')",
+      "Bash(php -l messages/send_message.php)",
+      "Bash(grep -nE \"const \\\\[sending|const \\\\[messages|return \\\\{|sendMessage,|sending,\" hooks/shared/useMessages.ts)"
     ]
   }
 }

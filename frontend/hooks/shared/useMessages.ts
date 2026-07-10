@@ -89,6 +89,8 @@ export function useChat(partnerId: number) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [sending,  setSending]  = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const clearSendError = useCallback(() => setSendError(null), []);
   const [myUserId, setMyUserId] = useState<number>(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -142,9 +144,11 @@ export function useChat(partnerId: number) {
         }),
       });
       const data = await res.json();
-      if (data.success) await fetchMessages();
+      if (data.success) { setSendError(null); await fetchMessages(); }
+      else setSendError(typeof data.message === 'string' ? data.message : 'Message could not be sent.');
       return !!data.success;
     } catch {
+      setSendError('Message could not be sent. Please check your connection.');
       return false;
     } finally {
       setSending(false);
@@ -246,5 +250,5 @@ export function useChat(partnerId: number) {
     return sent ? callUrl : null;
   }, [partnerId, sendMessage]);
 
-  return { messages, loading, sending, myUserId, fetchMessages, sendMessage, editMessage, sendImage, sendVideoCall };
+  return { messages, loading, sending, sendError, clearSendError, myUserId, fetchMessages, sendMessage, editMessage, sendImage, sendVideoCall };
 }
