@@ -26,7 +26,11 @@
       "Bash(curl -s http://localhost/carelink_api/helper/get_work_context.php?helper_id=__CMDSUB_OUTPUT__)",
       "Bash(php -r '$d=json_decode\\(file_get_contents\\(\"php://stdin\"\\),true\\); echo \"is_work_mode=\".var_export\\($d[\"is_work_mode\"]??null,true\\).\" placement_status=\".\\($d[\"placement_status\"]??\"-\"\\).\"\\\\n\";')",
       "Bash(php -l messages/send_message.php)",
-      "Bash(grep -nE \"const \\\\[sending|const \\\\[messages|return \\\\{|sendMessage,|sending,\" hooks/shared/useMessages.ts)"
+      "Bash(grep -nE \"const \\\\[sending|const \\\\[messages|return \\\\{|sendMessage,|sending,\" hooks/shared/useMessages.ts)",
+      "Bash(awk '{print $5, $9}')",
+      "Skill(artifact-design)",
+      "Skill(artifact-design:*)",
+      "Bash(xargs grep -nE \"return \\\\{|recommendations|toggleSaveJob|loading|interface|job_post_id|match_score|title|parent_name|salary_offered|municipality|category\")"
     ]
   }
 }

@@ -26,6 +26,7 @@ import {
 import { WorkModeDashboard, WorkModeTabBar } from '@/components/helper/work';
 import { ProfileSetupGuide } from '@/components/helper/home/ProfileSetupGuide';
 import { AwaitingVerificationCard } from '@/components/shared/AwaitingVerificationCard';
+import { HelperHomeWeb } from '@/components/helper/web/HelperHomeWeb';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { ymdLocal } from '@/lib/helperWorkApi';
 import type { PendingReview } from '@/lib/reviewsApi';
@@ -195,159 +196,86 @@ export default function HelperHome() {
 
   // ─── DESKTOP ────────────────────────────────────────────────────────────────
   if (isDesktop) {
-    return (
-      <View style={[layoutStyles.container, { flexDirection: 'row' }]}>
-        <Sidebar onLogout={initiateLogout} />
-        <ScrollView
-          style={layoutStyles.mainContent}
-          contentContainerStyle={[layoutStyles.scrollContent, { maxWidth: 900, alignSelf: 'center', width: '100%' }]}
-          refreshControl={
-            <RefreshControl
-              refreshing={false}
-              onRefresh={() => {
-                refresh();
-                void refreshWork();
-                bumpPlacementReviewBanner();
-              }}
-            />
-          }
-        >
-          {/* Notification bar for desktop */}
-          <View style={layoutStyles.desktopTopBar}>
-            <View>
-              <Text style={layoutStyles.desktopPageTitle}>{showWorkDash ? 'Work dashboard' : 'Dashboard'}</Text>
-              <Text style={layoutStyles.desktopPageSub}>
-                {showWorkDash ? 'Your active placement' : 'Helper Portal — Domestic Services'}
-              </Text>
+    // Work Mode keeps the existing dashboard; the recruitment home uses the new web design.
+    if (showWorkDash) {
+      return (
+        <View style={[layoutStyles.container, { flexDirection: 'row' }]}>
+          <Sidebar onLogout={initiateLogout} />
+          <ScrollView
+            style={layoutStyles.mainContent}
+            contentContainerStyle={[layoutStyles.scrollContent, { maxWidth: 900, alignSelf: 'center', width: '100%' }]}
+            refreshControl={<RefreshControl refreshing={false} onRefresh={() => { refresh(); void refreshWork(); bumpPlacementReviewBanner(); }} />}
+          >
+            <View style={layoutStyles.desktopTopBar}>
+              <View>
+                <Text style={layoutStyles.desktopPageTitle}>Work dashboard</Text>
+                <Text style={layoutStyles.desktopPageSub}>Your active placement</Text>
+              </View>
             </View>
-            <TouchableOpacity
-              style={[layoutStyles.desktopNotifBtn, unreadCount > 0 && layoutStyles.desktopNotifBtnActive]}
-              onPress={() => router.push('/(helper)/notifications')}
-            >
-              <Ionicons
-                name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
-                size={20}
-                color={unreadCount > 0 ? ORANGE : MUTED}
-              />
-              {unreadCount > 0 && (
-                <View style={[layoutStyles.notifBadge, { backgroundColor: ORANGE }]}>
-                  <Text style={layoutStyles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {showWorkDash ? (
             <WorkModeDashboard
               helperId={helperIdNum}
-              userFirstName={userData.first_name}
+              userFirstName={userData?.first_name ?? ''}
               userFullName={getFullName()}
               profileImage={profileImage}
               verified={profileData?.profile?.verification_status === 'Verified'}
               activeHire={activeHire}
               onRefreshWorkContext={refreshWork}
             />
-          ) : (
-            <>
-              <GreetingCard
-                userName={getFullName()}
-                profileImage={profileImage}
-              />
+          </ScrollView>
+          {renderModals()}
+        </View>
+      );
+    }
 
-              <ProfileSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
-              <AwaitingVerificationCard completeness={profileData?.profile_completeness} status={profileData?.profile?.verification_status} themeKey="helper" />
+    const desktopBanners = (
+      <>
+        <ProfileSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
+        <AwaitingVerificationCard completeness={profileData?.profile_completeness} status={profileData?.profile?.verification_status} themeKey="helper" />
+        <PendingPlacementReviewsBanner
+          userType="helper"
+          accentColor={ORANGE}
+          softBg={ICON_BG}
+          refreshToken={placementReviewRefreshTok}
+          onReviewPress={(item: PendingReview) => openPlacementReview(item.application_id, item.counterparty_name, item.job_title)}
+        />
+        {!isWorkMode && activeHire?.employment_start_date && activeHire.employment_start_date > ymdLocal() ? (
+          <View style={layoutStyles.endedCard}>
+            <Text style={layoutStyles.endedTitle}>Job starting soon</Text>
+            <Text style={layoutStyles.endedBody}>
+              Your placement{activeHire.job_title ? ` (${activeHire.job_title})` : ''} with {activeHire.employer_name || 'your employer'} starts on {formatShortDate(activeHire.employment_start_date)}. Work Mode will unlock automatically that day.
+            </Text>
+          </View>
+        ) : null}
+        {employmentEnded?.application_id ? (
+          <PostPlacementRenewalCard
+            applicationId={employmentEnded.application_id}
+            jobPostId={employmentEnded.job_post_id}
+            messagesPartnerUserId={employmentEnded.parent_id}
+            userType="helper"
+            counterpartyName={employmentEnded.employer_name || 'Employer'}
+            jobTitle={employmentEnded.job_title}
+            endedOn={employmentEnded.employment_ended_on}
+            accentColor={ORANGE}
+            softBg={ICON_BG}
+            refreshToken={renewalRefreshTok}
+            onIntentSaved={() => setRenewalRefreshTok((x) => x + 1)}
+          />
+        ) : null}
+      </>
+    );
 
-              <PendingPlacementReviewsBanner
-                userType="helper"
-                accentColor={ORANGE}
-                softBg={ICON_BG}
-                refreshToken={placementReviewRefreshTok}
-                onReviewPress={(item: PendingReview) =>
-                  openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
-                }
-              />
-
-              {!isWorkMode && activeHire?.employment_start_date && activeHire.employment_start_date > ymdLocal() ? (
-                <View style={layoutStyles.endedCard}>
-                  <Text style={layoutStyles.endedTitle}>Job starting soon</Text>
-                  <Text style={layoutStyles.endedBody}>
-                    Your placement{activeHire.job_title ? ` (${activeHire.job_title})` : ''} with{' '}
-                    {activeHire.employer_name || 'your employer'} starts on{' '}
-                    {formatShortDate(activeHire.employment_start_date)}. Work Mode will unlock automatically that day.
-                  </Text>
-                </View>
-              ) : null}
-
-              {employmentEnded?.application_id ? (
-                <View style={layoutStyles.endedCard}>
-                  <Text style={layoutStyles.endedTitle}>
-                    Employment ended
-                  </Text>
-                  <Text style={layoutStyles.endedBody}>
-                    Your placement
-                    {employmentEnded.job_title ? ` (${employmentEnded.job_title})` : ''} with{' '}
-                    {employmentEnded.employer_name || 'your employer'}
-                    {employmentEnded.employment_ended_on
-                      ? ` ended on ${new Date(employmentEnded.employment_ended_on.replace(/-/g, '/')).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}.`
-                      : '.'}{' '}
-                    You are back in job-hunting mode.
-                  </Text>
-                  <TouchableOpacity
-                    style={layoutStyles.endedRateBtn}
-                    onPress={() =>
-                      openPlacementReview(
-                        employmentEnded.application_id,
-                        employmentEnded.employer_name || 'Employer',
-                        employmentEnded.job_title,
-                      )
-                    }
-                  >
-                    <Ionicons name="star-outline" size={18} color={ORANGE} />
-                    <Text style={layoutStyles.endedRateBtnText}>Rate this placement</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-
-              {employmentEnded?.application_id ? (
-                <PostPlacementRenewalCard
-                  applicationId={employmentEnded.application_id}
-                  jobPostId={employmentEnded.job_post_id}
-                  messagesPartnerUserId={employmentEnded.parent_id}
-                  userType="helper"
-                  counterpartyName={employmentEnded.employer_name || 'Employer'}
-                  jobTitle={employmentEnded.job_title}
-                  endedOn={employmentEnded.employment_ended_on}
-                  accentColor={ORANGE}
-                  softBg={ICON_BG}
-                  refreshToken={renewalRefreshTok}
-                  onIntentSaved={() => setRenewalRefreshTok((x) => x + 1)}
-                />
-              ) : null}
-
-              <SectionHeader title="Your Overview" />
-              <View style={layoutStyles.statsGrid}>
-                <StatCard icon="briefcase" iconColor={ORANGE} iconBg={ICON_BG}
-                  title="Applications" value={stats.applications} onPress={() => router.push('/(helper)/applications')} />
-                <StatCard icon="bookmark" iconColor={INFO} iconBg={INFO_BG}
-                  title="Saved Jobs" value={stats.saved_jobs} onPress={() => router.push('/(helper)/browse/saved_jobs')} />
-                <StatCard icon="eye" iconColor={GREEN} iconBg={SUCCESS_BG}
-                  title="Profile Views" value={stats.profile_views} />
-              </View>
-
-              <SectionHeader title="Quick Actions" />
-              <View style={layoutStyles.quickActionsGrid}>
-                <QuickActionDesktopInner icon="search" title="Find Jobs" desc="Browse PESO-verified openings"
-                  color={INFO} onPress={() => router.push('/(helper)/browse')} />
-                <QuickActionDesktopInner icon="person" title="My Profile" desc="Update your info & docs"
-                  color={ORANGE} onPress={() => router.push('/(helper)/profile')} />
-                <QuickActionDesktopInner icon="document-text" title="Applications" desc="Track your applications"
-                  color={GREEN} onPress={() => router.push('/(helper)/applications')} />
-              </View>
-
-              {profileData?.profile?.verification_status === 'Verified' && <RecommendationsSection />}
-            </>
-          )}
-        </ScrollView>
+    return (
+      <View style={{ flex: 1 }}>
+        <HelperHomeWeb
+          userName={getFullName()}
+          avatar={profileImage}
+          verified={profileData?.profile?.verification_status === 'Verified'}
+          completeness={profileData?.profile_completeness ?? 0}
+          stats={{ applications: stats.applications, saved_jobs: stats.saved_jobs, profile_views: stats.profile_views }}
+          onLogout={initiateLogout}
+          onBrowse={() => router.push('/(helper)/browse')}
+          banners={desktopBanners}
+        />
         {renderModals()}
       </View>
     );
