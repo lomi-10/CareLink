@@ -7,6 +7,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useConversations, useAuth, useResponsive, useNotifications, Conversation } from '@/hooks/shared';
+import { useHelperProfile } from '@/hooks/helper';
+import { HelperMessagesWeb } from '@/components/helper/web/HelperMessagesWeb';
 import { Sidebar, MobileMenu, HelperTabBar } from '@/components/helper/home';
 import { WorkModeTabBar } from '@/components/helper/work';
 import { LoadingSpinner, ConfirmationModal, NotificationModal } from '@/components/shared/';
@@ -25,7 +27,8 @@ function HelperMessagesContent() {
   const { s } = useMessagesAppearance();
   const router           = useRouter();
   const { isDesktop }    = useResponsive();
-  const { handleLogout } = useAuth();
+  const { handleLogout, getFullName } = useAuth();
+  const { profileData } = useHelperProfile();
   const { unreadCount: notifUnread } = useNotifications('helper');
   const { isWorkMode, activeHire } = useHelperWorkMode();
   const params = useLocalSearchParams<{ partner_id?: string; partner_name?: string; job_post_id?: string }>();
@@ -197,44 +200,15 @@ function HelperMessagesContent() {
     );
   }
 
-  // ── Desktop layout ─────────────────────────────────────────────────────────
+  // ── Desktop layout (redesigned 3-column web screen) ──────────────────────────
   return (
     <>
-      <View style={s.desktopWrap}>
-        <Sidebar onLogout={initiateLogout} />
-        <View style={s.desktopMain}>
-        {/* Conversation list panel */}
-        <View style={s.convPanel}>
-          <View style={s.convPanelHeader}>
-            <Text style={s.convPanelTitle}>Messages</Text>
-            <Text style={s.convPanelCount}>{conversations.length}</Text>
-          </View>
-          {ConvList}
-        </View>
-
-        {/* Chat panel */}
-        <View style={s.chatPanelWrap}>
-          {activePartner ? (
-            <ChatPanel
-              partnerId={activePartner.partner_id}
-              partnerName={activePartner.partner_name}
-              partnerPhoto={activePartner.partner_photo}
-              jobPostId={activePartner.job_post_id}
-            />
-          ) : (
-            <View style={s.noChatWrap}>
-              <View style={s.noChatIcon}>
-                <Ionicons name="chatbubbles-outline" size={56} color={ORANGE} />
-              </View>
-              <Text style={s.noChatTitle}>Your Messages</Text>
-              <Text style={s.noChatSub}>
-                Select a conversation to start chatting, or apply to a job to connect with a parent.
-              </Text>
-            </View>
-          )}
-        </View>
-        </View>
-      </View>
+      <HelperMessagesWeb
+        userName={getFullName()}
+        avatar={(profileData?.profile?.profile_image as string) ?? null}
+        verified={profileData?.profile?.verification_status === 'Verified'}
+        onLogout={initiateLogout}
+      />
       <ConfirmationModal
         visible={confirmLogoutVisible}
         title="Log Out"

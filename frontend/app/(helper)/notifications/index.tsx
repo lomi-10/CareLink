@@ -19,6 +19,8 @@ import { WorkModeTabBar } from '@/components/helper/work';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { useAuth } from '@/hooks/shared';
+import { useHelperProfile } from '@/hooks/helper';
+import { HelperNotificationsWeb } from '@/components/helper/web/HelperNotificationsWeb';
 import type { Notification } from '@/hooks/shared';
 import { resolveHelperNotificationRoute } from '@/utils/notification-routes';
 import {
@@ -184,7 +186,8 @@ function NotifContent({
 export default function HelperNotificationsScreen() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
-  const { handleLogout } = useAuth();
+  const { handleLogout, getFullName } = useAuth();
+  const { profileData } = useHelperProfile();
   const { isWorkMode, activeHire } = useHelperWorkMode();
   const accent = ORANGE;
 
@@ -225,15 +228,13 @@ export default function HelperNotificationsScreen() {
 
   if (isDesktop) {
     return (
-      <View style={s.desktopRoot}>
-        <Sidebar onLogout={() => setConfirmLogout(true)} />
-        <ScrollView style={s.desktopMain} contentContainerStyle={s.desktopScroll}>
-          <View style={s.desktopTopBar}>
-            <Text style={s.desktopPageTitle}>Notifications</Text>
-            <Text style={s.desktopPageSub}>Stay on top of applications and interviews</Text>
-          </View>
-          <NotifContent accent={accent} s={s} typeCfg={typeCfg} />
-        </ScrollView>
+      <View style={{ flex: 1 }}>
+        <HelperNotificationsWeb
+          userName={getFullName()}
+          avatar={(profileData?.profile?.profile_image as string) ?? null}
+          verified={profileData?.profile?.verification_status === 'Verified'}
+          onLogout={() => setConfirmLogout(true)}
+        />
         {renderModals()}
       </View>
     );

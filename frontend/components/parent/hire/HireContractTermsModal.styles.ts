@@ -20,7 +20,7 @@ export const hireContractTermsStyles = StyleSheet.create({
     borderRadius: isWeb ? 16 : 0,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    width: isWeb ? 520 : '100%',
+    width: '100%',
     maxWidth: isWeb ? 520 : '100%',
     alignSelf: isWeb ? 'center' : 'stretch',
     maxHeight: '92%',

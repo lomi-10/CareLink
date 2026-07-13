@@ -70,7 +70,7 @@ export default function DocumentsScreen() {
 
   const getDoc = (type: string): any => documents.find((d: any) => d.document_type === type);
 
-  const goToDetail = (doc: any, autoscan: boolean) => {
+  const goToDetail = (doc: any, autoscan: boolean, side: 'front' | 'back' = 'front') => {
     router.push({
       pathname: '/(helper)/profile/document-detail',
       params: {
@@ -79,9 +79,11 @@ export default function DocumentsScreen() {
         file_url:         doc.file_url         ?? '',
         file_url_back:    doc.file_url_back    ?? '',
         file_path:        doc.file_path        ?? '',
+        file_path_back:   doc.file_path_back   ?? '',
         status:           doc.status           ?? 'Pending',
         uploaded_at:      doc.uploaded_at       ?? '',
         autoscan:         autoscan ? '1' : '',
+        autoscan_side:    autoscan ? side : '',
         ai_status:        doc.ai_verification_status ?? '',
         ai_confidence_score: doc.ai_confidence_score != null ? String(doc.ai_confidence_score) : '',
         ai_extracted_data:   doc.ai_extracted_data ? JSON.stringify(doc.ai_extracted_data) : '',
@@ -163,8 +165,9 @@ export default function DocumentsScreen() {
     }
   };
 
-  // Valid ID front & back are uploaded separately (one photo at a time). The AI
-  // scan only runs once BOTH sides are present, so we never scan a half ID twice.
+  // Valid ID front & back are uploaded separately (one photo at a time). Each
+  // side is scanned INDEPENDENTLY the moment it's uploaded, so neither side is
+  // ever left un-scanned regardless of upload order.
   const uploadValidIdSide = async (side: 'front' | 'back') => {
     if (busyType) return;
     try {
@@ -187,13 +190,8 @@ export default function DocumentsScreen() {
 
       const newDoc = await fetchDocByType(userId, 'Valid ID');
       refresh();
-      if (newDoc?.file_url && newDoc?.file_url_back) {
-        goToDetail(newDoc, true); // both sides present → scan the complete ID
-      } else {
-        showNotice(
-          side === 'front' ? 'Front saved. Now upload the BACK of your ID.' : 'Back saved. Now upload the FRONT of your ID.',
-          'success', 'Saved',
-        );
+      if (newDoc) {
+        goToDetail(newDoc, true, side); // scan the side that was just uploaded
       }
     } catch (e: any) {
       showNotice(e?.message || 'Could not upload this document.', 'error');

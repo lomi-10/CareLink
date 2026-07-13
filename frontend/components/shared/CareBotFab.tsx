@@ -8,7 +8,7 @@ import {
 } from '@/components/shared/calmMoti';
 import { MotiView } from 'moti';
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Modal, StyleSheet, Platform, Dimensions, TouchableWithoutFeedback, Image } from 'react-native';
+import { View, Modal, StyleSheet, Platform, useWindowDimensions, TouchableWithoutFeedback, Image } from 'react-native';
 import { usePathname, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCareBot } from '@/contexts/CareBotContext';
@@ -82,7 +82,7 @@ export function CareBotFab() {
 
   const showFab = inParentOrHelperPortal;
 
-  const { width: winW, height: winH } = Dimensions.get('window');
+  const { width: winW, height: winH } = useWindowDimensions();
   const modalMaxH = Math.min(winH * 0.86, 720);
   // On web CareBot uses a wide two-column layout (topics sidebar + chat), so the
   // card needs room; on native it stays a compact bubble/sheet.
@@ -128,10 +128,9 @@ export function CareBotFab() {
       paddingBottom: insets.bottom + 8,
     };
     if (Platform.OS === 'web') {
-      // Wide layout is centered; the older narrow bubble stays anchored left.
-      return winW >= 720
-        ? { ...base, alignItems: 'center' as const, paddingHorizontal: 16 }
-        : { ...base, alignItems: 'flex-start' as const, paddingLeft: Math.min(96, winW * 0.08) };
+      // Center on every width — anchoring the narrow card left pushed it off the
+      // right edge on phone-width browsers, cutting the panel on both sides.
+      return { ...base, alignItems: 'center' as const, paddingHorizontal: 12 };
     }
     return { ...base, alignItems: 'center' as const, paddingHorizontal: 12 };
   }, [insets.bottom, insets.top, useBottomSheet, winW]);

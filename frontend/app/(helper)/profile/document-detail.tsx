@@ -15,9 +15,43 @@ import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { HelperTabBar } from '@/components/helper/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
-import { DocumentAIScan } from '@/components/shared/DocumentAIScan';
+import { DocumentAIScan, ScanResult } from '@/components/shared/DocumentAIScan';
+import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
 import { useProfileTheme } from './profile.theme';
 import { createStyles } from './document-detail.styles';
+
+// Reconstruct a stored per-side scan result (front/back) with legacy fallback.
+function buildSideResult(
+  side: 'front' | 'back', extra: any, docType: string, docStatus: string,
+  topAiStatus?: string, topClarity?: string,
+): ScanResult | null {
+  const sc = extra?.scans?.[side];
+  if (sc?.ai_status && sc.ai_status !== 'Unchecked') {
+    return {
+      ai_verification_status: sc.ai_status,
+      legitimacy_score: sc.legitimacy_score ?? null,
+      quality_score: sc.quality_score ?? null,
+      fields: Array.isArray(sc.fields) ? sc.fields : [],
+      warnings: Array.isArray(sc.warnings) ? sc.warnings : [],
+      document_type: docType,
+      document_guess: sc.document_guess ?? '',
+      doc_status: docStatus,
+    };
+  }
+  if (side === 'front' && topAiStatus && topAiStatus !== 'Unchecked') {
+    return {
+      ai_verification_status: topAiStatus,
+      legitimacy_score: extra?.legitimacy_score ?? null,
+      quality_score: topClarity ? Number(topClarity) : null,
+      fields: Array.isArray(extra?.fields) ? extra.fields : [],
+      warnings: Array.isArray(extra?.warnings) ? extra.warnings : [],
+      document_type: docType,
+      document_guess: extra?.document_guess ?? '',
+      doc_status: docStatus,
+    };
+  }
+  return null;
+}
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 // Real lifecycle in the database is Pending → Verified (or → Rejected).
@@ -56,9 +90,11 @@ export default function DocumentDetailScreen() {
     file_url?:      string;
     file_url_back?: string;
     file_path?:     string;
+    file_path_back?: string;
     status?:        string;
     uploaded_at?:   string;
     autoscan?:      string;
+    autoscan_side?: string;
     ai_status?:     string;
     ai_confidence_score?: string;
     ai_extracted_data?:   string;
@@ -75,9 +111,11 @@ export default function DocumentDetailScreen() {
     file_url         = '',
     file_url_back    = '',
     file_path        = '',
+    file_path_back   = '',
     status           = 'Pending',
     uploaded_at      = '',
     autoscan         = '',
+    autoscan_side    = 'front',
     ai_status        = '',
     ai_confidence_score = '',
     ai_extracted_data   = '',
@@ -93,6 +131,7 @@ export default function DocumentDetailScreen() {
   const [aiReason, setAiReason]   = useState<string>('');
   // Two-sided docs (Valid ID): flip the preview between front and back.
   const [imgSide, setImgSide]     = useState<'front' | 'back'>('front');
+  const [zoomUri, setZoomUri]     = useState<string | null>(null);
 
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -107,31 +146,35 @@ export default function DocumentDetailScreen() {
     setNotice({ visible: true, title, message, type });
   };
 
+  const handleScanned = (res: any) => {
+    if (res?.overall_status) setAiStatus(res.overall_status);
+    else if (res?.ai_verification_status) setAiStatus(res.ai_verification_status);
+    if (res?.doc_status) setDocStatus(res.doc_status);
+    if (res?.auto_rejected) {
+      setAiReason('Our AI could not confirm this is a genuine document, so it was not sent for PESO verification. Please re-upload a clear, authentic copy.');
+    }
+  };
+
   const statusKey  = (docStatus ?? '').toLowerCase();
   const isVerified = statusKey === 'verified';
   const isRejected = statusKey === 'rejected';
   const isPending  = !isVerified && !isRejected;
   const scanned    = !!aiStatus && aiStatus !== 'Unchecked';
 
-  // Reconstruct the stored scan result so the widget shows it directly instead of
-  // re-scanning (which would drain the AI). A re-scan only happens after the user
-  // deletes a rejected document and uploads a fresh copy (autoscan=1).
-  const initialScan = React.useMemo(() => {
-    if (!scanned) return null;
-    let extra: any = {};
-    try { extra = ai_extracted_data ? JSON.parse(ai_extracted_data) : {}; } catch { extra = {}; }
-    return {
-      ai_verification_status: aiStatus,
-      legitimacy_score: extra?.legitimacy_score ?? null,
-      quality_score: ai_confidence_score ? Number(ai_confidence_score) : null,
-      fields: Array.isArray(extra?.fields) ? extra.fields : [],
-      warnings: Array.isArray(extra?.warnings) ? extra.warnings : [],
-      document_type,
-      document_guess: extra?.document_guess ?? '',
-      is_expected: extra?.is_expected ?? undefined,
-      doc_status: docStatus,
-    };
-  }, [scanned, aiStatus, ai_extracted_data, ai_confidence_score, document_type, docStatus]);
+  // Reconstruct the stored per-side scan results so each widget shows its result
+  // directly instead of re-scanning (which would drain the AI). A re-scan only
+  // happens for the freshly uploaded side (autoscan=1 + autoscan_side).
+  const extraObj = React.useMemo(() => {
+    try { return ai_extracted_data ? JSON.parse(ai_extracted_data) : {}; } catch { return {}; }
+  }, [ai_extracted_data]);
+  const frontInitial = React.useMemo(
+    () => buildSideResult('front', extraObj, document_type, docStatus, aiStatus, ai_confidence_score),
+    [extraObj, document_type, docStatus, aiStatus, ai_confidence_score],
+  );
+  const backInitial = React.useMemo(
+    () => buildSideResult('back', extraObj, document_type, docStatus),
+    [extraObj, document_type, docStatus],
+  );
   const stepIndex  = computeStep(docStatus ?? '', scanned);
   const rejectReason = aiReason || rejection_reason;
   const isPdf      = file_url.toLowerCase().endsWith('.pdf');
@@ -242,18 +285,21 @@ export default function DocumentDetailScreen() {
           {/* ── Document info card ── */}
           <View style={s.docCard}>
             <View style={s.docRow}>
-              {/* Left: document thumbnail (tap to flip front/back on a Valid ID) */}
+              {/* Left: document thumbnail — tap to view/zoom full-screen */}
               <TouchableOpacity
                 style={s.docThumb}
-                activeOpacity={hasBack ? 0.85 : 1}
-                onPress={hasBack ? () => setImgSide((v) => (v === 'front' ? 'back' : 'front')) : undefined}
+                activeOpacity={shownHasImage ? 0.85 : 1}
+                onPress={shownHasImage ? () => setZoomUri(shownUrl) : undefined}
               >
                 {shownHasImage ? (
-                  <Image
-                    source={{ uri: shownUrl }}
-                    style={s.docThumbImg}
-                    contentFit="cover"
-                  />
+                  <>
+                    <Image
+                      source={{ uri: shownUrl }}
+                      style={s.docThumbImg}
+                      contentFit="cover"
+                    />
+                    <View style={{ position: 'absolute', right: 6, bottom: 6, width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}><Ionicons name="expand" size={13} color="#fff" /></View>
+                  </>
                 ) : (
                   <View style={s.docThumbFallback}>
                     <Ionicons
@@ -339,23 +385,36 @@ export default function DocumentDetailScreen() {
             ) : null}
           </View>
 
-          {/* ── AI Document Scan ── */}
+          {/* ── AI Document Scan (front & back scan independently) ── */}
           {document_id ? (
             <View style={s.statusSection}>
               <Text style={s.statusTitle}>AI Document Scan</Text>
-              <DocumentAIScan
-                doc={{ document_id, document_type, file_url, file_path }}
-                themeKey="helper"
-                autoStart={autoscan === '1' && !scanned}
-                initialResult={initialScan}
-                onScanned={(res) => {
-                  if (res?.ai_verification_status) setAiStatus(res.ai_verification_status);
-                  if (res?.doc_status) setDocStatus(res.doc_status);
-                  if (res?.auto_rejected) {
-                    setAiReason('Our AI could not confirm this is a genuine document, so it was not sent for PESO verification. Please re-upload a clear, authentic copy.');
-                  }
-                }}
-              />
+              <View style={{ gap: 14 }}>
+                <DocumentAIScan
+                  key={`${document_id}-front`}
+                  doc={{ document_id, document_type, file_url: isPdf ? null : file_url, file_path }}
+                  themeKey="helper"
+                  side="front"
+                  title={file_url_back || document_type === 'Valid ID' ? 'Front side' : undefined}
+                  autoStart={autoscan === '1' && autoscan_side !== 'back' && !frontInitial}
+                  initialResult={frontInitial}
+                  onScanned={handleScanned}
+                  onViewImage={(uri) => setZoomUri(uri)}
+                />
+                {!!file_url_back && (
+                  <DocumentAIScan
+                    key={`${document_id}-back`}
+                    doc={{ document_id, document_type, file_url: file_url_back.toLowerCase().endsWith('.pdf') ? null : file_url_back, file_path: file_path_back }}
+                    themeKey="helper"
+                    side="back"
+                    title="Back side"
+                    autoStart={autoscan === '1' && autoscan_side === 'back' && !backInitial}
+                    initialResult={backInitial}
+                    onScanned={handleScanned}
+                    onViewImage={(uri) => setZoomUri(uri)}
+                  />
+                )}
+              </View>
             </View>
           ) : null}
 
@@ -427,6 +486,12 @@ export default function DocumentDetailScreen() {
         <HelperTabBar />
       </SafeAreaView>
 
+      <ImageZoomModal
+        visible={!!zoomUri}
+        uri={zoomUri}
+        title={`${document_type}${hasBack ? ` — ${imgSide === 'front' ? 'Front' : 'Back'}` : ''}`}
+        onClose={() => setZoomUri(null)}
+      />
       <ConfirmationModal
         visible={confirmDelete}
         title="Delete Document"

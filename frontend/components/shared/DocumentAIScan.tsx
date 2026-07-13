@@ -76,6 +76,7 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // ─── Public widget (placed on the Document Details screen) ────────────────────
 export function DocumentAIScan({
   doc, themeKey = 'helper', autoStart = true, initialResult = null, onScanned,
+  side, title, inlineResults = false, onViewImage,
 }: {
   doc: any;
   themeKey?: ScanThemeKey;
@@ -83,6 +84,14 @@ export function DocumentAIScan({
   /** Persisted scan result from a previous scan — shown directly, no re-scan. */
   initialResult?: ScanResult | null;
   onScanned?: (result: ScanResult) => void;
+  /** For two-sided docs (Valid ID): scan 'front' or 'back' independently. */
+  side?: 'front' | 'back';
+  /** Heading shown above the scan (e.g. "Front side"). */
+  title?: string;
+  /** Web: render results in place instead of opening a full-screen modal. */
+  inlineResults?: boolean;
+  /** Tapping the scan image opens a full-screen zoom viewer. */
+  onViewImage?: (uri: string) => void;
 }) {
   const t = THEMES[themeKey];
   // If we already have a stored scan, show it — never re-scan (that would drain
@@ -140,7 +149,7 @@ export function DocumentAIScan({
         const res = await fetch(`${API_URL}/helper/scan_id.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ document_id: doc.document_id, user_id: userId, requester_id: userId }),
+          body: JSON.stringify({ document_id: doc.document_id, user_id: userId, requester_id: userId, ...(side ? { side } : {}) }),
         });
         return res.json();
       })();
@@ -191,6 +200,7 @@ export function DocumentAIScan({
   if (phase === 'scanning') {
     return (
       <View style={[w.card, { backgroundColor: t.cardBg, borderColor: t.line }]}>
+        {title ? <Text style={[w.sideHeading, { color: t.ink }]}>{title}</Text> : null}
         <View style={w.scanStage}>
           {imgUri ? (
             <Image source={{ uri: imgUri }} style={w.scanImg} contentFit="cover" />
@@ -264,9 +274,10 @@ export function DocumentAIScan({
     );
   }
 
-  // ── DONE (summary + open results) ──
+  // ── DONE (summary + results) ──
   return (
-    <View style={[w.card, { backgroundColor: t.cardBg, borderColor: t.line }]}>
+    <View style={[w.card, { backgroundColor: t.cardBg, borderColor: t.line, alignItems: 'stretch' }]}>
+      {title ? <Text style={[w.sideHeading, { color: t.ink, alignSelf: 'center' }]}>{title}</Text> : null}
       <View style={w.doneTop}>
         <View style={[w.iconCircle, { backgroundColor: failed ? '#FDECEA' : t.successBg, marginBottom: 0 }]}>
           <Ionicons name={failed ? 'alert-circle' : 'checkmark-circle'} size={22} color={failed ? '#B42318' : t.success} />
@@ -275,8 +286,8 @@ export function DocumentAIScan({
           <Text style={[w.doneTitle, { color: t.ink }]}>
             {passed ? 'Scan complete' : failed ? 'Needs a clearer copy' : 'Scan complete — for review'}
           </Text>
-          <Text style={[w.sub, { color: t.muted, marginTop: 2 }]}>
-            {failed ? 'The AI could not confirm this document.' : 'AI read your document. Tap below to review.'}
+          <Text style={[w.sub, { color: t.muted, marginTop: 2, textAlign: 'left' }]}>
+            {failed ? 'The AI could not confirm this document.' : inlineResults ? 'AI read your document. See the details below.' : 'AI read your document. Tap below to review.'}
           </Text>
         </View>
       </View>
@@ -298,38 +309,46 @@ export function DocumentAIScan({
         </View>
       )}
 
-      <TouchableOpacity style={[w.btnFilled, { backgroundColor: t.accent }]} onPress={() => setShowResults(true)} activeOpacity={0.88}>
-        <Ionicons name="reader-outline" size={16} color="#fff" />
-        <Text style={w.btnFilledText}>Scan Results</Text>
-      </TouchableOpacity>
+      {inlineResults ? (
+        <View style={{ marginTop: 14 }}>
+          <ScanResultsContent t={t} result={result} imgUri={imgUri} elapsed={elapsed} onViewImage={onViewImage} />
+        </View>
+      ) : (
+        <TouchableOpacity style={[w.btnFilled, { backgroundColor: t.accent }]} onPress={() => setShowResults(true)} activeOpacity={0.88}>
+          <Ionicons name="reader-outline" size={16} color="#fff" />
+          <Text style={w.btnFilledText}>Scan Results</Text>
+        </TouchableOpacity>
+      )}
       {failed && (
         <Text style={[w.sub, { color: t.muted, textAlign: 'center', marginTop: 8 }]}>
           To try again, delete this document and upload a clearer copy.
         </Text>
       )}
 
-      <ScanResultsModal
-        visible={showResults}
-        onClose={() => setShowResults(false)}
-        t={t}
-        result={result}
-        imgUri={imgUri}
-        elapsed={elapsed}
-      />
+      {!inlineResults && (
+        <ScanResultsModal
+          visible={showResults}
+          onClose={() => setShowResults(false)}
+          t={t}
+          result={result}
+          imgUri={imgUri}
+          elapsed={elapsed}
+          onViewImage={onViewImage}
+        />
+      )}
     </View>
   );
 }
 
-// ─── Results modal (screenshot reference) ─────────────────────────────────────
-function ScanResultsModal({
-  visible, onClose, t, result, imgUri, elapsed,
+// ─── Results content (shared by the modal and the inline web panel) ───────────
+export function ScanResultsContent({
+  t, result, imgUri, elapsed, onViewImage,
 }: {
-  visible: boolean;
-  onClose: () => void;
   t: ScanTheme;
   result: ScanResult | null;
   imgUri: string | null;
   elapsed: number | null;
+  onViewImage?: (uri: string) => void;
 }) {
   const legit = result?.legitimacy_score != null ? Math.round(Number(result.legitimacy_score)) : null;
   const clarity = result?.quality_score != null ? Math.round(Number(result.quality_score)) : null;
@@ -342,6 +361,126 @@ function ScanResultsModal({
   const confDots = confidence != null ? Math.max(1, Math.min(5, Math.round(confidence / 20))) : 0;
   const confLabel = confidence == null ? '' : confidence >= 80 ? 'High Confidence' : confidence >= 55 ? 'Medium Confidence' : 'Low Confidence';
 
+  return (
+    <View>
+      {/* success banner */}
+      <View style={[r.banner, { backgroundColor: t.successBg }]}>
+        <Ionicons name={passed ? 'checkmark-circle' : 'information-circle'} size={22} color={t.success} />
+        <View style={{ flex: 1 }}>
+          <Text style={[r.bannerTitle, { color: t.success }]}>
+            {passed ? 'Document scanned successfully' : 'Scan complete — needs review'}
+          </Text>
+          <Text style={[r.bannerSub, { color: t.muted }]}>
+            AI verification completed{elapsed != null ? ` in ${elapsed.toFixed(1)}s` : ''}.
+          </Text>
+        </View>
+        <View style={[r.shieldSm, { backgroundColor: t.success }]}>
+          <Ionicons name="shield-checkmark" size={14} color="#fff" />
+        </View>
+      </View>
+
+      {/* two-column card */}
+      <View style={[r.card, { backgroundColor: t.cardBg, borderColor: t.line }]}>
+        <View style={r.cols}>
+          {/* LEFT: image + score cards */}
+          <View style={r.colLeft}>
+            <TouchableOpacity activeOpacity={imgUri && onViewImage ? 0.85 : 1} onPress={imgUri && onViewImage ? () => onViewImage(imgUri) : undefined}>
+              {imgUri ? (
+                <Image source={{ uri: imgUri }} style={r.idImg} contentFit="cover" />
+              ) : (
+                <View style={[r.idImg, { backgroundColor: t.accentDeep, alignItems: 'center', justifyContent: 'center' }]}>
+                  <Ionicons name="document-text-outline" size={36} color="#fff" />
+                </View>
+              )}
+              {imgUri && onViewImage ? (
+                <View style={r.zoomBadge}><Ionicons name="expand" size={13} color="#fff" /></View>
+              ) : null}
+            </TouchableOpacity>
+
+            {legit != null && (
+              <View style={[r.scoreCard, { backgroundColor: t.successBg }]}>
+                <View style={[r.scoreIcon, { backgroundColor: t.success }]}>
+                  <Ionicons name="shield-checkmark" size={14} color="#fff" />
+                </View>
+                <Text style={[r.scoreLabel, { color: t.muted }]}>Legitimacy Score</Text>
+                <Text style={[r.scoreBig, { color: t.ink }]}>{legit}%</Text>
+                <Text style={[r.scoreTag, { color: t.success }]}>{scoreLabel('legit', legit).label}</Text>
+                <Text style={[r.scoreSub, { color: t.muted }]}>{scoreLabel('legit', legit).sub}</Text>
+              </View>
+            )}
+            {clarity != null && (
+              <View style={[r.scoreCard, { backgroundColor: t.iconBg }]}>
+                <View style={[r.scoreIcon, { backgroundColor: t.accent }]}>
+                  <Ionicons name="sparkles" size={14} color="#fff" />
+                </View>
+                <Text style={[r.scoreLabel, { color: t.muted }]}>Clarity Score</Text>
+                <Text style={[r.scoreBig, { color: t.ink }]}>{clarity}%</Text>
+                <Text style={[r.scoreTag, { color: t.accentDeep }]}>{scoreLabel('clarity', clarity).label}</Text>
+                <Text style={[r.scoreSub, { color: t.muted }]}>{scoreLabel('clarity', clarity).sub}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* RIGHT: extracted fields */}
+          <View style={r.colRight}>
+            <DetailRow label="Document Type" value={docLabel} t={t} first />
+            {fields.map((f, i) => (
+              <DetailRow key={`${f.label}-${i}`} label={f.label} value={f.value} t={t} />
+            ))}
+            {fields.length === 0 && (
+              <Text style={[r.noFields, { color: t.muted }]}>No fields could be read from this document.</Text>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {/* warnings (if any) */}
+      {warnings.length > 0 && (
+        <View style={[r.warnCard, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}>
+          <Ionicons name="warning-outline" size={18} color="#C2410C" />
+          <View style={{ flex: 1 }}>
+            <Text style={[r.warnTitle, { color: '#9A3412' }]}>Flagged for review</Text>
+            {warnings.map((wn, i) => (
+              <Text key={i} style={[r.warnItem, { color: '#9A3412' }]}>• {wn}</Text>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* AI confidence */}
+      {confidence != null && (
+        <View style={[r.confRow, { backgroundColor: t.cardBg, borderColor: t.line }]}>
+          <Ionicons name="information-circle" size={18} color={t.accent} />
+          <View style={{ flex: 1 }}>
+            <Text style={[r.confTitle, { color: t.ink }]}>AI Confidence</Text>
+            <Text style={[r.confSub, { color: t.muted }]}>Our AI has {confidence >= 80 ? 'high' : confidence >= 55 ? 'medium' : 'low'} confidence in the extracted information.</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end', gap: 4 }}>
+            <View style={{ flexDirection: 'row', gap: 3 }}>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <View key={i} style={[r.confDot, { backgroundColor: i < confDots ? t.accent : t.line }]} />
+              ))}
+            </View>
+            <Text style={[r.confLabel, { color: t.accent }]}>{confLabel}</Text>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Results modal (mobile — full-screen) ─────────────────────────────────────
+function ScanResultsModal({
+  visible, onClose, t, result, imgUri, elapsed, onViewImage,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  t: ScanTheme;
+  result: ScanResult | null;
+  imgUri: string | null;
+  elapsed: number | null;
+  onViewImage?: (uri: string) => void;
+}) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
       <View style={[r.page, { backgroundColor: t.pageBg }]}>
@@ -359,103 +498,7 @@ function ScanResultsModal({
           <Text style={[r.headerSub, { color: t.muted }]}>AI scan complete. Please review the extracted details.</Text>
 
           <ScrollView contentContainerStyle={r.scroll} showsVerticalScrollIndicator={false}>
-            {/* success banner */}
-            <View style={[r.banner, { backgroundColor: t.successBg }]}>
-              <Ionicons name={passed ? 'checkmark-circle' : 'information-circle'} size={22} color={t.success} />
-              <View style={{ flex: 1 }}>
-                <Text style={[r.bannerTitle, { color: t.success }]}>
-                  {passed ? 'Document scanned successfully' : 'Scan complete — needs review'}
-                </Text>
-                <Text style={[r.bannerSub, { color: t.muted }]}>
-                  AI verification completed{elapsed != null ? ` in ${elapsed.toFixed(1)}s` : ''}.
-                </Text>
-              </View>
-              <View style={[r.shieldSm, { backgroundColor: t.success }]}>
-                <Ionicons name="shield-checkmark" size={14} color="#fff" />
-              </View>
-            </View>
-
-            {/* two-column card */}
-            <View style={[r.card, { backgroundColor: t.cardBg, borderColor: t.line }]}>
-              <View style={r.cols}>
-                {/* LEFT: image + score cards */}
-                <View style={r.colLeft}>
-                  {imgUri ? (
-                    <Image source={{ uri: imgUri }} style={r.idImg} contentFit="cover" />
-                  ) : (
-                    <View style={[r.idImg, { backgroundColor: t.accentDeep, alignItems: 'center', justifyContent: 'center' }]}>
-                      <Ionicons name="document-text-outline" size={36} color="#fff" />
-                    </View>
-                  )}
-
-                  {legit != null && (
-                    <View style={[r.scoreCard, { backgroundColor: t.successBg }]}>
-                      <View style={[r.scoreIcon, { backgroundColor: t.success }]}>
-                        <Ionicons name="shield-checkmark" size={14} color="#fff" />
-                      </View>
-                      <Text style={[r.scoreLabel, { color: t.muted }]}>Legitimacy Score</Text>
-                      <Text style={[r.scoreBig, { color: t.ink }]}>{legit}%</Text>
-                      <Text style={[r.scoreTag, { color: t.success }]}>{scoreLabel('legit', legit).label}</Text>
-                      <Text style={[r.scoreSub, { color: t.muted }]}>{scoreLabel('legit', legit).sub}</Text>
-                    </View>
-                  )}
-                  {clarity != null && (
-                    <View style={[r.scoreCard, { backgroundColor: t.iconBg }]}>
-                      <View style={[r.scoreIcon, { backgroundColor: t.accent }]}>
-                        <Ionicons name="sparkles" size={14} color="#fff" />
-                      </View>
-                      <Text style={[r.scoreLabel, { color: t.muted }]}>Clarity Score</Text>
-                      <Text style={[r.scoreBig, { color: t.ink }]}>{clarity}%</Text>
-                      <Text style={[r.scoreTag, { color: t.accentDeep }]}>{scoreLabel('clarity', clarity).label}</Text>
-                      <Text style={[r.scoreSub, { color: t.muted }]}>{scoreLabel('clarity', clarity).sub}</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* RIGHT: extracted fields */}
-                <View style={r.colRight}>
-                  <DetailRow label="Document Type" value={docLabel} t={t} first />
-                  {fields.map((f, i) => (
-                    <DetailRow key={`${f.label}-${i}`} label={f.label} value={f.value} t={t} />
-                  ))}
-                  {fields.length === 0 && (
-                    <Text style={[r.noFields, { color: t.muted }]}>No fields could be read from this document.</Text>
-                  )}
-                </View>
-              </View>
-            </View>
-
-            {/* warnings (if any) */}
-            {warnings.length > 0 && (
-              <View style={[r.warnCard, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}>
-                <Ionicons name="warning-outline" size={18} color="#C2410C" />
-                <View style={{ flex: 1 }}>
-                  <Text style={[r.warnTitle, { color: '#9A3412' }]}>Flagged for review</Text>
-                  {warnings.map((wn, i) => (
-                    <Text key={i} style={[r.warnItem, { color: '#9A3412' }]}>• {wn}</Text>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* AI confidence */}
-            {confidence != null && (
-              <View style={[r.confRow, { backgroundColor: t.cardBg, borderColor: t.line }]}>
-                <Ionicons name="information-circle" size={18} color={t.accent} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[r.confTitle, { color: t.ink }]}>AI Confidence</Text>
-                  <Text style={[r.confSub, { color: t.muted }]}>Our AI has {confidence >= 80 ? 'high' : confidence >= 55 ? 'medium' : 'low'} confidence in the extracted information.</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                  <View style={{ flexDirection: 'row', gap: 3 }}>
-                    {[0, 1, 2, 3, 4].map((i) => (
-                      <View key={i} style={[r.confDot, { backgroundColor: i < confDots ? t.accent : t.line }]} />
-                    ))}
-                  </View>
-                  <Text style={[r.confLabel, { color: t.accent }]}>{confLabel}</Text>
-                </View>
-              </View>
-            )}
+            <ScanResultsContent t={t} result={result} imgUri={imgUri} elapsed={elapsed} onViewImage={onViewImage} />
 
             {/* actions */}
             <View style={r.actions}>
@@ -486,6 +529,7 @@ function DetailRow({ label, value, t, first }: { label: string; value: string; t
 // ─── Styles: inline widget ────────────────────────────────────────────────────
 const w = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 18, padding: 18, alignItems: 'center', gap: 4 },
+  sideHeading: { fontSize: 13, fontWeight: '800', alignSelf: 'flex-start', marginBottom: 8 },
   iconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   title: { fontSize: 16, fontWeight: '800' },
   sub: { fontSize: 12.5, textAlign: 'center', lineHeight: 18 },
@@ -542,6 +586,7 @@ const r = StyleSheet.create({
   colLeft: { width: 130, gap: 10 },
   colRight: { flex: 1 },
   idImg: { width: '100%', height: 96, borderRadius: 10 },
+  zoomBadge: { position: 'absolute', right: 6, bottom: 6, width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
 
   scoreCard: { borderRadius: 12, padding: 11 },
   scoreIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },

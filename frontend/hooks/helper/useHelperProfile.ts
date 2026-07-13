@@ -46,6 +46,12 @@ export interface HelperProfileData {
     skills: string[];
     languages: string[];
   };
+  /** Raw selected reference IDs (for editing pre-selection) */
+  specialtyIds: {
+    jobs: number[];
+    skills: number[];
+    languages: number[];
+  };
   documents: Array<{
     document_id: string;
     document_type: string;
@@ -137,6 +143,11 @@ export function useHelperProfile() {
               jobs: mappedJobs,
               skills: mappedSkills,
               languages: mappedLanguages
+            },
+            specialtyIds: {
+              jobs: (data.selected_jobs || []).map((n: any) => Number(n)),
+              skills: (data.selected_skills || []).map((n: any) => Number(n)),
+              languages: (data.selected_languages || []).map((n: any) => Number(n)),
             },
             documents: data.documents || [],
             profile_completeness:

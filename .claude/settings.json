@@ -30,7 +30,13 @@
       "Bash(awk '{print $5, $9}')",
       "Skill(artifact-design)",
       "Skill(artifact-design:*)",
-      "Bash(xargs grep -nE \"return \\\\{|recommendations|toggleSaveJob|loading|interface|job_post_id|match_score|title|parent_name|salary_offered|municipality|category\")"
+      "Bash(xargs grep -nE \"return \\\\{|recommendations|toggleSaveJob|loading|interface|job_post_id|match_score|title|parent_name|salary_offered|municipality|category\")",
+      "Bash(grep -n \"get_reference\\\\|get_profile_reference\\\\|fetch\\(\\\\`\\\\|useJobReferences\\\\|api\" components/helper/profile/profileEditModal/EditHelperProfileModal.tsx)",
+      "Bash(grep -n ''\\\\''selected_jobs'\\\\''\\\\|'\\\\''selected_skills'\\\\''\\\\|'\\\\''selected_languages'\\\\''\\\\|selected_jobs\\\\|response\\\\[\\\\|=> $selected\\\\|json_encode\\\\|'\\\\''jobs'\\\\''\\\\|'\\\\''skills'\\\\''\\\\|'\\\\''languages'\\\\''\\\\|available' ../backend/helper/get_profile.php)",
+      "Bash(grep -n \"upload\\\\|DocumentPicker\\\\|ImagePicker\\\\|FormData\\\\|document_type\\\\|fetch\\(\\\\`\\\\|\\\\.php\" \"app/\\(helper\\)/profile/documents.tsx\")",
+      "Bash(grep -n '$_FILES\\\\|$_POST\\\\|document_type\\\\|valid_id\\\\|_front\\\\|_back\\\\|field\\\\|move_uploaded\\\\|side' ../backend/helper/upload_documents.php)",
+      "Bash(grep -n 'side\\\\|file_path\\\\|file_path_back\\\\|ai_verification_status\\\\|ai_confidence\\\\|ai_extracted\\\\|valid_id_back\\\\|UPDATE\\\\|$_POST\\\\|document_id' backend/helper/scan_id.php)",
+      "Bash(php -l backend/helper/scan_id.php)"
     ]
   }
 }

@@ -35,12 +35,15 @@ try {
     $document_id  = isset($input['document_id'])  ? intval($input['document_id'])  : 0;
     $user_id      = isset($input['user_id'])      ? intval($input['user_id'])      : 0;
     $requester_id = isset($input['requester_id']) ? intval($input['requester_id']) : 0;
+    // Which side to scan. Two-sided docs (Valid ID) scan the front and back
+    // INDEPENDENTLY, so uploading one side never leaves the other un-scanned.
+    $side = (isset($input['side']) && $input['side'] === 'back') ? 'back' : 'front';
 
     if (!$document_id || !$user_id) { throw new Exception("document_id and user_id are required"); }
 
     carelink_require_self($requester_id, $user_id, 'You are not allowed to scan this document.');
 
-    $stmt = $conn->prepare("SELECT document_type, file_path, file_path_back, status, verified_by FROM user_documents WHERE document_id = ? AND user_id = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT document_type, file_path, file_path_back, status, verified_by, ai_extracted_data FROM user_documents WHERE document_id = ? AND user_id = ? LIMIT 1");
     $stmt->bind_param("ii", $document_id, $user_id);
     $stmt->execute();
     $doc = $stmt->get_result()->fetch_assoc();
@@ -51,23 +54,17 @@ try {
     $currentStatus = (string) ($doc['status'] ?? 'Pending');
     $pesoActed     = !empty($doc['verified_by']); // PESO approved or rejected this doc
 
-    // Resolve the uploaded file safely (same path-traversal guard as serve_document.php).
+    // Resolve the requested side's file safely (path-traversal guard).
     $uploadDir = realpath(dirname(__DIR__) . '/uploads/documents');
-    $fullPath  = realpath($uploadDir . '/' . $doc['file_path']);
+    $sideRel   = $side === 'back' ? ($doc['file_path_back'] ?? '') : ($doc['file_path'] ?? '');
+    if (empty($sideRel)) { throw new Exception("The {$side} side has not been uploaded yet."); }
+    $fullPath  = realpath($uploadDir . '/' . $sideRel);
     if ($uploadDir === false || $fullPath === false || strncmp($fullPath, $uploadDir, strlen($uploadDir)) !== 0 || !is_file($fullPath)) {
         throw new Exception("The uploaded file could not be found on the server.");
     }
 
-    // Optional BACK image (two-sided docs like a Valid ID) — scanned together.
-    $backFullPath = null;
-    if (!empty($doc['file_path_back'])) {
-        $cand = realpath($uploadDir . '/' . $doc['file_path_back']);
-        if ($cand !== false && strncmp($cand, $uploadDir, strlen($uploadDir)) === 0 && is_file($cand)) {
-            $backFullPath = $cand;
-        }
-    }
-
-    $result = carelink_gemini_scan_document($fullPath, $documentType, null, $backFullPath);
+    // Scan ONLY the requested side (no combined front+back scan).
+    $result = carelink_gemini_scan_document($fullPath, $documentType, null, null);
     if (!$result['ok']) { throw new Exception($result['message'] ?? 'The document scan could not be completed.'); }
 
     $quality  = $result['quality_score'] ?? null;        // clarity 0-100
@@ -83,21 +80,52 @@ try {
     //   legit < 45   → Failed   (clear fake / wrong / random image)
     // Any tampering warnings downgrade a "Passed" to "Flagged" (still PESO-review).
     if ($legit === null) {
-        $mapped = $result['mapped_status'];              // no score — fall back to verdict
+        $sideMapped = $result['mapped_status'];          // no score — fall back to verdict
     } elseif ($legit >= 70) {
-        $mapped = empty($warnings) ? 'Passed' : 'Flagged';
+        $sideMapped = empty($warnings) ? 'Passed' : 'Flagged';
     } elseif ($legit >= 45) {
-        $mapped = 'Flagged';
+        $sideMapped = 'Flagged';
     } else {
-        $mapped = 'Failed';
+        $sideMapped = 'Failed';
     }
 
+    // This side's stored scan result.
+    $sidePayload = [
+        'ai_status'        => $sideMapped,
+        'legitimacy_score' => $legit,
+        'quality_score'    => $quality,
+        'fields'           => $result['fields'] ?? [],
+        'warnings'         => $warnings,
+        'document_guess'   => $result['document_guess'] ?? '',
+        'is_expected'      => $result['is_expected'] ?? false,
+        'checked_at'       => date('Y-m-d H:i:s'),
+    ];
+
+    // Merge into the document's stored data, preserving the OTHER side's scan.
+    $existing = json_decode((string) ($doc['ai_extracted_data'] ?? ''), true);
+    if (!is_array($existing)) { $existing = []; }
+    $scans = (isset($existing['scans']) && is_array($existing['scans'])) ? $existing['scans'] : [];
+    $scans[$side] = $sidePayload;
+
+    // Overall AI status = worst across the sides scanned so far.
+    $rank = ['Passed' => 0, 'Flagged' => 1, 'Failed' => 2];
+    $mapped = null;
+    foreach ($scans as $sc) {
+        $st = $sc['ai_status'] ?? null;
+        if ($st === null) { continue; }
+        if ($mapped === null || ($rank[$st] ?? 1) > ($rank[$mapped] ?? 1)) { $mapped = $st; }
+    }
+    if ($mapped === null) { $mapped = $sideMapped; }
+
+    // Flat keys mirror the just-scanned side (back-compat for existing readers);
+    // `scans` holds the per-side detail for the new front/back UI.
     $payload = [
         'fields'           => $result['fields'] ?? [],
         'warnings'         => $warnings,
         'legitimacy_score' => $legit,
         'document_guess'   => $result['document_guess'] ?? '',
         'is_expected'      => $result['is_expected'] ?? false,
+        'scans'            => $scans,
     ];
     $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
 
@@ -141,15 +169,18 @@ try {
     $upd->close();
 
     sendResponse(true, "Document scan complete.", [
-        'ai_verification_status' => $mapped,
+        // The just-scanned side's own result (each side shows its own outcome).
+        'ai_verification_status' => $sideMapped,
         'verdict'                => $result['status'] ?? '',
         'quality_score'          => $quality,
         'legitimacy_score'       => $result['legitimacy_score'] ?? null,
         'is_expected'            => $result['is_expected'] ?? false,
         'document_guess'         => $result['document_guess'] ?? '',
         'document_type'          => $documentType,
+        'side'                   => $side,
         'auto_rejected'          => $autoReject,
         'doc_status'             => $effectiveStatus,
+        'overall_status'         => $mapped,
         'fields'                 => $result['fields'] ?? [],
         'warnings'               => $result['warnings'] ?? [],
     ]);

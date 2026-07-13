@@ -15,7 +15,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { FontFamily } from '@/constants/GlobalStyles';
-import { useMyApplications } from '@/hooks/helper';
+import { useMyApplications, useHelperProfile } from '@/hooks/helper';
+import { HelperApplicationsWeb } from '@/components/helper/web/HelperApplicationsWeb';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { Sidebar, MobileMenu, HelperTabBar } from '@/components/helper/home';
 import {
@@ -67,7 +68,8 @@ export default function MyApplications() {
   const router = useRouter();
   const s = useMemo(() => createHelperMyApplicationsStyles(), []);
   const { isDesktop } = useResponsive();
-  const { handleLogout } = useAuth();
+  const { handleLogout, getFullName } = useAuth();
+  const { profileData } = useHelperProfile();
   const { unreadCount } = useNotifications('helper');
   const { ready, isWorkMode } = useHelperWorkMode();
 
@@ -330,22 +332,24 @@ export default function MyApplications() {
   // ── Desktop layout ──────────────────────────────────────────────────────────
   if (isDesktop) {
     return (
-      <View style={[s.root, { flexDirection: 'row' }]}>
-        {renderModals()}
-        <Sidebar onLogout={initiateLogout} />
-        <View style={s.desktopMain}>
-          <View style={s.desktopHeader}>
-            <View>
-              <Text style={s.pageTitle}>My Applications</Text>
-              <Text style={s.pageSubtitle}>Track the status of your job applications</Text>
-            </View>
-            <TouchableOpacity style={s.browseJobsBtn} onPress={() => router.push('/(helper)/browse')} activeOpacity={0.8}>
-              <Ionicons name="search-outline" size={18} color={DARK} />
-              <Text style={s.browseJobsBtnText}>Browse Jobs</Text>
-            </TouchableOpacity>
-          </View>
-          {applicationsList}
-        </View>
+      <View style={{ flex: 1 }}>
+        <HelperApplicationsWeb
+          userName={getFullName()}
+          avatar={(profileData?.profile?.profile_image as string) ?? null}
+          verified={profileData?.profile?.verification_status === 'Verified'}
+          onLogout={initiateLogout}
+        />
+        <ConfirmationModal
+          visible={confirmLogoutVisible} title="Log Out"
+          message="Are you sure you want to log out?"
+          confirmText="Log Out" cancelText="Cancel" type="danger"
+          onConfirm={executeLogout} onCancel={() => setConfirmLogoutVisible(false)}
+        />
+        <NotificationModal
+          visible={successLogoutVisible} message="Logged Out Successfully!"
+          type="success" autoClose duration={1500}
+          onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }}
+        />
       </View>
     );
   }

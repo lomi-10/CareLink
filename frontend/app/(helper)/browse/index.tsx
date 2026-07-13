@@ -32,6 +32,8 @@ import { createHelperBrowseJobsStyles }  from './browse_jobs.styles';
 import { useBrowseTheme }                from './browseJobs.theme';
 import { groupJobsByParent, type ParentBrowseRow } from './browseHelpers';
 import { RecommendedJobCard, REC_TOPS }  from './RecommendedJobCard';
+import { HelperBrowseWeb }               from '@/components/helper/web/HelperBrowseWeb';
+import { useHelperProfile }              from '@/hooks/helper';
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -41,7 +43,8 @@ export default function BrowseJobs() {
   const { DARK, MUTED, ORANGE } = t;
   const s               = useMemo(() => createHelperBrowseJobsStyles(t), [t]);
   const { isDesktop }  = useResponsive();
-  const { handleLogout } = useAuth();
+  const { handleLogout, getFullName } = useAuth();
+  const { profileData } = useHelperProfile();
   const { unreadCount }  = useNotifications('helper');
   const { ready, isWorkMode } = useHelperWorkMode();
 
@@ -332,39 +335,27 @@ export default function BrowseJobs() {
     </View>
   );
 
-  // ── Desktop layout ───────────────────────────────────────────────────────────
+  // ── Desktop layout (redesigned web screen) ───────────────────────────────────
   if (isDesktop) {
     return (
-      <View style={s.desktopRoot}>
-        {renderModals()}
-        <Sidebar onLogout={initiateLogout} />
-        <View style={s.desktopMain}>
-          <View style={s.desktopHero}>
-            <View>
-              <Text style={s.heroTitle}>Browse Jobs</Text>
-              <Text style={s.heroSub}>
-                Employers hiring now — tap a card for profile, match details, and every open role
-              </Text>
-            </View>
-            <View style={s.heroActions}>
-              {(savedCount ?? 0) > 0 && (
-                <View style={s.savedBadge}>
-                  <Ionicons name="bookmark" size={15} color="#2563EB" />
-                  <Text style={s.savedBadgeText}>{savedCount} Saved</Text>
-                </View>
-              )}
-              <TouchableOpacity
-                style={s.applicationsBtn}
-                onPress={() => router.push('/(helper)/applications')}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="document-text-outline" size={18} color={ORANGE} />
-                <Text style={s.applicationsBtnText}>My Applications</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          {browseContent}
-        </View>
+      <View style={{ flex: 1 }}>
+        <HelperBrowseWeb
+          userName={getFullName()}
+          avatar={(profileData?.profile?.profile_image as string) ?? null}
+          verified={profileData?.profile?.verification_status === 'Verified'}
+          onLogout={initiateLogout}
+        />
+        <ConfirmationModal
+          visible={confirmLogoutVisible} title="Log Out"
+          message="Are you sure you want to log out?"
+          confirmText="Log Out" cancelText="Cancel" type="danger"
+          onConfirm={executeLogout} onCancel={() => setConfirmLogout(false)}
+        />
+        <NotificationModal
+          visible={successLogoutVisible} message="Logged Out Successfully!"
+          type="success" autoClose duration={1500}
+          onClose={() => { setSuccessLogout(false); handleLogout(); }}
+        />
       </View>
     );
   }
