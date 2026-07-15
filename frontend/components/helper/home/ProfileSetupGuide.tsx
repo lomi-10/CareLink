@@ -9,6 +9,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { useResponsive } from '@/hooks/shared';
 import { useHelperWarm, type HelperWarm } from './helperWarmTheme';
 
 type Step = {
@@ -22,6 +23,7 @@ type Step = {
 
 export function ProfileSetupGuide({ profileData, firstName }: { profileData: any; firstName?: string }) {
   const router = useRouter();
+  const { isDesktop } = useResponsive();
   const w = useHelperWarm();
   const s = useMemo(() => makeStyles(w), [w]);
 
@@ -56,7 +58,11 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
   const allDone = doneCount === steps.length;
   const activeIdx = steps.findIndex((s) => !s.done);
 
-  const go = (route: string) => router.push(route as never);
+  // On web the profile lives on a single inline-edit page; route there with an
+  // ?edit= section instead of the mobile per-section modal screens.
+  const WEB_EDIT: Record<string, string> = { personal: 'personal', skills: 'skills', docs: 'documents' };
+  const go = (step: Step) =>
+    router.push((isDesktop ? `/(helper)/profile?edit=${WEB_EDIT[step.key] ?? 'personal'}` : step.route) as never);
 
   // The guide is only for getting set up. Once everything's done — or once PESO
   // has verified the account — it disappears so verified users aren't nagged.
@@ -100,7 +106,7 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
                 {isActive && (
                   <>
                     <Text style={s.stepInstruction}>{step.instruction}</Text>
-                    <TouchableOpacity style={s.cta} onPress={() => go(step.route)} activeOpacity={0.88}>
+                    <TouchableOpacity style={s.cta} onPress={() => go(step)} activeOpacity={0.88}>
                       <Text style={s.ctaText}>{doneCount > 0 ? 'Continue' : 'Start here'}</Text>
                       <Ionicons name="arrow-forward" size={16} color="#fff" />
                     </TouchableOpacity>
@@ -109,7 +115,7 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
               </View>
 
               {step.done && (
-                <TouchableOpacity onPress={() => go(step.route)} hitSlop={8}>
+                <TouchableOpacity onPress={() => go(step)} hitSlop={8}>
                   <Ionicons name="create-outline" size={16} color={w.MUTED} />
                 </TouchableOpacity>
               )}

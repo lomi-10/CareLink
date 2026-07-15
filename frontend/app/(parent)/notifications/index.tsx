@@ -9,6 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotifications, useResponsive, useAuth } from '@/hooks/shared';
+import { useParentProfile } from '@/hooks/parent';
+import { ParentNotificationsWeb } from '@/components/parent/web/ParentNotificationsWeb';
 import { Sidebar, ParentTabBar } from '@/components/parent/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import type { Notification } from '@/hooks/shared';
@@ -136,7 +138,8 @@ function NotifContent() {
 export default function ParentNotificationsScreen() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
-  const { handleLogout } = useAuth();
+  const { handleLogout, getFullName } = useAuth();
+  const { profileData } = useParentProfile();
 
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [successLogout, setSuccessLogout] = useState(false);
@@ -162,15 +165,13 @@ export default function ParentNotificationsScreen() {
 
   if (isDesktop) {
     return (
-      <View style={ns.desktopRoot}>
-        <Sidebar onLogout={() => setConfirmLogout(true)} />
-        <ScrollView style={ns.desktopMain} contentContainerStyle={ns.desktopScroll}>
-          <View style={ns.desktopTopBar}>
-            <Text style={ns.desktopPageTitle}>Notifications</Text>
-            <Text style={ns.desktopPageSub}>Parent Portal</Text>
-          </View>
-          <NotifContent />
-        </ScrollView>
+      <View style={{ flex: 1 }}>
+        <ParentNotificationsWeb
+          userName={getFullName()}
+          avatar={(profileData?.profile?.profile_image as string) ?? null}
+          verified={profileData?.profile?.verification_status === 'Verified'}
+          onLogout={() => setConfirmLogout(true)}
+        />
         {renderModals()}
       </View>
     );

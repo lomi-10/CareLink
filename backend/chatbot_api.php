@@ -42,7 +42,7 @@ use the CareLink app effectively.
 == ABOUT CARELINK ==
 CareLink is a mobile and web app where:
 - Employers post jobs, review applicants, and hire helpers
-- Helpers browse jobs, apply, and manage their daily work
+- Helpers browse jobs, apply, and manage their daily worki t
 - PESO (Public Employment Service Office) verifies all accounts
 - Contracts are generated automatically following DOLE Form BK-1
   (Kasambahay Law, RA 10361)

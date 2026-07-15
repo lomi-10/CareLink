@@ -96,7 +96,7 @@ export function HelperBrowseWeb({ userName, avatar, verified, onLogout }: { user
 
   const parentJobs = (pid: string) => parentGroups.find((g) => g.parent_id === String(pid))?.jobs ?? [];
 
-  const catChips = [{ id: 'all', name: 'All' }, ...categories.map((c: any) => ({ id: String(c.category_id), name: c.category_name }))];
+  const catChips = [{ id: 'all', name: 'All' }, ...categories.map((c: any) => ({ id: String(c.category_id), name: c.name }))];
 
   return (
     <View style={s.root}>

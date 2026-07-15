@@ -64,10 +64,11 @@ try {
         $job_types .= str_repeat('i', count($job_ids));
     }
 
-    // 'Any' on either side always matches; Stay-in/Stay-out map to helper_profiles' Live-in/Live-out
+    // 'Any' on either side always matches; otherwise employment_type is compared
+    // directly now that helper_profiles also uses Stay-in/Stay-out.
     $employmentMatch = "(? = 'Any' OR hp.employment_type = 'Any'
-        OR (? = 'Stay-in' AND hp.employment_type = 'Live-in')
-        OR (? = 'Stay-out' AND hp.employment_type = 'Live-out'))";
+        OR (? = 'Stay-in' AND hp.employment_type = 'Stay-in')
+        OR (? = 'Stay-out' AND hp.employment_type = 'Stay-out'))";
     $scheduleMatch = "(? = 'Any' OR hp.work_schedule = 'Any' OR hp.work_schedule = ?)";
 
     $sql = "SELECT

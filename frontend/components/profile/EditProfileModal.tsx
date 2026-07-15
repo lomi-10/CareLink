@@ -931,7 +931,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
                     
                     <Text style={styles.label}>Stay Arrangement</Text>
                     <View style={styles.row}>
-                      {['Live-in', 'Live-out', 'Any'].map(opt => (
+                      {['Stay-in', 'Stay-out', 'Any'].map(opt => (
                         <TouchableOpacity 
                           key={opt} 
                           onPress={() => setEmploymentType(opt)} 

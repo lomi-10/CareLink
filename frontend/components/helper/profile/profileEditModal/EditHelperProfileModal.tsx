@@ -680,16 +680,16 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const renderPreferencesStep = () => (
     <>
       <Label>Stay Arrangement</Label>
-      <ToggleRow options={['Live-in', 'Live-out', 'Any']} value={employmentType} onChange={setEmploymentType} />
+      <ToggleRow options={['Stay-in', 'Stay-out', 'Any']} value={employmentType} onChange={setEmploymentType} />
       <Label>Work Hours</Label>
       <ToggleRow
         options={['Full-time', 'Part-time', 'Any']}
         value={workSchedule}
         onChange={v => {
-          if (employmentType === 'Live-in' && (v === 'Part-time' || v === 'Any')) return;
+          if (employmentType === 'Stay-in' && (v === 'Part-time' || v === 'Any')) return;
           setWorkSchedule(v);
         }}
-        disabledOptions={employmentType === 'Live-in' ? ['Part-time', 'Any'] : []}
+        disabledOptions={employmentType === 'Stay-in' ? ['Part-time', 'Any'] : []}
       />
       <Label>Expected Salary (₱) <Req /></Label>
       <StyledInput value={expectedSalary} onChangeText={setExpectedSalary} placeholder="6000" keyboardType="numeric" />

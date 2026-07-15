@@ -496,7 +496,7 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
         ? 'data:image/png;base64,' . base64_encode((string) file_get_contents($logoPath))
         : '';
 
-    $workArrangementMap = ['Stay-in' => 'Stay-in (Live-in)', 'Stay-out' => 'Stay-out (Live-out)', 'Any' => 'Flexible'];
+    $workArrangementMap = ['Stay-in' => 'Stay-in', 'Stay-out' => 'Stay-out', 'Any' => 'Flexible'];
     $workArrangementRaw = trim((string) ($row['employment_type'] ?? 'Any'));
     $workArrangementEsc = carelink_contract_escape($workArrangementMap[$workArrangementRaw] ?? $workArrangementRaw);
     $workScheduleEsc = carelink_contract_escape(trim((string) ($row['work_schedule'] ?? 'N/A')));

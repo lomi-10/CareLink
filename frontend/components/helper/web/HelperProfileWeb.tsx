@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, Pressable, TextInput, ActivityIndicator, Platform, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
@@ -18,12 +18,14 @@ import { NotificationModal, ConfirmationModal } from '@/components/shared';
 import { DocumentAIScan, ScanResult } from '@/components/shared/DocumentAIScan';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
+import { LocationSearchInput, type LocationResult } from '@/components/shared/LocationSearchInput';
 import { HelperTopNav } from './HelperTopNav';
 import { wt, FEATURE_GRADIENT, ACCENT_GRADIENT } from './webTheme';
 
 const CAREBOT_ICON = require('../../../assets/images/chatbot_icon.png');
 const TRANS = { transitionDuration: '150ms', transitionProperty: 'all', transitionTimingFunction: 'ease' } as any;
 const REQUIRED_DOCS = ['Valid ID', 'Barangay Clearance'];
+const RELIGION_OPTIONS = ['Roman Catholic', 'Christian', 'Iglesia ni Cristo', 'Islam', 'Protestant', 'Seventh-day Adventist', 'Born Again', 'Buddhist', 'Aglipayan', 'Other', 'Prefer not to say'];
 const DOC_SLOTS: { type: string; field: string; icon: keyof typeof Ionicons.glyphMap; color: string; bg: string; desc: string; twoSided?: boolean }[] = [
   { type: 'Valid ID', field: 'valid_id', icon: 'card', color: wt.blue, bg: wt.blueSoft, desc: 'Government ID — front & back', twoSided: true },
   { type: 'Barangay Clearance', field: 'barangay_clearance', icon: 'document-text', color: wt.green, bg: wt.greenSoft, desc: 'Issued by your barangay' },
@@ -60,10 +62,12 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
   const [saving, setSaving] = useState(false);
   const [notif, setNotif] = useState<{ visible: boolean; msg: string; type: 'success' | 'error' }>({ visible: false, msg: '', type: 'success' });
   const [form, setForm] = useState<Record<string, string>>({});
-  // skills editor selections
+  // skills editor selections + wizard step (category → roles → skills → languages)
+  const [selCats, setSelCats] = useState<number[]>([]);
   const [selJobs, setSelJobs] = useState<number[]>([]);
   const [selSkills, setSelSkills] = useState<number[]>([]);
   const [selLangs, setSelLangs] = useState<number[]>([]);
+  const [skillStep, setSkillStep] = useState<'category' | 'roles' | 'skills' | 'languages'>('category');
   // documents editor
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
@@ -113,7 +117,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
         user_id: String(user.user_id ?? ''), requester_id: String(user.user_id ?? ''),
         first_name: U.first_name ?? '', middle_name: U.middle_name ?? '', last_name: U.last_name ?? '', username: U.username ?? '',
         contact_number: p.contact_number ?? '', birth_date: (p.birth_date ?? p.date_of_birth ?? '') || '',
-        gender: p.gender ?? 'Female', civil_status: p.civil_status ?? 'Single', religion: p.religion ?? '',
+        gender: p.gender ?? '', civil_status: p.civil_status ?? 'Single', religion: p.religion ?? '',
         province: p.province ?? '', municipality: (p.municipality ?? p.city) ?? '', barangay: p.barangay ?? '',
         address: p.address ?? '', landmark: p.landmark ?? '', bio: p.bio ?? '', education_level: p.education_level ?? '',
         experience_years: String(p.years_experience ?? p.experience_years ?? 0),
@@ -121,8 +125,14 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
         expected_salary: String(p.expected_salary ?? 6000), salary_period: p.salary_period ?? 'Monthly',
       };
       const payload = { ...base, ...overrides, ...(extras ?? {}) };
+      // gender & education_level are nullable enums — sending '' would truncate,
+      // so omit them when empty and let the backend keep NULL/its default.
+      const OMIT_IF_EMPTY = new Set(['gender', 'education_level']);
       const fd = new FormData();
-      Object.entries(payload).forEach(([k, v]) => fd.append(k, v ?? ''));
+      Object.entries(payload).forEach(([k, v]) => {
+        if (OMIT_IF_EMPTY.has(k) && (v ?? '') === '') return;
+        fd.append(k, v ?? '');
+      });
       const res = await fetch(`${API_URL}/helper/update_profile.php`, { method: 'POST', body: fd });
       const data = JSON.parse(await res.text());
       if (data.success) {
@@ -137,32 +147,92 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
     } finally { setSaving(false); }
   };
 
+  // Skills save no longer touches experience_years — that lives on the Experience card.
   const saveSkills = () =>
-    save({ experience_years: form.experience_years || '0' }, {
+    save({}, {
       job_ids: JSON.stringify(selJobs),
       skill_ids: JSON.stringify(selSkills),
       language_ids: JSON.stringify(selLangs),
     });
 
+  // Address is a derived "barangay, municipality, province" string (same
+  // convention the mobile edit modal uses) — recomputed at save time.
+  const savePersonal = () => {
+    const address = [form.barangay, form.municipality, form.province].filter(Boolean).join(', ');
+    save({ ...form, address });
+  };
+
   const startEdit = (key: SecKey) => {
     if (key === 'skills') {
-      setSelJobs(profileData?.specialtyIds?.jobs ?? []);
+      const jobs = profileData?.specialtyIds?.jobs ?? [];
+      setSelJobs(jobs);
       setSelSkills(profileData?.specialtyIds?.skills ?? []);
       setSelLangs(profileData?.specialtyIds?.languages ?? []);
+      // Pre-select the categories of the roles the helper already has.
+      const cats = Array.from(new Set(refs.jobs.filter((j: any) => jobs.includes(Number(j.job_id))).map((j: any) => Number(j.category_id))));
+      setSelCats(cats);
+      setSkillStep('category');
     }
     if (key === 'documents') { setSelectedDocType('Valid ID'); setPendingScan(null); setDocTab('docs'); }
     setForm({
       gender: p.gender ?? 'Female', birth_date: (p.birth_date ?? p.date_of_birth ?? '') || '',
       civil_status: p.civil_status ?? 'Single', religion: p.religion ?? '', education_level: p.education_level ?? '',
       contact_number: p.contact_number ?? '', address: p.address ?? '',
-      employment_type: p.employment_type ?? 'Live-in', work_schedule: p.work_schedule ?? 'Full-time',
+      province: p.province ?? '', municipality: (p.municipality ?? p.city) ?? '', barangay: p.barangay ?? '', landmark: p.landmark ?? '',
+      employment_type: p.employment_type ?? 'Stay-in', work_schedule: p.work_schedule ?? 'Full-time',
       expected_salary: String(p.expected_salary ?? ''), experience_years: String(p.years_experience ?? p.experience_years ?? ''),
     });
     setEditing(key);
   };
+
+  // Deep-link from the dashboard setup guide (e.g. ?edit=personal) opens that editor.
+  const params = useLocalSearchParams<{ edit?: string }>();
+  React.useEffect(() => {
+    const e = params.edit;
+    if (e && ['personal', 'skills', 'prefs', 'documents', 'experience'].includes(e) && !editing) {
+      startEdit(e as SecKey);
+    }
+  }, [params.edit, refs.loading]); // eslint-disable-line react-hooks/exhaustive-deps
   const setF = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const toggleId = (setter: React.Dispatch<React.SetStateAction<number[]>>, id: number) =>
     setter((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]));
+
+  // Category toggle mirrors mobile: "General Househelp" (id 1) is all-around —
+  // selecting it checks all 5 PESO categories AND auto-selects every role under
+  // them. "Others" (id 6) is never auto-included. Selecting all 5 promotes to General.
+  const toggleCategory = (id: number) => {
+    const GENERAL = 1, OTHERS = 6;
+    const pesoFive = refs.categories.filter((c: any) => Number(c.category_id) !== OTHERS).map((c: any) => Number(c.category_id));
+    const jobIdsIn = (cats: number[]) => refs.jobs.filter((j: any) => cats.includes(Number(j.category_id))).map((j: any) => Number(j.job_id));
+    const selected = selCats.includes(id);
+    if (id === GENERAL) {
+      if (selected) {
+        const keep = selCats.filter((x) => x === OTHERS);
+        setSelCats(keep);
+        const keepJobs = jobIdsIn(keep);
+        setSelJobs((js) => js.filter((x) => keepJobs.includes(x)));
+        const keepSkills = refs.skills.filter((sk: any) => keepJobs.includes(Number(sk.job_id))).map((sk: any) => Number(sk.skill_id));
+        setSelSkills((ss) => ss.filter((x) => keepSkills.includes(x)));
+      } else {
+        setSelCats(selCats.includes(OTHERS) ? [...pesoFive, OTHERS] : pesoFive);
+        setSelJobs((js) => Array.from(new Set([...js, ...jobIdsIn(pesoFive)])));
+      }
+      return;
+    }
+    if (selected) {
+      setSelCats(selCats.filter((x) => x !== id && x !== GENERAL));
+      const rmJobs = refs.jobs.filter((j: any) => Number(j.category_id) === id).map((j: any) => Number(j.job_id));
+      setSelJobs((js) => js.filter((x) => !rmJobs.includes(x)));
+      const rmSkills = refs.skills.filter((sk: any) => rmJobs.includes(Number(sk.job_id))).map((sk: any) => Number(sk.skill_id));
+      setSelSkills((ss) => ss.filter((x) => !rmSkills.includes(x)));
+    } else {
+      const next = [...selCats, id];
+      if (pesoFive.every((c: number) => next.includes(c))) {
+        setSelCats(next.includes(OTHERS) ? [...pesoFive, OTHERS] : pesoFive);
+        setSelJobs((js) => Array.from(new Set([...js, ...jobIdsIn(pesoFive)])));
+      } else setSelCats(next);
+    }
+  };
 
   // Pick a file and upload it to a document slot (inline — no modal, no redirect).
   const uploadDoc = async (field: string, type: string) => {
@@ -230,7 +300,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={s.pcardName}>{userName || 'Helper'}</Text>
-          <View style={s.verPill}><Ionicons name="checkmark-circle" size={12} color={wt.green} /><Text style={s.verPillText}>{verified ? 'PESO Verified Helper' : 'Not verified'}</Text></View>
+          <View style={[s.verPill, !verified && s.verPillOff]}><Ionicons name={verified ? 'checkmark-circle' : 'time-outline'} size={12} color={verified ? wt.green : wt.amber} /><Text style={[s.verPillText, !verified && { color: wt.amber }]}>{verified ? 'PESO Verified Helper' : 'Pending verification'}</Text></View>
           {roles.length > 0 && <Text style={s.pcardRoles}>{roles.slice(0, 3).join('  ·  ')}</Text>}
           <View style={s.metaItem}><Ionicons name="location-outline" size={12} color={wt.featMut} /><Text style={s.metaText}>{location}</Text></View>
         </View>
@@ -284,7 +354,6 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
       { label: 'Roles', value: roles.length ? roles.join(', ') : '—' },
       { label: 'Skills', value: skills.length ? skills.join(', ') : '—' },
       { label: 'Languages', value: languages.length ? languages.join(', ') : '—' },
-      { label: 'Total Experience', value: Number(p.years_experience) > 0 ? `${p.years_experience} years` : '—' },
     ],
     documents: DOC_SLOTS.map((d) => {
       const doc = docs.find((x) => x.document_type === d.type);
@@ -294,7 +363,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
 
   return (
     <View style={s.root}>
-      <HelperTopNav active="dashboard" userName={userName} avatar={avatar} verified={verified} onLogout={onLogout} />
+      <HelperTopNav active={'profile' as any} userName={userName} avatar={avatar} verified={verified} onLogout={onLogout} />
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.page}>
           {/* ── SIDEBAR ── */}
@@ -430,25 +499,36 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
                   {editing === 'personal' && (
                     <>
                       <FLabel>Gender</FLabel>
-                      <Toggle options={['Female', 'Male', 'Other']} value={form.gender} onChange={(v) => setF('gender', v)} />
+                      <Toggle options={['Female', 'Male']} value={form.gender} onChange={(v) => setF('gender', v)} />
                       <FLabel>Date of Birth</FLabel>
-                      <FInput value={form.birth_date} onChange={(v) => setF('birth_date', v)} placeholder="YYYY-MM-DD" />
+                      <DateField value={form.birth_date} onChange={(v) => setF('birth_date', v)} />
                       <FLabel>Civil Status</FLabel>
-                      <Toggle options={['Single', 'Married', 'Widowed']} value={form.civil_status} onChange={(v) => setF('civil_status', v)} />
+                      <PillSelect options={['Single', 'Married', 'Widowed', 'Separated']} value={form.civil_status} onChange={(v) => setF('civil_status', v)} />
                       <FLabel>Religion</FLabel>
-                      <FInput value={form.religion} onChange={(v) => setF('religion', v)} placeholder="e.g. Catholic" />
+                      <SelectField value={form.religion} onChange={(v) => setF('religion', v)} options={RELIGION_OPTIONS} placeholder="Select religion" />
                       <FLabel>Education Level</FLabel>
-                      <FInput value={form.education_level} onChange={(v) => setF('education_level', v)} placeholder="e.g. College Graduate" />
+                      <PillSelect options={['Elementary', 'High School Undergrad', 'High School Grad', 'College Undergrad', 'College Grad', 'Vocational']} value={form.education_level} onChange={(v) => setF('education_level', v)} />
                       <FLabel>Contact Number</FLabel>
                       <FInput value={form.contact_number} onChange={(v) => setF('contact_number', v)} placeholder="0917 000 0000" />
                       <FLabel>Current Address</FLabel>
-                      <FInput value={form.address} onChange={(v) => setF('address', v)} placeholder="Barangay, City, Province" multiline />
+                      <LocationSearchInput
+                        province={form.province} municipality={form.municipality} barangay={form.barangay}
+                        accentColor={wt.accent}
+                        onSelect={(r: LocationResult) => setForm((f) => ({ ...f, province: r.province, municipality: r.municipality, barangay: r.barangay, latitude: String(r.latitude), longitude: String(r.longitude) }))}
+                      />
+                      <View style={s.addrGrid}>
+                        <View style={{ flex: 1 }}><FLabel>Province</FLabel><FInput value={form.province} onChange={(v) => setF('province', v)} placeholder="Leyte" /></View>
+                        <View style={{ flex: 1 }}><FLabel>Municipality</FLabel><FInput value={form.municipality} onChange={(v) => setF('municipality', v)} placeholder="Isabel" /></View>
+                        <View style={{ flex: 1 }}><FLabel>Barangay</FLabel><FInput value={form.barangay} onChange={(v) => setF('barangay', v)} placeholder="San Jose" /></View>
+                      </View>
+                      <FLabel>Landmark / Street</FLabel>
+                      <FInput value={form.landmark} onChange={(v) => setF('landmark', v)} placeholder="Near church / Street name" />
                     </>
                   )}
                   {editing === 'prefs' && (
                     <>
                       <FLabel>Employment Type</FLabel>
-                      <Toggle options={['Live-in', 'Live-out', 'Any']} value={form.employment_type} onChange={(v) => setF('employment_type', v)} />
+                      <Toggle options={['Stay-in', 'Stay-out', 'Any']} value={form.employment_type} onChange={(v) => setF('employment_type', v)} />
                       <FLabel>Work Schedule</FLabel>
                       <Toggle options={['Full-time', 'Part-time', 'Any']} value={form.work_schedule} onChange={(v) => setF('work_schedule', v)} />
                       <FLabel>Expected Salary (₱ / month)</FLabel>
@@ -464,29 +544,30 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
                   )}
                   {editing === 'skills' && (
                     refs.loading ? <ActivityIndicator color={wt.accent} style={{ marginTop: 20 }} /> : (
-                      <>
-                        <FLabel>Roles you can do</FLabel>
-                        <ChipPick items={refs.jobs.map((j) => ({ id: Number(j.job_id), label: j.job_title }))} selected={selJobs} onToggle={(id) => toggleId(setSelJobs, id)} />
-                        <FLabel>Skills</FLabel>
-                        {selJobs.length === 0
-                          ? <Text style={s.hint}>Pick a role above to see its related skills.</Text>
-                          : <ChipPick items={refs.skills.filter((sk) => selJobs.includes(Number(sk.job_id))).map((sk) => ({ id: Number(sk.skill_id), label: sk.skill_name }))} selected={selSkills} onToggle={(id) => toggleId(setSelSkills, id)} />}
-                        <FLabel>Languages</FLabel>
-                        <ChipPick items={refs.languages.map((l) => ({ id: Number(l.language_id), label: l.language_name }))} selected={selLangs} onToggle={(id) => toggleId(setSelLangs, id)} />
-                        <FLabel>Total Years of Experience</FLabel>
-                        <FInput value={form.experience_years} onChange={(v) => setF('experience_years', v.replace(/[^0-9]/g, ''))} placeholder="3" />
-                      </>
+                      <SkillsWizard step={skillStep} refs={refs}
+                        selCats={selCats} selJobs={selJobs} selSkills={selSkills} selLangs={selLangs}
+                        onToggleCat={toggleCategory} onToggleJob={(id) => toggleId(setSelJobs, id)}
+                        onToggleSkill={(id) => toggleId(setSelSkills, id)} onToggleLang={(id) => toggleId(setSelLangs, id)} />
                     )
                   )}
                 </ScrollView>
-                <View style={s.formBtns}>
-                  <Pressable onPress={() => setEditing(null)} style={({ hovered }: any) => [s.cancelBtn, TRANS, hovered && { backgroundColor: wt.lineSoft }]}><Text style={s.cancelText}>Cancel</Text></Pressable>
-                  <Pressable disabled={saving} onPress={() => (editing === 'skills' ? saveSkills() : save(form))} style={({ hovered, pressed }: any) => [{ flex: 1.4 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
-                    <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.saveBtn}>
-                      {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveText}>Save Changes</Text>}
-                    </LinearGradient>
-                  </Pressable>
-                </View>
+                {editing === 'skills' ? (
+                  <SkillsWizardFooter step={skillStep} saving={saving}
+                    canNext={skillStep === 'category' ? selCats.length > 0 : skillStep === 'roles' ? selJobs.length > 0 : true}
+                    onBack={() => setSkillStep((st) => st === 'languages' ? 'skills' : st === 'skills' ? 'roles' : st === 'roles' ? 'category' : 'category')}
+                    onCancel={() => setEditing(null)}
+                    onNext={() => setSkillStep((st) => st === 'category' ? 'roles' : st === 'roles' ? 'skills' : 'languages')}
+                    onSave={saveSkills} />
+                ) : (
+                  <View style={s.formBtns}>
+                    <Pressable onPress={() => setEditing(null)} style={({ hovered }: any) => [s.cancelBtn, TRANS, hovered && { backgroundColor: wt.lineSoft }]}><Text style={s.cancelText}>Cancel</Text></Pressable>
+                    <Pressable disabled={saving} onPress={() => (editing === 'personal' ? savePersonal() : save(form))} style={({ hovered, pressed }: any) => [{ flex: 1.4 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
+                      <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.saveBtn}>
+                        {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveText}>Save Changes</Text>}
+                      </LinearGradient>
+                    </Pressable>
+                  </View>
+                )}
               </View>
             </View>
           ) : (
@@ -504,8 +585,9 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
                 <View style={s.chipsRow}>
                   {roles.slice(0, 3).map((r) => <Text key={r} style={s.chip}>{r}</Text>)}
                   {(roles.length + skills.length) > 3 && <Text style={[s.chip, s.chipMore]}>+{roles.length + skills.length - 3} more skills</Text>}
+                  <View style={s.chipStat}><Text style={s.chipStatVal}>{roles.length}</Text><Text style={s.chipStatLbl}>Roles</Text></View>
+                  <View style={s.chipStat}><Text style={s.chipStatVal}>{skills.length}</Text><Text style={s.chipStatLbl}>Skills</Text></View>
                   <View style={s.chipStat}><Text style={s.chipStatVal}>{languages.length}</Text><Text style={s.chipStatLbl}>Languages</Text></View>
-                  <View style={s.chipStat}><Text style={s.chipStatVal}>{Number(p.years_experience) || 0} years</Text><Text style={s.chipStatLbl}>Total Experience</Text></View>
                 </View>
               </BigCard>
 
@@ -605,12 +687,49 @@ function FLabel({ children }: any) { return <Text style={s.fLabel}>{children}</T
 function FInput({ value, onChange, placeholder, multiline }: { value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean }) {
   return <TextInput style={[s.fInput, multiline && { minHeight: 66, textAlignVertical: 'top' }]} value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={wt.subtle} multiline={multiline} />;
 }
+// Native browser date picker (real calendar UI) — matches the web branch the
+// mobile edit modal already uses for Platform.OS === 'web'.
+function DateField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return React.createElement('input', {
+    type: 'date', value: value || '', min: '1940-01-01', max: new Date().toISOString().slice(0, 10),
+    onChange: (e: any) => onChange(e.target.value || ''),
+    style: { border: `1px solid ${wt.line}`, borderRadius: 11, paddingTop: 11, paddingBottom: 11, paddingLeft: 12, paddingRight: 12, fontSize: 14, width: '100%', fontFamily: 'inherit', backgroundColor: wt.raise, color: wt.ink, boxSizing: 'border-box', marginBottom: 14 },
+  });
+}
+// Native <select> — real dropdown behaviour, styled to match FInput.
+function SelectField({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) {
+  return React.createElement(
+    'select',
+    {
+      value: value || '',
+      onChange: (e: any) => onChange(e.target.value),
+      style: { border: `1px solid ${wt.line}`, borderRadius: 11, paddingTop: 11, paddingBottom: 11, paddingLeft: 12, paddingRight: 12, fontSize: 14, width: '100%', fontFamily: 'inherit', backgroundColor: wt.raise, color: value ? wt.ink : wt.subtle, boxSizing: 'border-box', marginBottom: 14 },
+    },
+    React.createElement('option', { value: '' }, placeholder || 'Select'),
+    ...options.map((o) => React.createElement('option', { key: o, value: o }, o)),
+  );
+}
 function Toggle({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) {
   return (
     <View style={s.toggle}>
       {options.map((o) => {
         const on = value === o;
         return <Pressable key={o} onPress={() => onChange(o)} style={({ hovered }: any) => [s.toggleOpt, on && s.toggleOptOn, TRANS, hovered && !on && { backgroundColor: wt.lineSoft }]}><Text style={[s.toggleText, on && { color: '#fff' }]}>{o}</Text></Pressable>;
+      })}
+    </View>
+  );
+}
+function PillSelect({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <View style={s.chipPickWrap}>
+      {options.map((o) => {
+        const on = value === o;
+        return (
+          <Pressable key={o} onPress={() => onChange(o)} style={({ hovered }: any) => [s.pick, on && s.pickOn, TRANS, hovered && !on && { borderColor: wt.accent }]}>
+            {on && <Ionicons name="checkmark" size={13} color="#fff" />}
+            <Text style={[s.pickText, on && { color: '#fff' }]}>{o}</Text>
+          </Pressable>
+        );
       })}
     </View>
   );
@@ -628,6 +747,109 @@ function ChipPick({ items, selected, onToggle }: { items: { id: number; label: s
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+// Category icon/colour map — mirrors the mobile edit modal so the same
+// category always looks the same regardless of platform.
+type CatIconCfg = { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string };
+const CAT_ICON_MAP: Array<{ match: string[]; cfg: CatIconCfg }> = [
+  { match: ['general', 'household', 'househelp'], cfg: { icon: 'home', color: wt.accent, bg: wt.accentSoft } },
+  { match: ['yaya', 'nanny'], cfg: { icon: 'people', color: wt.purple, bg: wt.purpleSoft } },
+  { match: ['cook', 'culinary'], cfg: { icon: 'restaurant', color: wt.amber, bg: wt.amberSoft } },
+  { match: ['elderly', 'senior'], cfg: { icon: 'heart', color: wt.red, bg: wt.redSoft } },
+  { match: ['pet', 'animal'], cfg: { icon: 'paw', color: wt.green, bg: wt.greenSoft } },
+  { match: ['driver'], cfg: { icon: 'car', color: wt.blue, bg: wt.blueSoft } },
+  { match: ['laundry', 'ironing'], cfg: { icon: 'shirt', color: '#0891B2', bg: '#CFFAFE' } },
+  { match: ['garden', 'landscape'], cfg: { icon: 'leaf', color: wt.green, bg: wt.greenSoft } },
+  { match: ['other', 'misc'], cfg: { icon: 'grid-outline', color: wt.muted, bg: wt.lineSoft } },
+];
+function getCategoryIcon(name: string): CatIconCfg {
+  const lower = (name || '').toLowerCase();
+  for (const { match, cfg } of CAT_ICON_MAP) if (match.some((k) => lower.includes(k))) return cfg;
+  return { icon: 'briefcase', color: wt.blue, bg: wt.blueSoft };
+}
+function CategoryGrid({ items, selected, onToggle }: { items: { id: number; label: string }[]; selected: number[]; onToggle: (id: number) => void }) {
+  return (
+    <View style={s.catGrid}>
+      {items.map((it) => {
+        const on = selected.includes(it.id);
+        const { icon, color, bg } = getCategoryIcon(it.label);
+        return (
+          <Pressable key={it.id} onPress={() => onToggle(it.id)} style={({ hovered }: any) => [s.catCard, on && s.catCardOn, TRANS, hovered && !on && { borderColor: wt.accent }]}>
+            <View style={[s.catIc, { backgroundColor: on ? 'rgba(255,255,255,.25)' : bg }]}><Ionicons name={icon} size={20} color={on ? '#fff' : color} /></View>
+            <Text style={[s.catName, on && { color: '#fff' }]} numberOfLines={2}>{it.label}</Text>
+            {on && <View style={s.catCheck}><Ionicons name="checkmark" size={11} color={wt.accent} /></View>}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+// Paged skills editor: Category → Roles → Skills → Languages (mirrors mobile).
+const SKILL_STEPS = ['category', 'roles', 'skills', 'languages'] as const;
+const SKILL_TITLES: Record<string, { title: string; hint: string }> = {
+  category: { title: 'What kind of work do you do?', hint: 'Pick one or more categories. Tip: choose “General Househelp” if you can do everything — it selects all roles for you.' },
+  roles: { title: 'Choose your roles', hint: 'Select every role you can take on.' },
+  skills: { title: 'Add your skills', hint: 'Pick the skills you have for those roles.' },
+  languages: { title: 'Languages you speak', hint: 'Select all that apply.' },
+};
+function SkillsWizard({ step, refs, selCats, selJobs, selSkills, selLangs, onToggleCat, onToggleJob, onToggleSkill, onToggleLang }: {
+  step: 'category' | 'roles' | 'skills' | 'languages'; refs: any;
+  selCats: number[]; selJobs: number[]; selSkills: number[]; selLangs: number[];
+  onToggleCat: (id: number) => void; onToggleJob: (id: number) => void; onToggleSkill: (id: number) => void; onToggleLang: (id: number) => void;
+}) {
+  const idx = SKILL_STEPS.indexOf(step);
+  const meta = SKILL_TITLES[step];
+  const skills = refs.skills.filter((sk: any) => selJobs.includes(Number(sk.job_id)));
+  const selectedCats = refs.categories.filter((c: any) => selCats.includes(Number(c.category_id)));
+  return (
+    <View>
+      <View style={s.wizSteps}>
+        {SKILL_STEPS.map((k, i) => <View key={k} style={[s.wizDot, i === idx && s.wizDotOn, i < idx && s.wizDotDone]} />)}
+      </View>
+      <Text style={s.wizStepLabel}>Step {idx + 1} of 4</Text>
+      <Text style={s.wizTitle}>{meta.title}</Text>
+      <Text style={s.wizHint}>{meta.hint}</Text>
+      <View style={{ marginTop: 12 }}>
+        {step === 'category' && <CategoryGrid items={refs.categories.map((c: any) => ({ id: Number(c.category_id), label: c.name }))} selected={selCats} onToggle={onToggleCat} />}
+        {step === 'roles' && (
+          selectedCats.length === 0 ? <Text style={s.hint}>Go back and pick a category first.</Text> : (
+            <View style={{ gap: 16 }}>
+              {selectedCats.map((cat: any) => {
+                const catJobs = refs.jobs.filter((j: any) => Number(j.category_id) === Number(cat.category_id));
+                if (!catJobs.length) return null;
+                return (
+                  <View key={cat.category_id}>
+                    <View style={s.jobGroupHead}><View style={s.jobGroupDot} /><Text style={s.jobGroupTitle}>{cat.name}</Text></View>
+                    <ChipPick items={catJobs.map((j: any) => ({ id: Number(j.job_id), label: j.job_title }))} selected={selJobs} onToggle={onToggleJob} />
+                  </View>
+                );
+              })}
+            </View>
+          )
+        )}
+        {step === 'skills' && (selJobs.length ? (skills.length ? <ChipPick items={skills.map((sk: any) => ({ id: Number(sk.skill_id), label: sk.skill_name }))} selected={selSkills} onToggle={onToggleSkill} /> : <Text style={s.hint}>No specific skills for these roles — you can continue.</Text>) : <Text style={s.hint}>Go back and pick a role first.</Text>)}
+        {step === 'languages' && <ChipPick items={refs.languages.map((l: any) => ({ id: Number(l.language_id), label: l.language_name }))} selected={selLangs} onToggle={onToggleLang} />}
+      </View>
+    </View>
+  );
+}
+function SkillsWizardFooter({ step, saving, canNext, onBack, onCancel, onNext, onSave }: {
+  step: string; saving: boolean; canNext: boolean; onBack: () => void; onCancel: () => void; onNext: () => void; onSave: () => void;
+}) {
+  const first = step === 'category', last = step === 'languages';
+  return (
+    <View style={s.formBtns}>
+      <Pressable onPress={first ? onCancel : onBack} style={({ hovered }: any) => [s.cancelBtn, TRANS, hovered && { backgroundColor: wt.lineSoft }]}>
+        <Text style={s.cancelText}>{first ? 'Cancel' : 'Back'}</Text>
+      </Pressable>
+      <Pressable disabled={saving || (!last && !canNext)} onPress={last ? onSave : onNext} style={({ hovered, pressed }: any) => [{ flex: 1.4, opacity: !last && !canNext ? 0.5 : 1 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
+        <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.saveBtn}>
+          {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveText}>{last ? 'Save Changes' : 'Next'}</Text>}
+        </LinearGradient>
+      </Pressable>
     </View>
   );
 }
@@ -827,6 +1049,7 @@ const s = StyleSheet.create({
   avaCam: { position: 'absolute', right: 0, bottom: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: wt.accent, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: wt.feat2 },
   pcardName: { color: wt.featInk, fontFamily: FontFamily.fredokaSemiBold, fontSize: 20, letterSpacing: -0.3 },
   verPill: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: 'rgba(22,163,74,.16)', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, marginVertical: 6 },
+  verPillOff: { backgroundColor: 'rgba(201,122,14,.20)' },
   verPillText: { color: wt.green, fontFamily: FontFamily.fredokaSemiBold, fontSize: 11.5 },
   pcardRoles: { color: wt.featInk, fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, marginBottom: 5 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -929,6 +1152,7 @@ const s = StyleSheet.create({
   formTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: wt.ink },
   fLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: wt.muted, marginBottom: 6, marginTop: 12 },
   fInput: { borderWidth: 1, borderColor: wt.line, borderRadius: 11, paddingHorizontal: 12, paddingVertical: 11, fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: wt.ink, backgroundColor: wt.raise },
+  addrGrid: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   hint: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: wt.subtle, marginTop: 10, lineHeight: 17 },
   toggle: { flexDirection: 'row', gap: 8 },
   toggleOpt: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: wt.line, backgroundColor: wt.raise },
@@ -937,6 +1161,22 @@ const s = StyleSheet.create({
 
   // Skills chip picker
   chipPickWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  wizSteps: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  wizDot: { flex: 1, height: 5, borderRadius: 3, backgroundColor: wt.line },
+  wizDotOn: { backgroundColor: wt.accent },
+  wizDotDone: { backgroundColor: wt.green },
+  wizStepLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11.5, color: wt.accent, letterSpacing: 0.4 },
+  wizTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: wt.ink, marginTop: 3 },
+  wizHint: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: wt.muted, marginTop: 3, lineHeight: 17 },
+  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  catCard: { width: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: wt.raise, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 12, borderWidth: 1.5, borderColor: wt.line, cursor: 'pointer' as any },
+  catCardOn: { backgroundColor: wt.accent, borderColor: wt.accent },
+  catIc: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  catName: { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: wt.ink, lineHeight: 18 },
+  catCheck: { position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...({ boxShadow: '0 2px 6px rgba(0,0,0,.15)' } as any) },
+  jobGroupHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  jobGroupDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: wt.accent },
+  jobGroupTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: wt.muted, textTransform: 'uppercase', letterSpacing: 0.4 },
   pick: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: wt.line, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: wt.raise },
   pickOn: { backgroundColor: wt.accent, borderColor: wt.accent },
   pickText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: wt.ink },

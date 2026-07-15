@@ -11,6 +11,8 @@ import { useConversations, Conversation } from '@/hooks/shared';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { Sidebar, MobileMenu, ParentTabBar, ParentWorkModeTabBar } from '@/components/parent/home';
 import { useParentPortalMode } from '@/hooks/parent/useParentPortalMode';
+import { useParentProfile } from '@/hooks/parent';
+import { ParentMessagesWeb } from '@/components/parent/web/ParentMessagesWeb';
 import { LoadingSpinner, ConfirmationModal, NotificationModal } from '@/components/shared/';
 import { BG, BROWN, CARAMEL, DARK, MUTED, SUBTLE } from '@/components/parent/home/parentWarmTheme';
 import { s, ACCENT } from './messages.styles';
@@ -22,7 +24,8 @@ import ChatPanel from './ChatPanel';
 export default function ParentMessages() {
   const router           = useRouter();
   const { isDesktop }    = useResponsive();
-  const { handleLogout } = useAuth();
+  const { handleLogout, getFullName } = useAuth();
+  const { profileData } = useParentProfile();
   const { unreadCount: notifUnread } = useNotifications('parent');
   const isWorkMode = useParentPortalMode();
   const params = useLocalSearchParams<{ partner_id?: string; partner_name?: string; job_post_id?: string }>();
@@ -202,50 +205,15 @@ export default function ParentMessages() {
     );
   }
 
-  // ── Desktop layout ─────────────────────────────────────────────────────────
+  // ── Desktop layout (redesigned web screen) ───────────────────────────────────
   return (
     <>
-      <View style={s.desktopWrap}>
-        <Sidebar onLogout={initiateLogout} />
-        <View style={s.desktopMain}>
-        {/* Conversation list panel */}
-        <View style={s.convPanel}>
-          <View style={s.convPanelHeader}>
-            <Text style={s.convPanelTitle}>Messages</Text>
-            <Text style={s.convPanelCount}>{conversations.length}</Text>
-          </View>
-          <View style={s.contractFlowHintBar}>
-            <Ionicons name="document-text-outline" size={14} color={MUTED} />
-            <Text style={s.contractFlowHintText}>
-              After you message a helper and agree on terms, the next step is generating your employment contract.
-            </Text>
-          </View>
-          {ConvList}
-        </View>
-
-        {/* Chat panel */}
-        <View style={s.chatPanelWrap}>
-          {activePartner ? (
-            <ChatPanel
-              partnerId={activePartner.partner_id}
-              partnerName={activePartner.partner_name}
-              partnerPhoto={activePartner.partner_photo}
-              jobPostId={activePartner.job_post_id}
-            />
-          ) : (
-            <View style={s.noChatWrap}>
-              <View style={s.noChatIcon}>
-                <Ionicons name="chatbubbles-outline" size={56} color={ACCENT} />
-              </View>
-              <Text style={s.noChatTitle}>Your Messages</Text>
-              <Text style={s.noChatSub}>
-                Select a conversation to start chatting, or post a job to connect with helpers. When you are ready to hire, you will move on from messaging to employment contract generation.
-              </Text>
-            </View>
-          )}
-        </View>
-        </View>
-      </View>
+      <ParentMessagesWeb
+        userName={getFullName()}
+        avatar={(profileData?.profile?.profile_image as string) ?? null}
+        verified={profileData?.profile?.verification_status === 'Verified'}
+        onLogout={initiateLogout}
+      />
       <ConfirmationModal
         visible={confirmLogoutVisible}
         title="Log Out"

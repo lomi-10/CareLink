@@ -27,6 +27,9 @@ import {
 } from '@/components/parent/home/parentWarmTheme';
 import { MobileHeader, QuickAction, SectionHeader } from '@/components/helper/home';
 import ParentWorkDashboard from './ParentWorkDashboard';
+import { ParentTopNav } from '@/components/parent/web/ParentTopNav';
+import { ParentHomeWeb } from '@/components/parent/web/ParentHomeWeb';
+import { ParentWorkHomeWeb } from '@/components/parent/web/ParentWorkHomeWeb';
 
 const INFO    = '#3B82F6';
 const INFO_BG = '#DBEAFE';
@@ -275,82 +278,49 @@ export default function ParentHome() {
 
   // ─── DESKTOP ────────────────────────────────────────────────────────────────
   if (isDesktop) {
-    return (
-      <View style={[h.container, { flexDirection: 'row' }]}>
-        <Sidebar onLogout={initiateLogout} />
-        <ScrollView
-          style={h.mainContent}
-          contentContainerStyle={[h.scrollContent, { maxWidth: 900, alignSelf: 'center', width: '100%' }]}
-          refreshControl={
-            <RefreshControl refreshing={false} onRefresh={() => { refresh(); bumpPlacementReviewBanner(); }} />
+    const desktopBanners = (
+      <>
+        <ParentSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
+        <AwaitingVerificationCard completeness={profileData?.profile_completeness} status={profileData?.profile?.verification_status} themeKey="parent" />
+        <PendingPlacementReviewsBanner
+          userType="parent"
+          accentColor={GOLD}
+          softBg={ICON_BG}
+          refreshToken={placementReviewRefreshTok}
+          onReviewPress={(item: PendingReview) =>
+            openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
           }
-        >
-          <View style={h.desktopTopBar}>
-            <View>
-              <Text style={h.desktopPageTitle}>{isWorkMode ? 'Work Dashboard' : 'Dashboard'}</Text>
-              <Text style={h.desktopPageSub}>
-                {isWorkMode ? 'Manage your active helpers' : 'Parent Portal — Home & Family Care'}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[h.desktopNotifBtn, unreadCount > 0 && h.desktopNotifBtnActive]}
-              onPress={() => router.push('/(parent)/notifications')}
-            >
-              <Ionicons
-                name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
-                size={20}
-                color={unreadCount > 0 ? BROWN : MUTED}
-              />
-              {unreadCount > 0 && (
-                <View style={h.notifBadge}>
-                  <Text style={h.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {renderModeToggle()}
-
-          {isWorkMode ? (
-            workModeUnlocked ? (
-              <ParentWorkDashboard
-                userName={getFullName()}
-                profileImage={profileImage}
-                onSwitchToRecruitment={() => switchMode('recruitment')}
-              />
-            ) : (
-              renderWorkModeLocked()
-            )
-          ) : (
-            <>
-              <GreetingCard userName={getFullName()} profileImage={profileImage} />
-              <ParentSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
-              <AwaitingVerificationCard completeness={profileData?.profile_completeness} status={profileData?.profile?.verification_status} themeKey="parent" />
-              <PendingPlacementReviewsBanner
-                userType="parent"
-                accentColor={BROWN}
-                softBg={ICON_BG}
-                refreshToken={placementReviewRefreshTok}
-                onReviewPress={(item: PendingReview) =>
-                  openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
-                }
-              />
-              {profileData?.profile?.verification_status === 'Verified' && <RecommendedHelpersSection />}
-              <SectionHeader title="My Hiring Activity" />
-              {renderStatsGrid()}
-              <SafetyBanner />
-              <SectionHeader title="Quick Actions" />
-              <View style={h.quickActionsDesktop}>
-                <QuickActionDesktop icon="add-circle" title="Post a Job" desc="Find the perfect helper for your home"
-                  color={BROWN} onPress={() => router.push('/(parent)/jobs')} />
-                <QuickActionDesktop icon="search" title="Browse Helpers" desc="View PESO-verified helpers"
-                  color={GREEN} onPress={() => router.push('/(parent)/browse')} />
-                <QuickActionDesktop icon="people" title="Applications" desc="Review & manage applicants"
-                  color={INFO} onPress={() => router.push({ pathname: '/(parent)/jobs', params: { tab: 'applicants' } } as any)} />
-              </View>
-            </>
-          )}
-        </ScrollView>
+        />
+      </>
+    );
+    return (
+      <View style={{ flex: 1, backgroundColor: '#FFF9F2' }}>
+        <ParentTopNav
+          active="home"
+          mode={portalMode}
+          userName={getFullName()}
+          avatar={profileImage}
+          verified={profileData?.profile?.verification_status === 'Verified'}
+          onLogout={initiateLogout}
+        />
+        {isWorkMode ? (
+          <ParentWorkHomeWeb
+            userName={getFullName()}
+            avatar={profileImage}
+            verified={profileData?.profile?.verification_status === 'Verified'}
+            onSwitchMode={switchMode}
+          />
+        ) : (
+          <ParentHomeWeb
+            userName={getFullName()}
+            avatar={profileImage}
+            verified={profileData?.profile?.verification_status === 'Verified'}
+            completeness={profileData?.profile_completeness ?? 0}
+            stats={stats}
+            onSwitchMode={switchMode}
+            banners={desktopBanners}
+          />
+        )}
         {renderModals()}
       </View>
     );

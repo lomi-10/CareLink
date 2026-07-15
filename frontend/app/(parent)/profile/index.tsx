@@ -18,6 +18,7 @@ import { useParentProfile, useParentStats } from '@/hooks/parent';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 
 import { Sidebar, MobileMenu, ParentTabBar, ParentWorkModeTabBar } from '@/components/parent/home';
+import { ParentProfileWeb } from '@/components/parent/web/ParentProfileWeb';
 import { useParentPortalMode } from '@/hooks/parent/useParentPortalMode';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import EditParentProfileModal from '@/components/parent/profile/EditParentProfileModal';
@@ -250,13 +251,11 @@ export default function ParentProfile() {
     </ScrollView>
   );
 
-  // ── DESKTOP ──────────────────────────────────────────────────────────────────
+  // ── DESKTOP (redesigned web screen) ──────────────────────────────────────────
   if (isDesktop) {
     return (
-      <View style={[s.page, { flexDirection: 'row' }]}>
-        <Sidebar onLogout={initiateLogout} />
-        {content}
-        <EditParentProfileModal visible={editOpen} onClose={() => setEditOpen(false)} onSaveSuccess={() => { setEditOpen(false); refresh(); }} onProfileUpdated={refresh} />
+      <View style={{ flex: 1 }}>
+        <ParentProfileWeb onLogout={initiateLogout} />
         <ConfirmationModal
           visible={confirmLogout} title="Log Out"
           message="Are you sure you want to log out?"

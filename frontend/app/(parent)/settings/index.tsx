@@ -16,7 +16,9 @@ import { useColorSchemePreference, type ColorSchemePreference } from '@/contexts
 import { PARENT_THEME_OPTIONS, type ParentThemeId } from '@/constants/parentThemePalettes';
 import { useParentTheme } from '@/contexts/ParentThemeContext';
 import { useAuth, useResponsive } from '@/hooks/shared';
+import { useParentProfile } from '@/hooks/parent';
 import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
+import { ParentSettingsWeb } from '@/components/parent/web/ParentSettingsWeb';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import WelcomeGuideModal from '@/components/shared/WelcomeGuideModal';
 
@@ -36,7 +38,8 @@ export default function SettingsScreen() {
   const navTheme = useTheme();
   const { preference, setPreference } = useColorSchemePreference();
   const { isDesktop } = useResponsive();
-  const { handleLogout } = useAuth();
+  const { handleLogout, getFullName } = useAuth();
+  const { profileData } = useParentProfile();
   const { themeId, setThemeId } = useParentTheme();
 
   const [logs, setLogs] = useState<any[]>([]);
@@ -191,15 +194,13 @@ export default function SettingsScreen() {
 
   if (isDesktop) {
     return (
-      <View style={ss.desktopRoot}>
-        <Sidebar onLogout={() => setConfirmLogout(true)} />
-        <ScrollView style={ss.desktopMain} contentContainerStyle={ss.desktopScroll}>
-          <View style={ss.desktopTopBar}>
-            <Text style={ss.desktopPageTitle}>Settings</Text>
-            <Text style={ss.desktopPageSub}>Parent Portal — appearance & account</Text>
-          </View>
-          {content}
-        </ScrollView>
+      <View style={{ flex: 1 }}>
+        <ParentSettingsWeb
+          userName={getFullName()}
+          avatar={(profileData?.profile?.profile_image as string) ?? null}
+          verified={profileData?.profile?.verification_status === 'Verified'}
+          onLogout={() => setConfirmLogout(true)}
+        />
         {renderModals()}
       </View>
     );

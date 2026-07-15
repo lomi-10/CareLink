@@ -22,13 +22,14 @@ import {
   View,
 } from 'react-native';
 
-import { useJobApplications, useParentJobs, type JobApplication, type JobPost } from '@/hooks/parent';
+import { useJobApplications, useParentJobs, useParentProfile, type JobApplication, type JobPost } from '@/hooks/parent';
 import { computeHelperJobMatch, applicationToMatchable } from '@/lib/parentHelperMatch';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { useUserVerification } from '@/hooks/peso';
 
 import { ConfirmationModal, InterviewModal, LoadingSpinner, NotificationModal } from '@/components/shared';
 import { MobileMenu, Sidebar, ParentTabBar } from '@/components/parent/home';
+import { ParentJobsWeb } from '@/components/parent/web/ParentJobsWeb';
 import { JobPostModal } from '@/components/parent/jobs';
 import { JobDetailsModal } from '@/components/parent/jobs/JobDetailsModal';
 import { PendingBanner } from '@/components/parent/verification/PendingBanner';
@@ -113,7 +114,8 @@ export default function WorkManagement() {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string; job_id?: string }>();
   const { isDesktop } = useResponsive();
-  const { handleLogout, userData } = useAuth();
+  const { handleLogout, userData, getFullName } = useAuth();
+  const { profileData } = useParentProfile();
   const { unreadCount } = useNotifications('parent');
   const { verification } = useUserVerification();
   const isPending = verification.status === 'Pending';
@@ -1258,10 +1260,15 @@ export default function WorkManagement() {
 
   if (isDesktop) {
     return (
-      <View style={[w.page, { flexDirection: 'row' }]}>
-        {renderModals()}
-        <Sidebar onLogout={initiateLogout} />
-        {content}
+      <View style={{ flex: 1 }}>
+        <ParentJobsWeb
+          userName={getFullName()}
+          avatar={(profileData?.profile?.profile_image as string) ?? null}
+          verified={profileData?.profile?.verification_status === 'Verified'}
+          onLogout={initiateLogout}
+        />
+        <ConfirmationModal visible={confirmLogoutVisible} title="Log Out" message="Are you sure you want to log out?" confirmText="Log Out" cancelText="Cancel" type="danger" onConfirm={executeLogout} onCancel={() => setConfirmLogout(false)} />
+        <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose duration={1500} onClose={() => { setSuccessLogout(false); handleLogout(); }} />
       </View>
     );
   }

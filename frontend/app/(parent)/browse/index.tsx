@@ -21,6 +21,8 @@ import { computeHelperJobMatch, pickPrimaryOpenJob } from '@/lib/parentHelperMat
 import { useAuth, useJobReferences, useResponsive, useNotifications } from '@/hooks/shared';
 
 import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
+import { ParentBrowseWeb } from '@/components/parent/web/ParentBrowseWeb';
+import { useParentProfile } from '@/hooks/parent';
 import { RecommendedHelperCard } from '@/components/parent/home/RecommendedHelperCard';
 import {
   FilterBar,
@@ -45,7 +47,8 @@ function getInitials(name?: string) {
 export default function BrowseHelpers() {
   const router = useRouter();
   const { isDesktop } = useResponsive();
-  const { handleLogout } = useAuth();
+  const { handleLogout, getFullName } = useAuth();
+  const { profileData } = useParentProfile();
   const { unreadCount } = useNotifications('parent');
 
   const { helpers, filters, loading, updateFilter, resetFilters, refresh } = useBrowseHelpers();
@@ -272,18 +275,18 @@ export default function BrowseHelpers() {
     </View>
   );
 
-  // ── Desktop ────────────────────────────────────────────────────────────────
+  // ── Desktop (redesigned web screen) ──────────────────────────────────────────
   if (isDesktop) {
     return (
-      <View style={[s.container, { flexDirection: 'row' }]}>
-        {renderModals()}
-        <Sidebar onLogout={initiateLogout} />
-        <View style={s.mainContent}>
-          <View style={s.pageHeader}>
-            <Text style={s.pageTitle}>Browse Helpers</Text>
-          </View>
-          {browseContent}
-        </View>
+      <View style={{ flex: 1 }}>
+        <ParentBrowseWeb
+          userName={getFullName()}
+          avatar={(profileData?.profile?.profile_image as string) ?? null}
+          verified={profileData?.profile?.verification_status === 'Verified'}
+          onLogout={initiateLogout}
+        />
+        <ConfirmationModal visible={confirmLogoutVisible} title="Log Out" message="Are you sure you want to log out?" confirmText="Log Out" cancelText="Cancel" type="danger" onConfirm={executeLogout} onCancel={() => setConfirmLogoutVisible(false)} />
+        <NotificationModal visible={successLogoutVisible} message="Logged Out Successfully!" type="success" autoClose duration={1500} onClose={() => { setSuccessLogoutVisible(false); handleLogout(); }} />
       </View>
     );
   }
