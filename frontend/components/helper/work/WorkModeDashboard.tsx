@@ -7,7 +7,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
-  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -39,7 +38,7 @@ import { fetchApplicationTasks, type ApplicationTask } from '@/lib/applicationTa
 import { fetchAttendanceToday, formatAttendanceTime, type AttendanceToday } from '@/lib/attendanceApi';
 import { attendanceDayCellType, weekDotState, nextRestDayYmd, type WeekDotState } from '@/lib/attendanceUi';
 import { fetchLeaveRequests, type LeaveRequestRow, labelForLeaveReasonCode } from '@/lib/leaveRequestsApi';
-import { useConversations } from '@/hooks/shared';
+import { useConversations, useNotice } from '@/hooks/shared';
 import { ConfirmationModal, EndEmploymentModal, SubmitComplaintModal } from '@/components/shared';
 
 type Props = {
@@ -76,6 +75,7 @@ export function WorkModeDashboard({
   onRefreshWorkContext,
 }: Props) {
   const router = useRouter();
+  const { notify, noticeHost } = useNotice();
   const styles = useMemo(() => createWorkModeDashboardStyles(), []);
   const { conversations } = useConversations();
 
@@ -203,7 +203,7 @@ export function WorkModeDashboard({
     try {
       await WebBrowser.openBrowserAsync(url);
     } catch {
-      Alert.alert('Contract', 'Could not open the contract.');
+      notify('Contract', 'Could not open the contract.', 'error');
     }
   };
 
@@ -212,7 +212,7 @@ export function WorkModeDashboard({
     try {
       await WebBrowser.openBrowserAsync(url);
     } catch {
-      Alert.alert('Record', 'Could not open the termination record.');
+      notify('Record', 'Could not open the termination record.', 'error');
     }
   };
 
@@ -221,7 +221,7 @@ export function WorkModeDashboard({
     try {
       const res = await postAttendance(helperId, activeHire.application_id, 'check_in');
       if (!res.success) {
-        Alert.alert('Check in', res.message || 'Failed');
+        notify('Check in', res.message || 'Failed', 'error');
         return;
       }
       setTodayCheckedIn(true);
@@ -263,7 +263,7 @@ export function WorkModeDashboard({
     try {
       const res = await postAttendance(helperId, activeHire.application_id, 'check_out');
       if (!res.success) {
-        Alert.alert('Check out', res.message || 'Failed');
+        notify('Check out', res.message || 'Failed', 'error');
         return;
       }
       setTodayCheckedOut(true);
@@ -720,6 +720,7 @@ export function WorkModeDashboard({
         <Ionicons name="refresh-outline" size={16} color={MUTED} />
         <Text style={styles.refreshHintText}>Refresh</Text>
       </TouchableOpacity>
+      {noticeHost}
     </ScrollView>
   );
 }

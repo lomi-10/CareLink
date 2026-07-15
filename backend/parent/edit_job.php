@@ -67,7 +67,13 @@ try {
     $description = $data['description'] ?? '';
     $employment_type = $data['employment_type'] ?? 'Any';
     $work_schedule = $data['work_schedule'] ?? 'Any';
+    // Payout schedule only — the salary amount is always MONTHLY.
+    // Whitelisted against the job_posts.salary_period enum (strict mode would
+    // otherwise reject an unknown value with "Data truncated for column").
     $salary_period = $data['salary_period'] ?? 'Monthly';
+    if (!in_array($salary_period, ['Daily', 'Weekly', 'Semi-monthly', 'Monthly'], true)) {
+        $salary_period = 'Monthly';
+    }
     $province = $data['province'] ?? '';
     $municipality = $data['municipality'] ?? '';
     $barangay = $data['barangay'] ?? '';

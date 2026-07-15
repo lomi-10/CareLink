@@ -6,7 +6,6 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Platform,
   Linking,
 } from 'react-native';
@@ -27,7 +26,8 @@ import {
 } from '@/lib/attendanceApi';
 import { attendanceDotBackground } from '@/lib/attendanceUi';
 import { applicationContractPdfUrl, applicationTerminationRecordUrl } from '@/constants/applications';
-import { EndEmploymentModal, SubmitComplaintModal } from '@/components/shared';
+import { EndEmploymentModal, SubmitComplaintModal, ConfirmationModal } from '@/components/shared';
+import { useNotice } from '@/hooks/shared/useNotice';
 import { mondayOfWeekContaining, ymdLocal } from '@/lib/helperWorkApi';
 import {
   isTerminationPendingStatus,
@@ -155,6 +155,8 @@ function formatStartDate(d?: string | null) {
 }
 
 export function ActiveHelperCard({ placement, parentId, compact, onPlacementChanged }: Props) {
+  const { notify, noticeHost } = useNotice();
+  const [salaryConfirmOpen, setSalaryConfirmOpen] = useState(false);
   const { color: t } = useParentTheme();
   const styles = useMemo(() => createActiveHelperCardStyles(t), [t]);
   const router = useRouter();
@@ -226,7 +228,7 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
       }
       await WebBrowser.openBrowserAsync(url);
     } catch {
-      Alert.alert('Contract', 'Could not open the contract PDF.');
+      notify('Contract', 'Could not open the contract PDF.', 'error');
     }
   };
 
@@ -239,25 +241,25 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
       }
       await WebBrowser.openBrowserAsync(url);
     } catch {
-      Alert.alert('Record', 'Could not open the termination record.');
+      notify('Record', 'Could not open the termination record.', 'error');
     }
   };
 
   const onMarkSalary = () => {
-    Alert.alert(
-      'Mark salary paid',
-      `Confirm you have paid salary for ${placement.helper_name} for ${period}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            await markSalaryPaidForPeriod(placement.application_id, period);
-            setSalaryMarked(true);
-          },
-        },
-      ],
-    );
+    // This was an Alert.alert with a button array — a no-op on web, so "Mark salary
+    // paid" did nothing there. A real confirm dialog works on both platforms.
+    setSalaryConfirmOpen(true);
+  };
+
+  const confirmMarkSalary = async () => {
+    setSalaryConfirmOpen(false);
+    try {
+      await markSalaryPaidForPeriod(placement.application_id, period);
+      setSalaryMarked(true);
+      notify('Salary marked as paid', `Recorded for ${placement.helper_name} — ${period}.`, 'success');
+    } catch (e: any) {
+      notify('Could not save', e?.message || 'Marking the salary as paid failed. Please try again.', 'error');
+    }
   };
 
   const go = (pathname: string) => {
@@ -406,6 +408,17 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
           </Text>
         </TouchableOpacity>
       </View>
+      <ConfirmationModal
+        visible={salaryConfirmOpen}
+        title="Mark salary paid"
+        message={`Confirm you have paid salary for ${placement.helper_name} for ${period}?`}
+        confirmText="Confirm"
+        cancelText="Cancel"
+        type="success"
+        onConfirm={confirmMarkSalary}
+        onCancel={() => setSalaryConfirmOpen(false)}
+      />
+      {noticeHost}
     </View>
   );
 }

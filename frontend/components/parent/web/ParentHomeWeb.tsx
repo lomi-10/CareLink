@@ -8,7 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { useParentRecommendations, useParentRecentApplicants, useParentUpcomingInterviews } from '@/hooks/parent';
+import { useParentRecommendations, useParentRecentApplicants, useParentUpcomingInterviews, useParentJobs } from '@/hooks/parent';
+import { computeHelperJobMatch, pickPrimaryOpenJob } from '@/lib/parentHelperMatch';
 import { useCareBot } from '@/contexts/CareBotContext';
 import { pt, ACCENT_GRADIENT } from './parentWebTheme';
 import { ParentHeroCard } from './ParentHeroCard';
@@ -48,8 +49,23 @@ export function ParentHomeWeb({
   const { recommendations, loading: recLoading } = useParentRecommendations();
   const { applicants, total: applicantTotal, loading: appLoading } = useParentRecentApplicants(6);
   const { interviews, loading: ivLoading } = useParentUpcomingInterviews(4);
+  const { jobs } = useParentJobs();
   const first = (userName || 'there').split(' ')[0];
-  const recs = useMemo(() => recommendations.slice(0, 2), [recommendations]);
+
+  // recommended_helpers.php ranks WHICH helpers to surface using its own server-side
+  // score (hiring history / distance / rating). That answers a different question than
+  // the per-job formula Browse Helpers and the applicants pipeline show, so displaying
+  // the server number here made one helper read 75% on the dashboard and 58% on Browse.
+  // Keep the server's picks, but re-score + re-sort with the shared formula so the
+  // percentage means the same thing on every screen.
+  const referenceJob = useMemo(() => pickPrimaryOpenJob(jobs), [jobs]);
+  const recs = useMemo(
+    () => recommendations
+      .map((h) => ({ h, score: computeHelperJobMatch(h, referenceJob).score }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 2),
+    [recommendations, referenceJob],
+  );
   const go = (p: string) => router.push(p as never);
 
   const ivToday = interviews.filter((i) => i.is_today).length;
@@ -215,8 +231,8 @@ export function ParentHomeWeb({
                   <View style={s.emptyWrap}><View style={s.emptyIc}><Ionicons name="people-outline" size={22} color={pt.accent} /></View><Text style={s.emptyText}>Post a job to see matched helpers.</Text></View>
                 ) : (
                   <View style={{ gap: 12 }}>
-                    {recs.map((h: any) => {
-                      const pct = Math.round(Number(h.match_score ?? 0));
+                    {recs.map(({ h, score }: any) => {
+                      const pct = Math.round(score);
                       const loc = [h.municipality, h.province].filter(Boolean).join(', ');
                       return (
                         <Pressable key={h.user_id} onPress={() => go('/(parent)/browse')} style={({ hovered }: any) => [s.recRow, TRANS, hovered && { borderColor: pt.accent, backgroundColor: pt.raise }]}>

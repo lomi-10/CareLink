@@ -2,7 +2,7 @@ import AnimatedPressable from '@/components/shared/AnimatedPressable';
 import FadeInView from '@/components/shared/FadeInView';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, Platform, ActivityIndicator, Alert, FlatList, TextInput,
+  View, Text, StyleSheet, Platform, ActivityIndicator, FlatList, TextInput,
   KeyboardAvoidingView, ScrollView, TouchableOpacity, Image, useWindowDimensions,
   type ListRenderItemInfo,
 } from 'react-native';
@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import API_URL from '@/constants/api';
 import { theme } from '@/constants/theme';
+import { useNotice } from '@/hooks/shared/useNotice';
 
 export type CareBotAccent = 'parent' | 'helper';
 
@@ -209,6 +210,7 @@ export function CareBotChatPanel({
   onRequestClose,
   accentRole: accentProp,
 }: CareBotChatPanelProps) {
+  const { notify, noticeHost } = useNotice();
   const [lines, setLines] = useState<ChatLine[]>([]);
   const [draft, setDraft] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -275,7 +277,7 @@ export function CareBotChatPanel({
     const trimmed = (textArg ?? draftRef.current).trim();
     if (!trimmed) return;
     if (userId < 1) {
-      Alert.alert('CareBot', 'Please sign in to use the assistant.');
+      notify('CareBot', 'Please sign in to use the assistant.');
       return;
     }
 
@@ -495,6 +497,7 @@ export function CareBotChatPanel({
       ) : (
         chatColumn
       )}
+      {noticeHost}
     </KeyboardAvoidingView>
   );
 }

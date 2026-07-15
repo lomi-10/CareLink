@@ -10,10 +10,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { theme } from '@/constants/theme';
+import { useNotice } from '@/hooks/shared/useNotice';
 import {
   fetchLeaveRequests,
   respondToLeaveRequest,
@@ -29,6 +29,7 @@ type Props = {
 };
 
 export function LeaveRequestsPanel({ applicationId, parentId, helperName, onResponded }: Props) {
+  const { notify, noticeHost } = useNotice();
   const router = useRouter();
   const [rows, setRows] = useState<LeaveRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +61,7 @@ export function LeaveRequestsPanel({ applicationId, parentId, helperName, onResp
     try {
       const res = await respondToLeaveRequest(id, parentId, 'approved');
       if (!res.success) {
-        Alert.alert('Leave', res.message || 'Could not update');
+        notify('Leave', res.message || 'Could not update', 'error');
         return;
       }
       await load();
@@ -82,7 +83,7 @@ export function LeaveRequestsPanel({ applicationId, parentId, helperName, onResp
     try {
       const res = await respondToLeaveRequest(declineId, parentId, 'declined', declineNote.trim() || null);
       if (!res.success) {
-        Alert.alert('Leave', res.message || 'Could not update');
+        notify('Leave', res.message || 'Could not update', 'error');
         return;
       }
       setDeclineOpen(false);
@@ -197,6 +198,7 @@ export function LeaveRequestsPanel({ applicationId, parentId, helperName, onResp
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      {noticeHost}
     </View>
   );
 }

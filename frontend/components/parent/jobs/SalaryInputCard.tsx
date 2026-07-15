@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { BROWN, CARAMEL, ICON_BG, DARK, MUTED, DIVIDER } from '../home/parentWarmTheme';
+import { SALARY_PERIODS, payoutBreakdown, peso, type SalaryPeriod } from '@/lib/salary';
 
 // Suggested monthly salary range per category (PHP), keyed by ref_categories.category_id
 const SUGGESTED_RANGES: Record<string, { min: number; max: number }> = {
@@ -27,10 +28,10 @@ function getSuggestedRange(categoryIds: string[]) {
 interface SalaryInputCardProps {
   salaryMin: string;
   salaryMax: string;
-  salaryPeriod: 'Daily' | 'Weekly' | 'Monthly';
+  salaryPeriod: SalaryPeriod;
   onSalaryMinChange: (value: string) => void;
   onSalaryMaxChange: (value: string) => void;
-  onPeriodChange: (period: 'Daily' | 'Weekly' | 'Monthly') => void;
+  onPeriodChange: (period: SalaryPeriod) => void;
   categoryIds?: string[];
   error?: string;
   errorMax?: string;
@@ -50,6 +51,8 @@ export function SalaryInputCard({
   disabled,
 }: SalaryInputCardProps) {
   const suggested = getSuggestedRange(categoryIds);
+  const minNum = Number(String(salaryMin).replace(/[^0-9.]/g, '')) || 0;
+  const maxNum = Number(String(salaryMax).replace(/[^0-9.]/g, '')) || 0;
 
   return (
     <View style={styles.container}>
@@ -111,20 +114,74 @@ export function SalaryInputCard({
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {errorMax ? <Text style={styles.errorText}>{errorMax}</Text> : null}
 
-      <Text style={styles.periodLabel}>Payment Period</Text>
-      <View style={styles.periodRow}>
-        {(['Daily', 'Weekly', 'Monthly'] as const).map((p) => (
-          <TouchableOpacity
-            key={p}
-            style={[styles.periodButton, salaryPeriod === p && styles.periodButtonActive]}
-            onPress={() => onPeriodChange(p)}
-            activeOpacity={0.7}
-            disabled={disabled}
-          >
-            <Text style={[styles.periodText, salaryPeriod === p && styles.periodTextActive]}>{p}</Text>
-          </TouchableOpacity>
-        ))}
+      <Text style={styles.periodLabel}>Payment Schedule</Text>
+      <Text style={styles.periodHint}>
+        How often you hand over the pay. The salary above stays the same monthly total — we just split it for you.
+      </Text>
+      <View style={styles.periodGrid}>
+        {SALARY_PERIODS.map((p) => {
+          const active = salaryPeriod === p.value;
+          return (
+            <TouchableOpacity
+              key={p.value}
+              style={[styles.periodButton, active && styles.periodButtonActive]}
+              onPress={() => onPeriodChange(p.value)}
+              activeOpacity={0.7}
+              disabled={disabled}
+            >
+              <Text style={[styles.periodText, active && styles.periodTextActive]}>{p.label}</Text>
+              <Text style={[styles.periodSub, active && styles.periodSubActive]}>{p.hint}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
+
+      {minNum >= 1 && <PayoutPreview monthly={minNum} maxMonthly={maxNum} period={salaryPeriod} />}
+    </View>
+  );
+}
+
+/** Live "what you'll actually pay each time" breakdown — the whole point of picking a schedule. */
+function PayoutPreview({ monthly, maxMonthly, period }: { monthly: number; maxMonthly: number; period: SalaryPeriod }) {
+  const lo = payoutBreakdown(monthly, period);
+  const hasRange = maxMonthly > monthly;
+  const hi = hasRange ? payoutBreakdown(maxMonthly, period) : null;
+
+  return (
+    <View style={styles.previewCard}>
+      <View style={styles.previewHead}>
+        <Ionicons name="calculator-outline" size={16} color={BROWN} />
+        <Text style={styles.previewTitle}>What you’ll pay each time</Text>
+      </View>
+
+      {lo.slices.map((slice, i) => (
+        <View key={slice.label} style={styles.previewRow}>
+          <Text style={styles.previewLabel}>{slice.label}</Text>
+          <Text style={styles.previewAmount}>
+            {lo.approximate ? '≈ ' : ''}
+            {hi ? `${peso(slice.amount)} – ${peso(hi.slices[i].amount)}` : peso(slice.amount)}
+          </Text>
+        </View>
+      ))}
+
+      <View style={styles.previewDivider} />
+      <View style={styles.previewRow}>
+        <Text style={styles.previewTotalLabel}>Monthly total</Text>
+        <Text style={styles.previewTotal}>
+          {hi ? `${peso(lo.monthly)} – ${peso(hi.monthly)}` : peso(lo.monthly)}
+        </Text>
+      </View>
+
+      {lo.approximate && (
+        <Text style={styles.previewNote}>
+          {period === 'Daily'
+            ? 'Based on 26 working days a month (6-day week). Actual pay follows days worked.'
+            : 'Based on about 4.33 weeks a month, so weekly amounts vary slightly.'}
+        </Text>
+      )}
+      {period === 'Semi-monthly' && (
+        <Text style={styles.previewNote}>Kinsenas — the monthly salary is split in half, paid twice a month.</Text>
+      )}
     </View>
   );
 }
@@ -230,14 +287,24 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 8,
   },
-  periodRow: {
+  periodHint: {
+    fontSize: 12,
+    color: MUTED,
+    marginBottom: 10,
+    lineHeight: 17,
+  },
+  periodGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   periodButton: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
+    flexGrow: 1,
+    flexBasis: 100,
+    minWidth: 92,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: DIVIDER,
     backgroundColor: '#fff',
@@ -255,5 +322,73 @@ const styles = StyleSheet.create({
   periodTextActive: {
     color: BROWN,
     fontWeight: '700',
+  },
+  periodSub: {
+    fontSize: 10.5,
+    color: MUTED,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  periodSubActive: {
+    color: BROWN,
+  },
+
+  // Live payout preview
+  previewCard: {
+    marginTop: 16,
+    backgroundColor: ICON_BG,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: DIVIDER,
+    padding: 14,
+  },
+  previewHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginBottom: 10,
+  },
+  previewTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: DARK,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  previewLabel: {
+    fontSize: 13,
+    color: MUTED,
+  },
+  previewAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: DARK,
+  },
+  previewDivider: {
+    height: 1,
+    backgroundColor: DIVIDER,
+    marginVertical: 8,
+  },
+  previewTotalLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: DARK,
+  },
+  previewTotal: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: BROWN,
+  },
+  previewNote: {
+    fontSize: 11.5,
+    color: MUTED,
+    marginTop: 8,
+    lineHeight: 16,
+    fontStyle: 'italic',
   },
 });

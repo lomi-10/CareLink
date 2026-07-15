@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { JobStatusBadge } from './JobStatusBadge';
+import { formatPayoutSchedule } from '@/lib/salary';
 
 interface JobDetailsModalProps {
   visible: boolean;
@@ -265,7 +266,7 @@ export function JobDetailsModal({ visible, onClose, job }: JobDetailsModalProps)
               <View style={s.salaryBox}>
                 <Text style={s.salaryLabel}>Offered Salary</Text>
                 <Text style={s.salaryAmount}>₱{Number(job.salary_offered).toLocaleString()}</Text>
-                <Text style={s.salaryPer}>per {job.salary_period === 'Monthly' ? 'Month' : 'Day'}</Text>
+                <Text style={s.salaryPer}>per Month · {formatPayoutSchedule(job.salary_period)}</Text>
               </View>
               <View style={s.perksRow}>
                 {isTrue(job.provides_meals)         && <PerkTag icon="restaurant"      label="Free Meals" />}

@@ -1,5 +1,6 @@
 import type { JobPost } from '@/hooks/parent/useParentJobs';
 import type { JobApplication } from '@/hooks/parent/useJobApplications';
+import { WORKING_DAYS_PER_MONTH } from '@/lib/salary';
 
 export type HelperJobMatch = {
   score: number;
@@ -99,12 +100,16 @@ function computeJobSpecificMatch(helper: MatchableHelper, job: JobPost): HelperJ
   }
 
   // 4. Salary fit (15 pts)
-  const jobMonthly = job.salary_period === 'Daily'
-    ? Number(job.salary_offered) * 26
-    : Number(job.salary_offered);
+  // A job's salary is ALWAYS monthly — post_job.php enforces the ₱7,000/month floor
+  // whatever the period, and salary_period is only the payout schedule (see lib/salary.ts).
+  // This used to multiply a Daily-scheduled job by 26, turning a ₱8,000/month post into
+  // a ₱208,000/month one and handing every helper a free salary-fit point.
+  const jobMonthly = Number(job.salary_offered);
   if (helper.expected_salary != null) {
+    // Helper profiles are the one place a Daily figure can still mean a daily RATE
+    // (helper_profiles.salary_period is enum('Daily','Monthly')), so keep converting.
     const helperMonthly = helper.salary_period === 'Daily'
-      ? helper.expected_salary * 26
+      ? helper.expected_salary * WORKING_DAYS_PER_MONTH
       : helper.expected_salary;
     if (helperMonthly <= jobMonthly) {
       pts += 15;

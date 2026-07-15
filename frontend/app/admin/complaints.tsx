@@ -8,12 +8,12 @@ import {
   SafeAreaView,
   TextInput,
   Modal,
-  Alert,
   StyleSheet,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNotice } from "@/hooks/shared/useNotice";
 import {
   fetchAdminComplaints,
   forwardComplaintToPeso,
@@ -21,6 +21,7 @@ import {
 } from "@/lib/complaintsApi";
 
 export default function AdminComplaintsScreen() {
+  const { notify, noticeHost } = useNotice();
   const router = useRouter();
   const [rows, setRows] = useState<AdminComplaintRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +41,7 @@ export default function AdminComplaintsScreen() {
       const u = JSON.parse(raw) as { user_id?: string; user_type?: string };
       const id = Number(u.user_id);
       if (u.user_type !== "admin" || !id) {
-        Alert.alert("Access denied", "Super admin only.");
+        notify("Access denied", "Super admin only.");
         router.back();
         return;
       }
@@ -67,13 +68,13 @@ export default function AdminComplaintsScreen() {
         admin_note: note.trim() || undefined,
       });
       if (!res.success) {
-        Alert.alert("Forward", res.message || "Could not forward.");
+        notify("Forward", res.message || "Could not forward.");
         return;
       }
       setForwardId(null);
       setNote("");
       await load();
-      Alert.alert("Done", "PESO officers and both parties were notified.");
+      notify("Done", "PESO officers and both parties were notified.");
     } finally {
       setBusy(false);
     }
@@ -160,6 +161,7 @@ export default function AdminComplaintsScreen() {
           </View>
         </View>
       </Modal>
+      {noticeHost}
     </SafeAreaView>
   );
 }

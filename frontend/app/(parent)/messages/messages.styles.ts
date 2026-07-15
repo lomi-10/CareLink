@@ -200,7 +200,10 @@ export const s = StyleSheet.create({
   bubbleWrap:       { marginBottom: 4, maxWidth: '75%' },
   bubbleWrapRight:  { alignSelf: 'flex-end', alignItems: 'flex-end' },
   bubbleWrapLeft:   { alignSelf: 'flex-start', alignItems: 'flex-start' },
-  bubble:           { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18 },
+  // flexShrink:1 + minWidth:0 are load-bearing: the bubble sits in a flexDirection:'row'
+  // wrapper and RN defaults flexShrink to 0 (CSS defaults to 1), so without these a long
+  // message renders at its full intrinsic width and overflows the 75% cap instead of wrapping.
+  bubble:           { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18, flexShrink: 1, minWidth: 0 },
   bubbleMine:       { backgroundColor: CARAMEL, borderBottomRightRadius: 4 },
   bubbleTheirs:     { backgroundColor: SURFACE, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: DIVIDER,
                       ...CARD_SHADOW } as any,

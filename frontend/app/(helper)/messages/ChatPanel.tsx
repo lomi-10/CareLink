@@ -6,7 +6,7 @@ import {
   View, Text, FlatList, TouchableOpacity,
   KeyboardAvoidingView, Platform,
   ActivityIndicator, Modal,
-  Linking, Alert,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -150,7 +150,7 @@ export default function ChatPanel({
 
   const handlePickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Permission required', 'Allow photo access to send images.'); return; }
+    if (!perm.granted) { showChatNotif('Allow photo access to send images.', 'warning'); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: Platform.OS !== 'web',
@@ -159,7 +159,7 @@ export default function ChatPanel({
     });
     if (!result.canceled && result.assets[0]) {
       const ok = await sendImage(result.assets[0].uri, jobPostId);
-      if (!ok) Alert.alert('Upload failed', 'Could not send the image. On web, try a smaller JPG or PNG.');
+      if (!ok) showChatNotif('Could not send the image. On web, try a smaller JPG or PNG.', 'error');
     }
   };
 

@@ -12,12 +12,21 @@ interface Skill {
   description?: string;
 }
 
+interface JobRef {
+  job_id: string | number;
+  job_title: string;
+}
+
 interface SkillsSelectorProps {
-  selectedJobIds: (string | number)[]; 
+  selectedJobIds: (string | number)[];
   availableSkills: Skill[];
+  /** Used to label each skill group with the role it belongs to. */
+  availableJobs?: JobRef[];
   selectedSkills: (string | number)[];
   customSkills: string;
   onToggleSkill: (skillId: string | number) => void;
+  /** Bulk setter — required for the per-role "Select all" toggles. */
+  onSetSkills?: (skillIds: string[]) => void;
   onCustomSkillsChange: (value: string) => void;
   disabled?: boolean;
 }
@@ -25,9 +34,11 @@ interface SkillsSelectorProps {
 export function SkillsSelector({
   selectedJobIds,
   availableSkills,
+  availableJobs = [],
   selectedSkills,
   customSkills,
   onToggleSkill,
+  onSetSkills,
   onCustomSkillsChange,
   disabled = false,
 }: SkillsSelectorProps) {
@@ -38,48 +49,104 @@ export function SkillsSelector({
     return null;
   }
 
+  const selectedIds = selectedSkills.map(String);
+  const jobIds = selectedJobIds.map(String);
+
+  // Group the skills under the role they belong to. A flat wall of chips across
+  // several roles gives employers no idea which task belongs to which job.
+  const groups = jobIds
+    .map((jid) => ({
+      jobId: jid,
+      title: availableJobs.find((j) => j.job_id.toString() === jid)?.job_title ?? 'Role',
+      skills: availableSkills.filter((s) => s.job_id.toString() === jid),
+    }))
+    .filter((g) => g.skills.length > 0);
+
+  const totalSelected = availableSkills.filter((s) => selectedIds.includes(s.skill_id.toString())).length;
+
+  const setGroup = (groupSkillIds: string[], select: boolean) => {
+    if (disabled || !onSetSkills) return;
+    const next = select
+      ? Array.from(new Set([...selectedIds, ...groupSkillIds]))
+      : selectedIds.filter((id) => !groupSkillIds.includes(id));
+    onSetSkills(next);
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>
-        Recommended Skills (Optional)
-      </Text>
+      <View style={styles.labelRow}>
+        <Text style={styles.label}>Tasks for this job (optional)</Text>
+        {totalSelected > 0 && (
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{totalSelected} selected</Text>
+          </View>
+        )}
+      </View>
       <Text style={styles.hint}>
-        Select skills or specify your own to help us match the right helper.
+        Tick the tasks you actually need. Helpers who can do them rank higher in your matches — leave it blank
+        and we&apos;ll match on the role alone.
       </Text>
 
-      {availableSkills.length > 0 && (
-        <View style={styles.skillsContainer}>
-          {availableSkills.map((skill) => {
-            const isSelected = selectedSkills.includes(skill.skill_id.toString());
-            return (
-              <TouchableOpacity
-                key={`skill-${skill.skill_id}`}
-                style={[
-                  styles.skillChip,
-                  isSelected && styles.skillChipActive,
-                  disabled && styles.skillChipDisabled,
-                ]}
-                onPress={() => !disabled && onToggleSkill(skill.skill_id.toString())}
-                activeOpacity={0.7}
-                disabled={disabled}
-              >
-                <Text
-                  style={[
-                    styles.skillText,
-                    isSelected && styles.skillTextActive,
-                    disabled && styles.skillTextDisabled,
-                  ]}
+      {groups.map((group) => {
+        const groupIds = group.skills.map((s) => s.skill_id.toString());
+        const chosen = groupIds.filter((id) => selectedIds.includes(id)).length;
+        const allOn = chosen === groupIds.length && groupIds.length > 0;
+        return (
+          <View key={`group-${group.jobId}`} style={styles.group}>
+            <View style={styles.groupHead}>
+              <View style={styles.groupTitleWrap}>
+                <Ionicons name="briefcase-outline" size={14} color={BROWN} />
+                <Text style={styles.groupTitle}>{group.title}</Text>
+                <Text style={styles.groupCount}>{chosen}/{groupIds.length}</Text>
+              </View>
+              {onSetSkills && (
+                <TouchableOpacity
+                  onPress={() => setGroup(groupIds, !allOn)}
+                  disabled={disabled}
+                  activeOpacity={0.7}
+                  style={styles.selectAllBtn}
+                  hitSlop={6}
                 >
-                  {skill.skill_name}
-                </Text>
-                {isSelected && (
-                  <Ionicons name="checkmark-circle" size={16} color={BROWN} />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
+                  <Ionicons name={allOn ? 'close-circle-outline' : 'checkmark-done-outline'} size={14} color={BROWN} />
+                  <Text style={styles.selectAllText}>{allOn ? 'Clear' : 'Select all'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.skillsContainer}>
+              {group.skills.map((skill) => {
+                const isSelected = selectedIds.includes(skill.skill_id.toString());
+                return (
+                  <TouchableOpacity
+                    key={`skill-${skill.skill_id}`}
+                    style={[
+                      styles.skillChip,
+                      isSelected && styles.skillChipActive,
+                      disabled && styles.skillChipDisabled,
+                    ]}
+                    onPress={() => !disabled && onToggleSkill(skill.skill_id.toString())}
+                    activeOpacity={0.7}
+                    disabled={disabled}
+                  >
+                    <Text
+                      style={[
+                        styles.skillText,
+                        isSelected && styles.skillTextActive,
+                        disabled && styles.skillTextDisabled,
+                      ]}
+                    >
+                      {skill.skill_name}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={16} color={BROWN} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        );
+      })}
 
       <TouchableOpacity
         style={styles.customToggle}
@@ -134,11 +201,29 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 24,
   },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 4,
+  },
   label: {
     fontSize: 16,
     fontWeight: '700',
     color: DARK,
     marginBottom: 4,
+  },
+  countBadge: {
+    backgroundColor: ICON_BG,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  countBadgeText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: BROWN,
   },
   asterisk: {
     color: '#FF3B30',
@@ -148,6 +233,51 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 16,
     lineHeight: 18,
+  },
+  group: {
+    marginBottom: 16,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: DIVIDER,
+    borderRadius: 12,
+    padding: 12,
+  },
+  groupHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 10,
+  },
+  groupTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
+  groupTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: DARK,
+  },
+  groupCount: {
+    fontSize: 11.5,
+    color: MUTED,
+    fontWeight: '600',
+  },
+  selectAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: ICON_BG,
+  },
+  selectAllText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: BROWN,
   },
   skillsContainer: {
     flexDirection: 'row',

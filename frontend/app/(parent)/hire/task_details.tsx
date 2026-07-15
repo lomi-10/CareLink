@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, ActivityIndicator, Alert, Modal,
+  StyleSheet, ActivityIndicator, Modal,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,7 +15,7 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import { BROWN, DARK, MUTED, DIVIDER, ICON_BG, GREEN, DANGER, SUBTLE } from '@/components/parent/home/parentWarmTheme';
 import { Sidebar, ParentWorkModeTabBar } from '@/components/parent/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
-import { useAuth, useResponsive } from '@/hooks/shared';
+import { useAuth, useResponsive, useNotice } from '@/hooks/shared';
 import {
   fetchApplicationTasks, updateApplicationTask,
   deleteApplicationTask, completeApplicationTask,
@@ -53,6 +53,7 @@ function MetaRow({ icon, children }: { icon: React.ComponentProps<typeof Ionicon
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function TaskDetailsScreen() {
+  const { notify, noticeHost } = useNotice();
   const router = useRouter();
   const params = useLocalSearchParams<{
     task_id: string;
@@ -120,7 +121,7 @@ export default function TaskDetailsScreen() {
         due_date: editDue.trim() || null,
         priority: editPriority,
       });
-      if (!res.success) { Alert.alert('Tasks', res.message || 'Could not save'); return; }
+      if (!res.success) { notify('Tasks', res.message || 'Could not save', 'error'); return; }
       setEditOpen(false);
       await loadTask();
     } finally { setEditSaving(false); }
@@ -132,7 +133,7 @@ export default function TaskDetailsScreen() {
     try {
       const res = await completeApplicationTask(task.id, helperId);
       if (!res.success && res.code !== 'already_done') {
-        Alert.alert('Tasks', res.message || 'Could not complete task');
+        notify('Tasks', res.message || 'Could not complete task', 'error');
         return;
       }
       setSuccessMsg('Task marked as completed!');
@@ -143,7 +144,7 @@ export default function TaskDetailsScreen() {
   const handleDelete = async () => {
     if (!task || !parentId) return;
     const res = await deleteApplicationTask(task.id, parentId);
-    if (!res.success) { Alert.alert('Tasks', res.message || 'Could not delete'); return; }
+    if (!res.success) { notify('Tasks', res.message || 'Could not delete', 'error'); return; }
     setSuccessMsg('Task deleted.');
   };
 
@@ -406,6 +407,7 @@ export default function TaskDetailsScreen() {
           </View>
         </View>
         {renderModals()}
+      {noticeHost}
       </View>
     );
   }

@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, SectionList,
   TouchableOpacity, StyleSheet, TextInput, Modal, KeyboardAvoidingView,
-  Platform, Switch, ActivityIndicator, Alert, RefreshControl,
+  Platform, Switch, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,7 +21,7 @@ import {
 import { Sidebar, ParentWorkModeTabBar, MobileMenu } from '@/components/parent/home';
 import { MobileHeader } from '@/components/helper/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
-import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
+import { useAuth, useResponsive, useNotifications, useNotice } from '@/hooks/shared';
 import { useParentPortalMode } from '@/hooks/parent/useParentPortalMode';
 import { useParentWorkDashboard, type PlacementDashData } from '@/hooks/parent/useParentWorkDashboard';
 import { useParentActivePlacements } from '@/hooks/parent/useParentActivePlacements';
@@ -162,6 +162,7 @@ function HelperTaskCard({
 // TASKS HUB  (no application_id)
 // ─────────────────────────────────────────────────────────────────────────────
 function TasksHub() {
+  const { notify, noticeHost } = useNotice();
   const router = useRouter();
   const { perPlacement, stats, loading, refresh } = useParentWorkDashboard();
   const [aiPrompt, setAiPrompt] = useState('');
@@ -190,7 +191,7 @@ function TasksHub() {
 
   const handleCategory = (cat: DbCategory) => {
     if (perPlacement.length === 0) {
-      Alert.alert('No active helpers', 'You need an active helper placement to assign tasks.');
+      notify('No active helpers', 'You need an active helper placement to assign tasks.');
       return;
     }
     router.push({
@@ -204,7 +205,7 @@ function TasksHub() {
 
   const handleCategoryLongPress = (cat: DbCategory, dim: boolean) => {
     if (!dim) return;
-    Alert.alert(
+    notify(
       cat.category_name,
       'None of your active helpers list a matching skill — tasks will default to your first active helper. You can reassign after generating.',
     );
@@ -414,6 +415,7 @@ function TasksHub() {
       )}
 
       <View style={{ height: 100 }} />
+      {noticeHost}
     </ScrollView>
   );
 }
@@ -429,6 +431,7 @@ function parseRecurDays(s: string): string[] | null {
 }
 
 function SingleHelperTasks({ applicationId, helperName }: { applicationId: number; helperName: string }) {
+  const { notify, noticeHost } = useNotice();
   const router = useRouter();
   const { userData } = useAuth();
   const parentId = userData ? Number(userData.user_id) : 0;
@@ -482,7 +485,7 @@ function SingleHelperTasks({ applicationId, helperName }: { applicationId: numbe
         due_date: dueIn.trim() || null, requires_photo: addReqPhoto,
         is_recurring: addRecurring, recur_days: parseRecurDays(recurDaysIn),
       });
-      if (!res.success) { Alert.alert('Tasks', res.message || 'Could not create'); return; }
+      if (!res.success) { notify('Tasks', res.message || 'Could not create', 'error'); return; }
       setAddOpen(false);
       setTitleIn(''); setDescIn(''); setDueIn('');
       setAddReqPhoto(false); setAddRecurring(false); setRecurDaysIn('');
@@ -650,6 +653,7 @@ function SingleHelperTasks({ applicationId, helperName }: { applicationId: numbe
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
+      {noticeHost}
     </View>
   );
 }

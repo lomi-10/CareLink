@@ -7,16 +7,14 @@ import {
   SectionList,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
-  Alert,
-  Modal,
+  ActivityIndicator,  Modal,
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { useAuth, useResponsive } from '@/hooks/shared';
+import { useAuth, useResponsive, useNotice } from '@/hooks/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { WorkModeShell } from '@/components/helper/work';
 import { ORANGE, GREEN, MUTED, DANGER, INFO, ICON_BG, INFO_BG, SUCCESS_BG, DANGER_BG } from '@/components/helper/home/helperWarmTheme';
@@ -153,6 +151,7 @@ function HeroStat({ styles, icon, color, value, label }: {
 
 export default function WorkTasksScreen() {
   const router = useRouter();
+  const { notify, noticeHost } = useNotice();
   const styles = useMemo(() => createHelperWorkTasksStyles(), []);
   const { isDesktop } = useResponsive();
   const { userData, loading: authLoading } = useAuth();
@@ -255,7 +254,7 @@ export default function WorkTasksScreen() {
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Allow photo access to attach a picture.');
+      notify('Permission needed', 'Allow photo access to attach a picture.');
       return;
     }
     const result =
@@ -273,7 +272,7 @@ export default function WorkTasksScreen() {
     try {
       const res = await completeApplicationTask(t.id, helperId, photoUrl);
       if (!res.success) {
-        Alert.alert('Tasks', res.message || 'Could not update');
+        notify('Tasks', res.message || 'Could not update', 'error');
         return;
       }
       setConfirmTask(null);
@@ -287,7 +286,7 @@ export default function WorkTasksScreen() {
   const submitComplete = async () => {
     if (!confirmTask || !helperId) return;
     if (mustCheckIn) {
-      Alert.alert(
+      notify(
         'Check in first',
         'Your employer requires you to check in for today before you can mark tasks done (except on rest days).',
       );
@@ -299,7 +298,7 @@ export default function WorkTasksScreen() {
       try {
         url = await uploadImageToCloudinary(pickedUri);
         if (!url) {
-          Alert.alert(
+          notify(
             'Upload failed',
             'Could not upload the photo. Set EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME and EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET, or try again.',
           );
@@ -310,7 +309,7 @@ export default function WorkTasksScreen() {
       }
     }
     if (confirmTask.requires_photo && !url) {
-      Alert.alert('Photo required', 'This task requires a completion photo.');
+      notify('Photo required', 'This task requires a completion photo.', 'error');
       return;
     }
     await runComplete(confirmTask, url);
@@ -606,6 +605,7 @@ export default function WorkTasksScreen() {
         />
       </View>
       {confirmModal}
+      {noticeHost}
     </WorkModeShell>
   );
 }

@@ -26,6 +26,7 @@ import { JobTitleInput } from './JobTitleInput';
 import { LocationSelector } from './LocationSelector';
 import { PreferencesCard } from './PreferencesCard';
 import { SalaryInputCard } from './SalaryInputCard';
+import { formatSalaryRange, formatPayoutSchedule } from '@/lib/salary';
 import { SkillsSelector } from './SkillsSelector';
 import { TrustBanner } from './TrustBanner';
 import { WorkArrangementCard } from './WorkArrangementCard';
@@ -46,13 +47,16 @@ interface JobPostModalProps {
   onClose: () => void;
   onSaveSuccess?: () => void;
   existingJobData?: any;
+  /** Prefill from existingJobData but create a NEW post instead of editing it. */
+  duplicate?: boolean;
 }
 
 export function JobPostModal({
   visible,
   onClose,
   onSaveSuccess,
-  existingJobData
+  existingJobData,
+  duplicate = false
 }: JobPostModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [notification, setNotification] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
@@ -242,9 +246,17 @@ export function JobPostModal({
       ? currentJobs.filter(id => id !== jobId)
       : [...currentJobs, jobId];
 
+    // Keep the skills that still belong to a selected role. This used to reset
+    // skill_ids to [] on every role tap, silently wiping the employer's picks the
+    // moment they added a second role.
+    const keptSkills = (formData.skill_ids || []).filter((sid) => {
+      const skill = availableSkills.find((s: any) => s.skill_id.toString() === sid);
+      return skill ? newJobs.includes(skill.job_id.toString()) : false;
+    });
+
     updateFields({
       job_ids: newJobs,
-      skill_ids: [],
+      skill_ids: keptSkills,
     });
 
     if (!formData.custom_job_title) {
@@ -270,6 +282,13 @@ export function JobPostModal({
       ? currentSkills.filter(id => id !== idStr)
       : [...currentSkills, idStr];
     updateField('skill_ids', newSkills);
+  };
+
+  /** Bulk setter for the per-role "Select all" toggles — looping handleToggleSkill
+   *  would read a stale formData each call and keep only the last change. */
+  const handleSetSkills = (ids: string[]) => {
+    if (isDisabled) return;
+    updateField('skill_ids', ids);
   };
 
   const handleSubmit = async () => {
@@ -302,8 +321,11 @@ export function JobPostModal({
         (submissionData as any).description = generateDescription(selCat, selJobs);
       }
 
-      const endpoint = existingJobData ? '/parent/edit_job.php' : '/parent/post_job.php';
-      if (existingJobData) {
+      // Duplicate reuses existingJobData purely to prefill the form — it must still
+      // create a new post, so never send job_post_id / hit edit_job.php in that mode.
+      const isEdit = !!existingJobData && !duplicate;
+      const endpoint = isEdit ? '/parent/edit_job.php' : '/parent/post_job.php';
+      if (isEdit) {
         (submissionData as any).job_post_id = existingJobData.job_post_id;
       }
 
@@ -367,7 +389,32 @@ export function JobPostModal({
   const renderJobSetupStep = () => (
     <View style={styles.stepContent}>
       <Text style={styles.sectionHeader}>Define the Role</Text>
-      <Text style={styles.sectionSub}>Pick a category, choose the role(s), and (optionally) add skills.</Text>
+      <Text style={styles.sectionSub}>Answer these in order — each step narrows down the next.</Text>
+
+      {/* Plain-language chain so employers aren't guessing what a "category" vs a
+          "role" vs a "skill" means. Ticks light up as each step is answered. */}
+      <View style={styles.chainCard}>
+        {([
+          { n: 1, label: 'Category', desc: 'The kind of help you need', done: !!formData.category_id },
+          { n: 2, label: 'Role', desc: 'Their job title', done: formData.job_ids.length > 0 || !!formData.custom_job_title },
+          { n: 3, label: 'Tasks', desc: 'What they’ll actually do — optional', done: formData.skill_ids.length > 0 },
+        ]).map((step, i) => (
+          <React.Fragment key={step.n}>
+            <View style={styles.chainStep}>
+              <View style={[styles.chainDot, step.done && styles.chainDotDone]}>
+                {step.done
+                  ? <Ionicons name="checkmark" size={12} color="#fff" />
+                  : <Text style={styles.chainNum}>{step.n}</Text>}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.chainLabel, step.done && styles.chainLabelDone]}>{step.label}</Text>
+                <Text style={styles.chainDesc}>{step.desc}</Text>
+              </View>
+            </View>
+            {i < 2 && <View style={styles.chainArrow}><Ionicons name="chevron-forward" size={14} color={MUTED} /></View>}
+          </React.Fragment>
+        ))}
+      </View>
 
       <CategorySelector
         categories={categories}
@@ -394,10 +441,12 @@ export function JobPostModal({
 
       <SkillsSelector
         selectedJobIds={formData.job_ids}
+        availableJobs={availableJobs}
         availableSkills={availableSkills}
         selectedSkills={formData.skill_ids}
         customSkills={formData.custom_skills || ''}
         onToggleSkill={handleToggleSkill}
+        onSetSkills={handleSetSkills}
         onCustomSkillsChange={(val) => updateField('custom_skills', val)}
         disabled={isDisabled || (availableJobs.length > 0 && formData.job_ids.length === 0)}
       />
@@ -546,8 +595,10 @@ export function JobPostModal({
 
     const salaryMinNum = parseFloat(formData.salary_min);
     const salaryMaxNum = formData.salary_max ? parseFloat(formData.salary_max) : null;
+    // The amount is monthly; salary_period is the payout schedule — appending it as
+    // "/ Semi-monthly" would read as a rate. Show the schedule separately.
     const salaryDisplay = !isNaN(salaryMinNum)
-      ? `₱${salaryMinNum.toLocaleString()}${salaryMaxNum ? ` - ₱${salaryMaxNum.toLocaleString()}` : ''} / ${formData.salary_period}`
+      ? `${formatSalaryRange(salaryMinNum, salaryMaxNum)} · ${formatPayoutSchedule(formData.salary_period)}`
       : '—';
 
     const locationDisplay = [formData.barangay, formData.municipality, formData.province].filter(Boolean).join(', ') || '—';
@@ -703,7 +754,7 @@ export function JobPostModal({
 
           <View style={styles.header}>
             <View>
-              <Text style={styles.headerTitle}>{existingJobData ? 'Update Job' : 'Create Job Post'}</Text>
+              <Text style={styles.headerTitle}>{duplicate ? 'Duplicate Job Post' : existingJobData ? 'Update Job Post' : 'Create Job Post'}</Text>
               <Text style={styles.headerSubtitle}>Provide details to find the best helper</Text>
             </View>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -756,7 +807,7 @@ export function JobPostModal({
                         <>
                           <Ionicons name="rocket" size={20} color="#fff" />
                           <Text style={styles.submitButtonText}>
-                            {isDisabled ? 'Verify First' : existingJobData ? 'Update Job' : 'Post Job'}
+                            {isDisabled ? 'Verify First' : existingJobData && !duplicate ? 'Update Job Post' : 'Post Job'}
                           </Text>
                         </>
                       )}
@@ -808,6 +859,23 @@ const styles = StyleSheet.create({
   sectionHeader: { fontSize: 20, fontWeight: '800', color: DARK, marginBottom: 8 },
   sectionSub: { fontSize: 13, color: MUTED, marginBottom: 16, marginTop: -2, lineHeight: 18 },
   sectionSubheader: { fontSize: 14, color: MUTED, marginBottom: 24 },
+
+  // Category → Role → Tasks explainer chain
+  chainCard: {
+    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6,
+    backgroundColor: ICON_BG, borderRadius: 12, padding: 12, marginBottom: 20,
+  },
+  chainStep: { flexDirection: 'row', alignItems: 'center', gap: 8, flexGrow: 1, flexBasis: 150, minWidth: 130 },
+  chainDot: {
+    width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff',
+    borderWidth: 1.5, borderColor: DIVIDER, alignItems: 'center', justifyContent: 'center',
+  },
+  chainDotDone: { backgroundColor: BROWN, borderColor: BROWN },
+  chainNum: { fontSize: 11, fontWeight: '700', color: MUTED },
+  chainLabel: { fontSize: 12.5, fontWeight: '700', color: MUTED },
+  chainLabelDone: { color: BROWN },
+  chainDesc: { fontSize: 10.5, color: MUTED, marginTop: 1 },
+  chainArrow: { paddingHorizontal: 2 },
   divider: { height: 1, backgroundColor: DIVIDER, marginVertical: 32 },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
 

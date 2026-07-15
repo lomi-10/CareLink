@@ -11,7 +11,6 @@ import {
   Modal,
   TextInput,
   Platform,
-  Alert,
   KeyboardAvoidingView,
   Pressable,
   StyleSheet,
@@ -20,7 +19,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useAuth, useResponsive } from '@/hooks/shared';
+import { useAuth, useResponsive, useNotice } from '@/hooks/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { WorkModeShell } from '@/components/helper/work';
 import {
@@ -72,6 +71,7 @@ const RED_ON_DARK = '#F87171';
 
 export default function WorkScheduleScreen() {
   const router = useRouter();
+  const { notify, noticeHost } = useNotice();
   const { action } = useLocalSearchParams<{ action?: string }>();
   const styles = useMemo(() => createHelperWorkScheduleStyles(), []);
   const { isDesktop } = useResponsive();
@@ -255,15 +255,15 @@ export default function WorkScheduleScreen() {
   const submitLeave = async () => {
     if (!activeHire || !helperId) return;
     if (leaveDate < minLeaveYmd) {
-      Alert.alert('Day off', 'Choose a date within your employment that is not in the past.');
+      notify('Day off', 'Choose a date within your employment that is not in the past.');
       return;
     }
     if (maxLeaveYmd && leaveDate > maxLeaveYmd) {
-      Alert.alert('Day off', `Choose a date on or before your contract end (${maxLeaveYmd}).`);
+      notify('Day off', `Choose a date on or before your contract end (${maxLeaveYmd}).`);
       return;
     }
     if (isDateBlocked(leaveDate)) {
-      Alert.alert(
+      notify(
         'Day off',
         'That date is not available (rest day, employer-marked day off, or you already have leave pending/approved).',
       );
@@ -277,16 +277,16 @@ export default function WorkScheduleScreen() {
         helper_note: leaveHelperNote.trim() || null,
       });
       if (!res.success) {
-        Alert.alert('Day off', res.message || 'Request failed');
+        notify('Day off', res.message || 'Request failed', 'error');
         return;
       }
       if (res.warnings?.includes('paid_limit_reached')) {
-        Alert.alert(
+        notify(
           'Request sent',
           'You have used your paid leave days for this year. If your employer approves, it will be recorded as unpaid leave.',
         );
       } else {
-        Alert.alert('Sent', 'Your employer will be notified.');
+        notify('Sent', 'Your employer will be notified.', 'success');
       }
       setLeaveOpen(false);
       await load();
@@ -301,7 +301,7 @@ export default function WorkScheduleScreen() {
     try {
       const res = await postAttendance(helperId, activeHire.application_id, 'check_in');
       if (!res.success) {
-        Alert.alert('Check in', res.message || 'Failed to check in.');
+        notify('Check in', res.message || 'Failed to check in.', 'error');
         return;
       }
       await load();
@@ -316,7 +316,7 @@ export default function WorkScheduleScreen() {
     try {
       const res = await postAttendance(helperId, activeHire.application_id, 'check_out');
       if (!res.success) {
-        Alert.alert('Check out', res.message || 'Failed to check out.');
+        notify('Check out', res.message || 'Failed to check out.', 'error');
         return;
       }
       await load();
@@ -691,7 +691,7 @@ export default function WorkScheduleScreen() {
               onChange: (v: string) => {
                 setLeaveDate(v);
                 if (modalLeaveBalance?.blocked_dates?.includes(v)) {
-                  Alert.alert(
+                  notify(
                     'Date not available',
                     'Rest day, scheduled day off, or leave already requested for that date.',
                   );
@@ -724,7 +724,7 @@ export default function WorkScheduleScreen() {
                       const ymd = ymdLocal(selected);
                       setLeaveDate(ymd);
                       if (modalLeaveBalance?.blocked_dates?.includes(ymd)) {
-                        Alert.alert(
+                        notify(
                           'Date not available',
                           'Rest day, scheduled day off, or leave already requested for that date.',
                         );
@@ -916,6 +916,7 @@ export default function WorkScheduleScreen() {
         {body}
         {leaveModal}
         {detailModal}
+        {noticeHost}
       </View>
     </WorkModeShell>
   );

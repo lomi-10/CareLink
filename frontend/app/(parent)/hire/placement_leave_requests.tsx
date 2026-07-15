@@ -9,7 +9,6 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
-  Alert,
   Modal,
   TextInput,
   KeyboardAvoidingView,
@@ -19,7 +18,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth, useResponsive } from '@/hooks/shared';
+import { useAuth, useResponsive, useNotice } from '@/hooks/shared';
 import { Sidebar } from '@/components/parent/home';
 import { theme } from '@/constants/theme';
 import {
@@ -31,6 +30,7 @@ import {
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 
 export default function PlacementLeaveRequestsScreen() {
+  const { notify, noticeHost } = useNotice();
   const router = useRouter();
   const params = useLocalSearchParams<{
     application_id?: string;
@@ -81,7 +81,7 @@ export default function PlacementLeaveRequestsScreen() {
     try {
       const res = await respondToLeaveRequest(id, parentId, 'approved');
       if (!res.success) {
-        Alert.alert('Leave request', res.message || 'Could not update');
+        notify('Leave request', res.message || 'Could not update', 'error');
         return;
       }
       await load();
@@ -102,7 +102,7 @@ export default function PlacementLeaveRequestsScreen() {
     try {
       const res = await respondToLeaveRequest(declineId, parentId, 'declined', declineNote.trim() || null);
       if (!res.success) {
-        Alert.alert('Leave request', res.message || 'Could not update');
+        notify('Leave request', res.message || 'Could not update', 'error');
         return;
       }
       setDeclineOpen(false);
@@ -296,6 +296,7 @@ export default function PlacementLeaveRequestsScreen() {
           {body}
         </View>
         {modals}
+      {noticeHost}
       </View>
     );
   }

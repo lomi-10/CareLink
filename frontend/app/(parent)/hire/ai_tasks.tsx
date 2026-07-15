@@ -4,7 +4,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, ActivityIndicator, Alert,
+  StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,7 +16,7 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import { BROWN, DARK, MUTED, DIVIDER, ICON_BG } from '@/components/parent/home/parentWarmTheme';
 import { ParentWorkModeTabBar } from '@/components/parent/home';
 import { NotificationModal, DateField } from '@/components/shared';
-import { useAuth, useResponsive } from '@/hooks/shared';
+import { useAuth, useResponsive, useNotice } from '@/hooks/shared';
 import { useParentActivePlacements } from '@/hooks/parent/useParentActivePlacements';
 import type { ActivePlacement } from '@/hooks/parent/useParentActivePlacements';
 import { createApplicationTask } from '@/lib/applicationTasksApi';
@@ -214,6 +214,7 @@ function suggestHelper(categoryKey: TemplateCategoryKey, placements: ActivePlace
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function AiTasksScreen() {
+  const { notify, noticeHost } = useNotice();
   const router = useRouter();
   const params = useLocalSearchParams<{
     prompt?: string;
@@ -382,12 +383,12 @@ export default function AiTasksScreen() {
       const results = await Promise.all(calls);
       const failed = results.filter(r => !r.success).length;
       if (failed > 0) {
-        Alert.alert('Partial error', `${failed} task(s) could not be saved. Please try again.`);
+        notify('Partial error', `${failed} task(s) could not be saved. Please try again.`, 'error');
       } else {
         setSuccessModal(true);
       }
     } catch {
-      Alert.alert('Error', 'Could not create tasks. Please check your connection and try again.');
+      notify('Error', 'Could not create tasks. Please check your connection and try again.', 'error');
     } finally {
       setSaving(false);
     }
@@ -638,6 +639,7 @@ export default function AiTasksScreen() {
           {assignBtn}
         </View>
         {modals}
+      {noticeHost}
       </View>
     );
   }

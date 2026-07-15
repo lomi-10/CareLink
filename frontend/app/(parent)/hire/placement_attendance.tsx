@@ -12,14 +12,13 @@ import {
   Modal,
   TextInput,
   Platform,
-  Alert,
   Pressable,
   KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth, useResponsive } from '@/hooks/shared';
+import { useAuth, useResponsive, useNotice } from '@/hooks/shared';
 import { Sidebar } from '@/components/parent/home';
 import { theme } from '@/constants/theme';
 import {
@@ -39,6 +38,7 @@ import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { LeaveRequestsPanel } from '@/components/parent/LeaveRequestsPanel';
 
 export default function PlacementAttendanceScreen() {
+  const { notify, noticeHost } = useNotice();
   const router = useRouter();
   const params = useLocalSearchParams<{
     application_id?: string;
@@ -191,15 +191,15 @@ export default function PlacementAttendanceScreen() {
   const saveSpecialDay = async () => {
     if (!applicationId || !parentId) return;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(specDate)) {
-      Alert.alert('Schedule', 'Use a valid date (YYYY-MM-DD).');
+      notify('Schedule', 'Use a valid date (YYYY-MM-DD).');
       return;
     }
     if (contractStart && specDate < contractStart) {
-      Alert.alert('Schedule', `Pick a date on or after the contract start (${contractStart}).`);
+      notify('Schedule', `Pick a date on or after the contract start (${contractStart}).`);
       return;
     }
     if (contractEnd && specDate > contractEnd) {
-      Alert.alert('Schedule', `Pick a date on or before the contract end (${contractEnd}).`);
+      notify('Schedule', `Pick a date on or before the contract end (${contractEnd}).`);
       return;
     }
     setSpecSaving(true);
@@ -210,7 +210,7 @@ export default function PlacementAttendanceScreen() {
       ].sort((a, b) => a.date.localeCompare(b.date));
       const res = await postContractSpecialDays(applicationId, parentId, next);
       if (!res.success) {
-        Alert.alert('Schedule', res.message || 'Could not save');
+        notify('Schedule', res.message || 'Could not save', 'error');
         return;
       }
       setSpecialDays(res.special_days ?? next);
@@ -229,7 +229,7 @@ export default function PlacementAttendanceScreen() {
     try {
       const res = await postContractSpecialDays(applicationId, parentId, next);
       if (!res.success) {
-        Alert.alert('Schedule', res.message || 'Could not save');
+        notify('Schedule', res.message || 'Could not save', 'error');
         return;
       }
       setSpecialDays(res.special_days ?? next);
@@ -606,6 +606,7 @@ export default function PlacementAttendanceScreen() {
           {body}
         </View>
         {modals}
+      {noticeHost}
       </View>
     );
   }
