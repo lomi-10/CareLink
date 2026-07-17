@@ -57,3 +57,6 @@ backend/config.local.php
 
 # Local email debug tool — must never reach the server
 backend/test_email.php
+
+# Claude Code local permission allowlist — machine-specific paths, not shareable
+.claude/settings.json
