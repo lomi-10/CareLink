@@ -1,6 +1,10 @@
 // app/(auth)/login.styles.ts
 // m = mobile styles  |  d = desktop (web) styles
-// Image placeholder positions are at the bottom — uncomment & tune once you add assets.
+//
+// Desktop is a split layout over a full-bleed background photo:
+//   left  = brand (the ONE logo) + hero copy
+//   right = form card (deliberately NO logo — the brand mark is already on the left)
+// Mobile keeps the warm cream page with the logo above the card.
 
 import { Platform, StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
@@ -8,6 +12,7 @@ import { FontFamily } from '@/constants/GlobalStyles';
 // ─── Shared values ─────────────────────────────────────────────────────────────
 const PAGE_BG     = '#FAE8D0';
 const CARD_BG     = '#FFFFFF';
+const CARD_BG_WEB = '#FDF9F3';   // faintly warm so it sits in the photo, not on it
 const INPUT_BG    = '#FDF5E8';
 const ICON_CIRCLE = '#F0DBBA';
 const LABEL       = '#2A1608';
@@ -16,6 +21,7 @@ const FORGOT      = '#E86019';
 const SIGN_IN_BTN = '#1B2B4B';
 const TRUST_COLOR = '#7A4E2A';
 const BACK_TEXT   = '#5C3A1A';
+const CREAM       = '#F6E7D2';
 
 // ─── Mobile ───────────────────────────────────────────────────────────────────
 
@@ -32,7 +38,7 @@ export const m = StyleSheet.create({
   },
 
   // brand
-  brandRow: { alignItems: 'center', marginBottom: 12, gap: 6 },
+  brandRow: { alignItems: 'center', marginBottom: 4 },
   brandName: { fontSize: 26, letterSpacing: -0.3 },
   brandCare: { fontFamily: FontFamily.fredokaSemiBold, color: '#2A1608' },
   brandLink: { fontFamily: FontFamily.fredokaSemiBold, color: '#E86019' },
@@ -42,6 +48,7 @@ export const m = StyleSheet.create({
     fontSize: 28,
     color: LABEL,
     textAlign: 'center',
+    marginTop: 10,
     marginBottom: 8,
     letterSpacing: -0.3,
   },
@@ -117,7 +124,7 @@ export const m = StyleSheet.create({
   orLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: '#D4B896' },
   orText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: '#B8956A', letterSpacing: 1 },
 
-  // sign up
+  // create account (mobile has NO staff portal — staff are web-first)
   signUpBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -134,95 +141,107 @@ export const m = StyleSheet.create({
   backRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 24 },
   backText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: BACK_TEXT },
 
-  trustRow:  { flexDirection: 'row', gap: 10, flexWrap: 'wrap', justifyContent: 'center' },
+  trustRow:  { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
   trustBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     backgroundColor: 'rgba(0,0,0,0.05)',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 999,
   },
   trustText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: TRUST_COLOR },
-
-  // ── Image placeholder positions ─────────────────────────────────────────────
-  // Absolute-positioned decorative elements layered BEHIND the SafeAreaView.
-  // Adjust sizes/offsets once you add your actual asset files.
-
-  plantLeft: {
-    position: 'absolute',
-    left: 0,
-    bottom: 0,
-    width: 160,
-    height: 280,
-  },
-  roomRight: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 220,
-    height: 340,
-  },
-  heartAccent: {
-    position: 'absolute',
-    left: 20,
-    top: '38%',
-    width: 36,
-    height: 36,
-  },
-  houseAccent: {
-    position: 'absolute',
-    right: 20,
-    top: '56%',
-    width: 44,
-    height: 44,
-  },
 });
 
 // ─── Desktop / Web ───────────────────────────────────────────────────────────
 
 export const d = StyleSheet.create({
 
+  page: { flex: 1, backgroundColor: '#1A0D04' },
+
+  /** Full-bleed background photo (assets/images/login-bg-web.png). */
+  bgImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 24,
+    paddingVertical: 40,
+    paddingHorizontal: 40,
   },
-  container: { width: '100%', maxWidth: 440 },
 
-  brandRow:  { alignItems: 'center', marginBottom: 14, gap: 8 },
-  brandName: { fontSize: 28 },
+  /** Split shell: brand left, card right. */
+  shell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 56,
+    width: '100%',
+    maxWidth: 1180,
+    alignSelf: 'center',
+  },
+
+  // ── Left: brand + hero copy ──
+  leftPanel: { flex: 1, minWidth: 0, maxWidth: 520 },
+
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 56 },
+  brandName: { fontSize: 32, letterSpacing: -0.5 },
   brandCare: { fontFamily: FontFamily.fredokaSemiBold, color: '#FFFFFF' },
   brandLink: { fontFamily: FontFamily.fredokaSemiBold, color: '#E86019' },
+  brandTag: {
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 13.5,
+    color: 'rgba(255,255,255,0.62)',
+    marginTop: 2,
+    lineHeight: 19,
+    maxWidth: 200,
+  },
+
+  heroTitle: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 44,
+    lineHeight: 54,
+    color: '#FFFFFF',
+    letterSpacing: -1,
+  },
+  heroAccent: { color: '#E86019' },
+  heroBody: {
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 15,
+    lineHeight: 24,
+    color: 'rgba(255,255,255,0.66)',
+    marginTop: 18,
+    maxWidth: 420,
+  },
+
+  // ── Right: form card (no logo by design) ──
+  card: {
+    width: 456,
+    flexGrow: 0,
+    flexShrink: 0,
+    backgroundColor: CARD_BG_WEB,
+    borderRadius: 26,
+    padding: 34,
+    ...Platform.select({
+      default: { boxShadow: '0 24px 70px rgba(0,0,0,0.45)' } as any,
+    }),
+  },
 
   title: {
     fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 30,
-    color: '#FFFFFF',
+    color: LABEL,
     textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: -0.3,
+    marginBottom: 6,
+    letterSpacing: -0.4,
   },
   subtitle: {
     fontFamily: FontFamily.fredokaRegular,
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13.5,
+    color: MUTED,
     textAlign: 'center',
-    lineHeight: 21,
-    marginBottom: 28,
-  },
-
-  card: {
-    backgroundColor: CARD_BG,
-    borderRadius: 24,
-    padding: 28,
-    marginBottom: 20,
-    ...Platform.select({
-      default: { boxShadow: '0 16px 48px rgba(0,0,0,0.35)' } as any,
-    }),
+    lineHeight: 20,
+    marginBottom: 26,
   },
 
   fieldBlock:     { marginBottom: 16 },
@@ -233,24 +252,29 @@ export const d = StyleSheet.create({
   input: {
     fontFamily: FontFamily.fredokaRegular,
     backgroundColor: INPUT_BG,
+    borderWidth: 1,
+    borderColor: '#EFDCC0',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 13,
     fontSize: 15,
     color: LABEL,
+    outlineStyle: 'none' as any,
   },
   pwRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: INPUT_BG,
+    borderWidth: 1,
+    borderColor: '#EFDCC0',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 13,
     gap: 8,
   },
-  pwInput: { fontFamily: FontFamily.fredokaRegular, flex: 1, fontSize: 15, color: LABEL, padding: 0 },
+  pwInput: { fontFamily: FontFamily.fredokaRegular, flex: 1, fontSize: 15, color: LABEL, padding: 0, outlineStyle: 'none' as any },
 
-  forgotRow:  { alignItems: 'flex-end', marginBottom: 20 },
+  forgotRow:  { alignSelf: 'flex-end', marginBottom: 20 },
   forgotText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: FORGOT },
 
   signInBtn: {
@@ -260,57 +284,68 @@ export const d = StyleSheet.create({
     gap: 10,
     backgroundColor: SIGN_IN_BTN,
     borderRadius: 14,
-    paddingVertical: 15,
-    marginBottom: 16,
+    paddingVertical: 16,
+    marginBottom: 18,
   },
   signInTxt: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: '#FFFFFF' },
 
-  orRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+  orRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
   orLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: '#D4B896' },
   orText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: '#B8956A', letterSpacing: 1 },
 
   staffBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 12,
     borderWidth: 1.5,
-    borderColor: '#C4A882',
-    borderRadius: 12,
+    borderColor: '#E2CDAB',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     paddingHorizontal: 16,
-    paddingVertical: 13,
-    marginBottom: 20,
+    paddingVertical: 12,
+    marginBottom: 18,
   },
-  staffTxt: { fontFamily: FontFamily.fredokaSemiBold, flex: 1, fontSize: 14, color: LABEL, textAlign: 'center' },
+  staffIcon: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: ICON_CIRCLE,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  staffTxt:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5, color: LABEL },
+  staffSub:  { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, marginTop: 1 },
 
   signupRow:  { flexDirection: 'row', justifyContent: 'center' },
-  signupText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED },
-  signupLink: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: FORGOT },
+  signupText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13.5, color: MUTED },
+  signupLink: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: FORGOT },
 
-  backRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  backText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+  backRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 22, alignSelf: 'flex-start' },
+  backText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: 'rgba(255,255,255,0.72)' },
 
-  // ── Web image placeholder positions ──────────────────────────────────────────
-  // Decorative elements behind the card on the web version.
-
-  webBgIllustration: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  // ── Bottom trust bar ──
+  trustBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    gap: 8,
+    backgroundColor: CREAM,
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    marginHorizontal: 40,
+    marginBottom: 26,
+    width: '100%',
+    maxWidth: 1180,
+    ...Platform.select({
+      default: { boxShadow: '0 10px 30px rgba(0,0,0,0.28)' } as any,
+    }),
   },
-  webDecorLeft: {
-    position: 'absolute',
-    left: 0,
-    bottom: 0,
-    width: 300,
-    height: 460,
+  trustItem: { flexDirection: 'row', alignItems: 'center', gap: 11, flex: 1, justifyContent: 'center' },
+  trustIcon: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: '#EBD5B4',
+    alignItems: 'center', justifyContent: 'center',
   },
-  webDecorRight: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    width: 260,
-    height: 400,
-  },
+  trustTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: LABEL },
+  trustSub:   { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: TRUST_COLOR, marginTop: 1 },
+  trustDivider: { width: StyleSheet.hairlineWidth, height: 34, backgroundColor: '#D9BE96' },
 });

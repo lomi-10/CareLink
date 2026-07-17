@@ -1,8 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
+import { AnimatedLogo } from "@/components/branding/AnimatedLogo";
 import LandingPage from "@/components/landing/LandingPage";
 import API_URL from "@/constants/api";
 import { isProfileCompleted } from "@/hooks/auth/authProfile";
@@ -60,10 +62,14 @@ export default function Index() {
     };
   }, [router]);
 
+  // Auth bootstrap runs right after the splash hands off. A bare spinner on a
+  // blank canvas (in the old legacy blue, no less) read as a second stutter —
+  // hold the brand instead so launch feels like one continuous motion.
   if (phase === "init") {
     return (
       <View style={styles.boot}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <LinearGradient colors={["#A9713A", "#6B4420", "#2E1F12"]} style={StyleSheet.absoluteFill} />
+        <AnimatedLogo size={92} />
       </View>
     );
   }

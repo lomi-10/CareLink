@@ -2,12 +2,15 @@
 import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import API_URL from "@/constants/api";
+import { isValidPhMobile } from "@/lib/phone";
 
 export interface FormData {
   first_name: string;
   middle_name: string;
   last_name: string;
   email: string;
+  /** PH mobile — a second way to sign in. Normalised server-side (shared/phone.php). */
+  phone: string;
   user_type: string;
   password: string;
   confirmpass: string;
@@ -19,7 +22,7 @@ export function useSignupForm() {
   
   const [form, setForm] = useState<FormData>({
     first_name: "", middle_name: "", last_name: "",
-    email: "", user_type: role || "", password: "", confirmpass: "",
+    email: "", phone: "", user_type: role || "", password: "", confirmpass: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -67,6 +70,17 @@ export function useSignupForm() {
       return;
     }
 
+    // Optional, but if given it must be a real PH mobile. Server re-checks and
+    // normalises (shared/phone.php) — this is only to save a round-trip.
+    if (form.phone.trim() && !isValidPhMobile(form.phone)) {
+      setNotification({
+        visible: true,
+        message: "Please enter a valid Philippine mobile number, like 0917 123 4567.",
+        type: "error",
+      });
+      return;
+    }
+
     if (!isPasswordValid) {
       setNotification({ visible: true, message: "Please ensure your password meets all requirements.", type: "warning" });
       return;
@@ -87,17 +101,26 @@ export function useSignupForm() {
       const data = await response.json();
 
       if (data.success) {
-        let successMessage = data.message;
-        if (form.user_type === 'helper') successMessage = "Registration successful! Pending PESO verification.";
-        else if (form.user_type === 'peso') successMessage = "PESO registration submitted. Pending approval.";
-        
-        setNotification({ visible: true, message: successMessage, type: "success" });
+        // Signup now emails a 6-digit code and login is gated on it, so send the
+        // user to verification rather than login — landing on login unverified
+        // would just bounce them straight back.
+        setNotification({
+          visible: true,
+          message: data.message || "Account created! Check your email for the code.",
+          type: "success",
+        });
 
-        // Wait for the modal to show, then redirect
         setTimeout(() => {
           setNotification(prev => ({ ...prev, visible: false }));
-          router.replace("/login");
-        }, 2000);
+          if (data.requires_verification) {
+            router.replace({
+              pathname: "/(auth)/verify-email",
+              params: { email: data.email ?? form.email, user_id: String(data.user_id ?? "") },
+            } as never);
+          } else {
+            router.replace("/login");
+          }
+        }, 1600);
       } else {
         setNotification({ visible: true, message: data.message || "Registration failed. Try again.", type: "error" });
       }

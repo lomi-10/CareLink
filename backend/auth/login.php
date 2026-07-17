@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 include("../dbcon.php");
+require_once __DIR__ . "/../shared/phone.php";
 
 // Helper function to get client IP
 function get_client_ip() {
@@ -34,18 +35,37 @@ if (!$data || !isset($data["email"], $data["password"])) {
     exit;
 }
 
-$email = $data["email"];
+// The "email" field doubles as the identifier: users may type an email OR a
+// mobile number. Older / less tech-savvy users remember 0917… far more reliably
+// than an email address, so both are accepted in the one box.
+$identifier = trim((string) $data["email"]);
 $password = $data["password"];
 $ip_address = get_client_ip();
 $user_agent = $_SERVER['HTTP_USER_AGENT']; // Captures "Mozilla/5.0..." (Device Info)
 
-$stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
-$stmt->bind_param("s", $email);
+$phoneLookup = carelink_looks_like_phone($identifier)
+    ? carelink_normalize_ph_mobile($identifier)
+    : null;
+
+if ($phoneLookup !== null) {
+    // Matched on the canonical number, so 0917…, +6391…, and 0917 123 4567 all
+    // find the same account.
+    $stmt = $conn->prepare("SELECT * FROM users WHERE phone = ?");
+    $stmt->bind_param("s", $phoneLookup);
+} else {
+    $email = strtolower($identifier);
+    $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
+    $stmt->bind_param("s", $email);
+}
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
-    echo json_encode(["success" => false, "message" => "Please enter correct email and/or password."]);
+    echo json_encode([
+        "success" => false,
+        "message" => "Please enter correct email/mobile number and/or password.",
+        "reason"  => "wrong_password",
+    ]);
     exit;
 }
 
@@ -61,8 +81,27 @@ $last = $row['last_name'] ?? '';
 // This creates a perfectly spaced full name, whether they have a middle name or not!
 $clean_full_name = trim($first . ' ' . $middle . $last);
 
-if (password_verify($password, $row["password"])) { 
-    
+if (password_verify($password, $row["password"])) {
+
+    // Email verification gate — checked BEFORE the approval gate so an unverified
+    // user is told to verify rather than the misleading "pending approval".
+    // Accounts created before verification shipped were backfilled as verified,
+    // so this can never lock out an existing user.
+    if (empty($row['email_verified_at'])) {
+        $log_stmt = $conn->prepare("INSERT INTO log_trail (user_id, action, module, status, ip_address, device_info) VALUES (?, 'LOGIN', 'Auth', 'Failed', ?, ?)");
+        $log_stmt->bind_param("iss", $user_id, $ip_address, $user_agent);
+        $log_stmt->execute();
+
+        echo json_encode([
+            "success"  => false,
+            "message"  => "Please verify your email to continue. Check your inbox for the 6-digit code.",
+            "reason"   => "email_unverified",
+            "user_id"  => (int) $row['user_id'],
+            "email"    => $row['email'],
+        ]);
+        exit;
+    }
+
     if ($row['status'] !== 'approved') {
         // Log Failed Attempt
         $log_stmt = $conn->prepare("INSERT INTO log_trail (user_id, action, module, status, ip_address, device_info) VALUES (?, 'LOGIN', 'Auth', 'Failed', ?, ?)");

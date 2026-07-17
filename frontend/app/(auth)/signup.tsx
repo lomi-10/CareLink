@@ -145,6 +145,27 @@ export default function SignUpScreen() {
         onChangeText={(v) => handleChange('email', v)}
       />
 
+      {/* ── Mobile number ──
+          Optional, but it becomes a second way to sign in — easier to remember
+          than an email for many users. Validated in useSignupForm via lib/phone. */}
+      <Text style={[s.label, { color: t.label }]}>
+        Mobile number <Text style={{ color: t.placeholder, fontSize: 13 }}>(optional)</Text>
+      </Text>
+      <TextInput
+        style={[s.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
+        placeholder="0917 123 4567"
+        placeholderTextColor={t.placeholder}
+        keyboardType="phone-pad"
+        autoCapitalize="none"
+        autoCorrect={false}
+        maxLength={16}
+        value={form.phone}
+        onChangeText={(v) => handleChange('phone', v)}
+      />
+      <Text style={[s.hint, { color: t.placeholder }]}>
+        You&apos;ll be able to sign in with this number instead of your email.
+      </Text>
+
       {/* ── Password ── */}
       <Text style={[s.label, { color: t.label }]}>
         Password <Text style={{ color: t.required }}>*</Text>

@@ -54,3 +54,6 @@ Thumbs.db
 
 # Portable host config (DB creds + API key) — NEVER commit
 backend/config.local.php
+
+# Local email debug tool — must never reach the server
+backend/test_email.php

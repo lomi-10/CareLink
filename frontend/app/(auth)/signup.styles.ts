@@ -86,6 +86,12 @@ export const s = StyleSheet.create({
     marginBottom: 6,
     marginTop: 12,
   },
+  hint: {
+    fontFamily: FontFamily.fredokaRegular,
+    fontSize: 11.5,
+    lineHeight: 16,
+    marginTop: 5,
+  },
   input: {
     fontFamily: FontFamily.fredokaRegular,
     borderWidth: 1,

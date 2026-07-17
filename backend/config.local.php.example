@@ -20,4 +20,27 @@ return [
 
     // ── Google Gemini (same key your chatbot already uses) ──
     'GEMINI_API_KEY' => 'AIza...your_key...',
+
+    // ── Email (signup verification + password reset) ──
+    //
+    // GMAIL SETUP — takes about 5 minutes:
+    //   1. Google Account → Security → turn ON 2-Step Verification (required
+    //      before App passwords appear at all).
+    //   2. Google Account → Security → App passwords → app "Mail", device "Other"
+    //      → name it "CareLink" → Generate.
+    //   3. Paste the 16-character code below as MAIL_PASSWORD, spaces removed.
+    //      This is NOT your normal Gmail password, and it only works with 2FA on.
+    //
+    // Gmail sends ~500 emails/day — far more than a demo needs.
+    'MAIL_HOST'      => 'smtp.gmail.com',
+    'MAIL_PORT'      => '587',                  // 587 = STARTTLS, 465 = SSL
+    'MAIL_USERNAME'  => 'youraddress@gmail.com',
+    'MAIL_PASSWORD'  => 'abcdefghijklmnop',     // 16-char App Password, no spaces
+    'MAIL_FROM'      => 'youraddress@gmail.com',
+    'MAIL_FROM_NAME' => 'CareLink',
+
+    // Later, to send from your own domain instead (better deliverability), only
+    // these values change — no code edits:
+    //   'MAIL_HOST' => 'smtp.hostinger.com', 'MAIL_PORT' => '465',
+    //   'MAIL_USERNAME' => 'noreply@yourdomain.com', 'MAIL_PASSWORD' => '...',
 ];

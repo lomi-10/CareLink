@@ -19,7 +19,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 try {
     
-    require_once "../dbcon.php"; 
+    require_once "../dbcon.php";
+    require_once __DIR__ . "/../shared/auth_codes.php";
+    require_once __DIR__ . "/../shared/phone.php";
+    require_once __DIR__ . "/../shared/mailer.php";
 
     if (!$conn) {
         throw new Exception("Database connection failed: " . $conn->connect_error);
@@ -73,6 +76,28 @@ try {
         exit();
     }
 
+    // Mobile number — a second way to sign in, for users who find a number easier
+    // to remember than an email. Stored canonically (09XXXXXXXXX) so every format
+    // the user might type resolves to the same account. Optional: existing users
+    // and anyone who'd rather not give a number still sign in with email.
+    $phone = null;
+    if (!empty($data['phone'])) {
+        $phone = carelink_normalize_ph_mobile((string) $data['phone']);
+        if ($phone === null) {
+            echo json_encode(["success" => false, "message" => "Please enter a valid Philippine mobile number, like 0917 123 4567."]);
+            exit();
+        }
+        $pstmt = $conn->prepare("SELECT user_id FROM users WHERE phone = ?");
+        $pstmt->bind_param("s", $phone);
+        $pstmt->execute();
+        if ($pstmt->get_result()->num_rows > 0) {
+            $pstmt->close();
+            echo json_encode(["success" => false, "message" => "That mobile number is already registered. Try signing in instead."]);
+            exit();
+        }
+        $pstmt->close();
+    }
+
     // 5. GENERATE USERNAME
     $username_base = explode('@', $email)[0];
     $username_base = preg_replace("/[^a-zA-Z0-9]/", "", $username_base);
@@ -101,14 +126,14 @@ try {
     $status = "pending";
 
     // Notice we are inserting first_name, middle_name, and last_name now!
-    $insertQuery = "INSERT INTO users (first_name, middle_name, last_name, username, email, password, user_type, status, privacy_consent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+    $insertQuery = "INSERT INTO users (first_name, middle_name, last_name, username, email, phone, password, user_type, status, privacy_consent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
     $stmt = $conn->prepare($insertQuery);
     if (!$stmt) {
         throw new Exception("SQL Prepare Error (Users): " . $conn->error);
     }
 
-    $stmt->bind_param("ssssssss", $first_name, $middle_name, $last_name, $username, $email, $hashedPassword, $user_type, $status);
+    $stmt->bind_param("sssssssss", $first_name, $middle_name, $last_name, $username, $email, $phone, $hashedPassword, $user_type, $status);
 
     if (!$stmt->execute()) {
         throw new Exception("Failed to insert user: " . $stmt->error);
@@ -120,10 +145,11 @@ try {
 
     // 9. INSERT INTO PROFILE TABLES
     if ($user_type === 'parent') {
-        $profSql = "INSERT INTO parent_profiles (user_id) VALUES (?)";
+        // Prefill contact_number so the user isn't asked for the same number twice.
+        $profSql = "INSERT INTO parent_profiles (user_id, contact_number) VALUES (?, ?)";
         $profStmt = $conn->prepare($profSql);
         if ($profStmt) {
-            $profStmt->bind_param("i", $new_user_id);
+            $profStmt->bind_param("is", $new_user_id, $phone);
             $profStmt->execute();
             $profStmt->close();
         } else {
@@ -132,10 +158,10 @@ try {
     } 
     else if ($user_type === 'helper') {
         // Setting a default verification status for helpers
-        $profSql = "INSERT INTO helper_profiles (user_id) VALUES (?)";
+        $profSql = "INSERT INTO helper_profiles (user_id, contact_number) VALUES (?, ?)";
         $profStmt = $conn->prepare($profSql);
         if ($profStmt) {
-            $profStmt->bind_param("i", $new_user_id);
+            $profStmt->bind_param("is", $new_user_id, $phone);
             $profStmt->execute();
             $profStmt->close();
         } else {
@@ -146,10 +172,27 @@ try {
     // 10. COMMIT TRANSACTION (Save everything)
     $conn->commit();
 
-    // Send success response back to React Native
+    // 11. EMAIL VERIFICATION
+    // Deliberately AFTER the commit: the account is valid whether or not our SMTP
+    // is reachable. If the mail fails the user can hit "Resend" instead of losing
+    // a registration to someone else's outage.
+    $emailSent = false;
+    try {
+        $code = carelink_issue_code($conn, (int) $new_user_id, 'verify_email');
+        $emailSent = carelink_send_verification_code($email, $first_name, $code);
+    } catch (Throwable $mailErr) {
+        error_log('Signup verification email failed for ' . $email . ': ' . $mailErr->getMessage());
+    }
+
     echo json_encode([
-        "success" => true, 
-        "message" => "Account created successfully!"
+        "success"          => true,
+        "message"          => $emailSent
+            ? "Account created! Check your email for the 6-digit code."
+            : "Account created, but we couldn't send the verification email. Tap Resend to try again.",
+        "user_id"          => (int) $new_user_id,
+        "email"            => $email,
+        "requires_verification" => true,
+        "email_sent"       => $emailSent,
     ]);
 
 } catch (Exception $e) {

@@ -95,13 +95,25 @@ export function useLoginForm() {
         // FAILURE HANDLING
         setPassword("");
 
-        if (data.reason === "wrong_password" || !data.reason) {
+        if (data.reason === "email_unverified") {
+          // Correct password, unverified inbox — send them to finish verifying
+          // instead of burning a login attempt on something that isn't their fault.
+          setNotification({ visible: true, message: data.message, type: "info" });
+          setTimeout(() => {
+            setNotification(prev => ({ ...prev, visible: false }));
+            router.push({
+              pathname: "/(auth)/verify-email",
+              params: { email: data.email ?? email, user_id: String(data.user_id ?? "") },
+            } as never);
+          }, 1200);
+
+        } else if (data.reason === "wrong_password" || !data.reason) {
           const newAttempts = attemptsLeft - 1;
           setAttemptsLeft(newAttempts);
 
           if (newAttempts <= 0) handleLockout();
           else setNotification({ visible: true, message: `${data.message || "Incorrect email or password."}\n${newAttempts} attempt${newAttempts !== 1 ? "s" : ""} left.`, type: "error" });
-        
+
         } else if (data.reason === "Account Pending") {
           // PENDING USER (not yet approved by PESO — still complete profile & docs for verification)
           const mergedUser = {

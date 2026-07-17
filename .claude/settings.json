@@ -92,7 +92,26 @@
       "Bash(awk 'NR>212 && /^  \\\\\\);/{print NR\": \"$0}' components/shared/CareBotChatPanel.tsx)",
       "Bash(node /tmp/swap.js components/parent/home/ActiveHelperCard.tsx)",
       "Bash(node /tmp/inline.js components/parent/home/ActiveHelperCard.tsx)",
-      "Bash(node /tmp/fixcr.js components/parent/home/ActiveHelperCard.tsx)"
+      "Bash(node /tmp/fixcr.js components/parent/home/ActiveHelperCard.tsx)",
+      "Bash(/c/laragon/bin/mysql/mysql-8.4.3-winx64/bin/mysql.exe -u root carelink -e \"SHOW TABLES;\")",
+      "Bash(awk '/── Mobile ─/,/^\\\\/\\\\/ ─── Shared/' \"app/\\(auth\\)/login.tsx\")",
+      "Bash(/c/laragon/bin/mysql/mysql-8.4.3-winx64/bin/mysql.exe -u root carelink -e \"DESCRIBE users;\")",
+      "Bash(grep -rn 'carelink_cfg\\\\|getenv\\\\|$_ENV' backend/dbcon.php)",
+      "Bash(composer require *)",
+      "Bash(/c/laragon/bin/mysql/mysql-8.4.3-winx64/bin/mysql.exe -u root carelink -e 'SELECT COUNT\\(*\\) AS existing_users FROM users;')",
+      "Bash(/c/laragon/bin/php/php-8.3.30-Win32-vs16-x64/php.exe /tmp/flow.php)",
+      "Bash(/c/laragon/bin/php/php-8.3.30-Win32-vs16-x64/php.exe /tmp/mailcheck.php)",
+      "Bash(rm -f /tmp/t.php /tmp/flow.php /tmp/mailcheck.php)",
+      "Bash(git check-ignore *)",
+      "Bash(/c/laragon/bin/php/php-8.3.30-Win32-vs16-x64/php.exe /tmp/backfill.php)",
+      "Bash(rm -f /tmp/backfill.php)",
+      "Bash(grep -n '\\\\$email' auth/login.php)",
+      "Bash(/c/laragon/bin/php/php-8.3.30-Win32-vs16-x64/php.exe /tmp/plogin.php)",
+      "Bash(rm -f /tmp/plogin.php)",
+      "Bash(/c/laragon/bin/mysql/mysql-8.4.3-winx64/bin/mysql.exe -u root -e 'SELECT VERSION\\(\\);')",
+      "Bash(/c/laragon/bin/mysql/mysql-8.4.3-winx64/bin/mysql.exe -u root -e 'DROP DATABASE IF EXISTS carelink_migtest; CREATE DATABASE carelink_migtest;')",
+      "Bash(/c/laragon/bin/mysql/mysql-8.4.3-winx64/bin/mysql.exe -u root carelink_migtest -e ' *)",
+      "Bash(/c/laragon/bin/mysql/mysql-8.4.3-winx64/bin/mysql.exe -u root carelink_migtest)"
     ]
   }
 }

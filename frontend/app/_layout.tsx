@@ -17,9 +17,10 @@ import { ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import { AnimatedSplash } from '@/components/branding/AnimatedSplash';
 
 export const unstable_settings = {
   // Fix 1: Change initial route to 'index' (your landing page)
@@ -78,18 +79,21 @@ export default function RootLayout() {
     'Fredoka-SemiBold': Fredoka_600SemiBold,
     'Fredoka-Bold': Fredoka_700Bold,
   });
-
-  if (!fontsLoaded) {
-    return null;
-  }
+  // The splash owns the launch window. This used to `return null` while fonts
+  // loaded, which showed a blank screen between the OS splash and the first
+  // route — the app looked like it stuttered on open.
+  const [splashDone, setSplashDone] = useState(false);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ActionSheetProvider>
         <ColorSchemePreferenceProvider>
           <CareBotProvider>
-            <RootLayoutInner />
-            <CareBotFab />
+            {fontsLoaded && <RootLayoutInner />}
+            {fontsLoaded && <CareBotFab />}
+            {!splashDone && (
+              <AnimatedSplash ready={fontsLoaded} onFinish={() => setSplashDone(true)} />
+            )}
           </CareBotProvider>
         </ColorSchemePreferenceProvider>
       </ActionSheetProvider>
