@@ -22,6 +22,10 @@ const CARELINK_DOC_ALLOWED_TYPES = [
 
 const CARELINK_DOC_MAX_BYTES = 5 * 1024 * 1024; // 5MB, same cap for every document type
 
+// carelink_signed_document_url() needs carelink_url_scheme(). Callers normally
+// pull this in via dbcon.php, but require it here so this file works standalone.
+require_once __DIR__ . '/../load_config.php';
+
 /**
  * Validates one entry from $_FILES against real content, not just the name.
  *
@@ -121,12 +125,18 @@ function carelink_verify_document_token(int $documentId, int $expires, string $t
  */
 function carelink_signed_document_url(int $documentId, string $side = 'front'): string
 {
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+    // MUST use carelink_url_scheme(): on shared hosts (Hostinger) the site sits
+    // behind a proxy that terminates TLS, so $_SERVER['HTTPS'] is often unset even
+    // though the page is served over HTTPS — it signals via X-Forwarded-Proto
+    // instead. Guessing "http" here produced http:// document links on an https://
+    // page, which browsers silently block as mixed content: the viewer opened but
+    // rendered an empty black frame. carelink_url_scheme() checks all three signals.
+    $scheme = carelink_url_scheme(); // already includes "://"
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     ['expires' => $expires, 'token' => $token] = carelink_sign_document_token($documentId);
     // The token authorizes the whole document; ?side just picks which file of it
     // (front image vs the optional back image, e.g. for a two-sided Valid ID).
     $sideParam = $side === 'back' ? '&side=back' : '';
-    return "{$protocol}://{$host}/carelink_api/shared/serve_document.php"
+    return "{$scheme}{$host}/carelink_api/shared/serve_document.php"
         . "?document_id={$documentId}&expires={$expires}&token=" . urlencode($token) . $sideParam;
 }
