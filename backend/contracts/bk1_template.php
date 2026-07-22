@@ -236,7 +236,7 @@ function carelink_bk1_build_html(array $d): string
     <tr>
       <td style="border:1px solid #E0D5C8; padding:10px; width:25%; vertical-align:top;">
         <div style="font-size:8pt; font-weight:bold; color:#C8733A; margin-bottom:4px;">POSITION</div>
-        <div style="font-size:11pt; font-weight:bold; color:#1A1A1A;">' . $d['job_title'] . '</div>
+        <div style="font-size:11pt; font-weight:bold; color:#1A1A1A;">' . ($d['category_name'] ?? $d['job_title']) . '</div>
       </td>
       <td style="border:1px solid #E0D5C8; padding:10px; width:25%; vertical-align:top;">
         <div style="font-size:8pt; font-weight:bold; color:#C8733A; margin-bottom:4px;">WORK ARRANGEMENT</div>
@@ -264,7 +264,10 @@ function carelink_bk1_build_html(array $d): string
         <div style="font-size:8pt; font-weight:bold; color:#C8733A; margin-bottom:4px;">REST DAY</div>
         <div style="font-size:11pt; font-weight:bold; color:#1A1A1A;">' . $d['rest_days'] . '</div>
       </td>
-      <td style="border:1px solid #E0D5C8; padding:10px; width:25%; vertical-align:top;">&nbsp;</td>
+      <td style="border:1px solid #E0D5C8; padding:10px; width:25%; vertical-align:top;">
+        <div style="font-size:8pt; font-weight:bold; color:#C8733A; margin-bottom:4px;">SKILLS</div>
+        <div style="font-size:10pt; color:#1A1A1A;">' . ($d['skills'] ?? 'N/A') . '</div>
+      </td>
     </tr>
   </table>
 
@@ -335,7 +338,7 @@ function carelink_bk1_build_html(array $d): string
     <tr>
       <td style="width:50%; vertical-align:top; padding-right:14px;">
         ' . $termItem(1, 'Place of Work', 'The helper shall work at the employer&#39;s residence located at ' . $d['place_of_work'] . '.') . '
-        ' . $termItem(2, 'Job Title', 'The helper shall be employed as ' . $d['job_title'] . '.') . '
+        ' . $termItem(2, 'Job Title', 'The helper shall be employed as a ' . ($d['category_name'] ?? $d['job_title']) . ' (specific roles: ' . $d['job_title'] . ').') . '
         ' . $termItem(3, 'Duties and Responsibilities', 'The helper shall perform the duties as listed in Page 1 of this agreement and other reasonable tasks related to the household.') . '
         ' . $termItem(4, 'Working Hours', 'The regular working hours shall be ' . $d['work_hours'] . '. Overtime work must be agreed upon and paid accordingly.') . '
         ' . $termItem(5, 'Rest Day', 'The helper shall have at least one (1) rest day every week, which is ' . $d['rest_days'] . '.') . '

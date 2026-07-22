@@ -20,14 +20,6 @@ export type DurationUnit = 'Days' | 'Weeks' | 'Months' | 'Years';
 
 export const DURATION_UNITS: DurationUnit[] = ['Days', 'Weeks', 'Months', 'Years'];
 
-export const DURATION_QUICK_PRESETS: { label: string; amount: number; unit: DurationUnit }[] = [
-  { label: '3 Months', amount: 3, unit: 'Months' },
-  { label: '6 Months', amount: 6, unit: 'Months' },
-  { label: '1 Year', amount: 1, unit: 'Years' },
-  { label: '2 Years', amount: 2, unit: 'Years' },
-  { label: '3 Years', amount: 3, unit: 'Years' },
-];
-
 /** Today + 3 days, as YYYY-MM-DD — default suggested employment start date */
 export function defaultStartDate(): string {
   const d = new Date();

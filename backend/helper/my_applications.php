@@ -28,6 +28,10 @@ try {
     $allRefJobs = [];
     $rjRes = $conn->query("SELECT job_id, job_title FROM ref_jobs");
     if ($rjRes) { while ($r = $rjRes->fetch_assoc()) $allRefJobs[$r['job_id']] = $r['job_title']; }
+    // Pre-fetch ref_skills names (for the contract's Skills field)
+    $allRefSkills = [];
+    $rsRes = $conn->query("SELECT skill_id, skill_name FROM ref_skills");
+    if ($rsRes) { while ($r = $rsRes->fetch_assoc()) $allRefSkills[$r['skill_id']] = $r['skill_name']; }
 
     // Fetch all applications for this helper
     $stmt = $conn->prepare("
@@ -58,6 +62,8 @@ try {
             jp.province,
             jp.status as job_status,
             jp.job_ids,
+            jp.skill_ids,
+            jp.custom_skills,
             rc.category_name,
             u.user_id as parent_id,
             u.first_name,
@@ -137,6 +143,13 @@ try {
         // Resolve job_ids to names
         $jobIds   = json_decode($app['job_ids'] ?? '[]', true) ?: [];
         $jobNames = array_values(array_filter(array_map(fn($id) => $allRefJobs[(int)$id] ?? null, $jobIds)));
+        // Resolve skill_ids (+ any custom free-text skills) to names for the contract
+        $skillIds   = json_decode($app['skill_ids'] ?? '[]', true) ?: [];
+        $skillNames = array_values(array_filter(array_map(fn($id) => $allRefSkills[(int)$id] ?? null, $skillIds)));
+        $customSk   = json_decode($app['custom_skills'] ?? '[]', true);
+        if (is_array($customSk)) {
+            foreach ($customSk as $cs) { $cs = trim((string) $cs); if ($cs !== '') $skillNames[] = $cs; }
+        }
 
         $applications[] = [
             'application_id' => $app['application_id'],
@@ -184,6 +197,7 @@ try {
             'location'      => trim(implode(', ', array_filter([$app['municipality'], $app['province']]))),
             'category_name' => $app['category_name'] ?? null,
             'job_names'     => $jobNames,
+            'skill_names'   => $skillNames,
             'parent_id' => $app['parent_id'],
             'parent_name' => $app['first_name'] . ' ' . $app['last_name'],
             'parent_verified' => $app['verification_status'] === 'approved',

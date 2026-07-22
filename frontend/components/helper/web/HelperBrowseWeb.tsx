@@ -14,6 +14,8 @@ import { useBrowseJobs, type JobPost } from '@/hooks/helper';
 import { useJobReferences } from '@/hooks/shared/useJobReferences';
 import { formatParentHouseholdType } from '@/constants/parentHousehold';
 import { NotificationModal } from '@/components/shared';
+import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
+import { isShareableWithEmployer } from '@/constants/documents';
 import { AdvancedSearchModal } from '@/components/helper/jobs';
 import { groupJobsByParent } from '@/app/(helper)/browse/browseHelpers';
 import { HelperTopNav } from './HelperTopNav';
@@ -229,26 +231,33 @@ function RecCard({ job, active, onView, onSave }: { job: JobPost; active: boolea
   const match = Math.round(Number(job.match_score ?? 0));
   const salary = Number(job.salary_offered);
   return (
-    <Pressable onPress={onView} style={({ hovered }: any) => [s.recCard, active && s.recCardActive, TRANS, hovered && !active && s.recCardHover]}>
-      <View style={s.recTop}>
-        {match > 0 && <View style={s.matchPill}><Text style={s.matchPillText}>{match}% Match</Text></View>}
-        <View style={{ flex: 1 }} />
-        <Pressable onPress={(e: any) => { e.stopPropagation?.(); onSave(); }} hitSlop={8}><Ionicons name={job.is_saved ? 'heart' : 'heart-outline'} size={19} color={job.is_saved ? wt.red : wt.subtle} /></Pressable>
-      </View>
-      <View style={s.recBody}>
-        <View style={s.recIc}><Ionicons name={CAT_ICON(job.categories?.[0] ?? job.title)} size={20} color={wt.accent} /></View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={s.recTitle} numberOfLines={1}>{job.title}</Text>
-          <Text style={s.recFam} numberOfLines={1}>{job.parent_name || 'Employer'}</Text>
-          <View style={s.recLoc}><Ionicons name="location-outline" size={12} color={wt.subtle} /><Text style={s.recLocText} numberOfLines={1}>{[job.municipality, job.province].filter(Boolean).join(', ')}</Text></View>
-        </View>
-      </View>
-      {salary > 0 && <Text style={s.recSalary}>₱{salary.toLocaleString()} <Text style={s.recSalaryPer}>/ {fmtPeriod(job.salary_period)}</Text></Text>}
-      <View style={s.recTags}>
-        {!!job.employment_type && <View style={s.recTag}><Ionicons name="home-outline" size={11} color={wt.muted} /><Text style={s.recTagText}>{job.employment_type}</Text></View>}
-        {!!job.work_schedule && <View style={s.recTag}><Ionicons name="time-outline" size={11} color={wt.muted} /><Text style={s.recTagText}>{job.work_schedule}</Text></View>}
-      </View>
-      <View style={s.recBtn}><Text style={s.recBtnText}>View Job</Text></View>
+    <Pressable onPress={onView} style={({ hovered }: any) => [s.recCard, active && s.recCardActive, TRANS, (hovered || active) && s.recCardHover]}>
+      {({ hovered }: any) => (
+        <>
+          <View style={s.recTop}>
+            {match > 0 && <View style={s.matchPill}><Text style={s.matchPillText}>{match}% Match</Text></View>}
+            <View style={{ flex: 1 }} />
+            <Pressable onPress={(e: any) => { e.stopPropagation?.(); onSave(); }} hitSlop={8}><Ionicons name={job.is_saved ? 'heart' : 'heart-outline'} size={19} color={job.is_saved ? wt.red : wt.subtle} /></Pressable>
+          </View>
+          <View style={s.recBody}>
+            <View style={[s.recIc, hovered && { backgroundColor: wt.accent }]}><Ionicons name={CAT_ICON(job.categories?.[0] ?? job.title)} size={20} color={hovered ? '#fff' : wt.accent} /></View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[s.recTitle, hovered && { color: wt.accent }]} numberOfLines={1}>{job.title}</Text>
+              <Text style={s.recFam} numberOfLines={1}>{job.parent_name || 'Employer'}</Text>
+              <View style={s.recLoc}><Ionicons name="location-outline" size={12} color={wt.subtle} /><Text style={s.recLocText} numberOfLines={1}>{[job.municipality, job.province].filter(Boolean).join(', ')}</Text></View>
+            </View>
+          </View>
+          {salary > 0 && <Text style={s.recSalary}>₱{salary.toLocaleString()} <Text style={s.recSalaryPer}>/ {fmtPeriod(job.salary_period)}</Text></Text>}
+          <View style={s.recTags}>
+            {!!job.employment_type && <View style={s.recTag}><Ionicons name="home-outline" size={11} color={wt.muted} /><Text style={s.recTagText}>{job.employment_type}</Text></View>}
+            {!!job.work_schedule && <View style={s.recTag}><Ionicons name="time-outline" size={11} color={wt.muted} /><Text style={s.recTagText}>{job.work_schedule}</Text></View>}
+          </View>
+          <View style={[s.recBtn, hovered && s.recBtnHover]}>
+            <Text style={s.recBtnText}>View Job</Text>
+            <Ionicons name="arrow-forward" size={15} color="#fff" style={{ marginLeft: 6, opacity: hovered ? 1 : 0 }} />
+          </View>
+        </>
+      )}
     </Pressable>
   );
 }
@@ -281,7 +290,10 @@ function FamilyCard({ g, active, onView }: { g: any; active: boolean; onView: ()
 function JobPanel({ job, pp, onViewHousehold, onApply, onToggleSave }: { job: JobPost; pp: any; onViewHousehold: () => void; onApply: () => void; onToggleSave: () => void }) {
   const [saved, setSaved] = useState(!!job.is_saved);
   const [moreDesc, setMoreDesc] = useState(false);
+  const [showAllReqs, setShowAllReqs] = useState(false);
+  const [showMatch, setShowMatch] = useState(false);
   const match = Math.round(Number(job.match_score ?? 0));
+  const matchReasons: string[] = Array.isArray(job.match_reasons) ? job.match_reasons : [];
   const salary = Number(job.salary_offered);
   const location = [job.municipality, job.province].filter(Boolean).join(', ');
   const rating = Number(pp?.avg_rating ?? job.parent_rating ?? 0);
@@ -305,8 +317,36 @@ function JobPanel({ job, pp, onViewHousehold, onApply, onToggleSave }: { job: Jo
     <View>
       <View style={s.jpTop}>
         <View style={{ flex: 1 }}>
-          {match > 0 && <View style={[s.matchPill, { alignSelf: 'flex-start', marginBottom: 8 }]}><Text style={s.matchPillText}>{match}% Match</Text></View>}
+          {match > 0 && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+              <View style={s.matchPillBig}>
+                <Ionicons name="sparkles" size={13} color={wt.green} />
+                <Text style={s.matchPillBigText}>{match}% Match</Text>
+              </View>
+              <Pressable onPress={() => setShowMatch(true)} style={({ hovered }: any) => [s.whyBtn, TRANS, hovered && s.whyBtnHover]}>
+                {({ hovered }: any) => (
+                  <>
+                    <Ionicons name="help-circle" size={15} color={hovered ? '#fff' : wt.accent} />
+                    <Text style={[s.whyBtnText, hovered && { color: '#fff' }]}>Why this match?</Text>
+                    <Ionicons name="chevron-forward" size={13} color={hovered ? '#fff' : wt.accent} />
+                  </>
+                )}
+              </Pressable>
+            </View>
+          )}
           <Text style={s.jpTitle}>{job.title}</Text>
+          {/* The title is intentionally concise (the category when several roles are
+              picked) — the specific roles live here so nothing is lost. */}
+          {Array.isArray(job.job_names) && job.job_names.length > 0 && (
+            <View style={s.rolesBlock}>
+              <Text style={s.rolesLabel}>Roles included</Text>
+              <View style={s.rolesWrap}>
+                {job.job_names.map((r: string, i: number) => (
+                  <View key={i} style={s.roleChip}><Text style={s.roleChipText}>{r}</Text></View>
+                ))}
+              </View>
+            </View>
+          )}
           <View style={s.jpFamRow}>
             <Text style={s.jpFam}>{job.parent_name || 'Employer'}</Text>
             {job.parent_verified && <View style={s.verPill}><Ionicons name="checkmark-circle" size={11} color={wt.green} /><Text style={s.verPillText}>PESO Verified</Text></View>}
@@ -357,8 +397,8 @@ function JobPanel({ job, pp, onViewHousehold, onApply, onToggleSave }: { job: Jo
       {reqs.length > 0 && (
         <View style={s.jpSection}>
           <Text style={s.jpSecTitle}>Requirements</Text>
-          {reqs.slice(0, 4).map((r) => <View key={r} style={s.reqRow}><Ionicons name="checkmark-circle" size={16} color={wt.green} /><Text style={s.reqText}>{r}</Text></View>)}
-          {reqs.length > 4 && <Text style={s.jpLink}>View all requirements</Text>}
+          {(showAllReqs ? reqs : reqs.slice(0, 4)).map((r) => <View key={r} style={s.reqRow}><Ionicons name="checkmark-circle" size={16} color={wt.green} /><Text style={s.reqText}>{r}</Text></View>)}
+          {reqs.length > 4 && <Pressable onPress={() => setShowAllReqs((v) => !v)}><Text style={s.jpLink}>{showAllReqs ? 'Show fewer' : `View all requirements (${reqs.length})`}</Text></Pressable>}
         </View>
       )}
 
@@ -376,6 +416,16 @@ function JobPanel({ job, pp, onViewHousehold, onApply, onToggleSave }: { job: Jo
         </Pressable>
         <Pressable onPress={() => { setSaved((v) => !v); onToggleSave(); }} style={({ hovered }: any) => [s.saveBtn, TRANS, hovered && { borderColor: wt.accent }]}><Ionicons name={saved ? 'heart' : 'heart-outline'} size={20} color={saved ? wt.red : wt.muted} /></Pressable>
       </View>
+
+      <MatchBreakdownModal
+        visible={showMatch}
+        onClose={() => setShowMatch(false)}
+        score={match}
+        reasons={matchReasons}
+        jobTitle={job.title}
+        themeKey="helper"
+        subjectLabel="job"
+      />
     </View>
   );
 }
@@ -518,7 +568,9 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
         const user = JSON.parse(raw);
         const res = await fetch(`${API_URL}/helper/get_documents.php?user_id=${user.user_id}&requester_id=${user.user_id}`);
         const data = await res.json();
-        const list = (data?.data?.documents ?? data?.documents ?? []).filter((d: any) => d.status === 'Verified').map((d: any) => ({ document_id: d.document_id, document_type: d.document_type }));
+        // Verified AND employer-shareable only — Valid ID / Barangay Clearance stay
+        // PESO-only (they carry the helper's home address).
+        const list = (data?.data?.documents ?? data?.documents ?? []).filter((d: any) => d.status === 'Verified' && isShareableWithEmployer(d.document_type)).map((d: any) => ({ document_id: d.document_id, document_type: d.document_type }));
         if (!cancelled) setDocs(list);
       } catch { /* optional */ }
     })();
@@ -567,7 +619,7 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
       {docs.length > 0 && (
         <View style={{ marginTop: 8 }}>
           <Text style={s.fpSecTitle}>Share Documents (optional)</Text>
-          <Text style={s.jobRowSub}>Choose which verified documents this employer can view.</Text>
+          <Text style={s.jobRowSub}>Choose which verified documents this family can view. For your safety, your Valid ID and Barangay Clearance are never shared with families — only PESO sees those.</Text>
           <View style={{ gap: 8, marginTop: 8 }}>
             {docs.map((d) => {
               const on = selDocs.includes(d.document_id);
@@ -619,11 +671,23 @@ const s = StyleSheet.create({
 
   recRow: { flexDirection: 'row', gap: 14, flexWrap: 'wrap' },
   recCard: { flexGrow: 1, flexBasis: 240, minWidth: 220, maxWidth: 360, backgroundColor: wt.surface, borderWidth: 1, borderColor: wt.line, borderRadius: 16, padding: 14, ...shadowSm, cursor: 'pointer' as any },
-  recCardHover: { borderColor: wt.accent, boxShadow: '0 10px 24px rgba(232,100,26,.10)' as any, transform: [{ translateY: -2 }] },
+  recCardHover: { borderColor: wt.accent, borderWidth: 1.6, boxShadow: '0 14px 30px rgba(232,100,26,.18)' as any, transform: [{ translateY: -4 }] },
   recCardActive: { borderColor: wt.accent, backgroundColor: '#FFFCF8' },
   recTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   matchPill: { backgroundColor: wt.greenSoft, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
   matchPillText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11.5, color: wt.green },
+  // Prominent match badge + clearly-clickable "Why this match?" button (detail panel)
+  // "Roles included" chips — the specifics behind a concise job title
+  rolesBlock: { marginTop: 10, marginBottom: 2 },
+  rolesLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: wt.subtle, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 },
+  rolesWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  roleChip: { backgroundColor: wt.accentSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  roleChipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: wt.accent },
+  matchPillBig: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: wt.greenSoft, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  matchPillBigText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: wt.green },
+  whyBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: wt.accentSoft, borderWidth: 1.4, borderColor: wt.accent, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, cursor: 'pointer' as any },
+  whyBtnHover: { backgroundColor: wt.accent, transform: [{ translateY: -1 }] },
+  whyBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: wt.accent },
   recBody: { flexDirection: 'row', gap: 11, alignItems: 'center' },
   recIc: { width: 42, height: 42, borderRadius: 12, backgroundColor: wt.accentSoft, alignItems: 'center', justifyContent: 'center' },
   recTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: wt.ink },
@@ -635,7 +699,8 @@ const s = StyleSheet.create({
   recTags: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 10 },
   recTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: wt.lineSoft, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   recTagText: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: wt.muted },
-  recBtn: { marginTop: 12, backgroundColor: wt.accent, borderRadius: 11, paddingVertical: 11, alignItems: 'center' },
+  recBtn: { marginTop: 12, backgroundColor: wt.accent, borderRadius: 11, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  recBtnHover: { boxShadow: '0 6px 16px rgba(232,100,26,.38)' as any, transform: [{ translateY: -1 }] },
   recBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#fff' },
 
   famGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },

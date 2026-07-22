@@ -135,6 +135,9 @@ export default function DocumentDetailScreen() {
 
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // When deleting this document paused PESO verification, show that warning
+  // first and only navigate back once the helper has acknowledged it.
+  const [backOnNoticeClose, setBackOnNoticeClose] = useState(false);
   const [notice, setNotice] = useState<{
     visible: boolean;
     title?: string;
@@ -228,12 +231,21 @@ export default function DocumentDetailScreen() {
       const response = await fetch(`${API_URL}/helper/delete_document.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ document_id, user_id: user.user_id }),
+        body: JSON.stringify({ document_id, user_id: user.user_id, requester_id: user.user_id }),
       });
       const data = await response.json();
       if (!data.success) throw new Error(data.message || 'Failed to delete document');
 
-      router.back();
+      if (data.verification_reverted) {
+        setBackOnNoticeClose(true);
+        showNotice(
+          'Deleting this document paused your PESO verification. Your profile is now hidden from families until you re-upload it and PESO re-verifies your account.',
+          'warning',
+          'Verification Paused'
+        );
+      } else {
+        router.back();
+      }
     } catch (err: any) {
       showNotice(err.message || 'Could not delete the document. Please try again.', 'error');
     } finally {
@@ -505,7 +517,10 @@ export default function DocumentDetailScreen() {
         title={notice.title}
         message={notice.message}
         type={notice.type}
-        onClose={() => setNotice((n) => ({ ...n, visible: false }))}
+        onClose={() => {
+          setNotice((n) => ({ ...n, visible: false }));
+          if (backOnNoticeClose) { setBackOnNoticeClose(false); router.back(); }
+        }}
       />
     </View>
   );

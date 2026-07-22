@@ -55,6 +55,8 @@ export function interviewPillStyle(s: ReturnType<typeof createHelperMessagesStyl
 export type ResolvedApplication = {
   application_id: number;
   job_title: string;
+  category_name?: string | null;
+  skill_names?: string[];
   status: string;
   job_post_id: number;
   employer_signed_at?: string | null;

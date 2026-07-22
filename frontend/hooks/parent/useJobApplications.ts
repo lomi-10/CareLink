@@ -26,6 +26,7 @@ export interface JobApplication {
   helper_barangay?: string;
   helper_municipality?: string;
   helper_province?: string;
+  helper_distance?: number | null;
   helper_employment_type?: string;
   helper_work_schedule?: string;
   helper_expected_salary?: number | null;

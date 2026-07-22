@@ -1,6 +1,6 @@
 // components/helper/web/HelperHomeWeb.tsx — desktop dashboard for the helper Home.
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Pressable, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -132,34 +132,37 @@ export function HelperHomeWeb({
                     const pct = Math.round(Number(job.match_score ?? 0));
                     const top = pct >= 85;
                     return (
-                      <View key={job.job_post_id} style={s.job}>
-                        <View style={s.jobTop}>
-                          <View style={s.jobMatch}>
-                            {top && <Ionicons name="star" size={11} color={wt.green} />}
-                            <Text style={s.jobMatchText}>{top ? `Top Match · ${pct}%` : `${pct}% Match`}</Text>
-                          </View>
-                          <TouchableOpacity onPress={() => toggleSaveJob(job.job_post_id)} hitSlop={8}>
-                            <Ionicons name={job.is_saved ? 'heart' : 'heart-outline'} size={18} color={job.is_saved ? wt.red : wt.subtle} />
-                          </TouchableOpacity>
-                        </View>
-                        <View style={[s.jobIc, { backgroundColor: cs.fill }]}><Ionicons name={cs.icon} size={22} color={cs.color} /></View>
-                        <Text style={s.jobTitle} numberOfLines={1}>{job.title || job.category_name || 'Job'}</Text>
-                        <View style={s.jobEmp}>
-                          <Text style={s.jobEmpText} numberOfLines={1}>{job.parent_name || 'Employer'}</Text>
-                          {job.parent_verified ? <View style={s.jobPv}><Ionicons name="shield-checkmark" size={11} color={wt.green} /><Text style={s.jobPvText}>PESO Verified</Text></View> : null}
-                        </View>
-                        <View style={s.jobLoc}><Ionicons name="location-outline" size={12} color={wt.muted} /><Text style={s.jobLocText} numberOfLines={1}>{[job.municipality, job.province].filter(Boolean).join(', ') || '—'}</Text></View>
-                        <Text style={s.jobPay}>₱{Number(job.salary_offered).toLocaleString()} <Text style={s.jobPayPer}>/ {job.salary_period || 'month'}</Text></Text>
-                        <View style={s.jobTags}>
-                          <Text style={s.tag}>{/^live-out/i.test(job.employment_type || '') ? 'Stay-out' : 'Stay-in'}</Text>
-                          <Text style={s.tag}>{Number(job.min_experience_years) > 0 ? 'With experience' : 'No experience'}</Text>
-                        </View>
-                        <TouchableOpacity onPress={onBrowse} activeOpacity={0.9}>
-                          <LinearGradient colors={FEATURE_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.jobBtn}>
-                            <Text style={s.jobBtnText}>View Details</Text>
-                          </LinearGradient>
-                        </TouchableOpacity>
-                      </View>
+                      <Pressable key={job.job_post_id} onPress={onBrowse} style={({ hovered }: any) => [s.job, TRANS, hovered && s.jobHover]}>
+                        {({ hovered }: any) => (
+                          <>
+                            <View style={s.jobTop}>
+                              <View style={s.jobMatch}>
+                                {top && <Ionicons name="star" size={11} color={wt.green} />}
+                                <Text style={s.jobMatchText}>{top ? `Top Match · ${pct}%` : `${pct}% Match`}</Text>
+                              </View>
+                              <Pressable onPress={(e: any) => { e.stopPropagation?.(); toggleSaveJob(job.job_post_id); }} hitSlop={8}>
+                                <Ionicons name={job.is_saved ? 'heart' : 'heart-outline'} size={18} color={job.is_saved ? wt.red : wt.subtle} />
+                              </Pressable>
+                            </View>
+                            <View style={[s.jobIc, { backgroundColor: hovered ? wt.accent : cs.fill }]}><Ionicons name={cs.icon} size={22} color={hovered ? '#fff' : cs.color} /></View>
+                            <Text style={[s.jobTitle, hovered && { color: wt.accent }]} numberOfLines={1}>{job.title || job.category_name || 'Job'}</Text>
+                            <View style={s.jobEmp}>
+                              <Text style={s.jobEmpText} numberOfLines={1}>{job.parent_name || 'Employer'}</Text>
+                              {job.parent_verified ? <View style={s.jobPv}><Ionicons name="shield-checkmark" size={11} color={wt.green} /><Text style={s.jobPvText}>PESO Verified</Text></View> : null}
+                            </View>
+                            <View style={s.jobLoc}><Ionicons name="location-outline" size={12} color={wt.muted} /><Text style={s.jobLocText} numberOfLines={1}>{[job.municipality, job.province].filter(Boolean).join(', ') || '—'}</Text></View>
+                            <Text style={s.jobPay}>₱{Number(job.salary_offered).toLocaleString()} <Text style={s.jobPayPer}>/ {job.salary_period || 'month'}</Text></Text>
+                            <View style={s.jobTags}>
+                              <Text style={s.tag}>{/^live-out/i.test(job.employment_type || '') ? 'Stay-out' : 'Stay-in'}</Text>
+                              <Text style={s.tag}>{Number(job.min_experience_years) > 0 ? 'With experience' : 'No experience'}</Text>
+                            </View>
+                            <LinearGradient colors={FEATURE_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.jobBtn, hovered && s.jobBtnHover]}>
+                              <Text style={s.jobBtnText}>View Details</Text>
+                              <Ionicons name="arrow-forward" size={15} color="#fff" style={{ marginLeft: 6, opacity: hovered ? 1 : 0 }} />
+                            </LinearGradient>
+                          </>
+                        )}
+                      </Pressable>
                     );
                   })}
                 </View>
@@ -277,6 +280,7 @@ function QA({ icon, fill, color, label, onPress }: any) {
 }
 
 const shadowSm = { boxShadow: '0 3px 12px rgba(120,80,45,.07)' } as any;
+const TRANS = { transitionDuration: '150ms', transitionProperty: 'all', transitionTimingFunction: 'ease' } as any;
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: wt.canvas },
   scroll: { paddingBottom: 30 },
@@ -322,7 +326,8 @@ const s = StyleSheet.create({
 
   // Jobs
   jobs: { flexDirection: 'row', gap: 14 },
-  job: { flex: 1, borderWidth: 1, borderColor: wt.line, borderRadius: 16, padding: 14, backgroundColor: wt.raise, minWidth: 0 },
+  job: { flex: 1, borderWidth: 1, borderColor: wt.line, borderRadius: 16, padding: 14, backgroundColor: wt.raise, minWidth: 0, cursor: 'pointer' as any },
+  jobHover: { borderColor: wt.accent, borderWidth: 1.6, backgroundColor: wt.surface, boxShadow: '0 14px 30px rgba(232,100,26,.18)' as any, transform: [{ translateY: -4 }] },
   jobTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   jobMatch: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: wt.greenSoft, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
   jobMatchText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: wt.green },
@@ -338,7 +343,8 @@ const s = StyleSheet.create({
   jobPayPer: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, color: wt.muted },
   jobTags: { flexDirection: 'row', gap: 6, marginVertical: 9, flexWrap: 'wrap' },
   tag: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: wt.muted, borderWidth: 1, borderColor: wt.line, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-  jobBtn: { borderRadius: 11, paddingVertical: 10, alignItems: 'center' },
+  jobBtn: { borderRadius: 11, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  jobBtnHover: { boxShadow: '0 6px 16px rgba(60,30,10,.32)' as any, transform: [{ translateY: -1 }] },
   jobBtnText: { color: wt.featInk, fontFamily: FontFamily.fredokaSemiBold, fontSize: 13 },
 
   // Recent apps

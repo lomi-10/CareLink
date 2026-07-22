@@ -23,6 +23,7 @@ include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/sync_profile_completed.php';
 include_once __DIR__ . '/../shared/create_notification.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
+include_once __DIR__ . '/../shared/phone.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -53,6 +54,15 @@ try {
     // COLLECT DATA
     // ========================================================================
     $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
+    // A contact number, when given, must be a real PH mobile — stored canonical
+    // (09XXXXXXXXX). Empty is allowed so other sections can still save during setup.
+    if ($contact_number !== '') {
+        $normalized_contact = carelink_normalize_ph_mobile($contact_number);
+        if ($normalized_contact === null) {
+            throw new Exception("Please enter a valid Philippine mobile number, like 0917 123 4567.");
+        }
+        $contact_number = $normalized_contact;
+    }
     $province = isset($_POST['province']) ? trim($_POST['province']) : '';
     $municipality = isset($_POST['municipality']) ? trim($_POST['municipality']) : '';
     $barangay = isset($_POST['barangay']) ? trim($_POST['barangay']) : '';
@@ -133,6 +143,23 @@ try {
     $conn->begin_transaction();
 
     try {
+        // 0. NAME (users table) — only when the client actually sends name fields, so
+        // saving a different section (e.g. household) never blanks the name. Email and
+        // contact number are changed through the verified flow (auth/*_profile_change.php),
+        // never here.
+        if (isset($_POST['first_name']) || isset($_POST['last_name'])) {
+            $first_name  = trim((string) ($_POST['first_name'] ?? ''));
+            $last_name   = trim((string) ($_POST['last_name'] ?? ''));
+            $middle_name = isset($_POST['middle_name']) ? trim((string) $_POST['middle_name']) : null;
+            if ($first_name === '' || $last_name === '') {
+                throw new Exception("First name and last name are required.");
+            }
+            $nameStmt = $conn->prepare("UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, updated_at = NOW() WHERE user_id = ?");
+            $nameStmt->bind_param("sssi", $first_name, $middle_name, $last_name, $user_id);
+            $nameStmt->execute();
+            $nameStmt->close();
+        }
+
         // 1. CHECK IF PROFILE EXISTS
         $checkStmt = $conn->prepare("SELECT profile_id FROM parent_profiles WHERE user_id = ?");
         $checkStmt->bind_param("i", $user_id);

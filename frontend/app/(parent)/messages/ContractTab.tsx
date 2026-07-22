@@ -59,7 +59,10 @@ export default function ContractTab({
           )}
 
           <View style={s.contractSummaryCard}>
-            <ContractRow label="Position" value={resolvedApp.job_title} />
+            <ContractRow label="Position" value={resolvedApp.category_name || resolvedApp.job_title} />
+            {resolvedApp.skill_names && resolvedApp.skill_names.length > 0 && (
+              <ContractRow label="Skills" value={resolvedApp.skill_names.join(', ')} />
+            )}
             <ContractRow
               label="Salary"
               value={resolvedApp.confirmed_salary != null ? `₱${resolvedApp.confirmed_salary.toLocaleString()} / month` : '—'}
@@ -120,7 +123,10 @@ export default function ContractTab({
           </View>
 
           <View style={s.contractSummaryCard}>
-            <ContractRow label="Position" value={resolvedApp.job_title} />
+            <ContractRow label="Position" value={resolvedApp.category_name || resolvedApp.job_title} />
+            {resolvedApp.skill_names && resolvedApp.skill_names.length > 0 && (
+              <ContractRow label="Skills" value={resolvedApp.skill_names.join(', ')} />
+            )}
             <ContractRow
               label="Salary"
               value={resolvedApp.confirmed_salary != null ? `₱${resolvedApp.confirmed_salary.toLocaleString()} / month` : '—'}

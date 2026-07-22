@@ -11,10 +11,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useBrowseHelpers, useParentJobs, type HelperProfile } from '@/hooks/parent';
+import type { JobPost } from '@/hooks/parent/useParentJobs';
 import { useParentActivePlacements } from '@/hooks/parent/useParentActivePlacements';
 import { useParentPortalMode } from '@/hooks/parent';
 import { useJobReferences } from '@/hooks/shared';
-import { computeHelperJobMatch, pickPrimaryOpenJob } from '@/lib/parentHelperMatch';
+import { computeHelperJobMatch, activeJobPosts, bestHelpersForJob, bestJobForHelper } from '@/lib/parentHelperMatch';
+import { MatchBreakdown } from './MatchBreakdown';
 import { useCareBot } from '@/contexts/CareBotContext';
 import { NotificationModal, SubmitComplaintModal } from '@/components/shared';
 import { FilterModal } from '@/components/parent/browse';
@@ -28,7 +30,7 @@ const fmtPeriod = (p?: string) => { const l = (p ?? '').toLowerCase(); return l.
 
 type Tab = 'overview' | 'experience' | 'skills' | 'documents';
 type Panel =
-  | { mode: 'profile'; helper: HelperProfile; tab: Tab }
+  | { mode: 'profile'; helper: HelperProfile; tab: Tab; job: JobPost | null }
   | { mode: 'invite'; helper: HelperProfile };
 
 const CAT_ICON = (name: string): keyof typeof Ionicons.glyphMap => {
@@ -52,27 +54,43 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
 
   const [searchText, setSearchText] = useState('');
   const hiredHelperIds = useMemo(() => new Set(placements.map((p) => String(p.helper_id))), [placements]);
-  const referenceJob = useMemo(() => pickPrimaryOpenJob(jobs), [jobs]);
 
-  const rankedHelpers = useMemo(() => {
+  // Every open job the parent is hiring for. When there are several, we show a
+  // "best match" group PER post instead of collapsing onto one primary job.
+  const openJobs = useMemo(() => activeJobPosts(jobs), [jobs]);
+  const referenceJob = openJobs[0] ?? null; // still used for the flat grid ranking
+
+  const availableHelpers = useMemo(() => {
     const q = searchText.trim().toLowerCase();
     const notHired = helpers.filter((h) => !hiredHelperIds.has(String(h.user_id)));
-    const searched = q
-      ? notHired.filter((h) => {
-          const hay = [h.full_name, h.municipality, h.province, ...(h.categories ?? []), ...(h.jobs ?? []), ...(h.skills ?? [])]
-            .filter(Boolean).join(' ').toLowerCase();
-          return hay.includes(q);
-        })
-      : notHired;
-    return [...searched].sort((a, b) =>
-      computeHelperJobMatch(b, referenceJob).score - computeHelperJobMatch(a, referenceJob).score);
-  }, [helpers, hiredHelperIds, referenceJob, searchText]);
+    if (!q) return notHired;
+    return notHired.filter((h) => {
+      const hay = [h.full_name, h.municipality, h.province, ...(h.categories ?? []), ...(h.jobs ?? []), ...(h.skills ?? [])]
+        .filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }, [helpers, hiredHelperIds, searchText]);
 
-  const topRecommended = useMemo(
-    () => rankedHelpers.map((h) => ({ helper: h, match: computeHelperJobMatch(h, referenceJob) }))
-      .filter((x) => x.match.score > 0).slice(0, 3),
-    [rankedHelpers, referenceJob],
+  // Flat list under "Verified Helpers", ranked against the primary open job (or
+  // the general Top-Helpers score when there's no post).
+  const rankedHelpers = useMemo(
+    () => [...availableHelpers].sort((a, b) =>
+      computeHelperJobMatch(b, bestJobForHelper(b, openJobs)).score - computeHelperJobMatch(a, bestJobForHelper(a, openJobs)).score),
+    [availableHelpers, referenceJob],
   );
+
+  // Recommendations: one group per open job when hiring; a single general group
+  // ("Top Helpers Near You") when there are no active posts.
+  const recommendationGroups = useMemo(() => {
+    if (openJobs.length === 0) {
+      return [{ job: null as JobPost | null, helpers: bestHelpersForJob(availableHelpers, null, 4) }];
+    }
+    // Show the job with the strongest available match FIRST (not just most-applied),
+    // so the best recommendation leads instead of a weak 42% group.
+    return openJobs
+      .map((job) => ({ job, helpers: bestHelpersForJob(availableHelpers, job, 4) }))
+      .sort((a, b) => (b.helpers[0]?.match.score ?? 0) - (a.helpers[0]?.match.score ?? 0));
+  }, [openJobs, availableHelpers]);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [notif, setNotif] = useState({ visible: false, msg: '', type: 'success' as 'success' | 'error' });
@@ -80,7 +98,10 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
   const [panel, setPanel] = useState<Panel | null>(null);
   const close = () => setPanel(null);
 
-  const openProfile = (helper: HelperProfile) => setPanel({ mode: 'profile', helper, tab: 'overview' });
+  // Carry the clicked card's job context so the panel scores against THAT post.
+  // From the flat grid (no group) we fall back to the helper's best-matching job.
+  const openProfile = (helper: HelperProfile, job: JobPost | null = null) =>
+    setPanel({ mode: 'profile', helper, tab: 'overview', job: job ?? bestJobForHelper(helper, openJobs) });
 
   // Log a profile view when the parent opens a helper (fire-and-forget).
   const openedId = panel?.mode === 'profile' ? panel.helper.user_id : null;
@@ -153,26 +174,37 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
             <ActivityIndicator color={pt.accent} style={{ marginTop: 40 }} />
           ) : (
             <>
-              {/* Recommended */}
-              {topRecommended.length > 0 && (
-                <View style={{ marginTop: 22 }}>
-                  <View style={s.secHead}>
-                    <View style={s.secHeadLeft}>
-                      <Ionicons name="sparkles" size={17} color={pt.accent} />
-                      <Text style={s.secTitle}>{referenceJob ? 'Best Match for Your Job' : 'Top Helpers Near You'}</Text>
+              {/* Recommended — one group per open job, or a single general group */}
+              {recommendationGroups.map((group, gi) => (
+                group.helpers.length === 0 ? null : (
+                  <View key={group.job?.job_post_id ?? 'general'} style={{ marginTop: gi === 0 ? 22 : 26 }}>
+                    <View style={s.secHead}>
+                      <View style={s.secHeadLeft}>
+                        <Ionicons name={group.job ? 'briefcase' : 'sparkles'} size={17} color={pt.accent} />
+                        <Text style={s.secTitle}>
+                          {group.job ? 'Best matches for' : 'Top Helpers Near You'}
+                        </Text>
+                        {group.job && (
+                          <Text style={s.secJob} numberOfLines={1}>
+                            {group.job.title || (group.job as any).custom_job_title || 'your open role'}
+                          </Text>
+                        )}
+                      </View>
+                      {group.job && (
+                        <Pressable onPress={() => router.push({ pathname: '/(parent)/jobs', params: { tab: 'applicants', job_id: String(group.job!.job_post_id) } } as any)}>
+                          <Text style={s.secLink}>View applicants →</Text>
+                        </Pressable>
+                      )}
                     </View>
-                    {referenceJob && (
-                      <Text style={s.secHint} numberOfLines={1}>for {referenceJob.title || (referenceJob as any).custom_job_title || 'your open role'}</Text>
-                    )}
+                    <View style={s.recRow}>
+                      {group.helpers.map(({ helper, match }, i) => (
+                        <RecCard key={helper.profile_id} helper={helper} match={match.score} topReason={match.reasons?.[0]} isTop={i === 0}
+                          active={panel?.helper?.profile_id === helper.profile_id} onView={() => openProfile(helper, group.job)} />
+                      ))}
+                    </View>
                   </View>
-                  <View style={s.recRow}>
-                    {topRecommended.map(({ helper, match }, i) => (
-                      <RecCard key={helper.profile_id} helper={helper} match={match.score} topReason={match.reasons?.[0]} isTop={i === 0}
-                        active={panel?.helper?.profile_id === helper.profile_id} onView={() => openProfile(helper)} />
-                    ))}
-                  </View>
-                </View>
-              )}
+                )
+              ))}
 
               {/* All helpers */}
               <View style={{ marginTop: 26 }}>
@@ -195,7 +227,7 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
                 ) : (
                   <View style={s.grid}>
                     {rankedHelpers.map((helper) => {
-                      const match = computeHelperJobMatch(helper, referenceJob);
+                      const match = computeHelperJobMatch(helper, bestJobForHelper(helper, openJobs));
                       return (
                         <HelperGridCard key={helper.profile_id} helper={helper} match={match.score}
                           active={panel?.helper?.profile_id === helper.profile_id}
@@ -215,7 +247,7 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
           <View style={s.panel}>
             <View style={s.panelHead}>
               {panel.mode === 'invite' ? (
-                <Pressable onPress={() => setPanel({ mode: 'profile', helper: panel.helper, tab: 'overview' })} style={({ hovered }: any) => [s.panelBack, TRANS, hovered && { opacity: 0.7 }]}>
+                <Pressable onPress={() => setPanel({ mode: 'profile', helper: panel.helper, tab: 'overview', job: bestJobForHelper(panel.helper, openJobs) })} style={({ hovered }: any) => [s.panelBack, TRANS, hovered && { opacity: 0.7 }]}>
                   <Ionicons name="arrow-back" size={17} color={pt.accent} /><Text style={s.panelBackText}>Back to Profile</Text>
                 </Pressable>
               ) : <View />}
@@ -225,7 +257,7 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
               {panel.mode === 'profile' && (
                 <ProfilePanel
                   helper={panel.helper}
-                  referenceJob={referenceJob}
+                  referenceJob={panel.job}
                   tab={panel.tab}
                   onTab={(t) => setPanel((cur) => (cur && cur.mode === 'profile' ? { ...cur, tab: t } : cur))}
                   onInvite={() => setPanel({ mode: 'invite', helper: panel.helper })}
@@ -409,21 +441,13 @@ function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onMessage, o
       {/* Content */}
       {tab === 'overview' ? (
         <View style={{ gap: 16, marginTop: 16 }}>
-          {match.score > 0 && (
-            <View style={s.matchCard}>
-              <View style={s.matchCardHead}>
-                <View style={s.matchCardIc}><Ionicons name="analytics-outline" size={17} color={pt.accent} /></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.matchCardTitle}>{referenceJob ? 'Match for your open role' : 'Why this helper stands out'}</Text>
-                  {referenceJob && <Text style={s.matchCardJob} numberOfLines={1}>{referenceJob.title || referenceJob.custom_job_title || 'Open job'}</Text>}
-                </View>
-                <Text style={s.matchCardScore}>{match.score}%</Text>
-              </View>
-              {match.reasons.map((line, i) => (
-                <View key={i} style={s.reasonRow}><Ionicons name="checkmark-circle" size={14} color={pt.green} /><Text style={s.reasonText}>{line}</Text></View>
-              ))}
-            </View>
-          )}
+          <View style={s.matchCard}>
+            <MatchBreakdown
+              match={match}
+              firstName={(h.full_name || '').split(' ')[0]}
+              jobTitle={referenceJob ? (referenceJob.title || referenceJob.custom_job_title) : undefined}
+            />
+          </View>
           {!!bio && <View><Text style={s.fpSecTitle}>About Me</Text><Text style={s.jpBody}>{bio}</Text></View>}
           <View>
             <Text style={s.fpSecTitle}>Background</Text>
@@ -450,6 +474,25 @@ function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onMessage, o
             <View>
               <Text style={s.fpSecTitle}>Roles Worked Before</Text>
               <View style={s.chipsWrap}>{jobs.map((j, i) => <View key={i} style={[s.chip, s.chipGreen]}><Text style={[s.chipText, { color: pt.green }]}>{j}</Text></View>)}</View>
+            </View>
+          )}
+          {Array.isArray(h.work_history) && h.work_history.length > 0 && (
+            <View>
+              <Text style={s.fpSecTitle}>Work History</Text>
+              {h.work_history.map((w: any, i: number) => (
+                <View key={i} style={s.whCard}>
+                  <View style={s.whHead}>
+                    <Text style={s.whRole}>{w.position}</Text>
+                    {w.can_contact && (
+                      <View style={s.whRefBadge}><Ionicons name="call-outline" size={11} color={pt.green} /><Text style={s.whRefText}>Reference</Text></View>
+                    )}
+                  </View>
+                  <Text style={s.whEmployer}>{w.employer_name}</Text>
+                  <Text style={s.whDates}>{whRange(w.start_date, w.end_date)}</Text>
+                  {!!w.duties && <Text style={s.whDuties}>{w.duties}</Text>}
+                  {w.can_contact && !!w.employer_contact && <Text style={s.whContact}>Reference contact: {w.employer_contact}</Text>}
+                </View>
+              ))}
             </View>
           )}
         </View>
@@ -504,6 +547,16 @@ function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onMessage, o
     </View>
   );
 }
+/** "Jan 2022 – Present" range (null end = current job). */
+function whRange(start: string, end?: string | null): string {
+  const fmt = (d?: string | null) => {
+    if (!d) return '';
+    const dt = new Date(String(d).replace(' ', 'T'));
+    return isNaN(dt.getTime()) ? String(d) : dt.toLocaleDateString('en-PH', { month: 'short', year: 'numeric' });
+  };
+  return end ? `${fmt(start)} – ${fmt(end)}` : `${fmt(start)} – Present`;
+}
+
 function Tile({ icon, value, label }: { icon: any; value: string; label: string }) {
   return <View style={s.tile}><Ionicons name={icon} size={17} color={pt.muted} /><Text style={s.tileValue} numberOfLines={1}>{value}</Text><Text style={s.tileLabel}>{label}</Text></View>;
 }
@@ -632,6 +685,8 @@ const s = StyleSheet.create({
   secHeadLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 },
   secTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: pt.ink },
   secHint: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: pt.muted, flexShrink: 1 },
+  secJob: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5, color: pt.accent, flexShrink: 1 },
+  secLink: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: pt.accent },
   resultsText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: pt.muted },
 
   recRow: { flexDirection: 'row', gap: 14, flexWrap: 'wrap' },
@@ -734,6 +789,15 @@ const s = StyleSheet.create({
 
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chipGreen: { backgroundColor: pt.greenSoft, borderColor: '#A7E8CE' },
+  whCard: { backgroundColor: pt.surface, borderWidth: 1, borderColor: pt.line, borderRadius: 12, padding: 12, marginTop: 10 },
+  whHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  whRole: { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5, color: pt.ink },
+  whRefBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: pt.greenSoft, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  whRefText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5, color: pt.green },
+  whEmployer: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: '#7A4E2A', marginTop: 2 },
+  whDates: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: pt.muted, marginTop: 2 },
+  whDuties: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: pt.ink, marginTop: 6, lineHeight: 17 },
+  whContact: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: pt.green, marginTop: 6 },
   chipBlue: { backgroundColor: pt.blueSoft, borderColor: '#CFE0FB' },
 
   docsLocked: { alignItems: 'center', gap: 10, backgroundColor: pt.raise, borderRadius: 14, borderWidth: 1, borderColor: pt.line, paddingVertical: 30, paddingHorizontal: 20 },

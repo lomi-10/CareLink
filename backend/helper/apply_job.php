@@ -51,11 +51,16 @@ function syncSharedDocuments($conn, $application_id, $helper_id, $document_ids) 
     $safe_ids = array_values(array_filter(array_map('intval', $document_ids), fn($id) => $id > 0));
     if (empty($safe_ids)) return 0;
 
-    // Fetch which of those IDs actually belong to this helper and are Verified
+    // Fetch which of those IDs actually belong to this helper, are Verified, AND
+    // are of a type that is SAFE to share with an employer. Valid ID and Barangay
+    // Clearance carry the helper's home address — a real privacy/safety risk to a
+    // not-necessarily-trustworthy family (verified ≠ an agency). Those stay for
+    // PESO's eyes only; only legitimacy/skill proofs may be shared.
     $id_list = implode(',', $safe_ids);
     $res = $conn->query(
         "SELECT document_id FROM user_documents
-         WHERE document_id IN ($id_list) AND user_id = $helper_id AND status = 'Verified'"
+         WHERE document_id IN ($id_list) AND user_id = $helper_id AND status = 'Verified'
+           AND document_type IN ('Police Clearance', 'TESDA NC2', 'NBI Clearance')"
     );
 
     $verified = [];

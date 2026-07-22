@@ -112,6 +112,7 @@ export default function HelperProfileMain() {
   const languages   = mappedSpecialties?.languages ?? [];
   const docVerified = (documents ?? []).filter((d: any) => d.status === 'Verified').length;
   const docTotal    = (documents ?? []).length;
+  const workHistory = profileData?.work_history ?? [];
 
   const rolesPreview = jobRoles.slice(0, 3).join(' • ');
 
@@ -142,6 +143,16 @@ export default function HelperProfileMain() {
       subtitle: `${jobRoles.length} Roles • ${skills.length} Skills • ${languages.length} Languages`,
       status: jobRoles.length > 0 ? 'Complete' : 'Incomplete',
       route: '/(helper)/profile/skills',
+    },
+    {
+      key: 'experience', icon: 'time' as const,
+      iconBg: '#DBEAFE', iconColor: '#2563EB',
+      title: 'Work Experience',
+      subtitle: workHistory.length > 0
+        ? `${workHistory.length} past employer${workHistory.length !== 1 ? 's' : ''}${workHistory.some((w: any) => w.can_contact) ? ' • references' : ''}`
+        : 'Add past jobs & references',
+      status: (workHistory.length > 0 || Number((profile as any)?.years_experience) > 0) ? 'Complete' : 'Incomplete',
+      route: '/(helper)/profile/experience',
     },
     {
       key: 'documents', icon: 'shield-checkmark' as const,
@@ -227,6 +238,19 @@ export default function HelperProfileMain() {
           </TouchableOpacity>
         </View>
       </LinearGradient>
+
+      {/* ── Resume banner ── this profile IS the helper's resume ── */}
+      <TouchableOpacity style={s.resumeBanner} activeOpacity={0.85} onPress={() => router.push('/(helper)/profile/public-preview' as never)}>
+        <View style={s.resumeIcon}><Ionicons name="document-text" size={22} color="#fff" /></View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.resumeTitle}>This profile is your resumé ✨</Text>
+          <Text style={s.resumeSub}>It's exactly what families see when they consider hiring you. Tap to preview it.</Text>
+        </View>
+        <View style={s.resumeCta}>
+          <Ionicons name="eye-outline" size={15} color={ORANGE} />
+          <Text style={s.resumeCtaText}>Preview</Text>
+        </View>
+      </TouchableOpacity>
 
       {/* ── Quick Overview ── */}
       <Text style={s.sectionLabel}>Quick Overview</Text>

@@ -14,6 +14,7 @@ import { useJobApplications, useParentJobs, useParentPortalMode, type JobApplica
 import { useAuth } from '@/hooks/shared';
 import { useUserVerification } from '@/hooks/peso';
 import { computeHelperJobMatch, applicationToMatchable } from '@/lib/parentHelperMatch';
+import { MatchBreakdown } from './MatchBreakdown';
 import { formatSalary, formatPayoutSchedule } from '@/lib/salary';
 import { ConfirmationModal, InterviewModal, NotificationModal, LoadingSpinner } from '@/components/shared';
 import { JobPostModal } from '@/components/parent/jobs';
@@ -27,6 +28,14 @@ const initials = (n?: string) => (n || 'H').trim().split(/\s+/).map((x) => x[0])
 // schedule, so it's shown as a separate line rather than as "/ Daily". See lib/salary.ts.
 const fmtPeriod = (p?: string) => { const l = (p ?? '').toLowerCase(); return l.startsWith('month') ? 'month' : l.startsWith('day') ? 'day' : l.startsWith('week') ? 'week' : (p || 'month'); };
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
+const workRange = (start: string, end?: string | null) => {
+  const fmt = (d?: string | null) => {
+    if (!d) return '';
+    const dt = new Date(String(d).replace(' ', 'T'));
+    return isNaN(dt.getTime()) ? String(d) : dt.toLocaleDateString('en-PH', { month: 'short', year: 'numeric' });
+  };
+  return end ? `${fmt(start)} – ${fmt(end)}` : `${fmt(start)} – Present`;
+};
 function timeAgo(d?: string | null) {
   if (!d) return 'recently';
   const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
@@ -94,6 +103,7 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
   const [archiveModal, setArchiveModal] = useState<JobPost | null>(null);
   const [notif, setNotif] = useState({ visible: false, msg: '', type: 'success' as 'success' | 'error' });
   const [sharedDocs, setSharedDocs] = useState<{ document_id: number; document_type: string; status: string; file_url?: string }[]>([]);
+  const [applicantWork, setApplicantWork] = useState<any[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [viewingDoc, setViewingDoc] = useState<{ file_url: string; document_type: string } | null>(null);
   const [statusConfirm, setStatusConfirm] = useState<{ visible: boolean; appId: string; action: 'Shortlisted' | 'Rejected' | null }>({ visible: false, appId: '', action: null });
@@ -145,19 +155,25 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
     if (!pipelineApps.some((a) => a.application_id === selectedApplicantId)) setSelectedApplicantId(pipelineApps[0].application_id);
   }, [pipelineApps, selectedApplicantId]);
 
+  // Load the applicant's shared docs + work history when one is selected. Fetching
+  // on select (not only on the Documents tab) means Work Experience is ready on the
+  // Overview tab, and the endpoint's profile-view count reflects an actual view.
   useEffect(() => {
-    if (profileTab !== 'documents' || !selectedApplicant) return;
+    if (!selectedApplicant) { setSharedDocs([]); setApplicantWork([]); return; }
     let cancelled = false;
     (async () => {
       try {
         setDocsLoading(true);
         const res = await fetch(`${API_URL}/parent/get_applicant_profile.php?application_id=${selectedApplicant.application_id}&helper_id=${selectedApplicant.helper_id}&requester_id=${userData?.user_id ?? ''}`);
         const data = await res.json();
-        if (!cancelled) setSharedDocs(data.success ? (data.shared_documents ?? []) : []);
-      } catch { if (!cancelled) setSharedDocs([]); } finally { if (!cancelled) setDocsLoading(false); }
+        if (!cancelled) {
+          setSharedDocs(data.success ? (data.shared_documents ?? []) : []);
+          setApplicantWork(data.success ? (data.work_history ?? []) : []);
+        }
+      } catch { if (!cancelled) { setSharedDocs([]); setApplicantWork([]); } } finally { if (!cancelled) setDocsLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [profileTab, selectedApplicant?.application_id]);
+  }, [selectedApplicant?.application_id]);
 
   const statTiles = useMemo(() => {
     const totalApps = allApplications.length;
@@ -391,7 +407,7 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
             {/* RIGHT — applicant profile */}
             <View style={s.colRight}>
               <ApplicantPanel app={selectedApplicant} match={selectedApplicant ? matchForApp(selectedApplicant) : null}
-                profileTab={profileTab} onTab={setProfileTab} sharedDocs={sharedDocs} docsLoading={docsLoading}
+                profileTab={profileTab} onTab={setProfileTab} sharedDocs={sharedDocs} workHistory={applicantWork} docsLoading={docsLoading}
                 onViewDoc={(d) => setViewingDoc(d)} onMessage={messageApplicant}
                 onReject={(a) => setStatusConfirm({ visible: true, appId: a.application_id, action: 'Rejected' })}
                 onShortlist={(a) => setStatusConfirm({ visible: true, appId: a.application_id, action: 'Shortlisted' })}
@@ -480,9 +496,9 @@ function ApplicantCard({ app, match, active, showJob, jobTitle, onPress }: { app
 }
 
 // ─── Applicant profile panel (right column) ───
-function ApplicantPanel({ app, match, profileTab, onTab, sharedDocs, docsLoading, onViewDoc, onMessage, onReject, onShortlist, onSchedule, onManage }: {
+function ApplicantPanel({ app, match, profileTab, onTab, sharedDocs, workHistory, docsLoading, onViewDoc, onMessage, onReject, onShortlist, onSchedule, onManage }: {
   app: JobApplication | null; match: any; profileTab: 'overview' | 'skills' | 'documents'; onTab: (t: 'overview' | 'skills' | 'documents') => void;
-  sharedDocs: any[]; docsLoading: boolean; onViewDoc: (d: { file_url: string; document_type: string }) => void;
+  sharedDocs: any[]; workHistory: any[]; docsLoading: boolean; onViewDoc: (d: { file_url: string; document_type: string }) => void;
   onMessage: (a: JobApplication) => void; onReject: (a: JobApplication) => void; onShortlist: (a: JobApplication) => void; onSchedule: (a: JobApplication) => void; onManage: (a: JobApplication) => void;
 }) {
   if (!app) {
@@ -532,15 +548,10 @@ function ApplicantPanel({ app, match, profileTab, onTab, sharedDocs, docsLoading
         <View style={s.tileDiv} /><Tile icon="location-outline" value={a.helper_municipality || '—'} label="Location" />
       </View>
 
-      {/* Why we recommend */}
-      {match && match.reasons.length > 0 && (
+      {/* Why we recommend — full score breakdown, not just reason ticks */}
+      {match && match.score > 0 && (
         <View style={s.recCard}>
-          <Text style={s.recTitle}>Why we recommend {first}</Text>
-          <View style={s.recGrid}>
-            {match.reasons.map((r: string, i: number) => (
-              <View key={i} style={s.recItem}><Ionicons name="checkmark-circle" size={14} color={pt.green} /><Text style={s.recText}>{r}</Text></View>
-            ))}
-          </View>
+          <MatchBreakdown match={match} firstName={first} jobTitle={a.job_title || undefined} />
         </View>
       )}
 
@@ -578,6 +589,29 @@ function ApplicantPanel({ app, match, profileTab, onTab, sharedDocs, docsLoading
               <Text style={s.body}>{a.helper_bio || 'This helper has not added an introduction yet.'}</Text>
             </View>
           </View>
+          {workHistory.length > 0 && (
+            <View style={{ width: '100%' }}>
+              <Text style={s.secTitle}>Work Experience</Text>
+              <View style={s.detailsCard}>
+                {workHistory.map((w, i) => (
+                  <View key={w.history_id ?? i} style={[s.whRow, i < workHistory.length - 1 && s.whRowBorder]}>
+                    <View style={s.whTop}>
+                      <Text style={s.whRole}>{w.position}</Text>
+                      {w.can_contact && (
+                        <View style={s.whRef}>
+                          <Ionicons name="call-outline" size={11} color={pt.green} />
+                          <Text style={s.whRefText}>{w.employer_contact || 'Reference'}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={s.whEmployer}>{w.employer_name} · {workRange(w.start_date, w.end_date)}</Text>
+                    {!!w.duties && <Text style={s.whDuties}>{w.duties}</Text>}
+                    {!!w.reason_for_leaving && <Text style={s.whReason}>Left: {w.reason_for_leaving}</Text>}
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
           {!!app.cover_letter && (
             <View style={{ width: '100%' }}>
               <Text style={s.secTitle}>Cover Letter</Text>
@@ -777,6 +811,15 @@ const s = StyleSheet.create({
   secTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: pt.ink, marginBottom: 8 },
   body: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: pt.muted, lineHeight: 19 },
   quoteBox: { backgroundColor: pt.raise, borderWidth: 1, borderColor: pt.line, borderRadius: 12, padding: 12 },
+  whRow: { paddingVertical: 11, paddingHorizontal: 12 },
+  whRowBorder: { borderBottomWidth: 1, borderBottomColor: pt.lineSoft },
+  whTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  whRole: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: pt.ink, flexShrink: 1 },
+  whEmployer: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: pt.muted, marginTop: 2 },
+  whDuties: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: pt.ink, marginTop: 5, lineHeight: 17 },
+  whReason: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, color: pt.subtle, marginTop: 3, fontStyle: 'italic' },
+  whRef: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: pt.greenSoft, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  whRefText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5, color: pt.green },
   detailsCard: { backgroundColor: pt.surface, borderRadius: 12, borderWidth: 1, borderColor: pt.line, overflow: 'hidden' },
   drRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, gap: 10 },
   drBorder: { borderBottomWidth: 1, borderBottomColor: pt.lineSoft },

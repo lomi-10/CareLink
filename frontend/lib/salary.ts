@@ -19,7 +19,7 @@ export const WEEKS_PER_MONTH = 52 / 12; // ≈ 4.33
 
 export const SALARY_PERIODS: { value: SalaryPeriod; label: string; hint: string }[] = [
   { value: 'Monthly', label: 'Monthly', hint: 'Once a month' },
-  { value: 'Semi-monthly', label: 'Kinsenas', hint: '15th & end of month' },
+  { value: 'Semi-monthly', label: 'Semi-Monthly', hint: '15th & end of month' },
   { value: 'Weekly', label: 'Weekly', hint: 'Every week' },
   { value: 'Daily', label: 'Daily', hint: 'Every working day' },
 ];

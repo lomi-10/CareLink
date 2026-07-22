@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -35,7 +36,7 @@ export default function SignUpScreen() {
     role, form, handleChange,
     showPassword, setShowPassword,
     showConfirmPassword, setShowConfirmPassword,
-    privacyConsent, setPrivacyConsent,
+    privacyConsent, setPrivacyConsent, loading,
     notification, closeNotification,
     handleSignUpScreen, router,
   } = useSignupForm();
@@ -59,6 +60,7 @@ export default function SignUpScreen() {
   const pw = form.password;
   const pwChecks = [
     { ok: pw.length >= 8,                              label: 'At least 8 characters' },
+    { ok: /[a-z]/.test(pw),                            label: '1 lowercase' },
     { ok: /[0-9]/.test(pw),                            label: '1 number' },
     { ok: /[A-Z]/.test(pw),                            label: '1 uppercase' },
     { ok: /[!@#$%^&*(),.?":{}|<>]/.test(pw),          label: '1 special character' },
@@ -245,14 +247,25 @@ export default function SignUpScreen() {
       {/* ── Submit ── */}
       {/* Plain array style (not a function) - NativeWind's css-interop wrapper drops
           function-form `style` on Pressable on native, leaving it unstyled. */}
+      {/* Signup does a DNS lookup + sends the verification email before responding,
+          so it can take several seconds. The spinner + disabled state are what stop
+          an impatient second tap from racing the first and reporting the resulting
+          account as "already registered". */}
       <Pressable
-        style={[s.btn, { backgroundColor: t.btn, opacity: !privacyConsent ? 0.5 : submitPressed ? 0.86 : 1 }]}
+        style={[s.btn, { backgroundColor: t.btn, opacity: (!privacyConsent || loading) ? 0.5 : submitPressed ? 0.86 : 1 }]}
         onPressIn={() => setSubmitPressed(true)}
         onPressOut={() => setSubmitPressed(false)}
         onPress={handleSignUpScreen}
-        disabled={!privacyConsent}
+        disabled={!privacyConsent || loading}
       >
-        <Text style={[s.btnText, { color: t.btnText }]}>Create account</Text>
+        {loading ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ActivityIndicator color={t.btnText} size="small" />
+            <Text style={[s.btnText, { color: t.btnText }]}>Creating your account…</Text>
+          </View>
+        ) : (
+          <Text style={[s.btnText, { color: t.btnText }]}>Create account</Text>
+        )}
       </Pressable>
 
       {/* ── Footer ── */}

@@ -40,6 +40,14 @@ export function createStyles(t: ProfileTheme = makeProfileTheme()) {
   viewPublicBtn:  { alignItems: 'center', gap: 3 },
   viewPublicText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10, color: 'rgba(255,255,255,0.75)' },
 
+  // Resume banner — frames the profile as the helper's resume
+  resumeBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginBottom: 16, backgroundColor: '#FFF3E6', borderWidth: 1, borderColor: '#F6D9B8', borderRadius: 18, padding: 14 },
+  resumeIcon:   { width: 42, height: 42, borderRadius: 13, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
+  resumeTitle:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK },
+  resumeSub:    { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, color: MUTED, lineHeight: 15, marginTop: 2 },
+  resumeCta:    { alignItems: 'center', gap: 2, backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: '#F6D9B8' },
+  resumeCtaText:{ fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5, color: ORANGE },
+
   // Quick overview
   sectionLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: DARK, marginHorizontal: 16, marginBottom: 10, marginTop: 4 },
   overviewCard: { marginHorizontal: 16, marginBottom: 16, backgroundColor: CARD_BG, borderRadius: 18, paddingVertical: 16, flexDirection: 'row', alignItems: 'center',

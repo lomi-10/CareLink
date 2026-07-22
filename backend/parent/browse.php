@@ -124,10 +124,28 @@ try {
         
         $skills_result = $conn->query($skills_query);
         $skills = [];
-        
+
         if ($skills_result) {
             while ($skill = $skills_result->fetch_assoc()) {
                 $skills[] = $skill['skill_name'];
+            }
+        }
+
+        // --- FETCH WORK HISTORY (past employers) --- employer_contact is only
+        // exposed when the helper allowed it (can_contact = 1). Current job = end_date NULL.
+        $wh_query = "
+            SELECT employer_name, position, start_date, end_date, duties, reason_for_leaving, can_contact,
+                   CASE WHEN can_contact = 1 THEN employer_contact ELSE NULL END AS employer_contact
+            FROM helper_work_history
+            WHERE profile_id = $profile_id
+            ORDER BY (end_date IS NULL) DESC, start_date DESC
+        ";
+        $wh_result = $conn->query($wh_query);
+        $work_history = [];
+        if ($wh_result) {
+            while ($wh = $wh_result->fetch_assoc()) {
+                $wh['can_contact'] = ((int) $wh['can_contact'] === 1);
+                $work_history[] = $wh;
             }
         }
 
@@ -171,6 +189,7 @@ try {
             'categories' => $categories,
             'jobs' => $jobs,
             'skills' => $skills,
+            'work_history' => $work_history,
             
             'experience_years' => (int)$row['experience_years'],
             'employment_type' => $row['employment_type'],

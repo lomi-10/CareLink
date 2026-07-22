@@ -3,7 +3,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-  SafeAreaView,
   Text,
   View,
   ScrollView,
@@ -11,6 +10,10 @@ import {
   useWindowDimensions,
   Platform,
 } from "react-native";
+// react-native's own SafeAreaView is iOS-ONLY — on Android it renders as a plain
+// View and applies no insets at all, so content ran under the status/nav bars.
+// Every other auth screen already uses the context version; this one didn't.
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import Logo from "@/components/branding/Logo";
 import { LinearGradient } from "expo-linear-gradient";

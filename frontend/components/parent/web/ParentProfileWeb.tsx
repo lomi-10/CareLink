@@ -13,7 +13,7 @@ import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useParentProfile, useParentStats, useParentPortalMode } from '@/hooks/parent';
 import { useCareBot } from '@/contexts/CareBotContext';
-import { NotificationModal, ConfirmationModal } from '@/components/shared';
+import { NotificationModal, ConfirmationModal, VerifyChangeModal } from '@/components/shared';
 import { DocumentAIScan, type ScanResult } from '@/components/shared/DocumentAIScan';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
@@ -21,6 +21,7 @@ import { LocationSearchInput, type LocationResult } from '@/components/shared/Lo
 import { PARENT_HOUSEHOLD_TYPE_OPTIONS, formatParentHouseholdType } from '@/constants/parentHousehold';
 import { ParentTopNav } from './ParentTopNav';
 import { pt, CARAMEL_GRADIENT, ACCENT_GRADIENT } from './parentWebTheme';
+import { isValidPhMobile, normalizePhMobile } from '@/lib/phone';
 
 const CAREBOT_ICON = require('../../../assets/images/chatbot_icon.png');
 const TRANS = { transitionDuration: '150ms', transitionProperty: 'all', transitionTimingFunction: 'ease' } as any;
@@ -75,6 +76,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState<any | null>(null);
   const [docTab, setDocTab] = useState<'docs' | 'history'>('docs');
   const [zoom, setZoom] = useState<{ uri: string; title: string } | null>(null);
+  const [changeField, setChangeField] = useState<null | 'email' | 'contact'>(null);
 
   const setF = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const err = (msg: string) => setNotif({ visible: true, msg, type: 'error' });
@@ -106,6 +108,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
 
   const startEdit = (key: SecKey) => {
     setForm({
+      first_name: U.first_name ?? '', middle_name: U.middle_name ?? '', last_name: U.last_name ?? '',
       contact_number: p.contact_number ?? '', bio: p.bio ?? '',
       province: p.province ?? 'Leyte', municipality: p.municipality ?? '', barangay: p.barangay ?? '',
       landmark: p.landmark ?? '', latitude: '', longitude: '',
@@ -133,6 +136,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
       if (!uid) throw new Error('Please sign in again.');
 
       const base: Record<string, string> = {
+        first_name: U.first_name ?? '', middle_name: U.middle_name ?? '', last_name: U.last_name ?? '',
         contact_number: p.contact_number ?? '', bio: p.bio ?? '',
         province: p.province ?? '', municipality: p.municipality ?? '', barangay: p.barangay ?? '', landmark: p.landmark ?? '',
         household_size: household?.household_size != null ? String(household.household_size) : '',
@@ -148,7 +152,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
       const fd = new FormData();
       fd.append('user_id', uid);
       fd.append('requester_id', uid);
-      (['contact_number', 'province', 'municipality', 'barangay', 'bio', 'landmark', 'household_type'] as const)
+      (['first_name', 'middle_name', 'last_name', 'contact_number', 'province', 'municipality', 'barangay', 'bio', 'landmark', 'household_type'] as const)
         .forEach((k) => fd.append(k, String(v[k] ?? '').trim()));
       fd.append('household_size', v.household_size || '0');
       fd.append('has_children', v.has_children);
@@ -195,9 +199,13 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
 
   const saveSection = () => {
     if (editing === 'personal') {
+      if (!form.first_name?.trim()) return err('First name is required');
+      if (!form.last_name?.trim()) return err('Last name is required');
       if (!form.contact_number?.trim()) return err('Contact number is required');
+      if (!isValidPhMobile(form.contact_number)) return err('Enter a valid PH mobile number, like 0917 123 4567');
       if (form.bio?.trim() && form.bio.trim().length < 15) return err('Bio must be at least 15 characters');
-      return submit({ contact_number: form.contact_number, bio: form.bio }, { success: 'Personal information saved!', onDone: () => setEditing(null) });
+      // Email is changed via the verified flow; everything else saves here.
+      return submit({ first_name: form.first_name, middle_name: form.middle_name, last_name: form.last_name, contact_number: normalizePhMobile(form.contact_number) ?? form.contact_number, bio: form.bio }, { success: 'Personal information saved!', onDone: () => setEditing(null) });
     }
     if (editing === 'address') {
       if (!form.province?.trim() || !form.municipality?.trim() || !form.barangay?.trim()) return err('Province, municipality and barangay are required');
@@ -270,11 +278,17 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
       const userId = String(JSON.parse(raw || '{}')?.user_id || '');
       const res = await fetch(`${API_URL}/parent/delete_document.php`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ document_id: doc.document_id, user_id: userId }),
+        body: JSON.stringify({ document_id: doc.document_id, user_id: userId, requester_id: userId }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Could not delete.');
-      setNotif({ visible: true, msg: `${doc.document_type} deleted.`, type: 'success' });
+      setNotif({
+        visible: true,
+        msg: data.verification_reverted
+          ? `${doc.document_type} deleted. This paused your PESO verification — you'll need to re-upload it and be re-verified before posting jobs again.`
+          : `${doc.document_type} deleted.`,
+        type: data.verification_reverted ? 'error' : 'success',
+      });
       setSelectedDocType(null);
       refresh();
     } catch (e: any) { err(e?.message || 'Could not delete this document.'); }
@@ -538,8 +552,15 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
                 <ScrollView style={{ maxHeight: 520 }} showsVerticalScrollIndicator={false}>
                   {editing === 'personal' && (
                     <>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <View style={{ flex: 1 }}><FLabel>First Name <Req /></FLabel><FInput value={form.first_name} onChange={(v) => setF('first_name', v)} placeholder="First name" /></View>
+                        <View style={{ flex: 1 }}><FLabel>Last Name <Req /></FLabel><FInput value={form.last_name} onChange={(v) => setF('last_name', v)} placeholder="Last name" /></View>
+                      </View>
+                      <FLabel>Middle Name <Opt /></FLabel>
+                      <FInput value={form.middle_name} onChange={(v) => setF('middle_name', v)} placeholder="(optional)" />
                       <FLabel>Contact Number <Req /></FLabel>
                       <FInput value={form.contact_number} onChange={(v) => setF('contact_number', v)} placeholder="09XX XXX XXXX" />
+                      <PVerifiedField label="Email Address" value={U.email || 'Not set'} onChange={() => setChangeField('email')} />
                       <FLabel>About the Household <Opt /></FLabel>
                       <FInput value={form.bio} onChange={(v) => setF('bio', v)} placeholder="Tell helpers about your family and what you're looking for…" multiline />
                       <Text style={s.hint}>{(form.bio ?? '').trim().length > 0 && (form.bio ?? '').trim().length < 15 ? 'At least 15 characters.' : 'A short intro helps helpers feel comfortable applying.'}</Text>
@@ -730,6 +751,15 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
       </ScrollView>
 
       <NotificationModal visible={notif.visible} message={notif.msg} type={notif.type} autoClose duration={1600} onClose={() => setNotif((n) => ({ ...n, visible: false }))} />
+      <VerifyChangeModal
+        visible={!!changeField}
+        field={changeField ?? 'email'}
+        userId={U.user_id ?? ''}
+        currentValue={changeField === 'contact' ? p.contact_number : U.email}
+        accent={pt.accent}
+        onClose={() => setChangeField(null)}
+        onSuccess={() => { setChangeField(null); setNotif({ visible: true, msg: changeField === 'contact' ? 'Contact number updated.' : 'Email updated.', type: 'success' }); refresh(); }}
+      />
       <ConfirmationModal
         visible={!!confirmDeleteDoc} title="Delete Document?"
         message={`Delete "${confirmDeleteDoc?.document_type}"? You'll need to upload it again for PESO verification.`}
@@ -882,6 +912,22 @@ function UpBtn({ label, busy, onPress }: { label: string; busy: boolean; onPress
 function Req() { return <Text style={{ color: pt.red }}>*</Text>; }
 function Opt() { return <Text style={s.optTag}>optional</Text>; }
 function FLabel({ children }: { children: React.ReactNode }) { return <Text style={s.fLabel}>{children}</Text>; }
+// Sensitive field (email / contact) — read-only with a Change button that opens
+// the verify-by-code flow.
+function PVerifiedField({ label, value, onChange }: { label: string; value: string; onChange: () => void }) {
+  return (
+    <>
+      <FLabel>{label}</FLabel>
+      <View style={s.pvRow}>
+        <Text style={s.pvVal} numberOfLines={1}>{value}</Text>
+        <Pressable onPress={onChange} style={({ hovered }: any) => [s.pvBtn, hovered && { backgroundColor: pt.accentSoft }]}>
+          <Ionicons name="shield-checkmark-outline" size={13} color={pt.accent} />
+          <Text style={s.pvBtnText}>Change</Text>
+        </Pressable>
+      </View>
+    </>
+  );
+}
 function FInput({ value, onChange, placeholder, multiline }: { value?: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean }) {
   return (
     <TextInput
@@ -1072,6 +1118,10 @@ const s = StyleSheet.create({
   fLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: pt.ink, marginTop: 14, marginBottom: 6 },
   optTag: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: pt.subtle },
   fInput: { borderWidth: 1.4, borderColor: pt.line, borderRadius: 11, paddingHorizontal: 12, paddingVertical: 11, fontFamily: FontFamily.fredokaRegular, fontSize: 13.5, color: pt.ink, backgroundColor: pt.raise, outlineStyle: 'none' as any },
+  pvRow: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.4, borderColor: pt.line, borderRadius: 11, paddingLeft: 12, paddingRight: 8, paddingVertical: 8, backgroundColor: pt.raise },
+  pvVal: { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: pt.ink },
+  pvBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.3, borderColor: pt.accent, borderRadius: 9, paddingHorizontal: 11, paddingVertical: 6 },
+  pvBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: pt.accent },
   hint: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, color: pt.subtle, marginTop: 6, lineHeight: 16 },
   grid2: { flexDirection: 'row', gap: 10 },
   addrPreview: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: pt.accentSoft, borderRadius: 10, padding: 10, marginTop: 12 },

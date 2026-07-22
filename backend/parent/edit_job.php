@@ -15,6 +15,7 @@ ini_set('display_errors', 0);
 error_reporting(0);
 ob_start();
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/job_title.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -48,18 +49,42 @@ try {
 
     $raw_title = trim($data['title'] ?? '');
     $custom_job_title = trim($data['custom_job_title'] ?? '');
-    $final_title = $raw_title;
-    if ($custom_job_title) {
-        $final_title = $raw_title ? "$raw_title ($custom_job_title)" : $custom_job_title;
+
+    // A parent's custom title REPLACES the generated one (it used to be appended in
+    // parentheses, making titles longer instead of clearer). Otherwise rebuild
+    // server-side from category + roles so the stored title stays concise.
+    if ($custom_job_title !== '') {
+        $final_title = $custom_job_title;
+    } else {
+        $cat_name = '';
+        $cat_q = mysqli_prepare($conn, "SELECT category_name FROM ref_categories WHERE category_id = ?");
+        mysqli_stmt_bind_param($cat_q, "i", $category_id);
+        mysqli_stmt_execute($cat_q);
+        mysqli_stmt_bind_result($cat_q, $cat_name_res);
+        if (mysqli_stmt_fetch($cat_q)) $cat_name = (string) $cat_name_res;
+        mysqli_stmt_close($cat_q);
+
+        $role_names = carelink_role_names_for_job_ids($conn, $job_ids_json);
+        $final_title = carelink_build_job_title($cat_name, $role_names, null);
     }
 
-    // Duplicate Check
-    $dup_check = mysqli_prepare($conn, "SELECT job_post_id FROM job_posts WHERE parent_id = ? AND category_id = ? AND title = ? AND status IN ('Open', 'Pending') AND job_post_id != ?");
-    mysqli_stmt_bind_param($dup_check, "iisi", $parent_id, $category_id, $final_title, $job_post_id);
-    mysqli_stmt_execute($dup_check);
-    mysqli_stmt_store_result($dup_check);
-    if (mysqli_stmt_num_rows($dup_check) > 0) throw new Exception("You already have an active or pending job post for this exact role.");
-    mysqli_stmt_close($dup_check);
+    // Duplicate Check — compare the actual ROLE SET, not the title (titles now
+    // collapse to the category for 3+ roles, so title-matching would false-positive).
+    // Sets are compared in PHP because stored job_ids JSON varies in order and type.
+    $new_role_set = carelink_normalize_job_ids($job_ids_json);
+    if (!empty($new_role_set)) {
+        $dup_check = mysqli_prepare($conn, "SELECT job_ids FROM job_posts WHERE parent_id = ? AND category_id = ? AND status IN ('Open', 'Pending') AND job_post_id != ?");
+        mysqli_stmt_bind_param($dup_check, "iii", $parent_id, $category_id, $job_post_id);
+        mysqli_stmt_execute($dup_check);
+        $dup_res = mysqli_stmt_get_result($dup_check);
+        while ($dup_res && ($dup_row = mysqli_fetch_assoc($dup_res))) {
+            if (carelink_normalize_job_ids($dup_row['job_ids']) === $new_role_set) {
+                mysqli_stmt_close($dup_check);
+                throw new Exception("You already have an active or pending job post with exactly these roles.");
+            }
+        }
+        mysqli_stmt_close($dup_check);
+    }
 
     $custom_category = trim($data['custom_category'] ?? '');
     if ($category_id == 6 && empty($custom_category)) $custom_category = "Specialized Service " . rand(100, 999);

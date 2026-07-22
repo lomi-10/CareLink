@@ -78,45 +78,63 @@ try {
 
     // Mobile number — a second way to sign in, for users who find a number easier
     // to remember than an email. Stored canonically (09XXXXXXXXX) so every format
-    // the user might type resolves to the same account. Optional: existing users
-    // and anyone who'd rather not give a number still sign in with email.
+    // the user might type resolves to the same account. Optional: anyone who'd
+    // rather not give a number still signs in with their email.
     $phone = null;
     if (!empty($data['phone'])) {
         $phone = carelink_normalize_ph_mobile((string) $data['phone']);
         if ($phone === null) {
-            echo json_encode(["success" => false, "message" => "Please enter a valid Philippine mobile number, like 0917 123 4567."]);
+            echo json_encode([
+                "success" => false,
+                "message" => "Please enter a valid Philippine mobile number, like 0917 123 4567.",
+                "errors"  => ["phone" => "Please enter a valid Philippine mobile number, like 0917 123 4567."],
+            ]);
             exit();
         }
+    }
+
+    // 5. DUPLICATE CHECKS — email and phone TOGETHER.
+    // These used to run in two places (phone here, email 20 lines later), so when
+    // both were taken the user fixed the phone, resubmitted, and only THEN learned
+    // the email was taken too. Reporting every clash at once, in form order, means
+    // one fix instead of a guessing game.
+    $errors = [];
+
+    $stmt = $conn->prepare("SELECT user_id FROM users WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    if ($stmt->get_result()->num_rows > 0) {
+        $errors['email'] = "This email already has an account. Sign in instead, or use a different email.";
+    }
+    $stmt->close();
+
+    if ($phone !== null) {
         $pstmt = $conn->prepare("SELECT user_id FROM users WHERE phone = ?");
         $pstmt->bind_param("s", $phone);
         $pstmt->execute();
         if ($pstmt->get_result()->num_rows > 0) {
-            $pstmt->close();
-            echo json_encode(["success" => false, "message" => "That mobile number is already registered. Try signing in instead."]);
-            exit();
+            // Phone is optional, so tell them the cheapest way out rather than
+            // leaving them stuck on a field they never needed to fill.
+            $errors['phone'] = "This mobile number is already used by another account. Use a different number, or leave it blank — it's optional.";
         }
         $pstmt->close();
     }
 
-    // 5. GENERATE USERNAME
+    if (!empty($errors)) {
+        echo json_encode([
+            "success" => false,
+            "message" => implode("\n\n", array_values($errors)),
+            "errors"  => $errors,      // lets the form highlight the exact fields
+            "reason"  => "duplicate",
+        ]);
+        exit();
+    }
+
+    // 6. GENERATE USERNAME
     $username_base = explode('@', $email)[0];
     $username_base = preg_replace("/[^a-zA-Z0-9]/", "", $username_base);
     if (empty($username_base)) { $username_base = "user"; }
     $username = $username_base . rand(1000, 9999);
-
-    // 6. CHECK FOR DUPLICATE EMAIL
-    $checkQuery = "SELECT user_id FROM users WHERE email = ?";
-    $stmt = $conn->prepare($checkQuery);
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        echo json_encode(["success" => false, "message" => "Email already registered."]);
-        $stmt->close();
-        exit();
-    }
-    $stmt->close();
 
     // 7. START TRANSACTION (The Safety Net)
     $conn->begin_transaction();

@@ -58,11 +58,17 @@ function carelink_score_job_for_helper(array $helper, array $helperCatIds, array
         $reasons[] = 'Category matches your specialty';
     }
 
-    // 2. Job roles (15) — proportional overlap ---------------------------------
+    // 2. Job roles (15) — overlap, but scored against up to 3 "core" roles so a
+    //    broad multi-role post doesn't gut a helper who does its main roles.
+    //    Families routinely over-list roles; a helper strong in the core ones is
+    //    still an excellent fit (category already covers the broad specialty).
     if (!empty($jobJobIds) && !empty($helperJobIds)) {
         $overlap = count(array_intersect($jobJobIds, $helperJobIds));
-        $pts     = (int) round(($overlap / count($jobJobIds)) * 15);
-        if ($pts > 0) { $score += $pts; $reasons[] = 'Job roles align with yours'; }
+        if ($overlap > 0) {
+            $need = min(count($jobJobIds), 3);
+            $pts  = (int) round(min(1.0, $overlap / $need) * 15);
+            $score += $pts; $reasons[] = 'Job roles align with yours';
+        }
     } elseif ($jobCatId && in_array($jobCatId, $helperCatIds, true)) {
         $score += 8; // no specific roles required — partial credit if category matched
     }
@@ -135,7 +141,7 @@ function carelink_score_job_for_helper(array $helper, array $helperCatIds, array
             $reasons[] = 'Highly rated employer (' . number_format($parentRating, 1) . '★)';
         }
     } else {
-        $score += 5;
+        $score += 7; // no reviews yet — neutral benefit of the doubt, not a penalty
     }
 
     $daysSince = floor((time() - strtotime($job['posted_at'] ?? 'now')) / 86400);

@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useBrowseHelpers, useParentJobs } from '@/hooks/parent';
 import { useParentActivePlacements } from '@/hooks/parent/useParentActivePlacements';
-import { computeHelperJobMatch, pickPrimaryOpenJob } from '@/lib/parentHelperMatch';
+import { computeHelperJobMatch, pickPrimaryOpenJob, bestJobForHelper } from '@/lib/parentHelperMatch';
 import { useAuth, useJobReferences, useResponsive, useNotifications } from '@/hooks/shared';
 
 import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
@@ -62,21 +62,23 @@ export default function BrowseHelpers() {
   );
   const referenceJob = useMemo(() => pickPrimaryOpenJob(jobs), [jobs]);
 
+  // Score each helper against the post they fit BEST (not just the primary job),
+  // so a helper who's a strong match for one of several posts surfaces correctly.
   const recommendedHelpers = useMemo(() => {
     const notHired = helpers.filter((h) => !hiredHelperIds.has(String(h.user_id)));
     return [...notHired]
-      .map((h) => ({ helper: h, match: computeHelperJobMatch(h, referenceJob) }))
+      .map((h) => ({ helper: h, match: computeHelperJobMatch(h, bestJobForHelper(h, jobs)) }))
       .filter((x) => x.match.score > 0)
       .sort((a, b) => b.match.score - a.match.score)
       .slice(0, 3);
-  }, [helpers, hiredHelperIds, referenceJob]);
+  }, [helpers, hiredHelperIds, jobs]);
 
   const rankedHelpers = useMemo(() => {
     const notHired = helpers.filter((h) => !hiredHelperIds.has(String(h.user_id)));
     return [...notHired].sort((a, b) =>
-      computeHelperJobMatch(b, referenceJob).score - computeHelperJobMatch(a, referenceJob).score
+      computeHelperJobMatch(b, bestJobForHelper(b, jobs)).score - computeHelperJobMatch(a, bestJobForHelper(a, jobs)).score
     );
-  }, [helpers, hiredHelperIds, referenceJob]);
+  }, [helpers, hiredHelperIds, jobs]);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
@@ -125,8 +127,8 @@ export default function BrowseHelpers() {
       <HelperProfileModal
         visible={profileModalVisible}
         helper={selectedHelper}
-        referenceJob={referenceJob}
-        match={selectedHelper ? computeHelperJobMatch(selectedHelper, referenceJob) : null}
+        referenceJob={selectedHelper ? bestJobForHelper(selectedHelper, jobs) : referenceJob}
+        match={selectedHelper ? computeHelperJobMatch(selectedHelper, bestJobForHelper(selectedHelper, jobs)) : null}
         onInvite={handleInviteFromProfile}
         onMessage={handleMessageHelper}
         onReport={() => { setProfileModalVisible(false); setComplaintOpen(true); }}
@@ -163,10 +165,15 @@ export default function BrowseHelpers() {
             <>
               <Text style={s.recTitle}>Best Match for Your Job</Text>
               <Text style={s.recSubtitle} numberOfLines={1}>
-                Top matches for{' '}
-                <Text style={s.recSubtitleAccent}>
-                  {referenceJob.title || referenceJob.custom_job_title || 'your open role'}
-                </Text>
+                {jobs.filter((j: any) => j.status === 'Open').length > 1 ? (
+                  <>Top matches across <Text style={s.recSubtitleAccent}>your open roles</Text></>
+                ) : (
+                  <>Top matches for{' '}
+                    <Text style={s.recSubtitleAccent}>
+                      {referenceJob.title || referenceJob.custom_job_title || 'your open role'}
+                    </Text>
+                  </>
+                )}
               </Text>
             </>
           ) : (
@@ -241,7 +248,7 @@ export default function BrowseHelpers() {
             </View>
           }
           renderItem={({ item }) => {
-            const match = computeHelperJobMatch(item, referenceJob);
+            const match = computeHelperJobMatch(item, bestJobForHelper(item, jobs));
             return isDesktop ? (
               <View style={s.desktopCardWrapper}>
                 <HelperCard

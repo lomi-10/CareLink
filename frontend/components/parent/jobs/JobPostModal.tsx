@@ -36,6 +36,7 @@ import { BROWN, CARAMEL, ICON_BG, DARK, MUTED, DIVIDER, GREEN, SUCCESS_BG, CREAM
 import { useJobForm } from '@/hooks/parent';
 import { useUserVerification } from '@/hooks/peso';
 import { useJobReferences } from '@/hooks/shared';
+import { buildJobTitle } from '@/lib/jobTitle';
 
 // Display-only label overrides — underlying value/state is unchanged
 const DISPLAY_LABELS: Record<string, string> = {
@@ -263,7 +264,8 @@ export function JobPostModal({
       const selectedTitles = jobs
         .filter((j: any) => newJobs.includes(j.job_id.toString()))
         .map((j: any) => j.job_title);
-      updateField('title', selectedTitles.join(', '));
+      const categoryName = categories.find(c => c.category_id.toString() === formData.category_id)?.name ?? '';
+      updateField('title', buildJobTitle(categoryName, selectedTitles));
     }
   };
 

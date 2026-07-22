@@ -55,7 +55,10 @@ export default function ContractTab({
             </View>
           )}
           <View style={s.contractSummaryCard}>
-            <ContractRow label="Position" value={resolvedApp.job_title || '—'} />
+            <ContractRow label="Position" value={resolvedApp.category_name || resolvedApp.job_title || '—'} />
+            {resolvedApp.skill_names && resolvedApp.skill_names.length > 0 && (
+              <ContractRow label="Skills" value={resolvedApp.skill_names.join(', ')} />
+            )}
             <ContractRow label="Salary" value={resolvedApp.confirmed_salary != null ? `₱${resolvedApp.confirmed_salary.toLocaleString()} / month` : '—'} />
             <ContractRow label="Work Hours" value={resolvedApp.work_hours || '—'} />
             <ContractRow label="Rest Day" value={resolvedApp.rest_days && resolvedApp.rest_days.length ? resolvedApp.rest_days.join(', ') : '—'} />
@@ -105,7 +108,10 @@ export default function ContractTab({
             </View>
           </View>
           <View style={s.contractSummaryCard}>
-            <ContractRow label="Position" value={resolvedApp.job_title || '—'} />
+            <ContractRow label="Position" value={resolvedApp.category_name || resolvedApp.job_title || '—'} />
+            {resolvedApp.skill_names && resolvedApp.skill_names.length > 0 && (
+              <ContractRow label="Skills" value={resolvedApp.skill_names.join(', ')} />
+            )}
             <ContractRow label="Salary" value={resolvedApp.confirmed_salary != null ? `₱${resolvedApp.confirmed_salary.toLocaleString()} / month` : '—'} />
             <ContractRow label="Work Hours" value={resolvedApp.work_hours || '—'} />
             <ContractRow label="Rest Day" value={resolvedApp.rest_days && resolvedApp.rest_days.length ? resolvedApp.rest_days.join(', ') : '—'} />

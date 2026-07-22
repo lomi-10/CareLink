@@ -19,3 +19,4 @@ export { DateField } from './DateField';
 export { TimeField } from './TimeField';
 export { PasswordConfirmModal } from './PasswordConfirmModal';
 export { RequestContractChangesModal } from './RequestContractChangesModal';
+export { VerifyChangeModal } from './VerifyChangeModal';

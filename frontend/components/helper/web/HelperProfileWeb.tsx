@@ -11,10 +11,11 @@ import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { useHelperProfile, useHelperStats } from '@/hooks/helper';
+import { useHelperProfile, useHelperStats, type WorkHistoryEntry } from '@/hooks/helper';
 import { useJobReferences } from '@/hooks/shared/useJobReferences';
+import { isValidPhMobile, normalizePhMobile } from '@/lib/phone';
 import { useCareBot } from '@/contexts/CareBotContext';
-import { NotificationModal, ConfirmationModal } from '@/components/shared';
+import { NotificationModal, ConfirmationModal, VerifyChangeModal } from '@/components/shared';
 import { DocumentAIScan, ScanResult } from '@/components/shared/DocumentAIScan';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
@@ -67,6 +68,8 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
   const [selJobs, setSelJobs] = useState<number[]>([]);
   const [selSkills, setSelSkills] = useState<number[]>([]);
   const [selLangs, setSelLangs] = useState<number[]>([]);
+  const [customRoles, setCustomRoles] = useState<string[]>([]);
+  const [customSkillList, setCustomSkillList] = useState<string[]>([]);
   const [skillStep, setSkillStep] = useState<'category' | 'roles' | 'skills' | 'languages'>('category');
   // documents editor
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
@@ -75,6 +78,10 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState<any | null>(null);
   const [docTab, setDocTab] = useState<'docs' | 'history'>('docs');
   const [zoom, setZoom] = useState<{ uri: string; title: string } | null>(null);
+  // experience editor — work-history entries being edited
+  const [workRows, setWorkRows] = useState<WorkHistoryEntry[]>([]);
+  // verified email / contact-number change
+  const [changeField, setChangeField] = useState<null | 'email' | 'contact'>(null);
 
   const p: any = profileData?.profile ?? {};
   const U: any = profileData?.user ?? {};
@@ -88,12 +95,14 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
   const reviews = Number(p.rating_count ?? 0);
   const go = (path: string) => router.push(path as never);
 
+  const workHistory: WorkHistoryEntry[] = profileData?.work_history ?? [];
   const docVerified = docs.filter((d) => d.status === 'Verified').length;
   const personalDone = !!(p.contact_number && (p.city || p.municipality || p.address));
-  const skillsDone = roles.length > 0 && skills.length > 0;
+  // Roles are required; skills are an optional refinement, so they don't gate "done".
+  const skillsDone = roles.length > 0;
   const prefsDone = !!(p.employment_type || p.work_schedule || p.expected_salary);
   const docsDone = REQUIRED_DOCS.every((d) => docs.some((x) => x.document_type === d));
-  const expDone = Number(p.years_experience) > 0;
+  const expDone = workHistory.length > 0 || Number(p.years_experience) > 0;
   const location = [p.city ?? p.municipality, p.province].filter(Boolean).join(', ') || 'Location not set';
   const incompleteCount = [personalDone, skillsDone, prefsDone, docsDone].filter((x) => !x).length;
 
@@ -153,13 +162,54 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
       job_ids: JSON.stringify(selJobs),
       skill_ids: JSON.stringify(selSkills),
       language_ids: JSON.stringify(selLangs),
+      custom_jobs: JSON.stringify(customRoles),
+      custom_skills: JSON.stringify(customSkillList),
     });
+
+  // Add/remove free-text custom roles & skills (deduped, capped).
+  const addCustomRole = (v: string) => {
+    const t = v.trim(); if (!t) return;
+    setCustomRoles((r) => (r.some((x) => x.toLowerCase() === t.toLowerCase()) || r.length >= 10 ? r : [...r, t.slice(0, 50)]));
+  };
+  const addCustomSkill = (v: string) => {
+    const t = v.trim(); if (!t) return;
+    setCustomSkillList((r) => (r.some((x) => x.toLowerCase() === t.toLowerCase()) || r.length >= 20 ? r : [...r, t.slice(0, 50)]));
+  };
+
+  // Experience = the years number + the work-history list. Only rows with the
+  // three essentials go up; the backend re-validates and replaces the table.
+  const saveExperience = () => {
+    const cleaned = workRows
+      .filter((w) => w.employer_name.trim() && w.position.trim() && w.start_date)
+      .map((w) => ({
+        employer_name: w.employer_name.trim(),
+        position: w.position.trim(),
+        start_date: w.start_date,
+        end_date: w.end_date || null,
+        duties: (w.duties ?? '').trim() || null,
+        reason_for_leaving: (w.reason_for_leaving ?? '').trim() || null,
+        employer_contact: w.can_contact ? ((w.employer_contact ?? '').trim() || null) : null,
+        can_contact: w.can_contact ? 1 : 0,
+      }));
+    save({ experience_years: form.experience_years || '0', bio: form.bio ?? '' }, { work_history: JSON.stringify(cleaned) });
+  };
+
+  const addWorkRow = () =>
+    setWorkRows((rows) => [...rows, { employer_name: '', position: '', start_date: '', end_date: null, duties: '', reason_for_leaving: '', employer_contact: '', can_contact: false }]);
+  const updateWorkRow = (i: number, patch: Partial<WorkHistoryEntry>) =>
+    setWorkRows((rows) => rows.map((r, x) => (x === i ? { ...r, ...patch } : r)));
+  const removeWorkRow = (i: number) =>
+    setWorkRows((rows) => rows.filter((_, x) => x !== i));
 
   // Address is a derived "barangay, municipality, province" string (same
   // convention the mobile edit modal uses) — recomputed at save time.
   const savePersonal = () => {
+    if (!isValidPhMobile(form.contact_number)) {
+      setNotif({ visible: true, msg: 'Please enter a valid Philippine mobile number, like 0917 123 4567.', type: 'error' });
+      return;
+    }
     const address = [form.barangay, form.municipality, form.province].filter(Boolean).join(', ');
-    save({ ...form, address });
+    save({ ...form, address, contact_number: normalizePhMobile(form.contact_number) ?? form.contact_number });
   };
 
   const startEdit = (key: SecKey) => {
@@ -171,16 +221,23 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
       // Pre-select the categories of the roles the helper already has.
       const cats = Array.from(new Set(refs.jobs.filter((j: any) => jobs.includes(Number(j.job_id))).map((j: any) => Number(j.category_id))));
       setSelCats(cats);
+      setCustomRoles(profileData?.customJobs ?? []);
+      setCustomSkillList(profileData?.customSkills ?? []);
       setSkillStep('category');
     }
     if (key === 'documents') { setSelectedDocType('Valid ID'); setPendingScan(null); setDocTab('docs'); }
+    if (key === 'experience') {
+      setWorkRows((profileData?.work_history ?? []).map((w) => ({ ...w })));
+    }
     setForm({
+      first_name: U.first_name ?? '', middle_name: U.middle_name ?? '', last_name: U.last_name ?? '',
       gender: p.gender ?? 'Female', birth_date: (p.birth_date ?? p.date_of_birth ?? '') || '',
       civil_status: p.civil_status ?? 'Single', religion: p.religion ?? '', education_level: p.education_level ?? '',
       contact_number: p.contact_number ?? '', address: p.address ?? '',
       province: p.province ?? '', municipality: (p.municipality ?? p.city) ?? '', barangay: p.barangay ?? '', landmark: p.landmark ?? '',
       employment_type: p.employment_type ?? 'Stay-in', work_schedule: p.work_schedule ?? 'Full-time',
       expected_salary: String(p.expected_salary ?? ''), experience_years: String(p.years_experience ?? p.experience_years ?? ''),
+      bio: p.bio ?? '',
     });
     setEditing(key);
   };
@@ -278,11 +335,17 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
       const userId = String(JSON.parse(raw || '{}')?.user_id || '');
       const res = await fetch(`${API_URL}/helper/delete_document.php`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ document_id: doc.document_id, user_id: userId }),
+        body: JSON.stringify({ document_id: doc.document_id, user_id: userId, requester_id: userId }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Could not delete.');
-      setNotif({ visible: true, msg: `${doc.document_type} deleted.`, type: 'success' });
+      setNotif({
+        visible: true,
+        msg: data.verification_reverted
+          ? `${doc.document_type} deleted. This paused your PESO verification — your profile is hidden from families until you re-upload it and PESO re-verifies your account.`
+          : `${doc.document_type} deleted.`,
+        type: data.verification_reverted ? 'error' : 'success',
+      });
       setSelectedDocType(null);
       refresh();
     } catch (e: any) {
@@ -314,6 +377,17 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
           <View style={s.compBar}><View style={[s.compBarFill, { width: `${Math.min(100, completeness)}%` }]} /></View>
         </View>
       </View>
+      <Pressable
+        onPress={() => go('/(helper)/profile/public-preview')}
+        style={({ hovered }: any) => [s.resumeBtn, TRANS, hovered && { backgroundColor: 'rgba(255,255,255,0.28)' }]}
+      >
+        <Ionicons name="document-text-outline" size={15} color="#fff" />
+        <View style={{ flex: 1 }}>
+          <Text style={s.resumeBtnTitle}>Preview your resumé</Text>
+          <Text style={s.resumeBtnSub}>See exactly what families see</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.7)" />
+      </Pressable>
     </LinearGradient>
   );
 
@@ -348,7 +422,8 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
     ],
     experience: [
       { label: 'Total Experience', value: Number(p.years_experience) > 0 ? `${p.years_experience} years` : '—' },
-      { label: 'Most Recent Role', value: roles[0] || '—' },
+      { label: 'Past Jobs Logged', value: workHistory.length ? String(workHistory.length) : '—' },
+      { label: 'Most Recent', value: workHistory[0] ? `${workHistory[0].position} · ${workHistory[0].employer_name}` : (roles[0] || '—') },
     ],
     skills: [
       { label: 'Roles', value: roles.length ? roles.join(', ') : '—' },
@@ -498,6 +573,11 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
                 <ScrollView style={{ maxHeight: 520 }} showsVerticalScrollIndicator={false}>
                   {editing === 'personal' && (
                     <>
+                      <View style={s.addrGrid}>
+                        <View style={{ flex: 1 }}><FLabel>First Name</FLabel><FInput value={form.first_name} onChange={(v) => setF('first_name', v)} placeholder="First name" /></View>
+                        <View style={{ flex: 1 }}><FLabel>Middle Name</FLabel><FInput value={form.middle_name} onChange={(v) => setF('middle_name', v)} placeholder="(optional)" /></View>
+                        <View style={{ flex: 1 }}><FLabel>Last Name</FLabel><FInput value={form.last_name} onChange={(v) => setF('last_name', v)} placeholder="Last name" /></View>
+                      </View>
                       <FLabel>Gender</FLabel>
                       <Toggle options={['Female', 'Male']} value={form.gender} onChange={(v) => setF('gender', v)} />
                       <FLabel>Date of Birth</FLabel>
@@ -510,6 +590,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
                       <PillSelect options={['Elementary', 'High School Undergrad', 'High School Grad', 'College Undergrad', 'College Grad', 'Vocational']} value={form.education_level} onChange={(v) => setF('education_level', v)} />
                       <FLabel>Contact Number</FLabel>
                       <FInput value={form.contact_number} onChange={(v) => setF('contact_number', v)} placeholder="0917 000 0000" />
+                      <VerifiedField label="Email Address" value={U.email || 'Not set'} accent={wt.accent} onChange={() => setChangeField('email')} />
                       <FLabel>Current Address</FLabel>
                       <LocationSearchInput
                         province={form.province} municipality={form.municipality} barangay={form.barangay}
@@ -537,23 +618,72 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
                   )}
                   {editing === 'experience' && (
                     <>
+                      <FLabel>About You <Text style={{ color: wt.subtle, fontSize: 11 }}>(short bio)</Text></FLabel>
+                      <FInput value={form.bio} onChange={(v) => setF('bio', v)} placeholder="Tell families a little about yourself — your experience, what you're good at, and the kind of home you'd love to work in." multiline />
                       <FLabel>Total Years of Experience</FLabel>
                       <FInput value={form.experience_years} onChange={(v) => setF('experience_years', v.replace(/[^0-9]/g, ''))} placeholder="3" />
-                      <Text style={s.hint}>Detailed work history (past employers) can be added in the full profile editor.</Text>
+
+                      <View style={s.workHead}>
+                        <Text style={s.workHeadTitle}>Work History</Text>
+                        <Text style={s.workHeadSub}>Past employers make you far more trustworthy to families.</Text>
+                      </View>
+
+                      {workRows.map((w, i) => (
+                        <View key={i} style={s.workCard}>
+                          <View style={s.workCardTop}>
+                            <Text style={s.workCardNum}>Job {i + 1}</Text>
+                            <Pressable onPress={() => removeWorkRow(i)} hitSlop={8}><Ionicons name="trash-outline" size={16} color={wt.red} /></Pressable>
+                          </View>
+                          <FLabel>Employer / Family name</FLabel>
+                          <FInput value={w.employer_name} onChange={(v) => updateWorkRow(i, { employer_name: v })} placeholder="e.g. Dela Cruz Family" />
+                          <FLabel>Your role</FLabel>
+                          <FInput value={w.position} onChange={(v) => updateWorkRow(i, { position: v })} placeholder="e.g. Yaya / Housekeeper" />
+                          <View style={s.workDates}>
+                            <View style={{ flex: 1 }}><FLabel>Start</FLabel><DateField value={w.start_date} onChange={(v) => updateWorkRow(i, { start_date: v })} /></View>
+                            {!isCurrent(w) && (
+                              <View style={{ flex: 1 }}><FLabel>End</FLabel><DateField value={w.end_date ?? ''} onChange={(v) => updateWorkRow(i, { end_date: v })} /></View>
+                            )}
+                          </View>
+                          <Pressable onPress={() => updateWorkRow(i, { end_date: isCurrent(w) ? '' : null })} style={s.currentRow}>
+                            <Ionicons name={isCurrent(w) ? 'checkbox' : 'square-outline'} size={18} color={isCurrent(w) ? wt.accent : wt.subtle} />
+                            <Text style={s.currentText}>I currently work here</Text>
+                          </Pressable>
+                          <FLabel>Main duties <Opt /></FLabel>
+                          <FInput value={w.duties ?? ''} onChange={(v) => updateWorkRow(i, { duties: v })} placeholder="e.g. Cooking, laundry, caring for 2 kids" multiline />
+                          <FLabel>Reason for leaving <Opt /></FLabel>
+                          <FInput value={w.reason_for_leaving ?? ''} onChange={(v) => updateWorkRow(i, { reason_for_leaving: v })} placeholder="e.g. Contract ended" />
+                          <Pressable onPress={() => updateWorkRow(i, { can_contact: !w.can_contact })} style={s.refRow}>
+                            <View style={[s.track, w.can_contact && { backgroundColor: wt.accent }]}><View style={[s.knob, w.can_contact && { transform: [{ translateX: 16 }] }]} /></View>
+                            <Text style={s.refText}>This employer can be contacted as a reference</Text>
+                          </Pressable>
+                          {w.can_contact && (
+                            <><FLabel>Employer contact number <Opt /></FLabel>
+                            <FInput value={w.employer_contact ?? ''} onChange={(v) => updateWorkRow(i, { employer_contact: v })} placeholder="0917 123 4567" /></>
+                          )}
+                        </View>
+                      ))}
+
+                      <Pressable onPress={addWorkRow} style={({ hovered }: any) => [s.addWorkBtn, TRANS, hovered && { borderColor: wt.accent, backgroundColor: wt.accentSoft }]}>
+                        <Ionicons name="add" size={16} color={wt.accent} /><Text style={s.addWorkText}>Add a past job</Text>
+                      </Pressable>
                     </>
                   )}
                   {editing === 'skills' && (
                     refs.loading ? <ActivityIndicator color={wt.accent} style={{ marginTop: 20 }} /> : (
                       <SkillsWizard step={skillStep} refs={refs}
                         selCats={selCats} selJobs={selJobs} selSkills={selSkills} selLangs={selLangs}
+                        customRoles={customRoles} customSkills={customSkillList}
                         onToggleCat={toggleCategory} onToggleJob={(id) => toggleId(setSelJobs, id)}
-                        onToggleSkill={(id) => toggleId(setSelSkills, id)} onToggleLang={(id) => toggleId(setSelLangs, id)} />
+                        onToggleSkill={(id) => toggleId(setSelSkills, id)} onToggleLang={(id) => toggleId(setSelLangs, id)}
+                        onAddCustomRole={addCustomRole} onRemoveCustomRole={(v) => setCustomRoles((r) => r.filter((x) => x !== v))}
+                        onAddCustomSkill={addCustomSkill} onRemoveCustomSkill={(v) => setCustomSkillList((r) => r.filter((x) => x !== v))} />
                     )
                   )}
                 </ScrollView>
                 {editing === 'skills' ? (
                   <SkillsWizardFooter step={skillStep} saving={saving}
-                    canNext={skillStep === 'category' ? selCats.length > 0 : skillStep === 'roles' ? selJobs.length > 0 : true}
+                    nextLabel={skillStep === 'skills' && selSkills.length === 0 && customSkillList.length === 0 ? 'Skip' : 'Next'}
+                    canNext={skillStep === 'category' ? selCats.length > 0 : skillStep === 'roles' ? (selJobs.length > 0 || customRoles.length > 0) : true}
                     onBack={() => setSkillStep((st) => st === 'languages' ? 'skills' : st === 'skills' ? 'roles' : st === 'roles' ? 'category' : 'category')}
                     onCancel={() => setEditing(null)}
                     onNext={() => setSkillStep((st) => st === 'category' ? 'roles' : st === 'roles' ? 'skills' : 'languages')}
@@ -561,7 +691,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
                 ) : (
                   <View style={s.formBtns}>
                     <Pressable onPress={() => setEditing(null)} style={({ hovered }: any) => [s.cancelBtn, TRANS, hovered && { backgroundColor: wt.lineSoft }]}><Text style={s.cancelText}>Cancel</Text></Pressable>
-                    <Pressable disabled={saving} onPress={() => (editing === 'personal' ? savePersonal() : save(form))} style={({ hovered, pressed }: any) => [{ flex: 1.4 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
+                    <Pressable disabled={saving} onPress={() => (editing === 'personal' ? savePersonal() : editing === 'experience' ? saveExperience() : save(form))} style={({ hovered, pressed }: any) => [{ flex: 1.4 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
                       <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.saveBtn}>
                         {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveText}>Save Changes</Text>}
                       </LinearGradient>
@@ -613,7 +743,18 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
 
               {/* Experience */}
               <BigCard sec={SECTIONS[4]} statusLabel={expDone ? 'Complete' : 'Incomplete'} statusOk={expDone} onEdit={() => startEdit('experience')}>
-                <DataGrid items={[{ v: '—', l: 'Employers' }, { v: Number(p.years_experience) > 0 ? `${p.years_experience} years` : '—', l: 'Total Experience' }, { v: roles[0] || '—', l: 'Most Recent Role' }, { v: '—', l: 'Last Work Period' }]} />
+                {!!p.bio && (
+                  <View style={{ marginBottom: 14 }}>
+                    <Text style={s.dataLbl}>About</Text>
+                    <Text style={s.bioReadText}>{p.bio}</Text>
+                  </View>
+                )}
+                <DataGrid items={[
+                  { v: workHistory.length ? String(workHistory.length) : '—', l: 'Past Employers' },
+                  { v: Number(p.years_experience) > 0 ? `${p.years_experience} years` : '—', l: 'Total Experience' },
+                  { v: workHistory[0]?.position || roles[0] || '—', l: 'Most Recent Role' },
+                  { v: String(workHistory.filter((w) => w.can_contact).length), l: 'References' },
+                ]} />
               </BigCard>
 
               <View style={s.tip}>
@@ -636,6 +777,15 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
       />
       <ImageZoomModal visible={!!zoom} uri={zoom?.uri ?? null} title={zoom?.title} onClose={() => setZoom(null)} />
       <NotificationModal visible={notif.visible} message={notif.msg} type={notif.type} autoClose duration={1600} onClose={() => setNotif((n) => ({ ...n, visible: false }))} />
+      <VerifyChangeModal
+        visible={!!changeField}
+        field={changeField ?? 'email'}
+        userId={U.user_id ?? ''}
+        currentValue={changeField === 'contact' ? p.contact_number : U.email}
+        accent={wt.accent}
+        onClose={() => setChangeField(null)}
+        onSuccess={() => { setChangeField(null); setNotif({ visible: true, msg: changeField === 'contact' ? 'Contact number updated.' : 'Email updated.', type: 'success' }); refresh(); }}
+      />
     </View>
   );
 }
@@ -684,8 +834,27 @@ function DataGrid({ items }: { items: { v: string; l: string }[] }) {
   );
 }
 function FLabel({ children }: any) { return <Text style={s.fLabel}>{children}</Text>; }
+function Opt() { return <Text style={{ color: wt.subtle, fontFamily: FontFamily.fredokaRegular, fontSize: 11 }}>(optional)</Text>; }
+/** A work-history row is "current" when it has no end date. */
+function isCurrent(w: WorkHistoryEntry) { return w.end_date === null || w.end_date === undefined; }
 function FInput({ value, onChange, placeholder, multiline }: { value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean }) {
   return <TextInput style={[s.fInput, multiline && { minHeight: 66, textAlignVertical: 'top' }]} value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={wt.subtle} multiline={multiline} />;
+}
+// Sensitive field (email / contact): shown read-only with a Change button that
+// opens the verify-by-code flow. Editing it inline is intentionally not allowed.
+function VerifiedField({ label, value, accent, onChange }: { label: string; value: string; accent: string; onChange: () => void }) {
+  return (
+    <>
+      <FLabel>{label}</FLabel>
+      <View style={s.verifiedRow}>
+        <Text style={s.verifiedVal} numberOfLines={1}>{value}</Text>
+        <Pressable onPress={onChange} style={({ hovered }: any) => [s.verifiedBtn, { borderColor: accent }, hovered && { backgroundColor: accent + '12' }]}>
+          <Ionicons name="shield-checkmark-outline" size={13} color={accent} />
+          <Text style={[s.verifiedBtnText, { color: accent }]}>Change</Text>
+        </Pressable>
+      </View>
+    </>
+  );
 }
 // Native browser date picker (real calendar UI) — matches the web branch the
 // mobile edit modal already uses for Platform.OS === 'web'.
@@ -789,27 +958,31 @@ function CategoryGrid({ items, selected, onToggle }: { items: { id: number; labe
 
 // Paged skills editor: Category → Roles → Skills → Languages (mirrors mobile).
 const SKILL_STEPS = ['category', 'roles', 'skills', 'languages'] as const;
-const SKILL_TITLES: Record<string, { title: string; hint: string }> = {
+const SKILL_TITLES: Record<string, { title: string; hint: string; optional?: boolean }> = {
   category: { title: 'What kind of work do you do?', hint: 'Pick one or more categories. Tip: choose “General Househelp” if you can do everything — it selects all roles for you.' },
-  roles: { title: 'Choose your roles', hint: 'Select every role you can take on.' },
-  skills: { title: 'Add your skills', hint: 'Pick the skills you have for those roles.' },
+  roles: { title: 'Choose your roles', hint: 'Select every role you can take on. Don’t see yours? Add your own below.' },
+  skills: { title: 'Add your skills', hint: 'Optional — tick any skills you have. It helps employers find you, but you can skip this and come back anytime.', optional: true },
   languages: { title: 'Languages you speak', hint: 'Select all that apply.' },
 };
-function SkillsWizard({ step, refs, selCats, selJobs, selSkills, selLangs, onToggleCat, onToggleJob, onToggleSkill, onToggleLang }: {
+function SkillsWizard({ step, refs, selCats, selJobs, selSkills, selLangs, customRoles, customSkills, onToggleCat, onToggleJob, onToggleSkill, onToggleLang, onAddCustomRole, onRemoveCustomRole, onAddCustomSkill, onRemoveCustomSkill }: {
   step: 'category' | 'roles' | 'skills' | 'languages'; refs: any;
   selCats: number[]; selJobs: number[]; selSkills: number[]; selLangs: number[];
+  customRoles: string[]; customSkills: string[];
   onToggleCat: (id: number) => void; onToggleJob: (id: number) => void; onToggleSkill: (id: number) => void; onToggleLang: (id: number) => void;
+  onAddCustomRole: (v: string) => void; onRemoveCustomRole: (v: string) => void; onAddCustomSkill: (v: string) => void; onRemoveCustomSkill: (v: string) => void;
 }) {
   const idx = SKILL_STEPS.indexOf(step);
   const meta = SKILL_TITLES[step];
-  const skills = refs.skills.filter((sk: any) => selJobs.includes(Number(sk.job_id)));
   const selectedCats = refs.categories.filter((c: any) => selCats.includes(Number(c.category_id)));
   return (
     <View>
       <View style={s.wizSteps}>
         {SKILL_STEPS.map((k, i) => <View key={k} style={[s.wizDot, i === idx && s.wizDotOn, i < idx && s.wizDotDone]} />)}
       </View>
-      <Text style={s.wizStepLabel}>Step {idx + 1} of 4</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text style={s.wizStepLabel}>Step {idx + 1} of 4</Text>
+        {meta.optional && <View style={s.optBadge}><Text style={s.optBadgeText}>Optional</Text></View>}
+      </View>
       <Text style={s.wizTitle}>{meta.title}</Text>
       <Text style={s.wizHint}>{meta.hint}</Text>
       <View style={{ marginTop: 12 }}>
@@ -827,17 +1000,66 @@ function SkillsWizard({ step, refs, selCats, selJobs, selSkills, selLangs, onTog
                   </View>
                 );
               })}
+              <CustomAdder label="Add your own role" placeholder="e.g. Pet Grooming" items={customRoles} onAdd={onAddCustomRole} onRemove={onRemoveCustomRole} />
             </View>
           )
         )}
-        {step === 'skills' && (selJobs.length ? (skills.length ? <ChipPick items={skills.map((sk: any) => ({ id: Number(sk.skill_id), label: sk.skill_name }))} selected={selSkills} onToggle={onToggleSkill} /> : <Text style={s.hint}>No specific skills for these roles — you can continue.</Text>) : <Text style={s.hint}>Go back and pick a role first.</Text>)}
+        {step === 'skills' && (
+          <View style={{ gap: 16 }}>
+            {selJobs.length === 0 && customRoles.length === 0 ? (
+              <Text style={s.hint}>Go back and pick a role first — or just skip this step.</Text>
+            ) : (
+              // Grouped under each selected role so it isn't one giant wall of chips.
+              refs.jobs.filter((j: any) => selJobs.includes(Number(j.job_id))).map((job: any) => {
+                const jobSkills = refs.skills.filter((sk: any) => Number(sk.job_id) === Number(job.job_id));
+                if (!jobSkills.length) return null;
+                return (
+                  <View key={job.job_id}>
+                    <View style={s.jobGroupHead}><View style={s.jobGroupDot} /><Text style={s.jobGroupTitle}>{job.job_title}</Text></View>
+                    <ChipPick items={jobSkills.map((sk: any) => ({ id: Number(sk.skill_id), label: sk.skill_name }))} selected={selSkills} onToggle={onToggleSkill} />
+                  </View>
+                );
+              })
+            )}
+            <CustomAdder label="Add your own skill" placeholder="e.g. First Aid / CPR" items={customSkills} onAdd={onAddCustomSkill} onRemove={onRemoveCustomSkill} />
+          </View>
+        )}
         {step === 'languages' && <ChipPick items={refs.languages.map((l: any) => ({ id: Number(l.language_id), label: l.language_name }))} selected={selLangs} onToggle={onToggleLang} />}
       </View>
     </View>
   );
 }
-function SkillsWizardFooter({ step, saving, canNext, onBack, onCancel, onNext, onSave }: {
-  step: string; saving: boolean; canNext: boolean; onBack: () => void; onCancel: () => void; onNext: () => void; onSave: () => void;
+// Free-text adder: type + Enter/Add → chip. Removable. Used for custom roles & skills.
+function CustomAdder({ label, placeholder, items, onAdd, onRemove }: { label: string; placeholder: string; items: string[]; onAdd: (v: string) => void; onRemove: (v: string) => void }) {
+  const [text, setText] = useState('');
+  const commit = () => { onAdd(text); setText(''); };
+  return (
+    <View style={s.customAdd}>
+      <Text style={s.customAddLabel}>{label}</Text>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <TextInput
+          style={[s.fInput, { flex: 1, marginBottom: 0 }]} value={text} onChangeText={setText}
+          placeholder={placeholder} placeholderTextColor={wt.subtle} onSubmitEditing={commit} returnKeyType="done"
+        />
+        <Pressable onPress={commit} style={({ hovered }: any) => [s.customAddBtn, hovered && { backgroundColor: wt.accentSoft }]}>
+          <Ionicons name="add" size={18} color={wt.accent} /><Text style={s.customAddBtnText}>Add</Text>
+        </Pressable>
+      </View>
+      {items.length > 0 && (
+        <View style={s.customChips}>
+          {items.map((it) => (
+            <Pressable key={it} onPress={() => onRemove(it)} style={s.customChip}>
+              <Text style={s.customChipText}>{it}</Text>
+              <Ionicons name="close" size={13} color={wt.accent} />
+            </Pressable>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+function SkillsWizardFooter({ step, saving, canNext, nextLabel = 'Next', onBack, onCancel, onNext, onSave }: {
+  step: string; saving: boolean; canNext: boolean; nextLabel?: string; onBack: () => void; onCancel: () => void; onNext: () => void; onSave: () => void;
 }) {
   const first = step === 'category', last = step === 'languages';
   return (
@@ -847,7 +1069,7 @@ function SkillsWizardFooter({ step, saving, canNext, onBack, onCancel, onNext, o
       </Pressable>
       <Pressable disabled={saving || (!last && !canNext)} onPress={last ? onSave : onNext} style={({ hovered, pressed }: any) => [{ flex: 1.4, opacity: !last && !canNext ? 0.5 : 1 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
         <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.saveBtn}>
-          {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveText}>{last ? 'Save Changes' : 'Next'}</Text>}
+          {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveText}>{last ? 'Save Changes' : nextLabel}</Text>}
         </LinearGradient>
       </Pressable>
     </View>
@@ -1060,6 +1282,9 @@ const s = StyleSheet.create({
   compText: { color: wt.featMut, fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, lineHeight: 16, marginVertical: 5 },
   compBar: { height: 7, borderRadius: 999, backgroundColor: 'rgba(255,255,255,.14)', overflow: 'hidden' },
   compBarFill: { height: '100%', borderRadius: 999, backgroundColor: wt.accent },
+  resumeBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, cursor: 'pointer' as any },
+  resumeBtnTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: '#fff' },
+  resumeBtnSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 10.5, color: 'rgba(255,255,255,0.72)', marginTop: 1 },
 
   // Section nav (edit mode)
   navCard: { backgroundColor: wt.surface, borderWidth: 1, borderColor: wt.line, borderRadius: 18, padding: 12, ...shadowSm },
@@ -1152,6 +1377,20 @@ const s = StyleSheet.create({
   formTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: wt.ink },
   fLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: wt.muted, marginBottom: 6, marginTop: 12 },
   fInput: { borderWidth: 1, borderColor: wt.line, borderRadius: 11, paddingHorizontal: 12, paddingVertical: 11, fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: wt.ink, backgroundColor: wt.raise },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: wt.line, borderRadius: 11, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: wt.raise, marginBottom: 14 },
+  verifiedVal: { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: wt.ink },
+  verifiedBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.3, borderRadius: 9, paddingHorizontal: 11, paddingVertical: 6 },
+  verifiedBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5 },
+  bioReadText: { fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: wt.ink, lineHeight: 21, marginTop: 4 },
+  optBadge: { backgroundColor: wt.greenSoft, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 2 },
+  optBadgeText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5, color: wt.green },
+  customAdd: { borderTopWidth: 1, borderTopColor: wt.line, paddingTop: 14, marginTop: 2 },
+  customAddLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: wt.ink, marginBottom: 6 },
+  customAddBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, borderWidth: 1.3, borderColor: wt.accent, borderRadius: 11, paddingHorizontal: 13, justifyContent: 'center' },
+  customAddBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: wt.accent },
+  customChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 10 },
+  customChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: wt.accentSoft, borderRadius: 999, paddingLeft: 12, paddingRight: 9, paddingVertical: 6 },
+  customChipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: wt.accent },
   addrGrid: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   hint: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: wt.subtle, marginTop: 10, lineHeight: 17 },
   toggle: { flexDirection: 'row', gap: 8 },
@@ -1228,4 +1467,21 @@ const s = StyleSheet.create({
   cancelText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: wt.muted },
   saveBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 11 },
   saveText: { color: '#fff', fontFamily: FontFamily.fredokaSemiBold, fontSize: 14 },
+
+  // work-history editor
+  workHead: { marginTop: 20, marginBottom: 6 },
+  workHeadTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: wt.ink },
+  workHeadSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: wt.muted, marginTop: 2, lineHeight: 16 },
+  workCard: { backgroundColor: wt.raise, borderWidth: 1, borderColor: wt.line, borderRadius: 14, padding: 13, marginTop: 12 },
+  workCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  workCardNum: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: wt.ink },
+  workDates: { flexDirection: 'row', gap: 10 },
+  currentRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  currentText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: wt.muted },
+  refRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 },
+  track: { width: 38, height: 22, borderRadius: 11, backgroundColor: wt.line, padding: 3, justifyContent: 'center' },
+  knob: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#fff' },
+  refText: { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: wt.ink },
+  addWorkBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1.4, borderStyle: 'dashed', borderColor: wt.line, borderRadius: 12, paddingVertical: 12, marginTop: 12 },
+  addWorkText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: wt.accent },
 });

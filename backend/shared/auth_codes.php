@@ -38,7 +38,7 @@ function carelink_code_on_cooldown(mysqli $conn, int $userId, string $purpose): 
  * Issue a fresh 6-digit code, invalidating any earlier unused ones.
  * @return string the PLAINTEXT code — email it, never store or log it.
  */
-function carelink_issue_code(mysqli $conn, int $userId, string $purpose): string
+function carelink_issue_code(mysqli $conn, int $userId, string $purpose, ?string $pendingValue = null): string
 {
     // Retire older codes so only the newest email works.
     $del = $conn->prepare("UPDATE auth_codes SET consumed_at = NOW()
@@ -51,9 +51,11 @@ function carelink_issue_code(mysqli $conn, int $userId, string $purpose): string
     $hash = password_hash($code, PASSWORD_DEFAULT);
     $expires = date('Y-m-d H:i:s', time() + CARELINK_CODE_TTL_SECONDS);
 
-    $ins = $conn->prepare("INSERT INTO auth_codes (user_id, purpose, code_hash, expires_at)
-                           VALUES (?, ?, ?, ?)");
-    $ins->bind_param('isss', $userId, $purpose, $hash, $expires);
+    // pending_value binds a code to the exact new value it was issued for (e.g. the
+    // new email/contact), so a code obtained for one value can't confirm another.
+    $ins = $conn->prepare("INSERT INTO auth_codes (user_id, purpose, code_hash, pending_value, expires_at)
+                           VALUES (?, ?, ?, ?, ?)");
+    $ins->bind_param('issss', $userId, $purpose, $hash, $pendingValue, $expires);
     $ins->execute();
     $ins->close();
 
@@ -71,7 +73,7 @@ function carelink_verify_code(mysqli $conn, int $userId, string $purpose, string
         return ['ok' => false, 'message' => 'Enter the 6-digit code from your email.'];
     }
 
-    $sql = "SELECT code_id, code_hash, expires_at, attempts FROM auth_codes
+    $sql = "SELECT code_id, code_hash, pending_value, expires_at, attempts FROM auth_codes
             WHERE user_id = ? AND purpose = ? AND consumed_at IS NULL
             ORDER BY created_at DESC LIMIT 1";
     $stmt = $conn->prepare($sql);
@@ -111,5 +113,7 @@ function carelink_verify_code(mysqli $conn, int $userId, string $purpose, string
     $done->execute();
     $done->close();
 
-    return ['ok' => true, 'message' => 'Code verified.'];
+    // 'value' is the pending_value the code was bound to (null for codes that
+    // carry none, e.g. verify_email). Callers that changed a value compare it.
+    return ['ok' => true, 'message' => 'Code verified.', 'value' => $row['pending_value']];
 }

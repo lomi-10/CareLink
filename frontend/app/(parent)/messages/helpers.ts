@@ -55,6 +55,8 @@ export function interviewPillStyle(status?: string | null) {
 export type ResolvedApplication = {
   application_id: number;
   job_title: string;
+  category_name?: string | null;
+  skill_names?: string[];
   status: string;
   job_post_id: number;
   job_start_date?: string | null;

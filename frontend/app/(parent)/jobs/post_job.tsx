@@ -19,6 +19,7 @@ import { styles } from './post_job.styles';
 // Custom Hooks
 import { useJobForm } from '@/hooks/parent';
 import { useAuth, useJobReferences, useResponsive } from '@/hooks/shared';
+import { buildJobTitle } from '@/lib/jobTitle';
 import { useUserVerification } from '@/hooks/peso';
 
 // Components
@@ -116,7 +117,16 @@ export default function PostJob() {
     const idStr = jobId.toString();
     const currentJobs = formData.job_ids;
     const newJobs = currentJobs.includes(idStr) ? currentJobs.filter((id) => id !== idStr) : [...currentJobs, idStr];
-    const newTitle = newJobs.length === 1 && currentJobs.length === 0 ? jobTitle : formData.title;
+    // Same concise-title rule as the web modal (shared lib/jobTitle.ts): the
+    // category becomes the title once 3+ roles are picked, so a helper never sees
+    // a comma-joined wall of roles. A parent's custom title always wins.
+    const categoryName = categories.find((c) => c.category_id.toString() === formData.category_id)?.name ?? '';
+    const selectedTitles = availableJobs
+      .filter((j) => newJobs.includes(j.job_id.toString()))
+      .map((j) => j.job_title);
+    const newTitle = formData.custom_job_title?.trim()
+      ? formData.title
+      : buildJobTitle(categoryName, selectedTitles);
     updateFields({ job_ids: newJobs, title: newTitle, skill_ids: [] });
   };
 

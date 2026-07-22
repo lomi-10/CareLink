@@ -2,6 +2,7 @@
 
 import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { isShareableWithEmployer } from '@/constants/documents';
 import type { JobPost } from '@/hooks/helper';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -96,8 +97,10 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
         const response = await fetch(`${API_URL}/helper/get_documents.php?user_id=${user.user_id}&requester_id=${user.user_id}`);
         const data = await response.json();
         if (!cancelled && data.success) {
+          // Only Verified AND employer-shareable docs (Valid ID / Barangay
+          // Clearance stay PESO-only — they reveal the helper's home address).
           const verified: VerifiedDocument[] = (data.data?.documents ?? [])
-            .filter((d: any) => d.status === 'Verified')
+            .filter((d: any) => d.status === 'Verified' && isShareableWithEmployer(d.document_type))
             .map((d: any) => ({ document_id: d.document_id, document_type: d.document_type, status: d.status }));
           setVerifiedDocs(verified);
         }
@@ -275,7 +278,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
                   <Text style={s.optional}>(optional)</Text>
                 </View>
                 <Text style={s.sectionSub}>
-                  Choose which verified documents this employer can view. Nothing is shared unless you select it.
+                  Choose which verified documents this employer can view. Nothing is shared unless you select it. For your safety, your Valid ID and Barangay Clearance are never shown to families — only PESO sees those.
                 </Text>
 
                 <View style={s.docList}>

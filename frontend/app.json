@@ -18,7 +18,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.CareLink"
+      "package": "com.anonymous.CareLink",
+      "edgeToEdgeEnabled": true
+    },
+    "androidNavigationBar": {
+      "barStyle": "light-content"
     },
     "web": {
       "output": "static",

@@ -17,7 +17,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontFamily } from '@/constants/GlobalStyles';
 import API_URL from '@/constants/api';
-import { NotificationModal, LocationSearchInput, LocationResult } from '@/components/shared';
+import { NotificationModal, LocationSearchInput, LocationResult, VerifyChangeModal } from '@/components/shared';
+import { isValidPhMobile, normalizePhMobile } from '@/lib/phone';
 import { PARENT_HOUSEHOLD_TYPE_OPTIONS } from '@/constants/parentHousehold';
 import {
   CARAMEL, BROWN, DARK, MUTED, DANGER,
@@ -78,8 +79,13 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
   const [userId, setUserId] = useState<string | null>(null);
 
   // Personal / contact
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [bio, setBio] = useState('');
+  const [changeField, setChangeField] = useState<null | 'email' | 'contact'>(null);
 
   // Address
   const [province, setProvince] = useState('Leyte');
@@ -138,6 +144,13 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
       const data = await response.json();
 
       if (!data.success) throw new Error(data.message || 'Failed to load profile data');
+
+      if (data.user) {
+        setFirstName(data.user.first_name || '');
+        setMiddleName(data.user.middle_name || '');
+        setLastName(data.user.last_name || '');
+        setEmail(data.user.email || '');
+      }
 
       if (data.profile) {
         const p = data.profile;
@@ -229,7 +242,10 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
       const fd = new FormData();
       fd.append('user_id', userId || '');
       fd.append('requester_id', userId || '');
-      fd.append('contact_number', contactNumber.trim());
+      fd.append('first_name', firstName.trim());
+      fd.append('middle_name', middleName.trim());
+      fd.append('last_name', lastName.trim());
+      fd.append('contact_number', normalizePhMobile(contactNumber) ?? contactNumber.trim());
       fd.append('province', province.trim());
       fd.append('municipality', municipality.trim());
       fd.append('barangay', barangay.trim());
@@ -312,7 +328,10 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
   const validateSection = (key: SectionKey): string | null => {
     switch (key) {
       case 'personal':
+        if (!firstName.trim()) return 'First name is required';
+        if (!lastName.trim()) return 'Last name is required';
         if (!contactNumber.trim()) return 'Contact number is required';
+        if (!isValidPhMobile(contactNumber)) return 'Enter a valid PH mobile number, like 0917 123 4567';
         if (bio.trim() && bio.trim().length < 15) return 'Bio must be at least 15 characters';
         return null;
       case 'address':
@@ -348,6 +367,13 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
 
   const renderPersonalStep = () => (
     <>
+      <Label>First Name <Req /></Label>
+      <StyledInput value={firstName} onChangeText={setFirstName} placeholder="Juan" />
+      <Label>Last Name <Req /></Label>
+      <StyledInput value={lastName} onChangeText={setLastName} placeholder="Dela Cruz" />
+      <Label>Middle Name <OptTag /></Label>
+      <StyledInput value={middleName} onChangeText={setMiddleName} placeholder="Optional" />
+
       <Label>About Your Household <OptTag /></Label>
       <TextInput
         style={[s.input, s.textArea]}
@@ -360,6 +386,9 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
 
       <Label>Contact Number <Req /></Label>
       <StyledInput value={contactNumber} onChangeText={setContactNumber} placeholder="09XX XXX XXXX" keyboardType="phone-pad" />
+      <Label>Email Address</Label>
+      <PVerifiedRow value={email || 'Not set'} onChange={() => setChangeField('email')} />
+      <Text style={s.verifiedNote}>For your security, changing your email needs a quick email verification.</Text>
     </>
   );
 
@@ -753,6 +782,22 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
       </Modal>
 
       <NotificationModal visible={notifVisible} message={notifMessage} type={notifType} onClose={() => setNotifVisible(false)} />
+
+      <VerifyChangeModal
+        visible={!!changeField}
+        field={changeField ?? 'email'}
+        userId={userId || ''}
+        currentValue={changeField === 'contact' ? contactNumber : email}
+        accent={CARAMEL}
+        onClose={() => setChangeField(null)}
+        onSuccess={(newValue) => {
+          if (changeField === 'contact') setContactNumber(newValue); else setEmail(newValue);
+          setChangeField(null);
+          setNotifType('success');
+          setNotifMessage(changeField === 'contact' ? 'Contact number updated.' : 'Email updated.');
+          setNotifVisible(true);
+        }}
+      />
     </>
   );
 }
@@ -761,6 +806,19 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
 
 const Req = () => <Text style={{ color: CARAMEL }}>*</Text>;
 const OptTag = () => <Text style={{ color: MUTED, fontFamily: FontFamily.fredokaRegular, fontSize: 12 }}> (optional)</Text>;
+
+// Read-only sensitive field (email / contact) with a Change button → verify flow.
+function PVerifiedRow({ value, onChange }: { value: string; onChange: () => void }) {
+  return (
+    <View style={s.verifiedRow}>
+      <Text style={s.verifiedVal} numberOfLines={1}>{value}</Text>
+      <TouchableOpacity style={s.verifiedBtn} onPress={onChange} activeOpacity={0.85}>
+        <Ionicons name="shield-checkmark-outline" size={14} color={CARAMEL} />
+        <Text style={s.verifiedBtnText}>Change</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 function Label({ children }: { children: React.ReactNode }) {
   return <Text style={s.label}>{children}</Text>;
@@ -895,6 +953,11 @@ const s = StyleSheet.create({
   // Form elements
   label:     { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, marginBottom: 6, marginTop: 14 },
   input:     { backgroundColor: '#FDF5E8', borderRadius: 12, paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 14 : 11, fontSize: 15, fontFamily: FontFamily.fredokaRegular, color: DARK, borderWidth: 1, borderColor: '#EDE0D0', marginBottom: 2 },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FDF5E8', borderRadius: 12, paddingLeft: 14, paddingRight: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#EDE0D0', marginBottom: 4 },
+  verifiedVal: { flex: 1, fontSize: 15, fontFamily: FontFamily.fredokaSemiBold, color: DARK },
+  verifiedBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.3, borderColor: CARAMEL, borderRadius: 9, paddingHorizontal: 11, paddingVertical: 7 },
+  verifiedBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: CARAMEL },
+  verifiedNote: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, lineHeight: 17, marginTop: 8 },
   textArea:  { minHeight: 100, textAlignVertical: 'top', paddingTop: 12 },
   inputHint: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginBottom: 4 },
 

@@ -1,47 +1,30 @@
-// components/common/LoadingSpinner.tsx
+// components/shared/LoadingSpinner.tsx
+//
+// The name and the { visible, message } API are unchanged so all 13 call sites
+// keep working — but the insides are now the branded loader instead of a blue
+// iOS ActivityIndicator (#007AFF) on a white card, which matched nothing else
+// in the app.
+//
+// Every blocking wait in CareLink now shows the same orbiting logo + progress bar.
 import React from 'react';
-import { View, ActivityIndicator, Text, StyleSheet, Modal } from 'react-native';
+import { Modal } from 'react-native';
+import { BrandLoader } from '@/components/branding/BrandLoader';
 
 interface LoadingSpinnerProps {
   visible: boolean;
   message?: string;
+  /** Drop the wordmark/tagline for a briefer in-page wait. */
+  compact?: boolean;
 }
 
-export function LoadingSpinner({ visible, message = 'Loading...' }: LoadingSpinnerProps) {
+export function LoadingSpinner({ visible, message = 'Loading…', compact = false }: LoadingSpinnerProps) {
   return (
-    <Modal
-      transparent={true}
-      visible={visible}
-      animationType="fade"
-    >
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.message}>{message}</Text>
-        </View>
-      </View>
+    <Modal transparent={false} visible={visible} animationType="fade">
+      <BrandLoader
+        message={message}
+        showWordmark={!compact}
+        logoSize={compact ? 76 : 104}
+      />
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  container: {
-    backgroundColor: '#fff',
-    padding: 30,
-    borderRadius: 16,
-    alignItems: 'center',
-    minWidth: 150,
-  },
-  message: {
-    marginTop: 15,
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '500',
-  },
-});

@@ -5,7 +5,6 @@ import { DateField, TimeField } from '@/components/shared';
 import { hireContractTermsStyles as s } from '@/components/parent/hire/HireContractTermsModal.styles';
 import {
   DURATION_UNITS,
-  DURATION_QUICK_PRESETS,
   computeContractEndDate,
   formatLongDate,
   type DurationUnit,
@@ -15,9 +14,10 @@ import { BROWN, CARAMEL, SUBTLE, DIVIDER, SURFACE, GREEN, ICON_BG } from '@/comp
 
 const REST_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const LEAVE_OPTIONS = [5, 10, 15, 20, 30];
+const PAYMENT_SCHEDULE_DAILY = 'Daily';
 const PAYMENT_SCHEDULE_SEMI = 'Every 15th and 30th';
 const PAYMENT_SCHEDULE_MONTHLY = 'Every end of month';
-const KNOWN_PAYMENT_SCHEDULES = [PAYMENT_SCHEDULE_SEMI, PAYMENT_SCHEDULE_MONTHLY];
+const KNOWN_PAYMENT_SCHEDULES = [PAYMENT_SCHEDULE_DAILY, PAYMENT_SCHEDULE_SEMI, PAYMENT_SCHEDULE_MONTHLY];
 
 type ContractType = 'Fixed Term' | 'Indefinite';
 type WorkScheduleType = 'Full-time' | 'Part-time' | 'Any';
@@ -275,25 +275,6 @@ export function HireContractTermsModal({
                     </View>
                   </View>
 
-                  <View style={[s.chipRow, { marginTop: 8 }]}>
-                    {DURATION_QUICK_PRESETS.map((preset) => {
-                      const active = durationAmount === preset.amount && durationUnit === preset.unit;
-                      return (
-                        <TouchableOpacity
-                          key={preset.label}
-                          style={[s.chip, active && s.chipActive]}
-                          onPress={() => {
-                            onChangeDurationAmount(preset.amount);
-                            onChangeDurationUnit(preset.unit);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={[s.chipText, active && s.chipTextActive]}>{preset.label}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-
                   <Text style={[s.label, { marginTop: 10 }]}>Contract end date</Text>
                   {endDateLabel ? (
                     <View style={s.endDateBox}>
@@ -345,6 +326,18 @@ export function HireContractTermsModal({
 
               <Text style={[s.label, { marginTop: 10 }]}>Salary payment schedule</Text>
               <View style={s.segmentedRow}>
+                <TouchableOpacity
+                  style={[s.segment, paymentSchedule === PAYMENT_SCHEDULE_DAILY && s.segmentActive]}
+                  onPress={() => {
+                    setCustomPayment(false);
+                    onChangePaymentSchedule(PAYMENT_SCHEDULE_DAILY);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.segmentText, paymentSchedule === PAYMENT_SCHEDULE_DAILY && s.segmentTextActive]}>
+                    Daily
+                  </Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.segment, paymentSchedule === PAYMENT_SCHEDULE_SEMI && s.segmentActive]}
                   onPress={() => {

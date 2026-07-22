@@ -155,8 +155,11 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
             ja.status AS application_status,
             jp.parent_id,
             jp.title AS job_title,
+            jp.category_id,
+            jp.skill_ids AS job_skill_ids,
             jp.description,
             jp.custom_skills,
+            rc.category_name,
             jp.days_off,
             jp.salary_offered,
             jp.salary_period,
@@ -190,6 +193,7 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
             ja.helper_signed_at
         FROM job_applications ja
         INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+        LEFT JOIN ref_categories rc ON rc.category_id = jp.category_id
         LEFT JOIN contracts c ON c.application_id = ja.application_id
         WHERE ja.application_id = ?
           AND ja.helper_id = ?
@@ -313,6 +317,24 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     $isMinor = ($helperAgeNum !== null && $helperAgeNum >= 15 && $helperAgeNum <= 17);
 
     $jobTitle = carelink_contract_escape(trim((string) ($row['job_title'] ?? 'Kasambahay')));
+    // Position shows the CATEGORY (e.g. "Cook") — the specific job roles are long
+    // and clutter the summary; the category is the clean, standard job title.
+    $categoryName = carelink_contract_escape(trim((string) ($row['category_name'] ?? '')) ?: 'Kasambahay');
+    // Job's required skills (jp.skill_ids + any custom free-text) resolved to names.
+    $skillNamesList = [];
+    $jobSkillIds = json_decode($row['job_skill_ids'] ?? '[]', true) ?: [];
+    if (!empty($jobSkillIds)) {
+        $safeSk = implode(',', array_filter(array_map('intval', $jobSkillIds), fn($n) => $n > 0));
+        if ($safeSk !== '') {
+            $skRes = $conn->query("SELECT skill_name FROM ref_skills WHERE skill_id IN ($safeSk)");
+            if ($skRes) { while ($sr = $skRes->fetch_assoc()) $skillNamesList[] = $sr['skill_name']; }
+        }
+    }
+    $jobCustomSkArr = json_decode($row['custom_skills'] ?? '[]', true);
+    if (is_array($jobCustomSkArr)) {
+        foreach ($jobCustomSkArr as $cs) { $cs = trim((string) $cs); if ($cs !== '') $skillNamesList[] = $cs; }
+    }
+    $skillsEsc = $skillNamesList ? carelink_contract_escape(implode(', ', $skillNamesList)) : 'N/A';
     $desc = isset($row['description']) ? trim((string) $row['description']) : '';
     $custSk = isset($row['custom_skills']) ? trim((string) $row['custom_skills']) : '';
     $jobDutiesRaw = trim($desc . ($custSk !== '' ? "\nMga kasanayan / tungkulin: " . $custSk : ''));
@@ -541,6 +563,8 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
         'is_minor'               => $isMinor,
         'helper_addr_phone'      => $helperAddrPhone,
         'job_title'              => $jobTitle,
+        'category_name'          => $categoryName,
+        'skills'                 => $skillsEsc,
         'job_duties_items'       => $jobDutiesItems,
         'start_date'             => $startDate,
         'end_date_display'       => $endDateDisplay,

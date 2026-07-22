@@ -133,7 +133,29 @@ try {
     }
     $docs_stmt->close();
 
-    // 5c. Count this as a profile view for the helper (parent looking at their profile)
+    // 5c. Work history (past employers). The employer's phone number is only
+    //     exposed when the helper allowed it as a reference (can_contact = 1) —
+    //     otherwise the entry still shows, just without the contact number.
+    $work_history = [];
+    $wh_stmt = $conn->prepare("
+        SELECT wh.employer_name, wh.position, wh.start_date, wh.end_date,
+               wh.duties, wh.reason_for_leaving, wh.can_contact,
+               CASE WHEN wh.can_contact = 1 THEN wh.employer_contact ELSE NULL END AS employer_contact
+        FROM helper_work_history wh
+        INNER JOIN helper_profiles hp ON hp.profile_id = wh.profile_id
+        WHERE hp.user_id = ?
+        ORDER BY (wh.end_date IS NULL) DESC, wh.start_date DESC
+    ");
+    $wh_stmt->bind_param("i", $helper_id);
+    $wh_stmt->execute();
+    $wh_result = $wh_stmt->get_result();
+    while ($wh = $wh_result->fetch_assoc()) {
+        $wh['can_contact'] = (int)$wh['can_contact'] === 1;
+        $work_history[] = $wh;
+    }
+    $wh_stmt->close();
+
+    // 5d. Count this as a profile view for the helper (parent looking at their profile)
     $view_stmt = $conn->prepare("UPDATE helper_profiles SET profile_views = profile_views + 1 WHERE user_id = ?");
     if ($view_stmt) {
         $view_stmt->bind_param("i", $helper_id);
@@ -142,7 +164,11 @@ try {
     }
 
     // 6. Sending response in your specific format
-    sendResponse(true, "Applicant profile retrieved", ['applicant' => $applicant, 'shared_documents' => $shared_documents]);
+    sendResponse(true, "Applicant profile retrieved", [
+        'applicant' => $applicant,
+        'shared_documents' => $shared_documents,
+        'work_history' => $work_history,
+    ]);
 
 } catch (Exception $e) {
     error_log("ERROR: " . $e->getMessage());

@@ -180,7 +180,7 @@ function PayoutPreview({ monthly, maxMonthly, period }: { monthly: number; maxMo
         </Text>
       )}
       {period === 'Semi-monthly' && (
-        <Text style={styles.previewNote}>Kinsenas — the monthly salary is split in half, paid twice a month.</Text>
+        <Text style={styles.previewNote}>Semi-Monthly — the monthly salary is split in half, paid twice a month.</Text>
       )}
     </View>
   );

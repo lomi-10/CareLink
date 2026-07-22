@@ -584,14 +584,17 @@ export default function UserDetailPanel({
       {/* Reject modals */}
       <Modal visible={rejectUserModal} animationType="slide" transparent>
         <RejectModal title="Reject Account" subtitle={`Reject ${user.first_name ?? "this user"}'s account?`} value={rejectReason} onChange={setRejectReason}
+          presets={["ID does not match the details provided", "Submitted documents are unclear or unreadable", "Information is incomplete or inconsistent", "Suspected fake or invalid credentials", "Duplicate account"]}
           onCancel={() => { setRejectUserModal(false); setRejectReason(""); }} onConfirm={handleRejectUser} processing={processing} />
       </Modal>
       <Modal visible={rejectDocModal} animationType="slide" transparent>
         <RejectModal title="Reject Document" subtitle={`Rejecting: ${rejectingDocument?.document_type ?? "document"}`} value={rejectReason} onChange={setRejectReason}
+          presets={["Image is blurry or unreadable", "Document is expired", "Wrong document type uploaded", "Details don't match the profile", "Photo is cropped or incomplete"]}
           onCancel={() => { setRejectDocModal(false); setRejectingDocument(null); setRejectReason(""); }} onConfirm={handleRejectDocument} processing={processing} />
       </Modal>
       <Modal visible={rejectJobModal} animationType="slide" transparent>
         <RejectModal title="Reject Job Post" subtitle={`Rejecting: "${rejectingJob?.title ?? "job post"}"`} value={rejectJobReason} onChange={setRejectJobReason}
+          presets={["Salary is below the legal minimum", "Job description is unclear or incomplete", "Requirements appear discriminatory", "Suspected fraudulent posting", "Duties are outside domestic work"]}
           onCancel={() => { setRejectJobModal(false); setRejectingJob(null); setRejectJobReason(""); }} onConfirm={handleRejectJob} processing={processingJobId !== null} />
       </Modal>
     </View>
@@ -637,15 +640,38 @@ function TagBlock({ label, tags, accent, accentSoft }: { label: string; tags: st
   );
 }
 
-function RejectModal({ title, subtitle, value, onChange, onCancel, onConfirm, processing }: {
-  title: string; subtitle: string; value: string; onChange: (v: string) => void; onCancel: () => void; onConfirm: () => void; processing: boolean;
+function RejectModal({ title, subtitle, value, onChange, onCancel, onConfirm, processing, presets = [] }: {
+  title: string; subtitle: string; value: string; onChange: (v: string) => void; onCancel: () => void; onConfirm: () => void; processing: boolean; presets?: string[];
 }) {
+  // Tapping a preset fills the box (and stays editable). Appends when the officer
+  // wants to combine a few; removes on second tap so it works like a toggle.
+  const applyPreset = (p: string) => {
+    const parts = value.split('\n').map((s) => s.trim()).filter(Boolean);
+    if (parts.includes(p)) onChange(parts.filter((s) => s !== p).join('\n'));
+    else onChange([...parts, p].join('\n'));
+  };
   return (
     <View style={st.overlay}>
       <View style={st.rejectBox}>
         <View style={st.rejectIcon}><Ionicons name="warning-outline" size={28} color={theme.color.danger} /></View>
         <Text style={st.rejectTitle}>{title}</Text>
         <Text style={st.rejectSub}>{subtitle}</Text>
+        {presets.length > 0 && (
+          <>
+            <Text style={st.rejectPresetLabel}>Tap a common reason, or write your own:</Text>
+            <View style={st.rejectChips}>
+              {presets.map((p) => {
+                const active = value.split('\n').map((s) => s.trim()).includes(p);
+                return (
+                  <TouchableOpacity key={p} style={[st.rejectChip, active && st.rejectChipActive]} onPress={() => applyPreset(p)} activeOpacity={0.8}>
+                    {active && <Ionicons name="checkmark" size={12} color="#fff" />}
+                    <Text style={[st.rejectChipText, active && st.rejectChipTextActive]}>{p}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
         <TextInput style={st.rejectInput} placeholder="Enter reason…" placeholderTextColor={theme.color.subtle} value={value} onChangeText={onChange} multiline numberOfLines={4} textAlignVertical="top" />
         <View style={st.rejectBtns}>
           <TouchableOpacity style={st.cancelBtn} onPress={onCancel} activeOpacity={0.8}><Text style={st.cancelText}>Cancel</Text></TouchableOpacity>
@@ -769,6 +795,12 @@ const st = StyleSheet.create({
   rejectIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: theme.color.dangerSoft, alignItems: "center", justifyContent: "center", marginBottom: 12 },
   rejectTitle: { fontSize: 17, fontWeight: "900", color: theme.color.ink },
   rejectSub: { fontSize: 13, color: theme.color.muted, textAlign: "center", marginTop: 4, marginBottom: 14 },
+  rejectPresetLabel: { alignSelf: "stretch", fontSize: 12, fontWeight: "700", color: theme.color.muted, marginBottom: 8 },
+  rejectChips: { flexDirection: "row", flexWrap: "wrap", gap: 7, alignSelf: "stretch", marginBottom: 12 },
+  rejectChip: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderColor: theme.color.line, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6, backgroundColor: theme.color.surface },
+  rejectChipActive: { backgroundColor: theme.color.danger, borderColor: theme.color.danger },
+  rejectChipText: { fontSize: 12, fontWeight: "600", color: theme.color.ink },
+  rejectChipTextActive: { color: "#fff" },
   rejectInput: { alignSelf: "stretch", minHeight: 90, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, padding: 12, fontSize: 13.5, color: theme.color.ink, backgroundColor: theme.color.surface },
   rejectBtns: { flexDirection: "row", gap: 10, alignSelf: "stretch", marginTop: 14 },
   cancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 11, borderWidth: 1, borderColor: theme.color.line, alignItems: "center" },

@@ -52,6 +52,9 @@ export interface HelperProfileData {
     skills: number[];
     languages: number[];
   };
+  /** Free-text roles/skills the helper added themselves (helper_profiles.custom_*). */
+  customJobs: string[];
+  customSkills: string[];
   documents: Array<{
     document_id: string;
     document_type: string;
@@ -59,8 +62,23 @@ export interface HelperProfileData {
     file_path: string;
     status: string;
   }>;
+  /** Past employers / references (helper_work_history). */
+  work_history: WorkHistoryEntry[];
   /** 0–100 from API */
   profile_completeness?: number;
+}
+
+export interface WorkHistoryEntry {
+  history_id?: number;
+  employer_name: string;
+  position: string;
+  start_date: string;
+  /** null / '' = currently working here */
+  end_date?: string | null;
+  duties?: string | null;
+  reason_for_leaving?: string | null;
+  employer_contact?: string | null;
+  can_contact?: boolean;
 }
 
 export function useHelperProfile() {
@@ -130,6 +148,10 @@ export function useHelperProfile() {
             return match ? match.language_name : '';
           }).filter(Boolean) || [];
 
+          // Free-text custom roles/skills the helper typed themselves.
+          const customJobs: string[] = Array.isArray(data.profile?.custom_jobs) ? data.profile.custom_jobs.filter(Boolean) : [];
+          const customSkills: string[] = Array.isArray(data.profile?.custom_skills) ? data.profile.custom_skills.filter(Boolean) : [];
+
           // Format the final object to match exactly what the UI expects
           const formattedData: HelperProfileData = {
             user: data.user,
@@ -138,10 +160,15 @@ export function useHelperProfile() {
               date_of_birth: data.profile?.birth_date,
               age: calculatedAge,
               city: data.profile?.municipality, // Map PHP municipality to UI city
+              // API returns `experience_years`; the UI reads `years_experience`. Bridge
+              // the two so the value shows in read views (edit forms already fall back).
+              years_experience: data.profile?.experience_years ?? 0,
             },
+            // Merge custom entries in for display so they show everywhere the
+            // profile lists roles/skills (read view, public preview, etc.).
             mappedSpecialties: {
-              jobs: mappedJobs,
-              skills: mappedSkills,
+              jobs: [...mappedJobs, ...customJobs],
+              skills: [...mappedSkills, ...customSkills],
               languages: mappedLanguages
             },
             specialtyIds: {
@@ -149,7 +176,10 @@ export function useHelperProfile() {
               skills: (data.selected_skills || []).map((n: any) => Number(n)),
               languages: (data.selected_languages || []).map((n: any) => Number(n)),
             },
+            customJobs,
+            customSkills,
             documents: data.documents || [],
+            work_history: Array.isArray(data.work_history) ? data.work_history : [],
             profile_completeness:
               typeof data.profile_completeness === 'number'
                 ? data.profile_completeness

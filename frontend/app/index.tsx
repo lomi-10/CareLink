@@ -1,15 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-
-import { AnimatedLogo } from "@/components/branding/AnimatedLogo";
+import { BrandLoader } from "@/components/branding/BrandLoader";
 import LandingPage from "@/components/landing/LandingPage";
 import API_URL from "@/constants/api";
 import { isProfileCompleted } from "@/hooks/auth/authProfile";
-
-import { styles } from "./index.styles";
 
 type Phase = "init" | "land" | "routed";
 
@@ -64,14 +59,9 @@ export default function Index() {
 
   // Auth bootstrap runs right after the splash hands off. A bare spinner on a
   // blank canvas (in the old legacy blue, no less) read as a second stutter —
-  // hold the brand instead so launch feels like one continuous motion.
+  // reuse the exact same loader so splash -> boot -> landing is one motion.
   if (phase === "init") {
-    return (
-      <View style={styles.boot}>
-        <LinearGradient colors={["#A9713A", "#6B4420", "#2E1F12"]} style={StyleSheet.absoluteFill} />
-        <AnimatedLogo size={92} />
-      </View>
-    );
+    return <BrandLoader message="Signing you in…" />;
   }
 
   if (phase === "land") {

@@ -12,13 +12,15 @@ import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Animated, Keyboard, KeyboardAvoidingView,
-  Modal, Platform, Pressable, ScrollView, StyleSheet,
+  Modal, Platform, Pressable, ScrollView, StyleSheet, Switch,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontFamily } from '@/constants/GlobalStyles';
 import API_URL from '@/constants/api';
-import { NotificationModal } from '@/components/shared';
+import { NotificationModal, VerifyChangeModal } from '@/components/shared';
+import { isValidPhMobile, normalizePhMobile } from '@/lib/phone';
+import type { WorkHistoryEntry } from '@/hooks/helper';
 import { AddressSection, SelectionModal } from '.';
 
 // ─── Category icon map ────────────────────────────────────────────────────────
@@ -48,7 +50,7 @@ function getCategoryIcon(name: string): IconCfg {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SectionKey = 'personal' | 'address' | 'professional' | 'skills' | 'preferences';
+type SectionKey = 'personal' | 'skills' | 'preferences' | 'experience';
 type ModalView  = { type: 'chooser' } | { type: 'section'; key: SectionKey; step: number };
 
 interface Props {
@@ -71,11 +73,10 @@ const SECTIONS: {
   iconColor:  string;
   totalSteps: number;
 }[] = [
-  { key: 'personal',     title: 'Personal Information', subtitle: 'Name, birth date, gender and contact details',      icon: 'person',          iconBg: '#DBEAFE', iconColor: '#2563EB', totalSteps: 3 },
-  { key: 'address',      title: 'Address',              subtitle: 'Your current location and address',                  icon: 'location',        iconBg: '#FEE2D5', iconColor: '#E86019', totalSteps: 1 },
-  { key: 'professional', title: 'Professional Profile', subtitle: 'Bio, education and your experience',                 icon: 'briefcase',       iconBg: '#D1FAE5', iconColor: '#059669', totalSteps: 2 },
-  { key: 'skills',       title: 'Skills & Matching',    subtitle: 'Roles, skills, languages and job categories',        icon: 'sparkles',        iconBg: '#EDE9FE', iconColor: '#7C3AED', totalSteps: 4 },
-  { key: 'preferences',  title: 'Work Preferences',     subtitle: 'Work setup, schedule and expected salary',           icon: 'time-outline',    iconBg: '#FEF3C7', iconColor: '#D97706', totalSteps: 1 },
+  { key: 'personal',    title: 'Personal Information', subtitle: 'Name, contact, birth date, education & address',    icon: 'person',       iconBg: '#DBEAFE', iconColor: '#2563EB', totalSteps: 4 },
+  { key: 'skills',      title: 'Skills & Expertise',   subtitle: 'Roles, skills and languages',                       icon: 'sparkles',     iconBg: '#EDE9FE', iconColor: '#7C3AED', totalSteps: 4 },
+  { key: 'preferences', title: 'Work Preferences',     subtitle: 'Work setup, schedule and expected salary',          icon: 'time-outline', iconBg: '#FEF3C7', iconColor: '#D97706', totalSteps: 1 },
+  { key: 'experience',  title: 'Experience',           subtitle: 'Bio, years of experience and past employers',       icon: 'briefcase',    iconBg: '#D1FAE5', iconColor: '#059669', totalSteps: 2 },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -114,6 +115,12 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const [username,     setUsername]     = useState('');
   const [email,        setEmail]        = useState('');
   const [contactNumber,setContactNumber]= useState('');
+  // verified email / contact change
+  const [changeField,  setChangeField]  = useState<null | 'email' | 'contact'>(null);
+  // work history (past employers) — folded into the Experience section
+  const [workRows,     setWorkRows]     = useState<WorkHistoryEntry[]>([]);
+  // which work-history row/field currently has its calendar open (native only)
+  const [workDatePicker, setWorkDatePicker] = useState<{ index: number; field: 'start_date' | 'end_date' } | null>(null);
   const [birthDate,    setBirthDate]    = useState('');
   const [gender,       setGender]       = useState<'Male' | 'Female'>('Female');
   const [civilStatus,  setCivilStatus]  = useState<string>('Single');
@@ -238,7 +245,11 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         setExpectedSalary(p.expected_salary ? String(p.expected_salary) : '6000');
         setSalaryPeriod(p.salary_period || 'Monthly');
         setProfileImage(p.profile_image || null);
+        // Free-text custom roles/skills the helper added themselves.
+        setCustomJobs(Array.isArray(p.custom_jobs) ? p.custom_jobs : []);
+        setCustomSkills(Array.isArray(p.custom_skills) ? p.custom_skills : []);
       }
+      setWorkRows(Array.isArray(data.work_history) ? data.work_history.map((w: any) => ({ ...w })) : []);
       setAvailableCategories(data.available_categories || []);
       setAvailableSkills(data.available_skills || []);
       setAvailableLanguages(data.available_languages || []);
@@ -323,11 +334,10 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
 
   // Per-section completion + the next section to guide the helper to ("Start here").
   const sectionDone: Record<string, boolean> = {
-    personal:     !!(firstName.trim() && lastName.trim() && contactNumber.trim() && birthDate),
-    address:      !!(province && municipality && barangay),
-    professional: !!(bio.trim() || educationLevel || parseInt(experienceYears || '0', 10) > 0),
+    personal:     !!(firstName.trim() && lastName.trim() && contactNumber.trim() && birthDate && province && municipality && barangay),
     skills:       selectedCategoryIds.length > 0 && selectedLanguageIds.length > 0,
     preferences:  !!(expectedSalary && parseFloat(expectedSalary) >= 6000),
+    experience:   !!(parseInt(experienceYears || '0', 10) > 0 || workRows.length > 0),
   };
   const nextSectionKey = SECTIONS.find(sec => !sectionDone[sec.key])?.key;
 
@@ -342,7 +352,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       fd.append('middle_name',    middleName);
       fd.append('last_name',      lastName);
       fd.append('username',       username);
-      fd.append('contact_number', contactNumber);
+      fd.append('contact_number', normalizePhMobile(contactNumber) ?? contactNumber);
       fd.append('birth_date',     birthDate);
       fd.append('gender',         gender);
       fd.append('civil_status',   civilStatus);
@@ -366,6 +376,21 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       fd.append('job_ids',         JSON.stringify(selectedJobIds));
       fd.append('custom_jobs',     JSON.stringify(customJobs));
       fd.append('custom_skills',   JSON.stringify(customSkills));
+      // Past employers (only rows with the three essentials are kept server-side).
+      fd.append('work_history', JSON.stringify(
+        workRows
+          .filter((w) => (w.employer_name || '').trim() && (w.position || '').trim() && w.start_date)
+          .map((w) => ({
+            employer_name: w.employer_name.trim(),
+            position: w.position.trim(),
+            start_date: w.start_date,
+            end_date: w.end_date || null,
+            duties: (w.duties ?? '').trim() || null,
+            reason_for_leaving: (w.reason_for_leaving ?? '').trim() || null,
+            employer_contact: w.can_contact ? ((w.employer_contact ?? '').trim() || null) : null,
+            can_contact: w.can_contact ? 1 : 0,
+          }))
+      ));
 
       const photoToSend = photoOverride ?? (imageChanged ? profileImage : null);
       if (photoToSend && !photoToSend.startsWith('http')) {
@@ -428,14 +453,9 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         if (!firstName.trim()) return 'First name is required';
         if (!lastName.trim())  return 'Last name is required';
         if (!contactNumber.trim()) return 'Contact number is required';
+        if (!isValidPhMobile(contactNumber)) return 'Enter a valid PH mobile number, like 0917 123 4567';
         if (!birthDate) return 'Birth date is required';
-        return null;
-      case 'address':
         if (!province || !municipality || !barangay) return 'Province, municipality and barangay are required';
-        return null;
-      case 'professional':
-        // Bio is optional — only validate length if the helper actually typed one.
-        if (bio.trim() && bio.trim().length < 15) return 'If you add a bio, please make it at least 15 characters';
         return null;
       case 'skills':
         if (!selectedCategoryIds.length) return 'Select at least one job category';
@@ -443,6 +463,10 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         return null;
       case 'preferences':
         if (!expectedSalary || parseFloat(expectedSalary) < 6000) return 'Minimum salary is ₱6,000';
+        return null;
+      case 'experience':
+        // Bio is optional — only validate length if the helper actually typed one.
+        if (bio.trim() && bio.trim().length < 15) return 'If you add a bio, please make it at least 15 characters';
         return null;
     }
   };
@@ -512,6 +536,11 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         <ToggleRow options={['Single', 'Married', 'Widowed', 'Separated']} value={civilStatus} onChange={setCivilStatus} />
         <Label>Religion <OptTag /></Label>
         <DropdownField value={religion} onChange={setReligion} options={RELIGION_OPTIONS} placeholder="Select religion" />
+        <Label>Educational Attainment <Req /></Label>
+        <ToggleRow
+          options={['Elementary', 'High School Undergrad', 'High School Grad', 'College Undergrad', 'College Grad', 'Vocational']}
+          value={educationLevel} onChange={setEducationLevel}
+        />
       </>
     );
     if (step === 3) return (
@@ -519,27 +548,80 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         <Label>Contact Number <Req /></Label>
         <StyledInput value={contactNumber} onChangeText={setContactNumber} placeholder="09XX XXX XXXX" keyboardType="phone-pad" />
         <Label>Email Address</Label>
-        <StyledInput value={email} onChangeText={setEmail} placeholder="email@example.com" editable={false} style={{ opacity: 0.6 }} />
+        <VerifiedRow value={email || 'Not set'} onChange={() => setChangeField('email')} />
+        <Text style={s.verifiedNote}>For your security, changing your email needs a quick email verification.</Text>
       </>
+    );
+    if (step === 4) return (
+      <AddressSection
+        isWeb={Platform.OS === 'web'}
+        province={province} setProvince={setProvince}
+        municipality={municipality} setMunicipality={setMunicipality}
+        barangay={barangay} setBarangay={setBarangay}
+        landmark={landmark} setLandmark={setLandmark}
+        setLatitude={setLatitude} setLongitude={setLongitude}
+      />
     );
     return null;
   };
 
-  const renderAddressStep = () => (
-    <AddressSection
-      isWeb={Platform.OS === 'web'}
-      province={province} setProvince={setProvince}
-      municipality={municipality} setMunicipality={setMunicipality}
-      barangay={barangay} setBarangay={setBarangay}
-      landmark={landmark} setLandmark={setLandmark}
-      setLatitude={setLatitude} setLongitude={setLongitude}
-    />
-  );
+  const patchWork = (i: number, x: Partial<WorkHistoryEntry>) => setWorkRows((r) => r.map((row, k) => (k === i ? { ...row, ...x } : row)));
+  const isWorkCurrent = (w: WorkHistoryEntry) => w.end_date === null || w.end_date === undefined;
 
-  const renderProfessionalStep = (step: number) => {
+  // Work-history dates use a real calendar (helpers shouldn't hand-type "2022-01-01").
+  // Same pattern as birth date: a native DateTimePicker, a date input on web. One
+  // piece of state tracks which row+field is open, so rows don't each need a flag.
+  const renderWorkDateField = (
+    i: number,
+    field: 'start_date' | 'end_date',
+    value: string,
+    placeholder: string,
+  ) => {
+    if (Platform.OS === 'web') {
+      return React.createElement('input', {
+        type: 'date',
+        value: value || '',
+        max: toYmd(new Date()),
+        onChange: (e: any) => patchWork(i, { [field]: e.target.value || '' } as Partial<WorkHistoryEntry>),
+        style: {
+          padding: 12, border: '1px solid #EDE0D0', borderRadius: 12, fontSize: 15, width: '100%',
+          fontFamily: 'inherit', backgroundColor: '#FDF5E8', color: DARK, boxSizing: 'border-box', marginBottom: 4,
+        } as any,
+      });
+    }
+    const isOpen = workDatePicker?.index === i && workDatePicker?.field === field;
+    return (
+      <>
+        <TouchableOpacity style={s.dateBtn} onPress={() => setWorkDatePicker({ index: i, field })} activeOpacity={0.85}>
+          <Ionicons name="calendar-outline" size={18} color={ORANGE} />
+          <Text style={[s.dateBtnText, !value && { color: '#B8956A' }]}>
+            {value
+              ? new Date(value + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+              : placeholder}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color={MUTED} />
+        </TouchableOpacity>
+        {isOpen && (
+          <DateTimePicker
+            value={parseBirthYmd(value)}
+            mode="date"
+            display="default"
+            maximumDate={new Date()}
+            minimumDate={new Date(1960, 0, 1)}
+            onChange={(_, d) => {
+              setWorkDatePicker(null);
+              if (d) patchWork(i, { [field]: toYmd(d) } as Partial<WorkHistoryEntry>);
+            }}
+          />
+        )}
+      </>
+    );
+  };
+
+  const renderExperienceStep = (step: number) => {
     if (step === 1) return (
       <>
-        <Label>Tell employers about yourself <Req /></Label>
+        <Label>Tell employers about yourself <OptTag /></Label>
         <TextInput
           style={[s.input, s.textArea]}
           multiline numberOfLines={4}
@@ -547,13 +629,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
           placeholder="I am experienced in household chores, cooking and childcare..."
           placeholderTextColor="#B8956A"
         />
-        <Text style={s.inputHint}>Minimum 15 characters</Text>
-        <Label>Educational Attainment <Req /></Label>
-        <ToggleRow
-          options={['Elementary', 'High School Grad', 'College Undergrad', 'College Grad']}
-          value={educationLevel} onChange={setEducationLevel}
-        />
-        <Label>Years of Experience <Req /></Label>
+        <Text style={s.inputHint}>Optional — if you add a bio, keep it at least 15 characters.</Text>
+        <Label>Total Years of Experience</Label>
         <ToggleRow
           options={['0', '1', '2', '3', '4', '5+']}
           value={experienceYears} onChange={setExperienceYears}
@@ -563,16 +640,59 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
     if (step === 2) return (
       <>
         <View style={s.infoBox}>
-          <Ionicons name="information-circle-outline" size={18} color="#7C3AED" />
+          <Ionicons name="briefcase-outline" size={18} color="#059669" />
           <Text style={s.infoBoxText}>
-            Work experience and references are managed through your profile documents. For now, ensure your bio and years of experience accurately reflect your background.
+            Add past employers to build trust with families. You can mark the ones happy to be contacted as a reference.
           </Text>
         </View>
-        <Label>Years of Experience (confirm)</Label>
-        <ToggleRow
-          options={['0', '1', '2', '3', '4', '5+']}
-          value={experienceYears} onChange={setExperienceYears}
-        />
+
+        {workRows.map((w, i) => (
+          <View key={i} style={s.workCard}>
+            <View style={s.workCardTop}>
+              <Text style={s.workCardNum}>Job {i + 1}</Text>
+              <TouchableOpacity onPress={() => setWorkRows(r => r.filter((_, k) => k !== i))} hitSlop={8}>
+                <Ionicons name="trash-outline" size={18} color="#DC2626" />
+              </TouchableOpacity>
+            </View>
+            <Label>Employer / Family name</Label>
+            <StyledInput value={w.employer_name} onChangeText={(v: string) => patchWork(i, { employer_name: v })} placeholder="e.g. Dela Cruz Family" />
+            <Label>Your role</Label>
+            <StyledInput value={w.position} onChangeText={(v: string) => patchWork(i, { position: v })} placeholder="e.g. Yaya / Housekeeper" />
+            <Label>Start date</Label>
+            {renderWorkDateField(i, 'start_date', w.start_date, 'Select start date')}
+            {!isWorkCurrent(w) && (
+              <>
+                <Label>End date</Label>
+                {renderWorkDateField(i, 'end_date', w.end_date ?? '', 'Select end date')}
+              </>
+            )}
+            <TouchableOpacity style={s.checkRow} onPress={() => patchWork(i, { end_date: isWorkCurrent(w) ? '' : null })} activeOpacity={0.8}>
+              <Ionicons name={isWorkCurrent(w) ? 'checkbox' : 'square-outline'} size={20} color={isWorkCurrent(w) ? ORANGE : MUTED} />
+              <Text style={s.checkText}>I currently work here</Text>
+            </TouchableOpacity>
+            <Label>Main duties <OptTag /></Label>
+            <StyledInput value={w.duties ?? ''} onChangeText={(v: string) => patchWork(i, { duties: v })} placeholder="Cooking, laundry, caring for kids" />
+            <View style={s.refToggleRow}>
+              <Text style={s.refToggleText}>Can be contacted as a reference</Text>
+              <Switch value={!!w.can_contact} onValueChange={(v) => patchWork(i, { can_contact: v })} trackColor={{ true: ORANGE, false: '#D9C4A6' }} thumbColor="#fff" />
+            </View>
+            {w.can_contact && (
+              <>
+                <Label>Employer contact number <OptTag /></Label>
+                <StyledInput value={w.employer_contact ?? ''} onChangeText={(v: string) => patchWork(i, { employer_contact: v })} placeholder="0917 123 4567" keyboardType="phone-pad" />
+              </>
+            )}
+          </View>
+        ))}
+
+        <TouchableOpacity
+          style={s.addWorkBtn}
+          onPress={() => setWorkRows(r => [...r, { employer_name: '', position: '', start_date: '', end_date: null, duties: '', reason_for_leaving: '', employer_contact: '', can_contact: false }])}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={18} color={ORANGE} />
+          <Text style={s.addWorkText}>Add a past job</Text>
+        </TouchableOpacity>
       </>
     );
     return null;
@@ -645,11 +765,18 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
             );
           })
         )}
+        <CustomAdder
+          label="Don't see your role? Add your own."
+          placeholder="e.g. Pet caretaker"
+          items={customJobs}
+          onAdd={(v) => setCustomJobs([...customJobs, v])}
+          onRemove={(v) => setCustomJobs(customJobs.filter(x => x !== v))}
+        />
       </>
     );
     if (step === 3) return (
       <>
-        <Text style={s.stepDesc}>Select your skills. Choose all that apply.</Text>
+        <Text style={s.stepDesc}>Skills are optional — pick any that apply to stand out, or skip and continue.</Text>
         {availableSkillsForSelection.length === 0 ? (
           <View style={s.emptyHint}>
             <Ionicons name="alert-circle-outline" size={20} color={MUTED} />
@@ -662,6 +789,13 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
             onToggle={toggleSkill}
           />
         )}
+        <CustomAdder
+          label="Have a skill that's not listed? Add your own."
+          placeholder="e.g. Basic first aid"
+          items={customSkills}
+          onAdd={(v) => setCustomSkills([...customSkills, v])}
+          onRemove={(v) => setCustomSkills(customSkills.filter(x => x !== v))}
+        />
       </>
     );
     if (step === 4) return (
@@ -701,11 +835,10 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const renderStepContent = () => {
     if (view.type !== 'section') return null;
     switch (view.key) {
-      case 'personal':     return renderPersonalStep(view.step);
-      case 'address':      return renderAddressStep();
-      case 'professional': return renderProfessionalStep(view.step);
-      case 'skills':       return renderSkillsStep(view.step);
-      case 'preferences':  return renderPreferencesStep();
+      case 'personal':    return renderPersonalStep(view.step);
+      case 'skills':      return renderSkillsStep(view.step);
+      case 'preferences': return renderPreferencesStep();
+      case 'experience':  return renderExperienceStep(view.step);
     }
   };
 
@@ -717,11 +850,10 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const getSaveLabel = () => {
     if (view.type !== 'section') return 'Save';
     switch (view.key) {
-      case 'personal':     return 'Save Information';
-      case 'address':      return 'Save Address';
-      case 'professional': return 'Save & Continue';
-      case 'skills':       return 'Save & Continue';
-      case 'preferences':  return 'Save Preferences';
+      case 'personal':    return 'Save Information';
+      case 'skills':      return 'Save & Continue';
+      case 'preferences': return 'Save Preferences';
+      case 'experience':  return 'Save Experience';
     }
   };
 
@@ -936,6 +1068,22 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       />
 
       <NotificationModal visible={notifVisible} message={notifMessage} type={notifType} onClose={() => setNotifVisible(false)} />
+
+      <VerifyChangeModal
+        visible={!!changeField}
+        field={changeField ?? 'email'}
+        userId={userId || ''}
+        currentValue={changeField === 'contact' ? contactNumber : email}
+        accent={ORANGE}
+        onClose={() => setChangeField(null)}
+        onSuccess={(newValue) => {
+          if (changeField === 'contact') setContactNumber(newValue); else setEmail(newValue);
+          setChangeField(null);
+          setNotifType('success');
+          setNotifMessage(changeField === 'contact' ? 'Contact number updated.' : 'Email updated.');
+          setNotifVisible(true);
+        }}
+      />
     </>
   );
 }
@@ -945,6 +1093,49 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
 // ─── BadgePillGrid ────────────────────────────────────────────────────────────
 // Used for steps 2, 3, 4 (jobs / skills / languages).
 // Unselected = outlined pill | Selected = orange badge with X on right.
+
+// Lets a helper type a role/skill that isn't in the reference list (e.g. a niche
+// specialty). Free-text — stored in custom_jobs / custom_skills, shown as chips.
+function CustomAdder({ label, placeholder, items, onAdd, onRemove }: {
+  label: string; placeholder: string; items: string[];
+  onAdd: (v: string) => void; onRemove: (v: string) => void;
+}) {
+  const [text, setText] = useState('');
+  const add = () => {
+    const v = text.trim();
+    if (!v) return;
+    if (!items.some(x => x.toLowerCase() === v.toLowerCase())) onAdd(v);
+    setText('');
+  };
+  return (
+    <View>
+      <Text style={s.customHint}>{label}</Text>
+      <View style={s.customAddRow}>
+        <TextInput
+          style={s.customAddInput} value={text} onChangeText={setText}
+          placeholder={placeholder} placeholderTextColor="#B8956A"
+          onSubmitEditing={add} returnKeyType="done"
+        />
+        <TouchableOpacity style={s.customAddBtn} onPress={add} activeOpacity={0.85}>
+          <Ionicons name="add" size={16} color={ORANGE} />
+          <Text style={s.customAddBtnText}>Add</Text>
+        </TouchableOpacity>
+      </View>
+      {items.length > 0 && (
+        <View style={s.customChipWrap}>
+          {items.map((it, i) => (
+            <View key={i} style={s.customChip}>
+              <Text style={s.customChipText}>{it}</Text>
+              <TouchableOpacity onPress={() => onRemove(it)} hitSlop={6}>
+                <Ionicons name="close-circle" size={16} color="#B4470F" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
 
 function BadgePillGrid({
   items, selectedIds, onToggle,
@@ -996,6 +1187,20 @@ function BadgePillGrid({
 
 const Req = () => <Text style={{ color: ORANGE }}>*</Text>;
 const OptTag = () => <Text style={{ color: MUTED, fontFamily: FontFamily.fredokaRegular, fontSize: 12 }}> (optional)</Text>;
+
+// Read-only sensitive field (email / contact) with a Change button that opens the
+// verify-by-code flow — inline editing is intentionally disabled.
+function VerifiedRow({ value, onChange }: { value: string; onChange: () => void }) {
+  return (
+    <View style={s.verifiedRow}>
+      <Text style={s.verifiedVal} numberOfLines={1}>{value}</Text>
+      <TouchableOpacity style={s.verifiedBtn} onPress={onChange} activeOpacity={0.85}>
+        <Ionicons name="shield-checkmark-outline" size={14} color={ORANGE} />
+        <Text style={s.verifiedBtnText}>Change</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 function Label({ children }: { children: React.ReactNode }) {
   return <Text style={s.label}>{children}</Text>;
@@ -1143,6 +1348,11 @@ const s = StyleSheet.create({
   // Form elements
   label:     { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, marginBottom: 6, marginTop: 14 },
   input:     { backgroundColor: '#FDF5E8', borderRadius: 12, paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 14 : 11, fontSize: 15, fontFamily: FontFamily.fredokaRegular, color: DARK, borderWidth: 1, borderColor: '#EDE0D0', marginBottom: 2 },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FDF5E8', borderRadius: 12, paddingLeft: 14, paddingRight: 8, paddingVertical: 8, borderWidth: 1, borderColor: '#EDE0D0', marginBottom: 4 },
+  verifiedVal: { flex: 1, fontSize: 15, fontFamily: FontFamily.fredokaSemiBold, color: DARK },
+  verifiedBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.3, borderColor: ORANGE, borderRadius: 9, paddingHorizontal: 11, paddingVertical: 7 },
+  verifiedBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: ORANGE },
+  verifiedNote: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, lineHeight: 17, marginTop: 8 },
   textArea:  { minHeight: 100, textAlignVertical: 'top', paddingTop: 12 },
   inputHint: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginBottom: 4 },
   dateBtn:   { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FDF5E8', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#EDE0D0', marginBottom: 2 },
@@ -1167,6 +1377,25 @@ const s = StyleSheet.create({
   // Info box
   infoBox:     { flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: '#F5F0FF', borderRadius: 12, padding: 14, marginBottom: 16 },
   infoBoxText: { flex: 1, fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: '#5B21B6', lineHeight: 18 },
+  // Work history (past employers) editor
+  workCard:      { backgroundColor: '#FDF7EE', borderWidth: 1, borderColor: '#EFE0CB', borderRadius: 14, padding: 13, marginBottom: 12 },
+  workCardTop:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  workCardNum:   { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#2A1608' },
+  checkRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  checkText:     { fontFamily: FontFamily.fredokaRegular, fontSize: 13.5, color: '#7A5C3E' },
+  refToggleRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 14 },
+  refToggleText: { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: '#2A1608' },
+  addWorkBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1.4, borderStyle: 'dashed', borderColor: '#C4A882', borderRadius: 12, paddingVertical: 13, marginTop: 4 },
+  addWorkText:   { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#E86019' },
+  // Custom "add your own" role / skill
+  customAddRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  customAddInput:{ flex: 1, backgroundColor: '#fff', borderWidth: 1.4, borderColor: '#EFE0CB', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: '#2A1608' },
+  customAddBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEE2D5', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  customAddBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: '#E86019' },
+  customChipWrap:{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  customChip:    { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEE2D5', borderRadius: 999, paddingLeft: 12, paddingRight: 8, paddingVertical: 6 },
+  customChipText:{ fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: '#B4470F' },
+  customHint:    { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: '#9A7B5A', marginTop: 12, marginBottom: 2 },
 
   // Empty hint
   emptyHint:    { flexDirection: 'row', gap: 8, alignItems: 'center', backgroundColor: '#FEF3C7', borderRadius: 12, padding: 14 },

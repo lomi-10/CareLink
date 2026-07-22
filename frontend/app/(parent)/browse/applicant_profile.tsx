@@ -77,6 +77,7 @@ export default function ApplicantProfile() {
 
   const [applicant, setApplicant] = useState<ApplicantDetails | null>(null);
   const [sharedDocuments, setSharedDocuments] = useState<SharedDocument[]>([]);
+  const [workHistory, setWorkHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState('');
   const [notification, setNotification] = useState<{
@@ -180,6 +181,7 @@ export default function ApplicantProfile() {
       if (data.success) {
         setApplicant(data.applicant);
         setSharedDocuments(data.shared_documents ?? []);
+        setWorkHistory(data.work_history ?? []);
         setNotes(data.applicant.parent_notes || '');
       } else {
         throw new Error(data.message);
@@ -713,6 +715,29 @@ export default function ApplicantProfile() {
           </View>
         )}
 
+        {/* Work Experience */}
+        {workHistory.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Work Experience</Text>
+            {workHistory.map((w, i) => (
+              <View key={w.history_id ?? i} style={whm.item}>
+                <View style={whm.head}>
+                  <Text style={whm.role}>{w.position}</Text>
+                  {w.can_contact && (
+                    <View style={whm.ref}>
+                      <Ionicons name="call-outline" size={11} color="#0B7B5B" />
+                      <Text style={whm.refText}>{w.employer_contact || 'Reference'}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={whm.employer}>{w.employer_name} · {applicantWorkRange(w.start_date, w.end_date)}</Text>
+                {!!w.duties && <Text style={whm.duties}>{w.duties}</Text>}
+                {!!w.reason_for_leaving && <Text style={whm.reason}>Left: {w.reason_for_leaving}</Text>}
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Cover Letter */}
         {applicant.cover_letter && (
           <View style={styles.section}>
@@ -1098,4 +1123,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#34C759',
   },
+});
+
+function applicantWorkRange(start: string, end?: string | null): string {
+  const fmt = (d?: string | null) => {
+    if (!d) return '';
+    const dt = new Date(String(d).replace(' ', 'T'));
+    return isNaN(dt.getTime()) ? String(d) : dt.toLocaleDateString('en-PH', { month: 'short', year: 'numeric' });
+  };
+  return end ? `${fmt(start)} – ${fmt(end)}` : `${fmt(start)} – Present`;
+}
+
+const whm = StyleSheet.create({
+  item: { paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(139,94,60,0.16)' },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  role: { fontFamily: 'Fredoka-SemiBold', fontSize: 14, color: '#2A1608', flexShrink: 1 },
+  employer: { fontFamily: 'Fredoka-Regular', fontSize: 12.5, color: '#7A4E2A', marginTop: 2 },
+  duties: { fontFamily: 'Fredoka-Regular', fontSize: 13, color: '#5C3A1A', marginTop: 5, lineHeight: 18 },
+  reason: { fontFamily: 'Fredoka-Regular', fontSize: 12, color: '#9A7B5A', marginTop: 3, fontStyle: 'italic' },
+  ref: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#E7F7F0', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  refText: { fontFamily: 'Fredoka-SemiBold', fontSize: 10.5, color: '#0B7B5B' },
 });

@@ -8,7 +8,7 @@ import React, { useMemo } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useParentRecommendations, useParentJobs } from '@/hooks/parent';
-import { computeHelperJobMatch, pickPrimaryOpenJob } from '@/lib/parentHelperMatch';
+import { computeHelperJobMatch, pickPrimaryOpenJob, bestJobForHelper } from '@/lib/parentHelperMatch';
 import { RecommendedHelperCard } from './RecommendedHelperCard';
 import { BROWN, DARK } from './parentWarmTheme';
 
@@ -25,9 +25,9 @@ export function RecommendedHelpersSection() {
   // history-based order. Keeps dashboard and Browse in the same order too.
   const ranked = useMemo(
     () => recommendations
-      .map((helper) => ({ helper, match: computeHelperJobMatch(helper, referenceJob) }))
+      .map((helper) => ({ helper, match: computeHelperJobMatch(helper, bestJobForHelper(helper, jobs)) }))
       .sort((a, b) => b.match.score - a.match.score),
-    [recommendations, referenceJob],
+    [recommendations, jobs],
   );
 
   if (loading) {

@@ -292,6 +292,15 @@ function DetailPanel({ app, tab, onTab, onClose, onWithdraw, onMessage, onViewEm
         <View style={s.dpTop}>
           <View style={{ flex: 1 }}>
             <Text style={s.dpTitle}>{app.job_title}</Text>
+            {/* Job titles are concise (the category when several roles are picked);
+                the specific roles are listed here so nothing is lost. */}
+            {Array.isArray((app as any).job_names) && (app as any).job_names.length > 0 && (
+              <View style={s.rolesWrap}>
+                {(app as any).job_names.map((r: string, i: number) => (
+                  <View key={i} style={s.roleChip}><Text style={s.roleChipText}>{r}</Text></View>
+                ))}
+              </View>
+            )}
             <View style={s.cardFamRow}>
               <Text style={s.dpFam}>{app.parent_name}</Text>
               {app.parent_verified && <View style={s.verPill}><Ionicons name="checkmark-circle" size={10} color={wt.green} /><Text style={s.verPillText}>PESO Verified</Text></View>}
@@ -543,6 +552,10 @@ const s = StyleSheet.create({
   cardAvaText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: wt.accent },
   cardTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: wt.ink },
   cardFamRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2, flexWrap: 'wrap' },
+  // "Roles included" chips — the specifics behind a concise job title
+  rolesWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  roleChip: { backgroundColor: wt.accentSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  roleChipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: wt.accent },
   cardFam: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: wt.muted },
   verPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: wt.greenSoft, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   verPillText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5, color: wt.green },

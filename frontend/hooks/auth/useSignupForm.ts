@@ -29,6 +29,12 @@ export function useSignupForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [privacyConsent, setPrivacyConsent] = useState(false);
+  // Signup does a DNS MX lookup AND an SMTP send before responding, so it can take
+  // several seconds. Without this the button stayed live the whole time: an
+  // impatient second tap raced the first, the first created the account, and the
+  // second came back "email/mobile already registered" — making a SUCCESSFUL
+  // signup look like a failure.
+  const [loading, setLoading] = useState(false);
 
   // NEW: Single state for the NotificationModal!
   const [notification, setNotification] = useState({
@@ -57,6 +63,10 @@ export function useSignupForm() {
   }, [form.password, form.confirmpass]);
 
   const handleSignUpScreen = async () => {
+    // Belt and braces: the button is disabled while loading, but guard the
+    // function too — a fast double-tap can fire twice before React re-renders.
+    if (loading) return;
+
     const { first_name, last_name, email, user_type, password, confirmpass } = form;
 
     if (!first_name || !last_name || !user_type || !email || !password || !confirmpass) {
@@ -91,6 +101,7 @@ export function useSignupForm() {
       return;
     }
 
+    setLoading(true);
     try {
       const response = await fetch(`${API_URL}/auth/signup.php`, {
         method: "POST",
@@ -121,11 +132,16 @@ export function useSignupForm() {
             router.replace("/login");
           }
         }, 1600);
+        // Deliberately stay loading until we navigate away — releasing the button
+        // during this 1.6s window would reopen the exact double-submit hole:
+        // the account already exists, so a second tap returns "already registered".
       } else {
         setNotification({ visible: true, message: data.message || "Registration failed. Try again.", type: "error" });
+        setLoading(false);
       }
     } catch (error) {
       setNotification({ visible: true, message: "Unable to connect to server.", type: "error" });
+      setLoading(false);
     }
   };
 
@@ -134,7 +150,7 @@ export function useSignupForm() {
   return {
     role, form, handleChange, showPassword, setShowPassword,
     showConfirmPassword, setShowConfirmPassword, isPasswordValid,
-    privacyConsent, setPrivacyConsent,
+    privacyConsent, setPrivacyConsent, loading,
     notification, closeNotification, handleSignUpScreen, router
   };
 }

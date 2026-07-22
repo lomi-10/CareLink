@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useParentRecommendations, useParentRecentApplicants, useParentUpcomingInterviews, useParentJobs } from '@/hooks/parent';
-import { computeHelperJobMatch, pickPrimaryOpenJob } from '@/lib/parentHelperMatch';
+import { computeHelperJobMatch, pickPrimaryOpenJob, bestJobForHelper } from '@/lib/parentHelperMatch';
 import { useCareBot } from '@/contexts/CareBotContext';
 import { pt, ACCENT_GRADIENT } from './parentWebTheme';
 import { ParentHeroCard } from './ParentHeroCard';
@@ -61,10 +61,10 @@ export function ParentHomeWeb({
   const referenceJob = useMemo(() => pickPrimaryOpenJob(jobs), [jobs]);
   const recs = useMemo(
     () => recommendations
-      .map((h) => ({ h, score: computeHelperJobMatch(h, referenceJob).score }))
+      .map((h) => ({ h, score: computeHelperJobMatch(h, bestJobForHelper(h, jobs)).score }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 2),
-    [recommendations, referenceJob],
+    [recommendations, jobs],
   );
   const go = (p: string) => router.push(p as never);
 

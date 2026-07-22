@@ -60,3 +60,6 @@ backend/test_email.php
 
 # Claude Code local permission allowlist — machine-specific paths, not shareable
 .claude/settings.json
+
+# Local one-time backfill artifact (not needed in the repo)
+backend/database/job_titles_before_backfill.json

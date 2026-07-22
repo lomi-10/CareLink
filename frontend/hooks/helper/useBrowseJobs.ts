@@ -14,6 +14,8 @@ export interface JobPost {
   
   // Basic Info
   title: string;
+  /** The specific job roles behind the concise title — shown as chips in details. */
+  job_names?: string[];
   description: string;
   employment_type: string;
   work_schedule: string;

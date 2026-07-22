@@ -136,6 +136,16 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
               {/* ── Job title ── */}
               <Text style={s.jobTitle}>{job.title}</Text>
 
+              {/* Titles are concise (the category when several roles are picked) —
+                  the specific roles are listed here so nothing is lost. */}
+              {Array.isArray((job as any).job_names) && (job as any).job_names.length > 0 && (
+                <View style={jr.wrap}>
+                  {(job as any).job_names.map((r: string, i: number) => (
+                    <View key={i} style={jr.chip}><Text style={jr.chipText}>{r}</Text></View>
+                  ))}
+                </View>
+              )}
+
               {/* ── Employer info (static) ── */}
               <View style={s.employerInfo}>
                 <Text style={s.employerName}>{job.parent_name || 'Verified Employer'}</Text>
@@ -351,4 +361,11 @@ const s = StyleSheet.create({
   footer:       { padding: 16, borderTopWidth: 1, borderTopColor: DIVIDER, backgroundColor: '#fff' },
   applyBtn:     { backgroundColor: DARK, paddingVertical: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   applyBtnText: { fontFamily: FontFamily.fredokaSemiBold, color: '#fff', fontSize: 16 },
+});
+
+// "Roles included" chips — the specifics behind a concise job title
+const jr = StyleSheet.create({
+  wrap:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  chip:     { backgroundColor: '#FEE2D5', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  chipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: ORANGE },
 });

@@ -111,6 +111,8 @@ try {
                     verification_status,
                     rating_average,
                     rating_count,
+                    custom_jobs,
+                    custom_skills,
                     created_at,
                     updated_at
                 FROM helper_profiles
@@ -127,6 +129,9 @@ try {
     if ($profileResult->num_rows > 0) {
         $profile = $profileResult->fetch_assoc();
         $profile_id = intval($profile['profile_id']);
+        // Decode free-text custom roles/skills (stored as JSON text) into arrays.
+        $profile['custom_jobs']   = $profile['custom_jobs']   ? (json_decode($profile['custom_jobs'], true)   ?: array()) : array();
+        $profile['custom_skills'] = $profile['custom_skills'] ? (json_decode($profile['custom_skills'], true) ?: array()) : array();
         
         // Convert data types
         $profile['profile_id'] = $profile_id;
@@ -338,6 +343,27 @@ try {
     error_log("Found " . count($documents) . " documents");
 
     // ========================================================================
+    // QUERY 10: Work history (past employers / references)
+    // ========================================================================
+    $work_history = array();
+    if ($profile_id !== null) {
+        $whSql = "SELECT history_id, employer_name, employer_contact, position,
+                         start_date, end_date, duties, reason_for_leaving, can_contact
+                  FROM helper_work_history
+                  WHERE profile_id = ?
+                  ORDER BY (end_date IS NULL) DESC, start_date DESC";
+        $whStmt = $conn->prepare($whSql);
+        $whStmt->bind_param("i", $profile_id);
+        $whStmt->execute();
+        $whResult = $whStmt->get_result();
+        while ($row = $whResult->fetch_assoc()) {
+            $row['can_contact'] = (int)$row['can_contact'] === 1;
+            $work_history[] = $row;
+        }
+        $whStmt->close();
+    }
+
+    // ========================================================================
     // Calculate profile completeness
     // ========================================================================
 
@@ -391,6 +417,7 @@ try {
         'available_languages' => $available_languages,
         'selected_languages' => $selected_languages,
         'documents' => $documents,
+        'work_history' => $work_history,
         'profile_completeness' => $completeness
     ));
 

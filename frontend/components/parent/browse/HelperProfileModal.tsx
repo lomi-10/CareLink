@@ -50,6 +50,16 @@ function getInitials(name?: string) {
   return p.length > 1 ? `${p[0][0]}${p[p.length - 1][0]}`.toUpperCase() : p[0][0].toUpperCase();
 }
 
+/** "Jan 2022 – Present" range from ISO dates (null end = current job). */
+function whRange(start: string, end?: string | null): string {
+  const fmt = (d?: string | null) => {
+    if (!d) return '';
+    const dt = new Date(String(d).replace(' ', 'T'));
+    return isNaN(dt.getTime()) ? String(d) : dt.toLocaleDateString('en-PH', { month: 'short', year: 'numeric' });
+  };
+  return end ? `${fmt(start)} – ${fmt(end)}` : `${fmt(start)} – Present`;
+}
+
 export function HelperProfileModal({ visible, helper, onInvite, onSave, onMessage, onReport, onClose, referenceJob, match }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
@@ -104,8 +114,9 @@ export function HelperProfileModal({ visible, helper, onInvite, onSave, onMessag
             <Text style={st.headerTitle}>Helper Profile</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               {onReport ? (
-                <TouchableOpacity onPress={onReport} style={st.closeBtn} hitSlop={6} accessibilityLabel="Report this helper">
-                  <Ionicons name="flag-outline" size={18} color={MUTED} />
+                <TouchableOpacity onPress={onReport} style={st.reportBtn} hitSlop={6} accessibilityLabel="Report this helper">
+                  <Ionicons name="flag" size={14} color={DANGER} />
+                  <Text style={st.reportBtnText}>Report</Text>
                 </TouchableOpacity>
               ) : null}
               <TouchableOpacity onPress={onClose} style={st.closeBtn}>
@@ -291,6 +302,31 @@ export function HelperProfileModal({ visible, helper, onInvite, onSave, onMessag
                         </View>
                       ))}
                     </View>
+                  </View>
+                )}
+
+                {Array.isArray(h.work_history) && h.work_history.length > 0 && (
+                  <View style={{ marginTop: 20 }}>
+                    <Text style={st.chipGroupLabel}>Work History</Text>
+                    {h.work_history.map((w: any, i: number) => (
+                      <View key={i} style={st.whCard}>
+                        <View style={st.whHead}>
+                          <Text style={st.whRole}>{w.position}</Text>
+                          {w.can_contact && (
+                            <View style={st.whRefBadge}>
+                              <Ionicons name="call-outline" size={11} color={GREEN} />
+                              <Text style={st.whRefText}>Reference</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={st.whEmployer}>{w.employer_name}</Text>
+                        <Text style={st.whDates}>{whRange(w.start_date, w.end_date)}</Text>
+                        {!!w.duties && <Text style={st.whDuties}>{w.duties}</Text>}
+                        {w.can_contact && !!w.employer_contact && (
+                          <Text style={st.whContact}>Reference contact: {w.employer_contact}</Text>
+                        )}
+                      </View>
+                    ))}
                   </View>
                 )}
               </View>
@@ -558,6 +594,21 @@ const st = StyleSheet.create({
     borderWidth: 1, borderColor: DIVIDER,
   },
   chipGreen: { backgroundColor: SUCCESS_BG, borderColor: '#A7F3D0' },
+
+  // Report pill (header) — red + labeled so it's obvious
+  reportBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: DANGER_BG, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  reportBtnText: { fontSize: 12, fontWeight: '700', color: DANGER },
+
+  // Work history cards
+  whCard: { backgroundColor: SURFACE, borderWidth: 1, borderColor: DIVIDER, borderRadius: 12, padding: 12, marginTop: 10 },
+  whHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  whRole: { flex: 1, fontSize: 14.5, fontWeight: '800', color: DARK },
+  whRefBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: SUCCESS_BG, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  whRefText: { fontSize: 10.5, fontWeight: '700', color: GREEN },
+  whEmployer: { fontSize: 13, fontWeight: '600', color: BROWN, marginTop: 2 },
+  whDates: { fontSize: 12, color: MUTED, marginTop: 2 },
+  whDuties: { fontSize: 12.5, color: DARK, marginTop: 6, lineHeight: 17 },
+  whContact: { fontSize: 12, color: GREEN, fontWeight: '600', marginTop: 6 },
   chipBlue:  { backgroundColor: '#EFF6FF',  borderColor: '#DBEAFE' },
   chipText:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: BROWN },
 

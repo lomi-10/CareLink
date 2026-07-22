@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
+require_once __DIR__ . '/../shared/job_match.php'; // carelink_haversine — same distance as Browse
 
 // Support two modes:
 //   ?job_post_id=X  — applications for a specific job
@@ -42,6 +43,22 @@ try {
         carelink_require_self($requester_id, $ownerRow ? (int)$ownerRow['parent_id'] : 0, 'You are not allowed to view these applications.');
     }
 
+    // Parent's coordinates — so the applicant's match % uses the SAME parent↔helper
+    // distance shown on Browse (otherwise the location factor is lost and the score
+    // reads ~10 points lower here than on Find Helpers for the same pair).
+    $effective_parent_id = $parent_id ? (int) $parent_id : (int) ($ownerRow['parent_id'] ?? 0);
+    $pLat = null; $pLng = null; $pMuni = ''; $pProv = '';
+    if ($effective_parent_id) {
+        $pp = $conn->query("SELECT latitude, longitude, municipality, province FROM parent_profiles WHERE user_id = " . $effective_parent_id);
+        $pp = $pp ? $pp->fetch_assoc() : null;
+        if ($pp) {
+            $pLat = $pp['latitude'] !== null ? (float) $pp['latitude'] : null;
+            $pLng = $pp['longitude'] !== null ? (float) $pp['longitude'] : null;
+            $pMuni = $pp['municipality'] ?? '';
+            $pProv = $pp['province'] ?? '';
+        }
+    }
+
     // 1. Fetch Application + User + Helper Profile Data
     if ($job_post_id) {
         $where = "a.job_post_id = $job_post_id";
@@ -56,11 +73,11 @@ try {
             c.confirmed_salary, c.work_hours, c.rest_days,
             c.employment_start_date, c.employment_end_date, c.contract_duration,
             c.payment_schedule, c.other_benefits, c.pdf_file_path,
-            jp.title AS job_title, jp.start_date AS job_start_date, jp.category_id,
+            jp.title AS job_title, jp.start_date AS job_start_date, jp.category_id, jp.skill_ids AS job_skill_ids, jp.custom_skills AS job_custom_skills,
             rc.category_name,
             u.first_name, u.last_name, u.email, hp.contact_number,
             hp.profile_id, hp.profile_image, hp.birth_date, hp.gender,
-            hp.experience_years, hp.barangay, hp.municipality, hp.province,
+            hp.experience_years, hp.barangay, hp.municipality, hp.province, hp.latitude, hp.longitude,
             hp.education_level, hp.religion, hp.civil_status, hp.bio,
             hp.employment_type, hp.work_schedule, hp.expected_salary, hp.salary_period,
             hp.verification_status, hp.rating_average, hp.rating_count,
@@ -94,7 +111,20 @@ try {
     while ($row = $result->fetch_assoc()) {
         $helper_id = (int)$row['helper_id'];
         $profile_id = (int)$row['profile_id'];
-        
+
+        // Distance parent↔helper — identical rule to browse.php (exact GPS, else
+        // same-municipality ≈ 3km, same-province ≈ 25km) so the % matches Browse.
+        $helper_distance = null;
+        $hLat = $row['latitude'] !== null ? (float) $row['latitude'] : null;
+        $hLng = $row['longitude'] !== null ? (float) $row['longitude'] : null;
+        if ($pLat !== null && $pLng !== null && $hLat !== null && $hLng !== null) {
+            $helper_distance = carelink_haversine($pLat, $pLng, $hLat, $hLng);
+        } elseif ($pMuni && $row['municipality'] && strtolower($pMuni) === strtolower($row['municipality'])) {
+            $helper_distance = 3.0;
+        } elseif ($pProv && $row['province'] && strtolower($pProv) === strtolower($row['province'])) {
+            $helper_distance = 25.0;
+        }
+
         // Calculate Age
         $age = null;
         if (!empty($row['birth_date'])) {
@@ -143,6 +173,22 @@ try {
             }
         }
 
+        // The JOB's required skills (for the contract) — distinct from the helper's
+        // skills above. Resolve jp.skill_ids (+ any custom free-text) to names.
+        $jobSkillNames = [];
+        $jobSkillIds = json_decode($row['job_skill_ids'] ?? '[]', true) ?: [];
+        if (!empty($jobSkillIds)) {
+            $safeSkillIds = implode(',', array_filter(array_map('intval', $jobSkillIds), fn($n) => $n > 0));
+            if ($safeSkillIds !== '') {
+                $jsRes = $conn->query("SELECT skill_name FROM ref_skills WHERE skill_id IN ($safeSkillIds)");
+                if ($jsRes) { while ($jr = $jsRes->fetch_assoc()) $jobSkillNames[] = $jr['skill_name']; }
+            }
+        }
+        $jobCustomSk = json_decode($row['job_custom_skills'] ?? '[]', true);
+        if (is_array($jobCustomSk)) {
+            foreach ($jobCustomSk as $cs) { $cs = trim((string) $cs); if ($cs !== '') $jobSkillNames[] = $cs; }
+        }
+
         // Map everything exactly as the Applications Screen expects it!
         $applications[] = [
             'application_id' => (string)$row['application_id'],
@@ -175,6 +221,7 @@ try {
             'job_title'      => $row['job_title']    ?? null,
             'job_start_date' => $row['job_start_date'] ?? null,
             'category_name'  => $row['category_name'] ?? null,
+            'skill_names'    => $jobSkillNames,
             
             // Personal & Contact
             'helper_name' => trim($row['first_name'] . ' ' . $row['last_name']),
@@ -209,6 +256,7 @@ try {
             // Address
             'helper_barangay' => $row['barangay'],
             'helper_municipality' => $row['municipality'],
+            'helper_distance' => $helper_distance,
             'helper_province' => $row['province'],
             
             // Meta Statuses

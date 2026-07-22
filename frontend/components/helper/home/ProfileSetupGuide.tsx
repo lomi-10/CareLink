@@ -32,8 +32,11 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
   const docs: any[] = profileData?.documents ?? [];
   const hasDoc = (t: string) => docs.some((d) => d?.document_type === t);
 
+  const workHistory: any[] = profileData?.work_history ?? [];
+
   const personalDone = !!(p?.contact_number && p?.birth_date && p?.gender && p?.province && p?.municipality && p?.barangay);
   const skillsDone = jobs.length > 0;
+  const expDone = workHistory.length > 0 || Number(p?.years_experience) > 0;
   const docsDone = hasDoc('Valid ID') && hasDoc('Barangay Clearance');
 
   const steps: Step[] = [
@@ -48,6 +51,11 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
       route: '/(helper)/profile/skills?edit=1',
     },
     {
+      key: 'experience', title: 'Add your work experience', icon: 'time', done: expDone,
+      instruction: 'List past employers and how long you worked — you can mark ones happy to be called as a reference. This builds trust with families.',
+      route: '/(helper)/profile/experience?edit=1',
+    },
+    {
       key: 'docs', title: 'Upload your documents', icon: 'shield-checkmark', done: docsDone,
       instruction: 'Upload your Valid ID (front and back) and Barangay Clearance. PESO reviews these to verify you.',
       route: '/(helper)/profile/documents',
@@ -60,7 +68,7 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
 
   // On web the profile lives on a single inline-edit page; route there with an
   // ?edit= section instead of the mobile per-section modal screens.
-  const WEB_EDIT: Record<string, string> = { personal: 'personal', skills: 'skills', docs: 'documents' };
+  const WEB_EDIT: Record<string, string> = { personal: 'personal', skills: 'skills', experience: 'experience', docs: 'documents' };
   const go = (step: Step) =>
     router.push((isDesktop ? `/(helper)/profile?edit=${WEB_EDIT[step.key] ?? 'personal'}` : step.route) as never);
 

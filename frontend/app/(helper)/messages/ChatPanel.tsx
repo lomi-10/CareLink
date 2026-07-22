@@ -88,6 +88,8 @@ export default function ChatPanel({
         setResolvedApp({
           application_id: Number(match.application_id),
           job_title: String(match.job_title ?? ''),
+          category_name: match.category_name ?? null,
+          skill_names: Array.isArray(match.skill_names) ? match.skill_names : [],
           status: String(match.status ?? ''),
           job_post_id: Number(match.job_post_id),
           employer_signed_at: match.employer_signed_at ?? null,
