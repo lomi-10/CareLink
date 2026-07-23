@@ -41,11 +41,11 @@ export function LoginCard({
 
       <Text style={s.label}>Email Address</Text>
       <View style={s.inputWrap}>
-        <Ionicons name="mail-outline" size={18} color="#9CA3AF" />
+        <Ionicons name="mail-outline" size={18} color="#A8927A" />
         <TextInput
           style={s.input}
           placeholder="Enter your email address"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#A8927A"
           value={email}
           onChangeText={onEmailChange}
           autoCapitalize="none"
@@ -55,17 +55,17 @@ export function LoginCard({
 
       <Text style={s.label}>Password</Text>
       <View style={s.inputWrap}>
-        <Ionicons name="lock-closed-outline" size={18} color="#9CA3AF" />
+        <Ionicons name="lock-closed-outline" size={18} color="#A8927A" />
         <TextInput
           style={s.input}
           placeholder="Enter your password"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#A8927A"
           value={password}
           onChangeText={onPasswordChange}
           secureTextEntry={!showPassword}
         />
         <Pressable onPress={onTogglePassword} hitSlop={8}>
-          <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={18} color="#9CA3AF" />
+          <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={18} color="#A8927A" />
         </Pressable>
       </View>
 
@@ -106,22 +106,22 @@ export function LoginCard({
 
 const s = StyleSheet.create({
   card: {
-    width: "100%", maxWidth: 380, backgroundColor: "#FAFAF8", borderRadius: 20, padding: 28,
+    width: "100%", maxWidth: 380, backgroundColor: "#FFFDFA", borderRadius: 20, padding: 28,
     shadowColor: "#000", shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.22, shadowRadius: 32, elevation: 12,
   },
   headerIconWrap: {
     alignSelf: "center", width: 64, height: 64, borderRadius: 32,
-    backgroundColor: "#FFF1E6", alignItems: "center", justifyContent: "center", marginBottom: 10,
+    backgroundColor: "#FBEFD3", alignItems: "center", justifyContent: "center", marginBottom: 10,
   },
   brand: { fontSize: 22, fontFamily: FontFamily.fredokaSemiBold, color: DARK, textAlign: "center" },
-  portalLabel: { fontSize: 11, fontFamily: FontFamily.fredokaSemiBold, color: "#6B7280", textAlign: "center", letterSpacing: 1.2, marginTop: 3 },
+  portalLabel: { fontSize: 11, fontFamily: FontFamily.fredokaSemiBold, color: "#7C6047", textAlign: "center", letterSpacing: 1.2, marginTop: 3 },
   divider: { width: 36, height: 2, backgroundColor: ORANGE, alignSelf: "center", marginTop: 12, marginBottom: 12, borderRadius: 1 },
-  subtitle: { fontSize: 12, fontFamily: FontFamily.fredokaRegular, color: "#6B7280", textAlign: "center", marginBottom: 28 },
+  subtitle: { fontSize: 12, fontFamily: FontFamily.fredokaRegular, color: "#7C6047", textAlign: "center", marginBottom: 28 },
 
-  label: { fontSize: 11, fontFamily: FontFamily.fredokaSemiBold, color: "#374151", marginBottom: 5 },
+  label: { fontSize: 11, fontFamily: FontFamily.fredokaSemiBold, color: "#2B1608", marginBottom: 5 },
   inputWrap: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, paddingHorizontal: 12, height: 44,
+    borderWidth: 1, borderColor: "#EFE4D5", borderRadius: 10, paddingHorizontal: 12, height: 44,
     marginBottom: 16, backgroundColor: "#fff",
   },
   input: { flex: 1, fontSize: 13, fontFamily: FontFamily.fredokaRegular, color: DARK },
@@ -133,18 +133,18 @@ const s = StyleSheet.create({
   submitTxt: { fontSize: 13, fontFamily: FontFamily.fredokaSemiBold, color: "#fff" },
   forgotTxt: { fontSize: 12, fontFamily: FontFamily.fredokaSemiBold, color: ORANGE, textDecorationLine: "underline" },
   contactTxt: {
-    fontSize: 11, fontFamily: FontFamily.fredokaRegular, color: "#9CA3AF",
+    fontSize: 11, fontFamily: FontFamily.fredokaRegular, color: "#A8927A",
     textAlign: "center", marginTop: 8,
   },
 
   noticeBox: {
     flexDirection: "row", gap: 10, marginTop: 22, padding: 14,
-    backgroundColor: "#FFF7ED", borderRadius: 12,
+    backgroundColor: "#FBEFD3", borderRadius: 12,
   },
   noticeIconWrap: {
     width: 30, height: 30, borderRadius: 9, backgroundColor: "#fff",
     alignItems: "center", justifyContent: "center",
   },
   noticeTitle: { fontSize: 11, fontFamily: FontFamily.fredokaSemiBold, color: DARK, marginBottom: 2 },
-  noticeBody: { fontSize: 10, fontFamily: FontFamily.fredokaRegular, color: "#6B7280", lineHeight: 14 },
+  noticeBody: { fontSize: 10, fontFamily: FontFamily.fredokaRegular, color: "#7C6047", lineHeight: 14 },
 });

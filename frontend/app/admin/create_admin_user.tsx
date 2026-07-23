@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   backButton: { marginRight: 16 },
   headerTitle: { fontSize: 18, fontWeight: "bold", color: "#333" },
   formContainer: { padding: 20 },
-  label: { fontSize: 14, fontWeight: "600", color: "#666", marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: "600", color: "#7C6047", marginBottom: 8 },
   input: {
     height: 50,
     borderWidth: 1,
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   picker: { height: 50, width: "100%" },
   submitButton: {
-    backgroundColor: "#004080",
+    backgroundColor: "#0F7B54",
     height: 55,
     borderRadius: 8,
     justifyContent: "center",

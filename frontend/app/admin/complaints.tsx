@@ -89,7 +89,7 @@ export default function AdminComplaintsScreen() {
         <Text style={styles.title}>Placement complaints</Text>
       </View>
       {loading ? (
-        <ActivityIndicator size="large" color="#5856D6" style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color="#0F7B54" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={rows}
@@ -167,14 +167,14 @@ export default function AdminComplaintsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F8F9FA" },
+  safe: { flex: 1, backgroundColor: "#FAF7F1" },
   header: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E5EA",
+    borderBottomColor: "#EFE4D5",
   },
   backBtn: { marginRight: 12 },
   title: { fontSize: 20, fontWeight: "700", color: "#333" },
@@ -189,11 +189,11 @@ const styles = StyleSheet.create({
     borderColor: "#eee",
   },
   cardTitle: { fontSize: 17, fontWeight: "700", color: "#222" },
-  meta: { fontSize: 13, color: "#666", marginTop: 6 },
+  meta: { fontSize: 13, color: "#7C6047", marginTop: 6 },
   body: { fontSize: 15, color: "#333", marginTop: 10, lineHeight: 22 },
   fwd: {
     marginTop: 14,
-    backgroundColor: "#5856D6",
+    backgroundColor: "#0F7B54",
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center",
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalTitle: { fontSize: 18, fontWeight: "700", color: "#333" },
-  modalHint: { fontSize: 14, color: "#666", marginTop: 8 },
+  modalHint: { fontSize: 14, color: "#7C6047", marginTop: 8 },
   input: {
     borderWidth: 1,
     borderColor: "#ddd",
@@ -223,8 +223,8 @@ const styles = StyleSheet.create({
   },
   modalRow: { flexDirection: "row", gap: 10, marginTop: 16 },
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: "center" },
-  cancelBtn: { backgroundColor: "#E5E5EA" },
-  okBtn: { backgroundColor: "#5856D6" },
+  cancelBtn: { backgroundColor: "#EFE4D5" },
+  okBtn: { backgroundColor: "#0F7B54" },
   cancelBtnText: { fontWeight: "600", color: "#333" },
   okBtnText: { fontWeight: "700", color: "#fff" },
 });

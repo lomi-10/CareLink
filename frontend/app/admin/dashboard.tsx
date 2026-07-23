@@ -10,19 +10,29 @@ import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import API_URL from "../../constants/api";
 import { fetchAdminComplaints } from "@/lib/complaintsApi";
 
-// ── Dark palette (reference) ──────────────────────────────────────────────────
-const BG      = "#0B1526";
-const PANEL   = "#132038";
-const PANEL2  = "#0F1A2E";
-const BORDER  = "rgba(255,255,255,0.08)";
-const TEXT    = "#EAF0F8";
-const MUTED   = "#8595AD";
-const SUBTLE  = "#5C6B85";
-const BLUE    = "#3B82F6";
-const GREEN   = "#22C55E";
-const RED     = "#EF4444";
-const AMBER   = "#F59E0B";
-const PURPLE  = "#8B5CF6";
+// ── Palette ───────────────────────────────────────────────────────────────────
+// This screen keeps its dark "control room" character, but in CareLink's WARM
+// dark brown rather than the cold navy it used to use (#0B1526/#132038), which
+// belonged to no other part of the product. The browns below are the same family
+// as the dark hero/feature cards in the helper and parent apps, so the admin
+// dashboard now reads as the same product.
+//
+// Status hues are deliberately BRIGHTER than the shared light-surface tokens in
+// constants/designSystem.ts: #059669 green is tuned for cream backgrounds and
+// goes muddy on a dark panel, so each one is lifted for contrast here.
+const BG      = "#241206";                  // deep warm brown canvas
+const PANEL   = "#33190B";                  // raised panel
+const PANEL2  = "#2A1409";                  // secondary panel (brand feat2)
+const BORDER  = "rgba(255,236,220,0.10)";   // warm hairline, not cold white
+const TEXT    = "#FBEFE4";                  // warm cream text (brand featInk)
+const MUTED   = "#D9BFA6";                  // warm muted (brand featMut)
+const SUBTLE  = "#A8886A";                  // warm subtle
+const ACCENT  = "#22A06B";                  // staff green — primary admin accent
+const BLUE    = "#5B9BF5";                  // lifted for dark surfaces
+const GREEN   = "#2FBF87";
+const RED     = "#F2635C";
+const AMBER   = "#E8A33D";
+const PURPLE  = "#A78BFA";
 
 function timeAgo(iso?: string): string {
   if (!iso) return "";
@@ -112,7 +122,7 @@ export default function AdminDashboard() {
   const STAT_CARDS = [
     { icon: "people" as const, color: BLUE,        value: stats.total,          label: "Total Users",          sub: "All system users" },
     { icon: "business" as const, color: PURPLE,    value: stats.peso,           label: "PESO Accounts",        sub: "Verified staff" },
-    { icon: "document-text" as const, color: "#0EA5E9", value: overview.activeContracts, label: "Active Contracts", sub: "Ongoing placements" },
+    { icon: "document-text" as const, color: BLUE, value: overview.activeContracts, label: "Active Contracts", sub: "Ongoing placements" },
     { icon: "time" as const, color: AMBER,         value: stats.pending,        label: "Pending Verifications", sub: "Awaiting review" },
     { icon: "warning" as const, color: RED,        value: stats.complaintsOpen, label: "Open Complaints",      sub: "Requires attention" },
     { icon: "pulse" as const, color: GREEN,        value: stats.logs,           label: "Audit Log Entries",    sub: "Recorded actions" },
@@ -202,7 +212,7 @@ export default function AdminDashboard() {
           </View>
 
           {loading ? (
-            <ActivityIndicator size="large" color={BLUE} style={{ marginTop: 80 }} />
+            <ActivityIndicator size="large" color={ACCENT} style={{ marginTop: 80 }} />
           ) : (
             <>
               {/* Stat cards */}
@@ -351,7 +361,7 @@ const ns = StyleSheet.create({
   brandSub: { fontSize: 10, color: MUTED, fontWeight: "700", letterSpacing: 0.5, marginTop: 1 },
   group: { fontSize: 10.5, fontWeight: "800", color: SUBTLE, letterSpacing: 1, marginTop: 18, marginBottom: 8, marginLeft: 6 },
   item: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 10 },
-  itemActive: { backgroundColor: BLUE },
+  itemActive: { backgroundColor: ACCENT },
   itemText: { fontSize: 14, fontWeight: "600", color: MUTED, flex: 1 },
   badge: { backgroundColor: RED, borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" },
   badgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
@@ -369,7 +379,7 @@ const hs = StyleSheet.create({
   dateText: { color: TEXT, fontSize: 12.5, fontWeight: "600" },
   bell: { width: 40, height: 40, borderRadius: 10, backgroundColor: PANEL, borderWidth: 1, borderColor: BORDER, alignItems: "center", justifyContent: "center" },
   bellDot: { position: "absolute", top: 9, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: RED, borderWidth: 1.5, borderColor: PANEL },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: BLUE, alignItems: "center", justifyContent: "center" },
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: ACCENT, alignItems: "center", justifyContent: "center" },
 });
 
 // ── Stat card styles ──
@@ -390,7 +400,7 @@ const ps = StyleSheet.create({
   panelTitle: { fontSize: 15, fontWeight: "800", color: TEXT },
   headBadge: { backgroundColor: RED, borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" },
   headBadgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
-  more: { fontSize: 12.5, fontWeight: "700", color: BLUE },
+  more: { fontSize: 12.5, fontWeight: "700", color: ACCENT },
   empty: { color: MUTED, fontSize: 13, paddingVertical: 16, textAlign: "center" },
 
   healthRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },

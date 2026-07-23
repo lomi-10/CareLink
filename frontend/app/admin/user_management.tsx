@@ -118,7 +118,7 @@ export default function UserManagementScreen() {
           </View>
           {item.doc_count > 0 && (
             <View style={[styles.docBadge, { marginLeft: 8 }]}>
-              <Ionicons name="document-attach" size={10} color="#2ECC71" />
+              <Ionicons name="document-attach" size={10} color="#059669" />
               <Text style={styles.docBadgeText}>{item.doc_count} Documents</Text>
             </View>
           )}
@@ -174,7 +174,7 @@ export default function UserManagementScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>User Management</Text>
         <TouchableOpacity onPress={fetchUsers} style={styles.iconBtn}>
-          <Ionicons name="refresh" size={24} color="#007AFF" />
+          <Ionicons name="refresh" size={24} color="#0F7B54" />
         </TouchableOpacity>
       </View>
 
@@ -207,7 +207,7 @@ export default function UserManagementScreen() {
 
       {/* List */}
       {loading ? (
-        <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color="#0F7B54" style={{ marginTop: 50 }} />
       ) : (
         <FlatList
           data={filteredUsers}
@@ -234,7 +234,7 @@ export default function UserManagementScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F2F2F7" },
+  container: { flex: 1, backgroundColor: "#FAF7F1" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E5EA",
+    borderBottomColor: "#EFE4D5",
   },
   headerTitle: { fontSize: 18, fontWeight: "bold" },
   iconBtn: { padding: 5 },
@@ -259,13 +259,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E5E5EA",
+    borderColor: "#EFE4D5",
   },
   activeTab: {
-    backgroundColor: "#007AFF",
-    borderColor: "#007AFF",
+    backgroundColor: "#0F7B54",
+    borderColor: "#0F7B54",
   },
-  tabText: { color: "#666", fontWeight: "600" },
+  tabText: { color: "#7C6047", fontWeight: "600" },
   activeTabText: { color: "#fff" },
 
   searchContainer: {
@@ -301,10 +301,10 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   userName: { fontSize: 16, fontWeight: "bold", color: "#000" },
-  userEmail: { fontSize: 14, color: "#666", marginVertical: 2 },
+  userEmail: { fontSize: 14, color: "#7C6047", marginVertical: 2 },
   
   roleBadge: {
-    backgroundColor: "#E5E5EA",
+    backgroundColor: "#EFE4D5",
     alignSelf: "flex-start",
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   docBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#ECFDF5',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   docBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#2ECC71',
+    color: '#059669',
   },
 
   statusBadge: {
@@ -334,21 +334,21 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
   },
-  statusApproved: { backgroundColor: "#E0F8E7" },
-  statusPending: { backgroundColor: "#FFF4E5" },
-  statusSuspended: { backgroundColor: "#FFE5E5" },
+  statusApproved: { backgroundColor: "#ECFDF5" },
+  statusPending: { backgroundColor: "#FBEFD3" },
+  statusSuspended: { backgroundColor: "#FCE8E8" },
   
   statusText: { fontSize: 12, fontWeight: "bold" },
-  textApproved: { color: "#34C759" },
-  textPending: { color: "#FF9500" },
-  textSuspended: { color: "#FF3B30" },
+  textApproved: { color: "#059669" },
+  textPending: { color: "#C97A0E" },
+  textSuspended: { color: "#DC2626" },
 
   actionRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 10,
     borderTopWidth: 1,
-    borderTopColor: "#F2F2F7",
+    borderTopColor: "#FAF7F1",
     paddingTop: 10,
   },
   actionButton: {
@@ -358,8 +358,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 6,
   },
-  btnApprove: { backgroundColor: "#34C759" },
-  btnSuspend: { backgroundColor: "#FF3B30" },
+  btnApprove: { backgroundColor: "#059669" },
+  btnSuspend: { backgroundColor: "#DC2626" },
   btnText: { color: "#fff", fontWeight: "600", fontSize: 12, marginLeft: 4 },
 
   emptyText: { textAlign: "center", marginTop: 50, color: "#999" },

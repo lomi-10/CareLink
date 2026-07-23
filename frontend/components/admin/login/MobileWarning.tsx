@@ -39,17 +39,17 @@ export function MobileWarning({ router }: { router: ReturnType<typeof useRouter>
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F1EC", justifyContent: "center", alignItems: "center", padding: 20 },
+  container: { flex: 1, backgroundColor: "#FAF7F1", justifyContent: "center", alignItems: "center", padding: 20 },
   card: {
     backgroundColor: "#fff", borderRadius: 16, padding: 40, maxWidth: 400, alignItems: "center",
     shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 10, elevation: 5,
   },
   title: { fontSize: 22, fontFamily: FontFamily.fredokaSemiBold, color: DARK, marginTop: 18, marginBottom: 10 },
-  message: { fontSize: 14, fontFamily: FontFamily.fredokaRegular, color: "#666", textAlign: "center", marginBottom: 22, lineHeight: 21 },
-  instructions: { width: "100%", backgroundColor: "#F5F7FA", borderRadius: 12, padding: 18, marginBottom: 22 },
+  message: { fontSize: 14, fontFamily: FontFamily.fredokaRegular, color: "#7C6047", textAlign: "center", marginBottom: 22, lineHeight: 21 },
+  instructions: { width: "100%", backgroundColor: "#FAF7F1", borderRadius: 12, padding: 18, marginBottom: 22 },
   instructionText: { fontSize: 13, fontFamily: FontFamily.fredokaSemiBold, color: "#333", marginBottom: 14 },
   deviceList: { gap: 10 },
   deviceItem: { flexDirection: "row", alignItems: "center", gap: 10 },
-  deviceText: { fontSize: 13, fontFamily: FontFamily.fredokaRegular, color: "#666" },
+  deviceText: { fontSize: 13, fontFamily: FontFamily.fredokaRegular, color: "#7C6047" },
   backText: { color: ORANGE, fontSize: 14, fontFamily: FontFamily.fredokaSemiBold },
 });

@@ -90,16 +90,16 @@ export default function AdminLogsScreen() {
     const isRowEven = index % 2 === 0;
     
     // Status Colors
-    let statusColor = '#666';
-    if (item.status?.toLowerCase().includes('success')) statusColor = '#34C759'; // Green
-    if (item.status?.toLowerCase().includes('failed') || item.status?.toLowerCase().includes('pending')) statusColor = '#FF3B30'; // Red
+    let statusColor = '#7C6047';
+    if (item.status?.toLowerCase().includes('success')) statusColor = '#059669'; // Green
+    if (item.status?.toLowerCase().includes('failed') || item.status?.toLowerCase().includes('pending')) statusColor = '#DC2626'; // Red
 
     // Role Colors
-    const roleBadgeColor = item.role === 'admin' ? '#E6F0FF' : '#F0F0F0';
-    const roleTextColor = item.role === 'admin' ? '#007AFF' : '#666';
+    const roleBadgeColor = item.role === 'admin' ? '#E6F4EF' : '#EFE4D5';
+    const roleTextColor = item.role === 'admin' ? '#0F7B54' : '#7C6047';
 
     return (
-      <View style={[styles.row, { backgroundColor: isRowEven ? '#fff' : '#F8F9FA' }]}>
+      <View style={[styles.row, { backgroundColor: isRowEven ? '#fff' : '#FAF7F1' }]}>
         {/* Action Column */}
         <View style={{flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8}}>
           <View style={[styles.dot, { backgroundColor: statusColor }]} />
@@ -164,7 +164,7 @@ export default function AdminLogsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+          <Ionicons name="arrow-back" size={24} color="#2B1608" />
         </TouchableOpacity>
         <View>
           <Text style={styles.pageTitle}>Audit Trail</Text>
@@ -179,13 +179,13 @@ export default function AdminLogsScreen() {
             <Ionicons 
               name={sortOrder === 'desc' ? "arrow-down" : "arrow-up"} 
               size={20} 
-              color="#007AFF" 
+              color="#0F7B54" 
             />
           </TouchableOpacity>
 
           {/* Refresh Button */}
           <TouchableOpacity onPress={fetchLogs} style={styles.iconBtn}>
-            <Ionicons name="refresh" size={20} color="#007AFF" />
+            <Ionicons name="refresh" size={20} color="#0F7B54" />
           </TouchableOpacity>
         </View>
       </View>
@@ -202,7 +202,7 @@ export default function AdminLogsScreen() {
         {renderHeader()}
 
         {loading ? (
-          <ActivityIndicator size="large" style={{ marginTop: 50 }} color="#007AFF" />
+          <ActivityIndicator size="large" style={{ marginTop: 50 }} color="#0F7B54" />
         ) : (
           <FlatList
             data={getProcessedLogs()} // Use the Filtered & Sorted list
@@ -222,7 +222,7 @@ export default function AdminLogsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F4F6F9",
+    backgroundColor: "#FAF7F1",
   },
   topBar: {
     flexDirection: 'row',
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: '#EFE4D5',
   },
   backButton: {
     padding: 8,
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   },
   iconBtn: {
     padding: 8,
-    backgroundColor: '#F0F7FF',
+    backgroundColor: '#E6F4EF',
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -249,11 +249,11 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#1a1a1a",
+    color: "#2B1608",
   },
   pageSubtitle: {
     fontSize: 12,
-    color: "#666",
+    color: "#7C6047",
   },
   // FILTER STYLES
   filterContainer: {
@@ -268,16 +268,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: '#EFE4D5',
   },
   filterChipActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#0F7B54',
+    borderColor: '#0F7B54',
   },
   filterText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: '#7C6047',
   },
   filterTextActive: {
     color: '#fff',
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: '#EFE4D5',
     overflow: 'hidden',
     shadowColor: "#000",
     shadowOpacity: 0.05,
@@ -302,20 +302,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: "#EFE4D5",
     alignItems: 'center',
   },
   headerRow: {
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "#FAF7F1",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E5EA",
+    borderBottomColor: "#EFE4D5",
     paddingVertical: 15,
   },
   cell: {
     paddingHorizontal: 5,
   },
   headerText: {
-    color: "#666",
+    color: "#7C6047",
     fontWeight: "700",
     fontSize: 11,
     letterSpacing: 0.5,
