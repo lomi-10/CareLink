@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   },
   backButton: { marginRight: 16 },
   headerTitle: { fontSize: 18, fontWeight: "bold", color: "#333" },
-  formContainer: { padding: 20 },
+  formContainer: { padding: 20, width: "100%", maxWidth: 560, alignSelf: "center" },
   label: { fontSize: 14, fontWeight: "600", color: "#7C6047", marginBottom: 8 },
   input: {
     height: 50,

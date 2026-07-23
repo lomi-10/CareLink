@@ -252,7 +252,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#fff",
     padding: 10,
-    justifyContent: "space-around",
+    // Was justifyContent:"space-around" with no width cap, which flung the two
+    // tabs to opposite edges of a wide monitor. Group them together instead.
+    justifyContent: "flex-start",
+    gap: 10,
+    width: "100%",
+    maxWidth: 1400,
+    alignSelf: "center",
   },
   tab: {
     paddingVertical: 8,
@@ -271,6 +277,10 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     backgroundColor: "#fff",
+    // Keep the search field in line with the capped list below it.
+    width: "100%",
+    maxWidth: 1400,
+    alignSelf: "center",
     margin: 15,
     padding: 10,
     borderRadius: 10,
@@ -282,7 +292,7 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 16 },
 
-  listContent: { paddingHorizontal: 15, paddingBottom: 20 },
+  listContent: { paddingHorizontal: 15, paddingBottom: 20, width: "100%", maxWidth: 1400, alignSelf: "center" },
   
   card: {
     backgroundColor: "#fff",

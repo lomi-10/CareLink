@@ -190,8 +190,9 @@ export default function AdminDashboard() {
       <View style={{ flex: 1, flexDirection: wide ? "row" : "column" }}>
         <Sidebar />
 
-        {/* MAIN */}
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: wide ? 26 : 16, paddingBottom: 60 }}>
+        {/* MAIN — capped + centred so the content doesn't stretch edge-to-edge on
+            a wide monitor (the stat cards and panels used to span the full width). */}
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: wide ? 26 : 16, paddingBottom: 60, width: "100%", maxWidth: 1440, alignSelf: "center" }}>
           {/* Header */}
           <View style={hs.header}>
             <View style={{ flex: 1 }}>

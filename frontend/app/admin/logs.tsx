@@ -71,8 +71,8 @@ export default function AdminLogsScreen() {
   // Render the Table Header
   const renderHeader = () => (
     <View style={[styles.row, styles.headerRow]}>
-      <Text style={[styles.cell, styles.headerText, { flex: 1 }]}>ACTION</Text>
-      <Text style={[styles.cell, styles.headerText, { flex: 2 }]}>TIME</Text>
+      <Text style={[styles.cell, styles.headerText, { flex: 1.6 }]}>ACTION</Text>
+      <Text style={[styles.cell, styles.headerText, { flex: 1.4 }]}>TIME</Text>
       <Text style={[styles.cell, styles.headerText, { flex: 1.5 }]}>USER</Text>
       <Text style={[styles.cell, styles.headerText, { flex: 1 }]}>ROLE</Text>
       <Text style={[styles.cell, styles.headerText, { flex: 1 }]}>STATUS</Text>
@@ -101,14 +101,17 @@ export default function AdminLogsScreen() {
     return (
       <View style={[styles.row, { backgroundColor: isRowEven ? '#fff' : '#FAF7F1' }]}>
         {/* Action Column */}
-        <View style={{flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8}}>
+        <View style={{flex: 1.6, flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0}}>
           <View style={[styles.dot, { backgroundColor: statusColor }]} />
-          <Text style={[styles.cellText, { fontWeight: '600' }]}>
+          {/* flexShrink is REQUIRED: RN defaults it to 0 (CSS defaults to 1), so a
+              long action like VERIFY_DOCUMENT_APPROVE overflowed this column and
+              printed on top of the timestamp next to it. */}
+          <Text style={[styles.cellText, { fontWeight: '600', flexShrink: 1 }]} numberOfLines={1}>
             {item.action}
           </Text>
         </View>
 
-        <Text style={[styles.cellText, { flex: 2, color: '#888', fontSize: 11 }]}>
+        <Text style={[styles.cellText, { flex: 1.4, color: '#A8927A', fontSize: 11 }]} numberOfLines={1}>
           {item.timestamp}
         </Text>
 
@@ -258,6 +261,10 @@ const styles = StyleSheet.create({
   // FILTER STYLES
   filterContainer: {
     flexDirection: 'row',
+    // Line the filter chips up with the capped table below them.
+    width: '100%',
+    maxWidth: 1400,
+    alignSelf: 'center',
     paddingHorizontal: 20,
     paddingVertical: 15,
     gap: 10,
@@ -285,6 +292,10 @@ const styles = StyleSheet.create({
   
   tableCard: {
     flex: 1,
+    // Cap + centre: without this the table stretched the full monitor width.
+    width: '100%',
+    maxWidth: 1400,
+    alignSelf: 'center',
     marginHorizontal: 20,
     marginBottom: 20,
     backgroundColor: '#fff',

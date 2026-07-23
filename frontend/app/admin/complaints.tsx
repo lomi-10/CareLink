@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { marginRight: 12 },
   title: { fontSize: 20, fontWeight: "700", color: "#333" },
-  list: { padding: 16, paddingBottom: 48 },
+  list: { padding: 16, paddingBottom: 48, width: "100%", maxWidth: 1100, alignSelf: "center" },
   empty: { textAlign: "center", color: "#999", marginTop: 40 },
   card: {
     backgroundColor: "#fff",
