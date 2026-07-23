@@ -1,38 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator, Modal, SafeAreaView, ScrollView, StatusBar,
-  StyleSheet, Text, TouchableOpacity, useWindowDimensions, View,
+  ActivityIndicator, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View,
 } from "react-native";
-import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import API_URL from "../../constants/api";
 import { fetchAdminComplaints } from "@/lib/complaintsApi";
-
-// ── Palette ───────────────────────────────────────────────────────────────────
-// This screen keeps its dark "control room" character, but in CareLink's WARM
-// dark brown rather than the cold navy it used to use (#0B1526/#132038), which
-// belonged to no other part of the product. The browns below are the same family
-// as the dark hero/feature cards in the helper and parent apps, so the admin
-// dashboard now reads as the same product.
-//
-// Status hues are deliberately BRIGHTER than the shared light-surface tokens in
-// constants/designSystem.ts: #059669 green is tuned for cream backgrounds and
-// goes muddy on a dark panel, so each one is lifted for contrast here.
-const BG      = "#241206";                  // deep warm brown canvas
-const PANEL   = "#33190B";                  // raised panel
-const PANEL2  = "#2A1409";                  // secondary panel (brand feat2)
-const BORDER  = "rgba(255,236,220,0.10)";   // warm hairline, not cold white
-const TEXT    = "#FBEFE4";                  // warm cream text (brand featInk)
-const MUTED   = "#D9BFA6";                  // warm muted (brand featMut)
-const SUBTLE  = "#A8886A";                  // warm subtle
-const ACCENT  = "#22A06B";                  // staff green — primary admin accent
-const BLUE    = "#5B9BF5";                  // lifted for dark surfaces
-const GREEN   = "#2FBF87";
-const RED     = "#F2635C";
-const AMBER   = "#E8A33D";
-const PURPLE  = "#A78BFA";
+import { AdminShell } from "@/components/admin/AdminShell";
+import { useAdminTheme, type AdminPalette } from "@/contexts/AdminThemeContext";
 
 function timeAgo(iso?: string): string {
   if (!iso) return "";
@@ -57,9 +33,10 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width > 900;
+  const { palette: c } = useAdminTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
 
   const [adminName, setAdminName] = useState("Admin");
-  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, pending: 0, peso: 0, logs: 0, complaintsOpen: 0 });
   const [complaints, setComplaints] = useState<any[]>([]);
@@ -97,7 +74,7 @@ export default function AdminDashboard() {
       if (adminUid) {
         const cRes = await fetchAdminComplaints(adminUid);
         const list = cRes.success && cRes.complaints ? cRes.complaints : [];
-        const open = list.filter((c: any) => c.status === "Pending");
+        const open = list.filter((x: any) => x.status === "Pending");
         setComplaints(open.slice(0, 4));
         setStats((p) => ({ ...p, complaintsOpen: open.length }));
 
@@ -111,72 +88,27 @@ export default function AdminDashboard() {
     }
   };
 
-  const confirmLogout = async () => {
-    await AsyncStorage.clear();
-    setLogoutModalVisible(false);
-    router.replace("/welcome");
-  };
-
   const today = new Date().toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" });
 
   const STAT_CARDS = [
-    { icon: "people" as const, color: BLUE,        value: stats.total,          label: "Total Users",          sub: "All system users" },
-    { icon: "business" as const, color: PURPLE,    value: stats.peso,           label: "PESO Accounts",        sub: "Verified staff" },
-    { icon: "document-text" as const, color: BLUE, value: overview.activeContracts, label: "Active Contracts", sub: "Ongoing placements" },
-    { icon: "time" as const, color: AMBER,         value: stats.pending,        label: "Pending Verifications", sub: "Awaiting review" },
-    { icon: "warning" as const, color: RED,        value: stats.complaintsOpen, label: "Open Complaints",      sub: "Requires attention" },
-    { icon: "pulse" as const, color: GREEN,        value: stats.logs,           label: "Audit Log Entries",    sub: "Recorded actions" },
+    { icon: "people" as const, color: c.blue, value: stats.total, label: "Total Users", sub: "All system users" },
+    { icon: "business" as const, color: c.purple, value: stats.peso, label: "PESO Accounts", sub: "Verified staff" },
+    { icon: "document-text" as const, color: c.blue, value: overview.activeContracts, label: "Active Contracts", sub: "Ongoing placements" },
+    { icon: "time" as const, color: c.amber, value: stats.pending, label: "Pending Verifications", sub: "Awaiting review" },
+    { icon: "warning" as const, color: c.red, value: stats.complaintsOpen, label: "Open Complaints", sub: "Requires attention" },
+    { icon: "pulse" as const, color: c.green, value: stats.logs, label: "Audit Log Entries", sub: "Recorded actions" },
   ];
 
-  // ── Sidebar ──
-  const NavItem = ({ icon, label, active, badge, onPress }: any) => (
-    <TouchableOpacity style={[ns.item, active && ns.itemActive]} onPress={onPress} activeOpacity={0.8}>
-      <Ionicons name={icon} size={18} color={active ? "#fff" : MUTED} />
-      <Text style={[ns.itemText, active && { color: "#fff" }]}>{label}</Text>
-      {badge > 0 && <View style={ns.badge}><Text style={ns.badgeText}>{badge}</Text></View>}
-    </TouchableOpacity>
-  );
-
-  const Sidebar = () => (
-    <View style={[ns.sidebar, wide ? { width: 250 } : { width: "100%" }]}>
-      <View style={ns.brandRow}>
-        <CareLinkLogoMark size={34} containerStyle={{ marginRight: 10 }} />
-        <View>
-          <Text style={ns.brand}>CareLink</Text>
-          <Text style={ns.brandSub}>Super Admin Portal</Text>
-        </View>
-      </View>
-
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        <Text style={ns.group}>OVERVIEW</Text>
-        <NavItem icon="grid" label="Dashboard" active onPress={() => {}} />
-
-        <Text style={ns.group}>USER & ADMIN</Text>
-        <NavItem icon="people" label="User Verification" onPress={() => router.push("/admin/user_management")} />
-        <NavItem icon="person-add" label="Admin & PESO Accounts" onPress={() => router.push("/admin/create_admin_user")} />
-
-        <Text style={ns.group}>SYSTEM</Text>
-        <NavItem icon="list" label="Audit Trail" onPress={() => router.push("/admin/logs")} />
-        <NavItem icon="warning" label="Complaints" badge={stats.complaintsOpen} onPress={() => router.push("/admin/complaints")} />
-      </ScrollView>
-
-      <TouchableOpacity style={ns.logout} onPress={() => setLogoutModalVisible(true)} activeOpacity={0.85}>
-        <Ionicons name="log-out-outline" size={18} color={RED} />
-        <Text style={ns.logoutText}>Log Out</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
   const Panel = ({ title, badge, children, onMore, style }: any) => (
-    <View style={[ps.panel, style]}>
-      <View style={ps.panelHead}>
+    <View style={[s.panel, style]}>
+      <View style={s.panelHead}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Text style={ps.panelTitle}>{title}</Text>
-          {badge > 0 && <View style={ps.headBadge}><Text style={ps.headBadgeText}>{badge}</Text></View>}
+          <Text style={s.panelTitle}>{title}</Text>
+          {badge > 0 && <View style={s.headBadge}><Text style={s.headBadgeText}>{badge}</Text></View>}
         </View>
         {onMore && (
           <TouchableOpacity onPress={onMore} activeOpacity={0.7}>
-            <Text style={ps.more}>View all →</Text>
+            <Text style={s.more}>View all →</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -184,265 +116,178 @@ export default function AdminDashboard() {
     </View>
   );
 
+  const datePill = (
+    <View style={s.datePill}>
+      <Ionicons name="calendar-outline" size={14} color={c.muted} />
+      <Text style={s.dateText}>{today}</Text>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
-      <StatusBar barStyle="light-content" />
-      <View style={{ flex: 1, flexDirection: wide ? "row" : "column" }}>
-        <Sidebar />
-
-        {/* MAIN — capped + centred so the content doesn't stretch edge-to-edge on
-            a wide monitor (the stat cards and panels used to span the full width). */}
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: wide ? 26 : 16, paddingBottom: 60, width: "100%", maxWidth: 1440, alignSelf: "center" }}>
-          {/* Header */}
-          <View style={hs.header}>
-            <View style={{ flex: 1 }}>
-              <Text style={hs.hello}>Welcome back, {adminName}! 👋</Text>
-              <Text style={hs.helloSub}>Super Administrator Dashboard Overview</Text>
-            </View>
-            <View style={hs.headerRight}>
-              <View style={hs.datePill}>
-                <Ionicons name="calendar-outline" size={14} color={MUTED} />
-                <Text style={hs.dateText}>{today}</Text>
+    <AdminShell
+      active="dashboard"
+      title={`Welcome back, ${adminName}! 👋`}
+      subtitle="Super Administrator Dashboard Overview"
+      complaintsBadge={stats.complaintsOpen}
+      headerRight={datePill}
+    >
+      {loading ? (
+        <ActivityIndicator size="large" color={c.accent} style={{ marginTop: 80 }} />
+      ) : (
+        <>
+          {/* Stat cards */}
+          <View style={s.statRow}>
+            {STAT_CARDS.map((card) => (
+              <View key={card.label} style={s.statCard}>
+                <View style={[s.statIcon, { backgroundColor: card.color + "22" }]}>
+                  <Ionicons name={card.icon} size={20} color={card.color} />
+                </View>
+                <Text style={s.statValue}>{Number(card.value).toLocaleString()}</Text>
+                <Text style={s.statLabel}>{card.label}</Text>
+                <Text style={s.statSub}>{card.sub}</Text>
               </View>
-              <TouchableOpacity style={hs.bell} onPress={() => router.push("/admin/complaints")} activeOpacity={0.8}>
-                <Ionicons name="notifications-outline" size={18} color={TEXT} />
-                {stats.complaintsOpen > 0 && <View style={hs.bellDot} />}
-              </TouchableOpacity>
-              <View style={hs.avatar}><Ionicons name="person" size={18} color="#fff" /></View>
-            </View>
+            ))}
           </View>
 
-          {loading ? (
-            <ActivityIndicator size="large" color={ACCENT} style={{ marginTop: 80 }} />
-          ) : (
-            <>
-              {/* Stat cards */}
-              <View style={cs.statRow}>
-                {STAT_CARDS.map((c) => (
-                  <View key={c.label} style={cs.statCard}>
-                    <View style={[cs.statIcon, { backgroundColor: c.color + "22" }]}>
-                      <Ionicons name={c.icon} size={20} color={c.color} />
-                    </View>
-                    <Text style={cs.statValue}>{Number(c.value).toLocaleString()}</Text>
-                    <Text style={cs.statLabel}>{c.label}</Text>
-                    <Text style={cs.statSub}>{c.sub}</Text>
+          {/* Panels grid 1 */}
+          <View style={[s.grid, !wide && { flexDirection: "column" }]}>
+            <Panel title="Platform Health" style={wide ? { flex: 1 } : {}}>
+              {HEALTH.map((h) => (
+                <View key={h.label} style={s.healthRow}>
+                  <Ionicons name={h.icon} size={16} color={c.muted} />
+                  <Text style={s.healthLabel}>{h.label}</Text>
+                  <View style={s.opPill}>
+                    <View style={s.opDot} />
+                    <Text style={s.opText}>Operational</Text>
                   </View>
-                ))}
+                </View>
+              ))}
+              <View style={s.healthFooter}>
+                <Ionicons name="checkmark-circle" size={15} color={c.green} />
+                <Text style={s.healthFooterText}>All systems operational</Text>
               </View>
+            </Panel>
 
-              {/* Panels grid */}
-              <View style={[ps.grid, !wide && { flexDirection: "column" }]}>
-                {/* Platform Health */}
-                <Panel title="Platform Health" style={wide ? { flex: 1 } : {}}>
-                  {HEALTH.map((h) => (
-                    <View key={h.label} style={ps.healthRow}>
-                      <Ionicons name={h.icon} size={16} color={MUTED} />
-                      <Text style={ps.healthLabel}>{h.label}</Text>
-                      <View style={ps.opPill}>
-                        <View style={ps.opDot} />
-                        <Text style={ps.opText}>Operational</Text>
-                      </View>
+            <Panel title="Open Complaints" badge={stats.complaintsOpen}
+              onMore={() => router.push("/admin/complaints")} style={wide ? { flex: 1 } : {}}>
+              {complaints.length === 0 ? (
+                <Text style={s.empty}>No open complaints 🎉</Text>
+              ) : complaints.map((x) => {
+                const sev = (x.severity || "").toLowerCase();
+                const sc = sev === "high" ? c.red : sev === "medium" ? c.amber : c.subtle;
+                return (
+                  <View key={x.complaint_id} style={s.listRow}>
+                    <View style={[s.dot, { backgroundColor: sc }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.listTitle} numberOfLines={1}>{x.subject || "Complaint"}</Text>
+                      <Text style={s.listMeta} numberOfLines={1}>Case #{x.complaint_id} · {x.category || "general"}</Text>
                     </View>
-                  ))}
-                  <View style={ps.healthFooter}>
-                    <Ionicons name="checkmark-circle" size={15} color={GREEN} />
-                    <Text style={ps.healthFooterText}>All systems operational</Text>
+                    <View style={{ alignItems: "flex-end" }}>
+                      {!!x.severity && (
+                        <View style={[s.sevPill, { backgroundColor: sc + "22" }]}>
+                          <Text style={[s.sevText, { color: sc }]}>{x.severity}</Text>
+                        </View>
+                      )}
+                      <Text style={s.timeText}>{timeAgo(x.created_at)}</Text>
+                    </View>
                   </View>
-                </Panel>
-
-                {/* High Priority Complaints */}
-                <Panel title="Open Complaints" badge={stats.complaintsOpen}
-                  onMore={() => router.push("/admin/complaints")} style={wide ? { flex: 1 } : {}}>
-                  {complaints.length === 0 ? (
-                    <Text style={ps.empty}>No open complaints 🎉</Text>
-                  ) : complaints.map((c) => {
-                    const sev = (c.severity || "").toLowerCase();
-                    const sc = sev === "high" ? RED : sev === "medium" ? AMBER : SUBTLE;
-                    return (
-                      <View key={c.complaint_id} style={ps.listRow}>
-                        <View style={[ps.dot, { backgroundColor: sc }]} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={ps.listTitle} numberOfLines={1}>{c.subject || "Complaint"}</Text>
-                          <Text style={ps.listMeta} numberOfLines={1}>
-                            Case #{c.complaint_id} · {c.category || "general"}
-                          </Text>
-                        </View>
-                        <View style={{ alignItems: "flex-end" }}>
-                          {!!c.severity && (
-                            <View style={[ps.sevPill, { backgroundColor: sc + "22" }]}>
-                              <Text style={[ps.sevText, { color: sc }]}>{c.severity}</Text>
-                            </View>
-                          )}
-                          <Text style={ps.timeText}>{timeAgo(c.created_at)}</Text>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </Panel>
-              </View>
-
-              <View style={[ps.grid, !wide && { flexDirection: "column" }]}>
-                {/* Recent Audit Activity */}
-                <Panel title="Recent Audit Activity" onMore={() => router.push("/admin/logs")} style={wide ? { flex: 1 } : {}}>
-                  {logs.length === 0 ? (
-                    <Text style={ps.empty}>No recent activity.</Text>
-                  ) : logs.map((l) => (
-                    <View key={l.log_id} style={ps.listRow}>
-                      <View style={[ps.auditIcon, { backgroundColor: (l.status === "Failed" ? RED : BLUE) + "22" }]}>
-                        <Ionicons name={l.status === "Failed" ? "alert-circle" : "checkmark-circle"} size={15}
-                          color={l.status === "Failed" ? RED : BLUE} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={ps.listTitle} numberOfLines={1}>{l.action || "Action"}</Text>
-                        <Text style={ps.listMeta} numberOfLines={1}>
-                          {l.username ? `${l.username}` : "System"}{l.role ? ` · ${l.role}` : ""}
-                        </Text>
-                      </View>
-                      <Text style={ps.timeText}>{timeAgo(l.timestamp)}</Text>
-                    </View>
-                  ))}
-                </Panel>
-
-                {/* PESO Staff Performance */}
-                <Panel title="PESO Staff Performance" style={wide ? { flex: 1 } : {}}>
-                  {overview.peso.length === 0 ? (
-                    <Text style={ps.empty}>No PESO staff accounts yet.</Text>
-                  ) : (
-                    <>
-                      <View style={ps.tHead}>
-                        <Text style={[ps.th, { flex: 2 }]}>Officer</Text>
-                        <Text style={ps.th}>Helpers</Text>
-                        <Text style={ps.th}>Docs</Text>
-                        <Text style={ps.th}>Jobs</Text>
-                      </View>
-                      {overview.peso.map((p) => (
-                        <View key={p.user_id} style={ps.tRow}>
-                          <Text style={[ps.tName, { flex: 2 }]} numberOfLines={1}>{p.name}</Text>
-                          <Text style={ps.td}>{p.verified_helpers}</Text>
-                          <Text style={ps.td}>{p.verified_docs}</Text>
-                          <Text style={ps.td}>{p.verified_jobs}</Text>
-                        </View>
-                      ))}
-                      <Text style={ps.tHint}>Counts of helpers, documents & job posts each officer has verified.</Text>
-                    </>
-                  )}
-                </Panel>
-              </View>
-            </>
-          )}
-        </ScrollView>
-      </View>
-
-      {/* Logout modal */}
-      <Modal animationType="fade" transparent visible={logoutModalVisible}>
-        <View style={ms.overlay}>
-          <View style={ms.box}>
-            <Text style={ms.title}>Log Out</Text>
-            <Text style={ms.msg}>Are you sure you want to log out?</Text>
-            <View style={ms.btns}>
-              <TouchableOpacity style={[ms.btn, ms.cancel]} onPress={() => setLogoutModalVisible(false)}>
-                <Text style={ms.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[ms.btn, ms.confirm]} onPress={confirmLogout}>
-                <Text style={ms.confirmText}>Log Out</Text>
-              </TouchableOpacity>
-            </View>
+                );
+              })}
+            </Panel>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+
+          {/* Panels grid 2 */}
+          <View style={[s.grid, !wide && { flexDirection: "column" }]}>
+            <Panel title="Recent Audit Activity" onMore={() => router.push("/admin/logs")} style={wide ? { flex: 1 } : {}}>
+              {logs.length === 0 ? (
+                <Text style={s.empty}>No recent activity.</Text>
+              ) : logs.map((l) => (
+                <View key={l.log_id} style={s.listRow}>
+                  <View style={[s.auditIcon, { backgroundColor: (l.status === "Failed" ? c.red : c.blue) + "22" }]}>
+                    <Ionicons name={l.status === "Failed" ? "alert-circle" : "checkmark-circle"} size={15}
+                      color={l.status === "Failed" ? c.red : c.blue} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.listTitle} numberOfLines={1}>{l.action || "Action"}</Text>
+                    <Text style={s.listMeta} numberOfLines={1}>{l.username || "System"}{l.role ? ` · ${l.role}` : ""}</Text>
+                  </View>
+                  <Text style={s.timeText}>{timeAgo(l.timestamp)}</Text>
+                </View>
+              ))}
+            </Panel>
+
+            <Panel title="PESO Staff Performance" style={wide ? { flex: 1 } : {}}>
+              {overview.peso.length === 0 ? (
+                <Text style={s.empty}>No PESO staff accounts yet.</Text>
+              ) : (
+                <>
+                  <View style={s.tHead}>
+                    <Text style={[s.th, { flex: 2 }]}>Officer</Text>
+                    <Text style={s.th}>Helpers</Text>
+                    <Text style={s.th}>Docs</Text>
+                    <Text style={s.th}>Jobs</Text>
+                  </View>
+                  {overview.peso.map((p) => (
+                    <View key={p.user_id} style={s.tRow}>
+                      <Text style={[s.tName, { flex: 2 }]} numberOfLines={1}>{p.name}</Text>
+                      <Text style={s.td}>{p.verified_helpers}</Text>
+                      <Text style={s.td}>{p.verified_docs}</Text>
+                      <Text style={s.td}>{p.verified_jobs}</Text>
+                    </View>
+                  ))}
+                  <Text style={s.tHint}>Counts of helpers, documents & job posts each officer has verified.</Text>
+                </>
+              )}
+            </Panel>
+          </View>
+        </>
+      )}
+    </AdminShell>
   );
 }
 
-// ── Sidebar styles ──
-const ns = StyleSheet.create({
-  sidebar: { backgroundColor: PANEL2, borderRightWidth: 1, borderRightColor: BORDER, padding: 16, height: "100%" },
-  brandRow: { flexDirection: "row", alignItems: "center", marginBottom: 22, paddingHorizontal: 4 },
-  brand: { fontSize: 18, fontWeight: "900", color: "#fff" },
-  brandSub: { fontSize: 10, color: MUTED, fontWeight: "700", letterSpacing: 0.5, marginTop: 1 },
-  group: { fontSize: 10.5, fontWeight: "800", color: SUBTLE, letterSpacing: 1, marginTop: 18, marginBottom: 8, marginLeft: 6 },
-  item: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 10 },
-  itemActive: { backgroundColor: ACCENT },
-  itemText: { fontSize: 14, fontWeight: "600", color: MUTED, flex: 1 },
-  badge: { backgroundColor: RED, borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" },
-  badgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
-  logout: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: BORDER, marginTop: 8 },
-  logoutText: { color: RED, fontSize: 14, fontWeight: "700" },
-});
+// Palette-driven styles so the dashboard recolours with the navy/brown toggle.
+const makeStyles = (c: AdminPalette) => StyleSheet.create({
+  datePill: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: c.panel, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
+  dateText: { color: c.text, fontSize: 12.5, fontWeight: "600" },
 
-// ── Header styles ──
-const hs = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", marginBottom: 22, gap: 12, flexWrap: "wrap" },
-  hello: { fontSize: 24, fontWeight: "900", color: TEXT },
-  helloSub: { fontSize: 13, color: MUTED, marginTop: 3 },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
-  datePill: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: PANEL, borderWidth: 1, borderColor: BORDER, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
-  dateText: { color: TEXT, fontSize: 12.5, fontWeight: "600" },
-  bell: { width: 40, height: 40, borderRadius: 10, backgroundColor: PANEL, borderWidth: 1, borderColor: BORDER, alignItems: "center", justifyContent: "center" },
-  bellDot: { position: "absolute", top: 9, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: RED, borderWidth: 1.5, borderColor: PANEL },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: ACCENT, alignItems: "center", justifyContent: "center" },
-});
-
-// ── Stat card styles ──
-const cs = StyleSheet.create({
   statRow: { flexDirection: "row", gap: 14, flexWrap: "wrap", marginBottom: 16 },
-  statCard: { flex: 1, minWidth: 150, backgroundColor: PANEL, borderWidth: 1, borderColor: BORDER, borderRadius: 16, padding: 16 },
+  statCard: { flex: 1, minWidth: 150, backgroundColor: c.panel, borderWidth: 1, borderColor: c.border, borderRadius: 16, padding: 16 },
   statIcon: { width: 40, height: 40, borderRadius: 11, alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  statValue: { fontSize: 26, fontWeight: "900", color: TEXT },
-  statLabel: { fontSize: 13, fontWeight: "700", color: TEXT, marginTop: 2 },
-  statSub: { fontSize: 11.5, color: MUTED, marginTop: 2 },
-});
+  statValue: { fontSize: 26, fontWeight: "900", color: c.text },
+  statLabel: { fontSize: 13, fontWeight: "700", color: c.text, marginTop: 2 },
+  statSub: { fontSize: 11.5, color: c.muted, marginTop: 2 },
 
-// ── Panel styles ──
-const ps = StyleSheet.create({
   grid: { flexDirection: "row", gap: 14, marginBottom: 14 },
-  panel: { backgroundColor: PANEL, borderWidth: 1, borderColor: BORDER, borderRadius: 16, padding: 16 },
-  panelHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  panelTitle: { fontSize: 15, fontWeight: "800", color: TEXT },
-  headBadge: { backgroundColor: RED, borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" },
+  panel: { backgroundColor: c.panel, borderWidth: 1, borderColor: c.border, borderRadius: 16, padding: 18 },
+  panelHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+  panelTitle: { fontSize: 15.5, fontWeight: "800", color: c.text },
+  headBadge: { backgroundColor: c.red, borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" },
   headBadgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
-  more: { fontSize: 12.5, fontWeight: "700", color: ACCENT },
-  empty: { color: MUTED, fontSize: 13, paddingVertical: 16, textAlign: "center" },
+  more: { fontSize: 12.5, fontWeight: "700", color: c.accent },
+  empty: { fontSize: 13, color: c.muted, paddingVertical: 20, textAlign: "center" },
 
   healthRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
-  healthLabel: { flex: 1, color: TEXT, fontSize: 13, fontWeight: "600" },
+  healthLabel: { flex: 1, fontSize: 13.5, color: c.text, fontWeight: "500" },
   opPill: { flexDirection: "row", alignItems: "center", gap: 6 },
-  opDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: GREEN },
-  opText: { color: GREEN, fontSize: 12, fontWeight: "700" },
-  healthFooter: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: BORDER },
-  healthFooterText: { color: GREEN, fontSize: 12.5, fontWeight: "700" },
+  opDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.green },
+  opText: { fontSize: 12.5, color: c.green, fontWeight: "700" },
+  healthFooter: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: c.border },
+  healthFooterText: { fontSize: 13, color: c.green, fontWeight: "700" },
 
-  listRow: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 9, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: BORDER },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  auditIcon: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  listTitle: { color: TEXT, fontSize: 13, fontWeight: "700" },
-  listMeta: { color: MUTED, fontSize: 11.5, marginTop: 1 },
-  sevPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  sevText: { fontSize: 10.5, fontWeight: "800" },
-  timeText: { color: SUBTLE, fontSize: 11, marginTop: 3 },
+  listRow: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.border },
+  dot: { width: 9, height: 9, borderRadius: 5 },
+  auditIcon: { width: 30, height: 30, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  listTitle: { fontSize: 13.5, fontWeight: "700", color: c.text },
+  listMeta: { fontSize: 11.5, color: c.muted, marginTop: 1 },
+  timeText: { fontSize: 11, color: c.subtle },
+  sevPill: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, marginBottom: 3 },
+  sevText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
 
-  qaRow: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 11, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: BORDER },
-  qaIcon: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
-  qaLabel: { flex: 1, color: TEXT, fontSize: 13, fontWeight: "600" },
-
-  tHead: { flexDirection: "row", alignItems: "center", paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: BORDER },
-  th: { flex: 1, color: MUTED, fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.3, textAlign: "center" },
-  tRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: BORDER },
-  tName: { color: TEXT, fontSize: 13, fontWeight: "700" },
-  td: { flex: 1, color: TEXT, fontSize: 13, fontWeight: "600", textAlign: "center" },
-  tHint: { color: SUBTLE, fontSize: 11, marginTop: 10, lineHeight: 15 },
-});
-
-// ── Modal styles ──
-const ms = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 22 },
-  box: { backgroundColor: PANEL, borderWidth: 1, borderColor: BORDER, borderRadius: 18, padding: 22, width: "100%", maxWidth: 360, alignItems: "center" },
-  title: { fontSize: 18, fontWeight: "900", color: TEXT },
-  msg: { fontSize: 14, color: MUTED, textAlign: "center", marginTop: 8, marginBottom: 18 },
-  btns: { flexDirection: "row", gap: 10, alignSelf: "stretch" },
-  btn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
-  cancel: { backgroundColor: PANEL2, borderWidth: 1, borderColor: BORDER },
-  cancelText: { color: TEXT, fontWeight: "800", fontSize: 14 },
-  confirm: { backgroundColor: RED },
-  confirmText: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  tHead: { flexDirection: "row", paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.border },
+  th: { flex: 1, fontSize: 11, fontWeight: "800", color: c.subtle, textTransform: "uppercase", letterSpacing: 0.5 },
+  tRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.border },
+  tName: { flex: 1, fontSize: 13, fontWeight: "600", color: c.text },
+  td: { flex: 1, fontSize: 13, color: c.muted },
+  tHint: { fontSize: 11, color: c.subtle, marginTop: 10, lineHeight: 15 },
 });

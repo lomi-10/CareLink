@@ -1,31 +1,21 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  ActivityIndicator,
-  TouchableOpacity,
-  SafeAreaView,
-  Platform
-} from "react-native";
-import { useRouter } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_URL from "../../constants/api";
+import { AdminShell } from "@/components/admin/AdminShell";
+import { useAdminTheme, type AdminPalette } from "@/contexts/AdminThemeContext";
 
 export default function AdminLogsScreen() {
-  const router = useRouter();
+  const { palette: c } = useAdminTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
+
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // 1. State for Sorting and Filtering
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default: Newest first
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [filterRole, setFilterRole] = useState<'all' | 'parent' | 'helper' | 'admin'>('all');
 
-  useEffect(() => {
-    fetchLogs();
-  }, []);
+  useEffect(() => { fetchLogs(); }, []);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -42,318 +32,125 @@ export default function AdminLogsScreen() {
     }
   };
 
-  // 2. Logic: Filter FIRST, then Sort
   const getProcessedLogs = () => {
-    // Step A: Filter
-    let processed = logs.filter(log => {
-      if (filterRole === 'all') return true; // Show everyone
-      // Compare roles (handle nulls safely)
-      return (log.role || "").toLowerCase() === filterRole;
-    });
-
-    // Step B: Sort (By Date)
+    const processed = logs.filter((log) => filterRole === 'all' ? true : (log.role || "").toLowerCase() === filterRole);
     return processed.sort((a, b) => {
-      const dateA = new Date(a.timestamp).getTime();
-      const dateB = new Date(b.timestamp).getTime();
-      
-      if (sortOrder === 'asc') {
-        return dateA - dateB; // Oldest first
-      } else {
-        return dateB - dateA; // Newest first
-      }
+      const da = new Date(a.timestamp).getTime();
+      const db = new Date(b.timestamp).getTime();
+      return sortOrder === 'asc' ? da - db : db - da;
     });
   };
 
-  const toggleSort = () => {
-    setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
-  };
+  const toggleSort = () => setSortOrder((p) => (p === 'desc' ? 'asc' : 'desc'));
 
-  // Render the Table Header
   const renderHeader = () => (
-    <View style={[styles.row, styles.headerRow]}>
-      <Text style={[styles.cell, styles.headerText, { flex: 1.6 }]}>ACTION</Text>
-      <Text style={[styles.cell, styles.headerText, { flex: 1.4 }]}>TIME</Text>
-      <Text style={[styles.cell, styles.headerText, { flex: 1.5 }]}>USER</Text>
-      <Text style={[styles.cell, styles.headerText, { flex: 1 }]}>ROLE</Text>
-      <Text style={[styles.cell, styles.headerText, { flex: 1 }]}>STATUS</Text>
+    <View style={[s.row, s.headerRow]}>
+      <Text style={[s.cell, s.headerText, { flex: 1.6 }]}>ACTION</Text>
+      <Text style={[s.cell, s.headerText, { flex: 1.4 }]}>TIME</Text>
+      <Text style={[s.cell, s.headerText, { flex: 1.5 }]}>USER</Text>
+      <Text style={[s.cell, s.headerText, { flex: 1 }]}>ROLE</Text>
+      <Text style={[s.cell, s.headerText, { flex: 1 }]}>STATUS</Text>
       {Platform.OS === 'web' && (
         <>
-          <Text style={[styles.cell, styles.headerText, { flex: 1.5 }]}>IP ADDRESS</Text>
-          <Text style={[styles.cell, styles.headerText, { flex: 3 }]}>DEVICE</Text>
+          <Text style={[s.cell, s.headerText, { flex: 1.5 }]}>IP ADDRESS</Text>
+          <Text style={[s.cell, s.headerText, { flex: 3 }]}>DEVICE</Text>
         </>
       )}
     </View>
   );
 
-  // Render each Row
-  const renderItem = ({ item, index }: { item: any, index: number }) => {
-    const isRowEven = index % 2 === 0;
-    
-    // Status Colors
-    let statusColor = '#7C6047';
-    if (item.status?.toLowerCase().includes('success')) statusColor = '#059669'; // Green
-    if (item.status?.toLowerCase().includes('failed') || item.status?.toLowerCase().includes('pending')) statusColor = '#DC2626'; // Red
-
-    // Role Colors
-    const roleBadgeColor = item.role === 'admin' ? '#E6F4EF' : '#EFE4D5';
-    const roleTextColor = item.role === 'admin' ? '#0F7B54' : '#7C6047';
+  const renderItem = ({ item, index }: { item: any; index: number }) => {
+    const statusColor = item.status?.toLowerCase().includes('success') ? c.green
+      : (item.status?.toLowerCase().includes('failed') || item.status?.toLowerCase().includes('pending')) ? c.red
+      : c.muted;
+    const isAdmin = item.role === 'admin';
 
     return (
-      <View style={[styles.row, { backgroundColor: isRowEven ? '#fff' : '#FAF7F1' }]}>
-        {/* Action Column */}
-        <View style={{flex: 1.6, flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0}}>
-          <View style={[styles.dot, { backgroundColor: statusColor }]} />
-          {/* flexShrink is REQUIRED: RN defaults it to 0 (CSS defaults to 1), so a
-              long action like VERIFY_DOCUMENT_APPROVE overflowed this column and
-              printed on top of the timestamp next to it. */}
-          <Text style={[styles.cellText, { fontWeight: '600', flexShrink: 1 }]} numberOfLines={1}>
-            {item.action}
-          </Text>
+      <View style={[s.row, { backgroundColor: index % 2 === 0 ? 'transparent' : c.rowAlt }]}>
+        <View style={{ flex: 1.6, flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <View style={[s.dot, { backgroundColor: statusColor }]} />
+          {/* flexShrink REQUIRED (RN defaults it to 0): a long action like
+              VERIFY_DOCUMENT_APPROVE otherwise overflowed onto the timestamp. */}
+          <Text style={[s.cellText, { fontWeight: '600', flexShrink: 1 }]} numberOfLines={1}>{item.action}</Text>
         </View>
-
-        <Text style={[styles.cellText, { flex: 1.4, color: '#A8927A', fontSize: 11 }]} numberOfLines={1}>
-          {item.timestamp}
-        </Text>
-
-        <Text style={[styles.cellText, { flex: 1.5, fontWeight: '500' }]}>
-          {item.username || "Unknown"}
-        </Text>
-
-        <View style={{flex: 1, alignItems: 'flex-start'}}>
-          <View style={[styles.roleBadge, { backgroundColor: roleBadgeColor }]}>
-            <Text style={[styles.roleText, { color: roleTextColor }]}>
-              {item.role?.toUpperCase()}
-            </Text>
+        <Text style={[s.cellText, { flex: 1.4, color: c.subtle, fontSize: 11 }]} numberOfLines={1}>{item.timestamp}</Text>
+        <Text style={[s.cellText, { flex: 1.5, fontWeight: '500' }]} numberOfLines={1}>{item.username || "Unknown"}</Text>
+        <View style={{ flex: 1, alignItems: 'flex-start' }}>
+          <View style={[s.roleBadge, { backgroundColor: isAdmin ? c.accentSoft : c.rowAlt }]}>
+            <Text style={[s.roleText, { color: isAdmin ? c.accent : c.muted }]}>{item.role?.toUpperCase()}</Text>
           </View>
         </View>
-
-        <Text style={[styles.cellText, { flex: 1, color: statusColor, fontWeight: '500' }]}>
-          {item.status}
-        </Text>
-        
+        <Text style={[s.cellText, { flex: 1, color: statusColor, fontWeight: '600' }]} numberOfLines={1}>{item.status}</Text>
         {Platform.OS === 'web' && (
           <>
-            <Text style={[styles.cellText, { flex: 1.5, fontSize: 11, color: '#999', fontFamily: 'monospace' }]}>
-              {item.ip_address || "-"}
-            </Text>
-            <Text style={[styles.cellText, { flex: 3, fontSize: 11, color: '#999' }]} numberOfLines={1} ellipsizeMode="tail">
-              {item.device_info}
-            </Text>
+            <Text style={[s.cellText, { flex: 1.5, fontSize: 11, color: c.subtle, fontFamily: 'monospace' }]} numberOfLines={1}>{item.ip_address || "-"}</Text>
+            <Text style={[s.cellText, { flex: 3, fontSize: 11, color: c.subtle }]} numberOfLines={1}>{item.device_info}</Text>
           </>
         )}
       </View>
     );
   };
 
-  // Helper Component for Filter Chips
-  const FilterChip = ({ label, value }: { label: string, value: typeof filterRole }) => (
-    <TouchableOpacity 
-      style={[
-        styles.filterChip, 
-        filterRole === value && styles.filterChipActive
-      ]}
-      onPress={() => setFilterRole(value)}
-    >
-      <Text style={[
-        styles.filterText, 
-        filterRole === value && styles.filterTextActive
-      ]}>
-        {label}
-      </Text>
+  const FilterChip = ({ label, value }: { label: string; value: typeof filterRole }) => (
+    <TouchableOpacity style={[s.chip, filterRole === value && s.chipActive]} onPress={() => setFilterRole(value)}>
+      <Text style={[s.chipText, filterRole === value && s.chipTextActive]}>{label}</Text>
     </TouchableOpacity>
   );
 
+  const headerRight = (
+    <>
+      <TouchableOpacity onPress={toggleSort} style={s.iconBtn}>
+        <Ionicons name={sortOrder === 'desc' ? "arrow-down" : "arrow-up"} size={18} color={c.text} />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={fetchLogs} style={s.iconBtn}>
+        <Ionicons name="refresh" size={18} color={c.text} />
+      </TouchableOpacity>
+    </>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#2B1608" />
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.pageTitle}>Audit Trail</Text>
-          <Text style={styles.pageSubtitle}>
-            {getProcessedLogs().length} Records Found
-          </Text>
-        </View>
-        
-        <View style={{flexDirection: 'row', gap: 10}}>
-          {/* Sort Button */}
-          <TouchableOpacity onPress={toggleSort} style={styles.iconBtn}>
-            <Ionicons 
-              name={sortOrder === 'desc' ? "arrow-down" : "arrow-up"} 
-              size={20} 
-              color="#0F7B54" 
-            />
-          </TouchableOpacity>
-
-          {/* Refresh Button */}
-          <TouchableOpacity onPress={fetchLogs} style={styles.iconBtn}>
-            <Ionicons name="refresh" size={20} color="#0F7B54" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* 3. FILTER BAR */}
-      <View style={styles.filterContainer}>
+    <AdminShell active="logs" title="Audit Trail" subtitle={`${getProcessedLogs().length} records found`} headerRight={headerRight} scroll={false}>
+      <View style={s.filterRow}>
         <FilterChip label="All" value="all" />
         <FilterChip label="Parents" value="parent" />
         <FilterChip label="Helpers" value="helper" />
         <FilterChip label="Admins" value="admin" />
       </View>
 
-      <View style={styles.tableCard}>
+      <View style={s.tableCard}>
         {renderHeader()}
-
         {loading ? (
-          <ActivityIndicator size="large" style={{ marginTop: 50 }} color="#0F7B54" />
+          <ActivityIndicator size="large" style={{ marginTop: 50 }} color={c.accent} />
         ) : (
           <FlatList
-            data={getProcessedLogs()} // Use the Filtered & Sorted list
+            data={getProcessedLogs()}
             renderItem={renderItem}
             keyExtractor={(item) => item.log_id?.toString() || Math.random().toString()}
             contentContainerStyle={{ paddingBottom: 20 }}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>No logs found for this filter.</Text>
-            }
+            ListEmptyComponent={<Text style={s.empty}>No logs found for this filter.</Text>}
           />
         )}
       </View>
-    </SafeAreaView>
+    </AdminShell>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FAF7F1",
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFE4D5',
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 10,
-  },
-  iconBtn: {
-    padding: 8,
-    backgroundColor: '#E6F4EF',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 40,
-    height: 40,
-  },
-  pageTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#2B1608",
-  },
-  pageSubtitle: {
-    fontSize: 12,
-    color: "#7C6047",
-  },
-  // FILTER STYLES
-  filterContainer: {
-    flexDirection: 'row',
-    // Line the filter chips up with the capped table below them.
-    width: '100%',
-    maxWidth: 1400,
-    alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    gap: 10,
-  },
-  filterChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#EFE4D5',
-  },
-  filterChipActive: {
-    backgroundColor: '#0F7B54',
-    borderColor: '#0F7B54',
-  },
-  filterText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#7C6047',
-  },
-  filterTextActive: {
-    color: '#fff',
-  },
-  
-  tableCard: {
-    flex: 1,
-    // Cap + centre: without this the table stretched the full monitor width.
-    width: '100%',
-    maxWidth: 1400,
-    alignSelf: 'center',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#EFE4D5',
-    overflow: 'hidden',
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  row: {
-    flexDirection: "row",
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EFE4D5",
-    alignItems: 'center',
-  },
-  headerRow: {
-    backgroundColor: "#FAF7F1",
-    borderBottomWidth: 1,
-    borderBottomColor: "#EFE4D5",
-    paddingVertical: 15,
-  },
-  cell: {
-    paddingHorizontal: 5,
-  },
-  headerText: {
-    color: "#7C6047",
-    fontWeight: "700",
-    fontSize: 11,
-    letterSpacing: 0.5,
-  },
-  cellText: {
-    fontSize: 13,
-    color: '#333',
-    paddingHorizontal: 5,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  roleText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#999',
-    marginTop: 50,
-    fontSize: 14
-  }
+const makeStyles = (c: AdminPalette) => StyleSheet.create({
+  iconBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: c.panel, borderWidth: 1, borderColor: c.border, alignItems: "center", justifyContent: "center" },
+  filterRow: { flexDirection: "row", gap: 10, marginBottom: 14, flexWrap: "wrap" },
+  chip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1, borderColor: c.border, backgroundColor: c.panel },
+  chipActive: { backgroundColor: c.accent, borderColor: c.accent },
+  chipText: { color: c.muted, fontWeight: "700", fontSize: 13 },
+  chipTextActive: { color: "#fff" },
+
+  tableCard: { flex: 1, backgroundColor: c.panel, borderRadius: 14, borderWidth: 1, borderColor: c.border, overflow: "hidden" },
+  row: { flexDirection: "row", alignItems: "center", paddingVertical: 13, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: c.border },
+  headerRow: { backgroundColor: c.panel2, borderBottomColor: c.border },
+  cell: { paddingRight: 8 },
+  headerText: { fontSize: 11, fontWeight: "800", color: c.subtle, letterSpacing: 0.6 },
+  cellText: { fontSize: 12.5, color: c.text, paddingRight: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  roleBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  roleText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
+  empty: { fontSize: 14, color: c.muted, textAlign: "center", marginTop: 50 },
 });
