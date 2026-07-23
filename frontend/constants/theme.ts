@@ -1,40 +1,56 @@
 /**
  * CareLink design tokens — use for consistent, professional UI across roles.
+ *
+ * These were originally a cool slate/blue palette (Tailwind-ish: #0F172A ink,
+ * #F8FAFC surfaces). The PESO/admin portals and a handful of helper/parent
+ * components are built on them, while the rest of the product uses the warm
+ * cream-and-brown CareLink brand — so the staff side read as a different product
+ * bolted onto the app.
+ *
+ * They are now retuned to that warm brand, sourcing the shared values from
+ * constants/designSystem.ts so there is ONE definition of "verified green",
+ * "warning amber", etc. Key names are unchanged, so every existing consumer keeps
+ * working and simply inherits the warmer look.
  */
+import { neutral, status } from './designSystem';
+
 export const theme = {
   color: {
-    ink: "#0F172A",
-    inkMuted: "#475569",
-    muted: "#64748B",
-    subtle: "#94A3B8",
-    line: "#E2E8F0",
-    lineStrong: "#CBD5E1",
-    surface: "#F8FAFC",
-    surfaceElevated: "#FFFFFF",
-    parent: "#2563EB",
-    parentSoft: "#EFF6FF",
-    helper: "#059669",
-    helperSoft: "#ECFDF5",
-    peso: "#EA580C",
-    pesoSoft: "#FFF7ED",
-    success: "#16A34A",
-    successSoft: "#DCFCE7",
-    warning: "#D97706",
-    warningSoft: "#FEF3C7",
-    danger: "#DC2626",
-    dangerSoft: "#FEE2E2",
-    info: "#0284C7",
-    infoSoft: "#E0F2FE",
-    overlay: "rgba(15, 23, 42, 0.45)",
+    // Warm CareLink neutrals (were cool slate)
+    ink: neutral.ink,
+    inkMuted: neutral.muted,
+    muted: neutral.muted,
+    subtle: neutral.subtle,
+    line: neutral.line,
+    lineStrong: "#E2D3BE",
+    surface: neutral.canvas,
+    surfaceElevated: neutral.surface,
+    // Role accents — match each portal's brand theme
+    parent: "#D9A441",        // parent gold (was blue)
+    parentSoft: "#FBEFD3",
+    helper: "#E8641A",        // helper orange (was green)
+    helperSoft: "#FCEBD9",
+    peso: "#0F7B54",          // staff green — "official/verified" (was orange)
+    pesoSoft: "#E6F4EF",
+    // Semantic status — single source of truth
+    success: status.green,
+    successSoft: status.greenSoft,
+    warning: status.amber,
+    warningSoft: status.amberSoft,
+    danger: status.red,
+    dangerSoft: status.redSoft,
+    info: status.blue,
+    infoSoft: status.blueSoft,
+    overlay: "rgba(42, 20, 9, 0.45)",   // warm brown scrim, not slate
     /** Full-screen canvas behind content (not pure white) */
-    canvasHelper: "#EFF8F4",
-    canvasParent: "#F0F4FD",
-    canvasPeso: "#FFF8F2",
-    canvasAdmin: "#F1F5F9",
+    canvasHelper: "#FBF6EE",
+    canvasParent: "#FFF9F2",
+    canvasPeso: "#FAF7F1",
+    canvasAdmin: "#FAF7F1",
     /** Modal body tint (pairs with accent) */
-    modalTintHelper: "#F4FBF8",
-    modalTintParent: "#F5F8FF",
-    modalTintPeso: "#FFFCF8",
+    modalTintHelper: "#FFFDFA",
+    modalTintParent: "#FFFDF8",
+    modalTintPeso: "#FFFDFA",
   },
   radius: {
     sm: 8,
@@ -62,14 +78,14 @@ export const theme = {
   },
   shadow: {
     card: {
-      shadowColor: "#0F172A",
+      shadowColor: "#4A2C14",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.06,
       shadowRadius: 12,
       elevation: 3,
     },
     nav: {
-      shadowColor: "#0F172A",
+      shadowColor: "#4A2C14",
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
       shadowRadius: 6,
