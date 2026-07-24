@@ -23,8 +23,13 @@ export const theme = {
     subtle: neutral.subtle,
     line: neutral.line,
     lineStrong: "#E2D3BE",
-    surface: neutral.canvas,
-    surfaceElevated: neutral.surface,
+    // `surface` is used as the CARD/panel colour across the PESO portal, so it must
+    // contrast with the page canvases below (canvasPeso etc.). Pure white gives the
+    // clean "white cards on a soft cream page" look. (Previously this resolved to a
+    // cream almost identical to the canvas, so cards blended in and looked
+    // transparent — the exact bug reported on the Job Verification cards.)
+    surface: "#FFFFFF",
+    surfaceElevated: "#FFFFFF",
     // Role accents — match each portal's brand theme
     parent: "#D9A441",        // parent gold (was blue)
     parentSoft: "#FBEFD3",
