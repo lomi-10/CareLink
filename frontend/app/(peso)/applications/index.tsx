@@ -52,6 +52,7 @@ export default function PesoApplicationsScreen() {
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
   const [flagFor, setFlagFor] = useState<AppRow | null>(null);
+  const [viewing, setViewing] = useState<AppRow | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -160,18 +161,51 @@ export default function PesoApplicationsScreen() {
 
                 <View style={s.cardFoot}>
                   <Text style={s.applied}>{a.category_name ? a.category_name + " · " : ""}Applied {timeAgo(a.applied_at)}</Text>
-                  {canFlag && (
-                    <TouchableOpacity style={s.flagBtn} onPress={() => { setFlagFor(a); setReason(""); }} activeOpacity={0.85}>
-                      <Ionicons name="flag-outline" size={15} color="#fff" />
-                      <Text style={s.flagBtnText}>Flag & Unsubmit</Text>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <TouchableOpacity style={s.viewBtn} onPress={() => setViewing(a)} activeOpacity={0.85}>
+                      <Ionicons name="eye-outline" size={15} color={P.peso} />
+                      <Text style={s.viewBtnText}>View</Text>
                     </TouchableOpacity>
-                  )}
+                    {canFlag && (
+                      <TouchableOpacity style={s.flagBtn} onPress={() => { setFlagFor(a); setReason(""); }} activeOpacity={0.85}>
+                        <Ionicons name="flag-outline" size={15} color="#fff" />
+                        <Text style={s.flagBtnText}>Flag & Unsubmit</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
             );
           })
         )}
       </ScrollView>
+
+      {/* Read-only detail modal */}
+      <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={() => setViewing(null)}>
+        <View style={s.modalBg}>
+          <View style={[s.modalCard, { maxWidth: 560 }]}>
+            <View style={s.detailHead}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.detailTitle}>{viewing?.job_title}</Text>
+                {!!viewing && <View style={[s.statusPill, { backgroundColor: meta(viewing.status).bg, alignSelf: "flex-start", marginTop: 6 }]}><Text style={[s.statusText, { color: meta(viewing.status).color }]}>{meta(viewing.status).label}</Text></View>}
+              </View>
+              <TouchableOpacity onPress={() => setViewing(null)} hitSlop={8}><Ionicons name="close" size={22} color={P.muted} /></TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
+              <DetailRow label="Helper" value={`${viewing?.helper_name ?? ""}${viewing?.helper_verification === "Verified" ? "  ✓ PESO Verified" : ""}`} />
+              <DetailRow label="Employer" value={viewing?.parent_name ?? ""} />
+              <DetailRow label="Category" value={viewing?.category_name ?? "—"} />
+              <DetailRow label="Applied" value={viewing ? timeAgo(viewing.applied_at) : ""} />
+              {viewing?.is_flagged && <DetailRow label="Flagged" value={viewing.flag_reason ?? ""} danger />}
+              <Text style={s.detailLabel}>Cover letter</Text>
+              <View style={s.coverBox}><Text style={s.coverFull}>{viewing?.cover_letter?.trim() || "No cover letter was written."}</Text></View>
+            </ScrollView>
+            <TouchableOpacity style={s.detailClose} onPress={() => setViewing(null)} activeOpacity={0.85}>
+              <Text style={s.detailCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Flag modal */}
       <Modal visible={!!flagFor} transparent animationType="fade" onRequestClose={() => setFlagFor(null)}>
@@ -194,6 +228,15 @@ export default function PesoApplicationsScreen() {
         </View>
       </Modal>
       {noticeHost}
+    </View>
+  );
+}
+
+function DetailRow({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
+  return (
+    <View style={s.detailRow}>
+      <Text style={s.detailRowLabel}>{label}</Text>
+      <Text style={[s.detailRowValue, danger && { color: P.danger }]}>{value}</Text>
     </View>
   );
 }
@@ -245,6 +288,19 @@ const s = StyleSheet.create({
   applied: { fontSize: 12, color: P.subtle },
   flagBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: P.danger, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 },
   flagBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  viewBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: P.line, backgroundColor: P.surface, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 },
+  viewBtnText: { color: P.peso, fontWeight: "700", fontSize: 13 },
+
+  detailHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 },
+  detailTitle: { fontSize: 18, fontWeight: "800", color: P.ink },
+  detailRow: { flexDirection: "row", justifyContent: "space-between", gap: 12, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: P.line },
+  detailRowLabel: { fontSize: 12.5, color: P.muted, fontWeight: "600" },
+  detailRowValue: { fontSize: 13, color: P.ink, fontWeight: "700", flexShrink: 1, textAlign: "right" },
+  detailLabel: { fontSize: 12.5, fontWeight: "800", color: P.muted, marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
+  coverBox: { backgroundColor: P.canvasPeso, borderRadius: 12, borderWidth: 1, borderColor: P.line, padding: 14 },
+  coverFull: { fontSize: 13.5, color: P.ink, lineHeight: 20 },
+  detailClose: { marginTop: 16, backgroundColor: P.ink, borderRadius: 12, paddingVertical: 13, alignItems: "center" },
+  detailCloseText: { color: "#fff", fontWeight: "800", fontSize: 14.5 },
 
   empty: { alignItems: "center", gap: 10, paddingVertical: 50 },
   emptyText: { fontSize: 14, color: P.muted },

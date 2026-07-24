@@ -111,7 +111,9 @@ export default function SignUpScreen() {
           />
         </View>
         <View style={{ flex: 1, marginLeft: 10 }}>
-          <Text style={[s.label, { color: t.label }]}>Last name</Text>
+          <Text style={[s.label, { color: t.label }]}>
+            Last name <Text style={{ color: t.required }}>*</Text>
+          </Text>
           <TextInput
             style={[s.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
             placeholder="Dela Cruz"
@@ -135,7 +137,9 @@ export default function SignUpScreen() {
       />
 
       {/* ── Email ── */}
-      <Text style={[s.label, { color: t.label }]}>Email</Text>
+      <Text style={[s.label, { color: t.label }]}>
+        Email <Text style={{ color: t.required }}>*</Text>
+      </Text>
       <TextInput
         style={[s.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
         placeholder="you@email.com"

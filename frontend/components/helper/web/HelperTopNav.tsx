@@ -37,36 +37,44 @@ export function HelperTopNav({
 
   return (
     <View style={s.bar}>
-      <TouchableOpacity style={s.logo} onPress={() => go('/(helper)/home')} activeOpacity={0.85}>
+      <Pressable style={({ hovered }: any) => [s.logo, TRANS, hovered && { opacity: 0.8 }]} onPress={() => go('/(helper)/home')}>
         <CareLinkLogoMark size={44} />
         <View>
           <Text style={s.logoName}>Care<Text style={{ color: wt.accent }}>Link</Text></Text>
           <Text style={s.logoSub}>Helper Portal</Text>
         </View>
-      </TouchableOpacity>
+      </Pressable>
 
       <View style={s.menu}>
         {ITEMS.map((it) => {
           const on = active === it.key;
           const badge = it.key === 'messages' ? unreadMsgs : 0;
           return (
-            <TouchableOpacity key={it.key} style={[s.item, on && s.itemOn]} onPress={() => go(it.path)} activeOpacity={0.85}>
-              <Ionicons name={it.icon} size={18} color={on ? wt.accent : wt.muted} />
-              <Text style={[s.itemText, on && s.itemTextOn]}>{it.label}</Text>
-              {badge > 0 && <View style={s.itemBadge}><Text style={s.itemBadgeText}>{badge > 9 ? '9+' : badge}</Text></View>}
-            </TouchableOpacity>
+            <Pressable
+              key={it.key}
+              onPress={() => go(it.path)}
+              style={({ hovered }: any) => [s.item, on && s.itemOn, TRANS, hovered && !on && s.itemHover]}
+            >
+              {({ hovered }: any) => (
+                <>
+                  <Ionicons name={it.icon} size={18} color={on || hovered ? wt.accent : wt.muted} />
+                  <Text style={[s.itemText, (on || hovered) && s.itemTextOn]}>{it.label}</Text>
+                  {badge > 0 && <View style={s.itemBadge}><Text style={s.itemBadgeText}>{badge > 9 ? '9+' : badge}</Text></View>}
+                </>
+              )}
+            </Pressable>
           );
         })}
       </View>
 
       <View style={s.right}>
-        <TouchableOpacity style={s.bell} onPress={() => go('/(helper)/notifications')} hitSlop={8}>
+        <Pressable style={({ hovered }: any) => [s.bell, TRANS, hovered && { opacity: 0.7 }]} onPress={() => go('/(helper)/notifications')} hitSlop={8}>
           <Ionicons name="notifications-outline" size={24} color={wt.muted} />
           {unreadCount > 0 && <View style={s.bellBadge}><Text style={s.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>}
-        </TouchableOpacity>
+        </Pressable>
 
         <View>
-          <TouchableOpacity style={s.user} onPress={() => setMenuOpen((v) => !v)} activeOpacity={0.85}>
+          <Pressable style={({ hovered }: any) => [s.user, TRANS, hovered && s.userHover]} onPress={() => setMenuOpen((v) => !v)}>
             {avatar ? <Image source={{ uri: avatar }} style={s.userImg} /> : <View style={[s.userImg, s.userImgFb]}><Ionicons name="person" size={18} color={wt.subtle} /></View>}
             <View>
               <Text style={s.userName} numberOfLines={1}>{userName || 'Helper'}</Text>
@@ -75,7 +83,7 @@ export function HelperTopNav({
               ) : <Text style={s.userSub}>Helper</Text>}
             </View>
             <Ionicons name="chevron-down" size={16} color={wt.muted} />
-          </TouchableOpacity>
+          </Pressable>
 
           {menuOpen && (
             <>
@@ -96,12 +104,14 @@ export function HelperTopNav({
 
 function MenuRow({ icon, label, onPress, danger }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; danger?: boolean }) {
   return (
-    <TouchableOpacity style={s.menuRow} onPress={onPress} activeOpacity={0.8}>
+    <Pressable style={({ hovered }: any) => [s.menuRow, TRANS, hovered && { backgroundColor: danger ? wt.redSoft : wt.lineSoft }]} onPress={onPress}>
       <Ionicons name={icon} size={18} color={danger ? wt.red : wt.muted} />
       <Text style={[s.menuRowText, danger && { color: wt.red }]}>{label}</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
+
+const TRANS = { transitionDuration: '140ms', transitionProperty: 'all', transitionTimingFunction: 'ease' } as any;
 
 const s = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', gap: 26, paddingHorizontal: 34, paddingVertical: 14, backgroundColor: wt.surface, borderBottomWidth: 1, borderBottomColor: wt.line, zIndex: 20 },
@@ -110,8 +120,9 @@ const s = StyleSheet.create({
   logoSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: wt.muted, marginTop: -1 },
 
   menu: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1, justifyContent: 'center' },
-  item: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 999 },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 999, cursor: 'pointer' as any },
   itemOn: { backgroundColor: wt.accentSoft },
+  itemHover: { backgroundColor: wt.lineSoft },
   itemText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5, color: wt.muted },
   itemTextOn: { color: wt.accent },
   itemBadge: { backgroundColor: wt.accent, borderRadius: 9, paddingHorizontal: 6, minWidth: 18, alignItems: 'center' },
@@ -122,7 +133,8 @@ const s = StyleSheet.create({
   bellBadge: { position: 'absolute', top: -6, right: -8, backgroundColor: wt.accent, borderRadius: 9, paddingHorizontal: 5, minWidth: 18, alignItems: 'center', borderWidth: 2, borderColor: wt.surface },
   bellBadgeText: { color: '#fff', fontSize: 10, fontFamily: FontFamily.fredokaSemiBold },
 
-  user: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  user: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 12, cursor: 'pointer' as any },
+  userHover: { backgroundColor: wt.lineSoft },
   userImg: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: wt.accentSoft },
   userImgFb: { backgroundColor: wt.accentSoft, alignItems: 'center', justifyContent: 'center' },
   userName: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: wt.ink },

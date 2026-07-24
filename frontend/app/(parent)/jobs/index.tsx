@@ -17,6 +17,7 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  TextInput,
   Text,
   TouchableOpacity,
   View,
@@ -212,6 +213,7 @@ export default function WorkManagement() {
   const [docsLoading, setDocsLoading] = useState(false);
   const [viewingDoc, setViewingDoc] = useState<{ file_url: string; document_type: string } | null>(null);
   const [statusConfirm, setStatusConfirm]         = useState<{ visible: boolean; appId: string; action: 'Shortlisted' | 'Rejected' | null }>({ visible: false, appId: '', action: null });
+  const [rejectReason, setRejectReason]           = useState('');
   const [interviewTarget, setInterviewTarget]     = useState<{ appId: number; helperName: string; jobTitle: string } | null>(null);
 
   // The applicant currently shown in the inline profile panel — looked up from the
@@ -302,9 +304,11 @@ export default function WorkManagement() {
     if (!statusConfirm.action || !statusConfirm.appId) return;
     const action = statusConfirm.action;
     const appId  = statusConfirm.appId;
+    const reason = action === 'Rejected' ? rejectReason.trim() : undefined;
     setStatusConfirm({ visible: false, appId: '', action: null });
+    setRejectReason('');
     try {
-      const result = await updateApplicationStatus(appId, action);
+      const result = await updateApplicationStatus(appId, action, reason);
       if (result.success) {
         setNotification({ visible: true, message: `Application ${action.toLowerCase()} successfully!`, type: 'success' });
       }
@@ -1202,16 +1206,43 @@ export default function WorkManagement() {
         </View>
       </Modal>
 
+      {/* Shortlist confirm (plain); Reject needs a reason (below). */}
       <ConfirmationModal
-        visible={statusConfirm.visible}
-        title={statusConfirm.action === 'Shortlisted' ? 'Shortlist Applicant?' : 'Reject Applicant?'}
-        message={statusConfirm.action === 'Shortlisted' ? 'Shortlist this applicant? They will be notified.' : 'Reject this applicant? This cannot be undone.'}
-        confirmText={statusConfirm.action === 'Shortlisted' ? 'Yes, Shortlist' : 'Yes, Reject'}
+        visible={statusConfirm.visible && statusConfirm.action === 'Shortlisted'}
+        title="Shortlist Applicant?"
+        message="Shortlist this applicant? They will be notified."
+        confirmText="Yes, Shortlist"
         cancelText="Cancel"
-        type={statusConfirm.action === 'Shortlisted' ? 'success' : 'danger'}
+        type="success"
         onConfirm={executeStatusUpdate}
         onCancel={() => setStatusConfirm({ visible: false, appId: '', action: null })}
       />
+
+      <Modal visible={statusConfirm.visible && statusConfirm.action === 'Rejected'} transparent animationType="fade" onRequestClose={() => setStatusConfirm({ visible: false, appId: '', action: null })}>
+        <View style={rj.overlay}>
+          <View style={rj.card}>
+            <View style={rj.icon}><Ionicons name="close-circle" size={26} color={DANGER} /></View>
+            <Text style={rj.title}>Reject Applicant?</Text>
+            <Text style={rj.sub}>Let the helper know why — it's shared with them so they can improve.</Text>
+            <View style={rj.chips}>
+              {['Different experience needed', 'Role already filled', 'Looking for closer location', 'Salary expectations differ'].map((r) => (
+                <TouchableOpacity key={r} onPress={() => setRejectReason(r)} style={[rj.chip, rejectReason === r && rj.chipOn]}>
+                  <Text style={[rj.chipText, rejectReason === r && { color: DANGER }]}>{r}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput style={rj.input} value={rejectReason} onChangeText={setRejectReason} placeholder="Add a short reason (optional)…" placeholderTextColor={MUTED} multiline />
+            <View style={rj.row}>
+              <TouchableOpacity onPress={() => { setStatusConfirm({ visible: false, appId: '', action: null }); setRejectReason(''); }} style={rj.cancel}>
+                <Text style={rj.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={executeStatusUpdate} style={rj.confirm}>
+                <Text style={rj.confirmText}>Reject Applicant</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 
@@ -1349,4 +1380,23 @@ const docViewer = StyleSheet.create({
     aspectRatio: 0.75,
     borderRadius: 8,
   },
+});
+
+// Reject-with-reason modal
+const rj = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(42,20,9,0.45)', alignItems: 'center', justifyContent: 'center', padding: 22 },
+  card: { width: '100%', maxWidth: 440, backgroundColor: '#fff', borderRadius: 18, padding: 22 },
+  icon: { width: 52, height: 52, borderRadius: 26, backgroundColor: DANGER_BG, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  title: { fontSize: 18, fontWeight: '800', color: DARK, marginTop: 12, textAlign: 'center' },
+  sub: { fontSize: 13, color: MUTED, marginTop: 8, lineHeight: 19, textAlign: 'center' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16, justifyContent: 'center' },
+  chip: { borderWidth: 1, borderColor: '#EFE0CB', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#fff' },
+  chipOn: { borderColor: DANGER, backgroundColor: DANGER_BG },
+  chipText: { fontSize: 12.5, color: MUTED, fontWeight: '600' },
+  input: { borderWidth: 1, borderColor: '#EFE0CB', borderRadius: 10, padding: 12, minHeight: 70, marginTop: 12, fontSize: 14, color: DARK, backgroundColor: '#FDF7EE', textAlignVertical: 'top' },
+  row: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  cancel: { flex: 1, paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: '#EFE0CB', alignItems: 'center' },
+  cancelText: { fontWeight: '700', color: DARK },
+  confirm: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: DANGER, alignItems: 'center' },
+  confirmText: { fontWeight: '800', color: '#fff' },
 });

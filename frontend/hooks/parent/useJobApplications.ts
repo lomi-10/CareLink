@@ -152,8 +152,9 @@ export function useJobApplications(jobPostId: string) {
   // NEW: Update Application Status Function
   // ==========================================
   const updateApplicationStatus = async (
-    applicationId: string, 
-    newStatus: 'Pending' | 'Reviewed' | 'Shortlisted' | 'Interview Scheduled' | 'Accepted' | 'Rejected' | 'Withdrawn'
+    applicationId: string,
+    newStatus: 'Pending' | 'Reviewed' | 'Shortlisted' | 'Interview Scheduled' | 'Accepted' | 'Rejected' | 'Withdrawn',
+    reason?: string, // stored as parent_notes; shown to the helper on rejection
   ) => {
     try {
       const raw  = await AsyncStorage.getItem('user_data');
@@ -164,6 +165,7 @@ export function useJobApplications(jobPostId: string) {
         body: JSON.stringify({
           application_id: applicationId,
           status: newStatus,
+          parent_notes: reason ?? undefined,
           requester_id: user?.user_id,
         }),
       });

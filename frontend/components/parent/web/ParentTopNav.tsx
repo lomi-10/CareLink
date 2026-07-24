@@ -58,36 +58,44 @@ export function ParentTopNav({
 
   return (
     <View style={s.bar}>
-      <TouchableOpacity style={s.logo} onPress={() => go('/(parent)/home')} activeOpacity={0.85}>
+      <Pressable style={({ hovered }: any) => [s.logo, TRANS, hovered && { opacity: 0.8 }]} onPress={() => go('/(parent)/home')}>
         <CareLinkLogoMark size={44} />
         <View>
           <Text style={s.logoName}>Care<Text style={{ color: pt.accent }}>Link</Text></Text>
           <Text style={s.logoSub}>Parent Portal</Text>
         </View>
-      </TouchableOpacity>
+      </Pressable>
 
       <View style={s.menu}>
         {tabs.map((it) => {
           const on = active === it.key;
           const badge = it.key === 'messages' ? unreadMsgs : 0;
           return (
-            <TouchableOpacity key={it.key} style={[s.item, on && s.itemOn]} onPress={() => go(it.path)} activeOpacity={0.85}>
-              <Ionicons name={it.icon} size={18} color={on ? pt.accent : pt.muted} />
-              <Text style={[s.itemText, on && s.itemTextOn]}>{it.label}</Text>
-              {badge > 0 && <View style={s.itemBadge}><Text style={s.itemBadgeText}>{badge > 9 ? '9+' : badge}</Text></View>}
-            </TouchableOpacity>
+            <Pressable
+              key={it.key}
+              onPress={() => go(it.path)}
+              style={({ hovered }: any) => [s.item, on && s.itemOn, TRANS, hovered && !on && s.itemHover]}
+            >
+              {({ hovered }: any) => (
+                <>
+                  <Ionicons name={it.icon} size={18} color={on || hovered ? pt.accent : pt.muted} />
+                  <Text style={[s.itemText, (on || hovered) && s.itemTextOn]}>{it.label}</Text>
+                  {badge > 0 && <View style={s.itemBadge}><Text style={s.itemBadgeText}>{badge > 9 ? '9+' : badge}</Text></View>}
+                </>
+              )}
+            </Pressable>
           );
         })}
       </View>
 
       <View style={s.right}>
-        <TouchableOpacity style={s.bell} onPress={() => go('/(parent)/notifications')} hitSlop={8}>
+        <Pressable style={({ hovered }: any) => [s.bell, TRANS, hovered && { opacity: 0.7 }]} onPress={() => go('/(parent)/notifications')} hitSlop={8}>
           <Ionicons name="notifications-outline" size={24} color={pt.muted} />
           {unreadCount > 0 && <View style={s.bellBadge}><Text style={s.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>}
-        </TouchableOpacity>
+        </Pressable>
 
         <View>
-          <TouchableOpacity style={s.user} onPress={() => setMenuOpen((v) => !v)} activeOpacity={0.85}>
+          <Pressable style={({ hovered }: any) => [s.user, TRANS, hovered && s.userHover]} onPress={() => setMenuOpen((v) => !v)}>
             {avatar ? <Image source={{ uri: avatar }} style={s.userImg} /> : <View style={[s.userImg, s.userImgFb]}><Text style={s.userInitials}>{initials}</Text></View>}
             <View>
               <Text style={s.userName} numberOfLines={1}>{userName || 'Parent'}</Text>
@@ -96,7 +104,7 @@ export function ParentTopNav({
               ) : <Text style={s.userSub}>Employer</Text>}
             </View>
             <Ionicons name="chevron-down" size={16} color={pt.muted} />
-          </TouchableOpacity>
+          </Pressable>
 
           {menuOpen && (
             <>
@@ -117,12 +125,14 @@ export function ParentTopNav({
 
 function MenuRow({ icon, label, onPress, danger }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; danger?: boolean }) {
   return (
-    <TouchableOpacity style={s.menuRow} onPress={onPress} activeOpacity={0.8}>
+    <Pressable style={({ hovered }: any) => [s.menuRow, TRANS, hovered && { backgroundColor: danger ? pt.redSoft : pt.lineSoft }]} onPress={onPress}>
       <Ionicons name={icon} size={18} color={danger ? pt.red : pt.muted} />
       <Text style={[s.menuRowText, danger && { color: pt.red }]}>{label}</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
+
+const TRANS = { transitionDuration: '140ms', transitionProperty: 'all', transitionTimingFunction: 'ease' } as any;
 
 const s = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', gap: 20, paddingHorizontal: 28, paddingVertical: 14, backgroundColor: pt.surface, borderBottomWidth: 1, borderBottomColor: pt.line, zIndex: 20 },
@@ -131,8 +141,9 @@ const s = StyleSheet.create({
   logoSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: pt.muted, marginTop: -1 },
 
   menu: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1, justifyContent: 'center' },
-  item: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 999, minHeight: 44 },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 999, minHeight: 44, cursor: 'pointer' as any },
   itemOn: { backgroundColor: pt.accentSoft },
+  itemHover: { backgroundColor: pt.lineSoft },
   itemText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: pt.muted },
   itemTextOn: { color: pt.accent },
   itemBadge: { backgroundColor: pt.accent, borderRadius: 9, paddingHorizontal: 6, minWidth: 18, alignItems: 'center' },
@@ -143,7 +154,8 @@ const s = StyleSheet.create({
   bellBadge: { position: 'absolute', top: 2, right: 2, backgroundColor: pt.accent, borderRadius: 9, paddingHorizontal: 5, minWidth: 18, alignItems: 'center', borderWidth: 2, borderColor: pt.surface },
   bellBadgeText: { color: '#fff', fontSize: 10, fontFamily: FontFamily.fredokaSemiBold },
 
-  user: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
+  user: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, paddingHorizontal: 8, borderRadius: 12, cursor: 'pointer' as any },
+  userHover: { backgroundColor: pt.lineSoft },
   userImg: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: pt.accentSoft },
   userImgFb: { backgroundColor: pt.accentSoft, alignItems: 'center', justifyContent: 'center' },
   userInitials: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: pt.caramel },

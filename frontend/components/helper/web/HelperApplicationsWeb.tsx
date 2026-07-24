@@ -323,6 +323,16 @@ function DetailPanel({ app, tab, onTab, onClose, onWithdraw, onMessage, onViewEm
 
         {tab === 'overview' && (
           <View style={{ marginTop: 16 }}>
+            {/* Reject reason, when the employer gave one (stored in parent_notes). */}
+            {REJECTED.includes(app.status) && !!((app as any).parent_notes ?? (app as any).message_from_parent) && (
+              <View style={s.feedbackCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={16} color={wt.red} />
+                  <Text style={s.feedbackTitle}>Feedback from the employer</Text>
+                </View>
+                <Text style={s.feedbackText}>{(app as any).parent_notes ?? (app as any).message_from_parent}</Text>
+              </View>
+            )}
             <View style={s.twoCol}>
               <View style={s.infoCard}>
                 <Text style={s.infoCardTitle}>Job Details</Text>
@@ -553,6 +563,9 @@ const s = StyleSheet.create({
   cardTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: wt.ink },
   cardFamRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2, flexWrap: 'wrap' },
   // "Roles included" chips — the specifics behind a concise job title
+  feedbackCard: { backgroundColor: wt.redSoft, borderRadius: 12, padding: 14, marginBottom: 14 },
+  feedbackTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: wt.red },
+  feedbackText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13.5, color: wt.ink, lineHeight: 20 },
   rolesWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   roleChip: { backgroundColor: wt.accentSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   roleChipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: wt.accent },

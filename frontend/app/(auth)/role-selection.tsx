@@ -161,7 +161,7 @@ export default function RoleSelectionScreen() {
                   </View>
 
                   <Text style={styles.roleTitleDark}>
-                    I’m a parent
+                    Parent / Household Employer
                   </Text>
 
                   <Text style={styles.roleDescriptionDark}>
@@ -407,7 +407,7 @@ export default function RoleSelectionScreen() {
                       <Ionicons name="people" size={20} color="#3B1E08" />
                     </View>
 
-                    <Text style={styles.roleTitleDark}>I’m a parent</Text>
+                    <Text style={styles.roleTitleDark}>Parent / Household Employer</Text>
 
                     <Text style={styles.roleDescriptionDark}>
                       Post jobs, browse helpers, and hire with PESO-aligned verification.

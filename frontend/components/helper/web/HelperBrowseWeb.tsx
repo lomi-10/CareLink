@@ -16,6 +16,7 @@ import { formatParentHouseholdType } from '@/constants/parentHousehold';
 import { NotificationModal } from '@/components/shared';
 import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
 import { isShareableWithEmployer } from '@/constants/documents';
+import { pickCoverLetter, MAX_GENERATIONS } from '@/lib/coverLetterTemplates';
 import { AdvancedSearchModal } from '@/components/helper/jobs';
 import { groupJobsByParent } from '@/app/(helper)/browse/browseHelpers';
 import { HelperTopNav } from './HelperTopNav';
@@ -26,18 +27,6 @@ const isTrue = (v: any) => v === 1 || v === '1' || v === true || v === 'true';
 const fmtPeriod = (p: string) => { const l = (p ?? '').toLowerCase(); return l.startsWith('month') ? 'month' : l.startsWith('day') ? 'day' : l.startsWith('week') ? 'week' : p; };
 const initials = (n: string) => (n || 'E').trim().split(' ').map((x) => x[0]).slice(0, 2).join('').toUpperCase();
 
-function generateCoverLetter(job: JobPost): string {
-  return `Dear ${job.parent_name || 'Employer'},
-
-I am writing to express my strong interest in the ${job.title} position you have posted. I believe my skills and experience make me a great fit for this role.
-
-I have experience in ${job.categories?.join(', ') || 'household work'} and I am confident I can perform the duties required. I am hardworking, reliable, and eager to contribute to your household.
-
-I would welcome the opportunity to discuss how I can be of service to you and your family. Thank you for considering my application!
-
-Sincerely,
-[Your Name]`;
-}
 
 type Tab = 'overview' | 'jobs' | 'reviews';
 type Panel =
@@ -553,6 +542,8 @@ function HhCell({ icon, label, value }: { icon: any; label: string; value: strin
 // ─── Inline application panel ───
 function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: () => void; onSubmitted: () => void }) {
   const [letter, setLetter] = useState('');
+  const [genCount, setGenCount] = useState(0); // cover-letter generations used
+  const [confirming, setConfirming] = useState(false); // review-before-submit step
   const [docs, setDocs] = useState<{ document_id: number; document_type: string }[]>([]);
   const [selDocs, setSelDocs] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -577,6 +568,13 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
     return () => { cancelled = true; };
   }, []);
 
+  // First press validates and shows the review; the review's Confirm actually posts.
+  const handleSubmitPress = () => {
+    if (letter.trim().length < 50) { setError('Please write a cover letter (min 50 characters).'); return; }
+    setError(null);
+    setConfirming(true);
+  };
+
   const submit = async () => {
     if (letter.trim().length < 50) { setError('Please write a cover letter (min 50 characters).'); return; }
     setSubmitting(true); setError(null);
@@ -593,6 +591,44 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
     } catch (e: any) { setError(e.message || 'Failed to submit application'); } finally { setSubmitting(false); }
   };
 
+  // ── Review-before-submit step (mirrors the mobile ApplicationModal) ──
+  if (confirming) {
+    const sharedNames = docs.filter((d) => selDocs.includes(d.document_id)).map((d) => d.document_type);
+    return (
+      <View>
+        <Text style={s.jpTitle}>Review your application</Text>
+        <Text style={[s.jobRowSub, { marginTop: 6 }]}>Please read your cover letter one more time before submitting to {job.parent_name || 'the employer'}.</Text>
+
+        <Text style={[s.fpSecTitle, { marginTop: 18 }]}>Cover Letter</Text>
+        <View style={s.reviewBox}><Text style={s.reviewText}>{letter.trim()}</Text></View>
+
+        <Text style={[s.fpSecTitle, { marginTop: 14 }]}>Documents shared</Text>
+        {sharedNames.length > 0 ? (
+          <View style={{ gap: 6, marginTop: 6 }}>
+            {sharedNames.map((n) => (
+              <View key={n} style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                <Ionicons name="checkmark-circle" size={16} color={wt.green} /><Text style={s.jobRowSub}>{n}</Text>
+              </View>
+            ))}
+          </View>
+        ) : <Text style={[s.jobRowSub, { marginTop: 4 }]}>None — only your profile will be shared.</Text>}
+
+        {error && <View style={[s.errRow, { marginTop: 12 }]}><Ionicons name="alert-circle" size={14} color={wt.red} /><Text style={s.errText}>{error}</Text></View>}
+
+        <View style={s.applyRow}>
+          <Pressable onPress={() => setConfirming(false)} style={({ hovered }: any) => [s.cancelBtn, TRANS, hovered && { backgroundColor: wt.lineSoft }]}>
+            <Text style={s.cancelBtnText}>Back to edit</Text>
+          </Pressable>
+          <Pressable disabled={submitting} onPress={submit} style={({ hovered, pressed }: any) => [{ flex: 1.5 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
+            <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.applyBtn}>
+              {submitting ? <ActivityIndicator color="#fff" size="small" /> : <><Ionicons name="paper-plane" size={16} color="#fff" /><Text style={s.applyBtnText}>Confirm & Submit</Text></>}
+            </LinearGradient>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View>
       <Text style={s.jpTitle}>Apply for this Job</Text>
@@ -607,9 +643,20 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
       <View style={{ marginTop: 18 }}>
         <Text style={s.fpSecTitle}>Cover Letter *</Text>
         <Text style={s.jobRowSub}>Write your own or generate one, then review it before submitting.</Text>
-        <Pressable onPress={() => { setLetter(generateCoverLetter(job)); setError(null); }} style={({ hovered }: any) => [s.genBtn, TRANS, hovered && { backgroundColor: wt.accentSoft }]}>
-          <Ionicons name="sparkles-outline" size={15} color={wt.accent} /><Text style={s.genBtnText}>Generate Cover Letter</Text>
-        </Pressable>
+        {(() => {
+          const left = MAX_GENERATIONS - genCount;
+          const locked = left <= 0;
+          return (
+            <Pressable
+              onPress={() => { if (locked) return; setLetter(pickCoverLetter(job, genCount)); setGenCount((n) => n + 1); setError(null); }}
+              disabled={locked}
+              style={({ hovered }: any) => [s.genBtn, TRANS, locked && { opacity: 0.5 }, hovered && !locked && { backgroundColor: wt.accentSoft }]}
+            >
+              <Ionicons name="sparkles-outline" size={15} color={wt.accent} />
+              <Text style={s.genBtnText}>{locked ? "You've used your 3 previews — edit or submit" : `Generate Cover Letter${genCount > 0 ? ` (${left} left)` : ''}`}</Text>
+            </Pressable>
+          );
+        })()}
         <TextInput style={[s.letterInput, error && { borderColor: wt.red }]} multiline value={letter} onChangeText={(v) => { setLetter(v); setError(null); }} maxLength={1000}
           placeholder="Tell the employer about your experience and why you're interested…" placeholderTextColor={wt.subtle} textAlignVertical="top" />
         <Text style={[s.charCount, letter.length < 50 && letter.length > 0 && { color: wt.accent }]}>{letter.length}/1000{letter.length > 0 && letter.length < 50 ? '  · min 50 chars' : ''}</Text>
@@ -636,9 +683,9 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
 
       <View style={s.applyRow}>
         <Pressable onPress={onCancel} style={({ hovered }: any) => [s.cancelBtn, TRANS, hovered && { backgroundColor: wt.lineSoft }]}><Text style={s.cancelBtnText}>Cancel</Text></Pressable>
-        <Pressable disabled={submitting} onPress={submit} style={({ hovered, pressed }: any) => [{ flex: 1.5 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
+        <Pressable disabled={submitting} onPress={handleSubmitPress} style={({ hovered, pressed }: any) => [{ flex: 1.5 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
           <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.applyBtn}>
-            {submitting ? <ActivityIndicator color="#fff" size="small" /> : <><Ionicons name="paper-plane" size={16} color="#fff" /><Text style={s.applyBtnText}>Submit Application</Text></>}
+            {submitting ? <ActivityIndicator color="#fff" size="small" /> : <><Ionicons name="eye-outline" size={16} color="#fff" /><Text style={s.applyBtnText}>Review & Submit</Text></>}
           </LinearGradient>
         </Pressable>
       </View>
@@ -802,6 +849,8 @@ const s = StyleSheet.create({
   genBtn: { flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start', backgroundColor: wt.accentSoft, borderWidth: 1, borderColor: wt.accent, borderRadius: 11, paddingHorizontal: 14, paddingVertical: 9, marginTop: 10, marginBottom: 10 },
   genBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: wt.accent },
   letterInput: { borderWidth: 1.4, borderColor: wt.line, borderRadius: 12, padding: 13, minHeight: 150, fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: wt.ink, backgroundColor: wt.raise, outlineStyle: 'none' as any },
+  reviewBox: { borderWidth: 1, borderColor: wt.line, borderRadius: 12, padding: 14, marginTop: 6, backgroundColor: wt.raise },
+  reviewText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13.5, color: wt.ink, lineHeight: 20 },
   charCount: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: wt.muted, marginTop: 6, alignSelf: 'flex-end' },
   errRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, backgroundColor: wt.redSoft, borderRadius: 10, padding: 10 },
   errText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: wt.red, flex: 1 },

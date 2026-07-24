@@ -1,12 +1,13 @@
 // app/(parent)/messages/InterviewTab.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { MUTED, DANGER, GREEN } from '@/components/parent/home/parentWarmTheme';
+import { MUTED, DANGER, GREEN, BROWN, ICON_BG } from '@/components/parent/home/parentWarmTheme';
 import { s } from './messages.styles';
 import { fmtLongDate, fullTime, interviewPillStyle, ResolvedApplication } from './helpers';
 import { ContractRow } from './components';
+import { InterviewGuideModal } from './InterviewGuideModal';
 
 export default function InterviewTab({
   resolvedApp, partnerName, interviewActionLoading, onSchedule, onReschedule, onCancel,
@@ -18,6 +19,7 @@ export default function InterviewTab({
   onReschedule: () => void;
   onCancel: () => void;
 }) {
+  const [guideOpen, setGuideOpen] = useState(false);
   return (
     <ScrollView style={s.contractTabBody} contentContainerStyle={{ paddingBottom: 24 }}>
       <View style={s.contractHeaderRow}>
@@ -26,6 +28,29 @@ export default function InterviewTab({
           <Text style={s.statusPillTxt}>{resolvedApp?.interview_id ? (resolvedApp.interview_status || 'Scheduled') : 'None'}</Text>
         </View>
       </View>
+
+      {/* Interview guide — questions to ask, saved answers pre-fill the contract. */}
+      {!!resolvedApp?.application_id && (
+        <TouchableOpacity
+          onPress={() => setGuideOpen(true)}
+          activeOpacity={0.85}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: ICON_BG, borderRadius: 14, padding: 14, marginBottom: 16 }}
+        >
+          <Ionicons name="clipboard-outline" size={22} color={BROWN} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: BROWN }}>Want a guide to interview this helper?</Text>
+            <Text style={{ fontSize: 12, color: MUTED, marginTop: 1 }}>Questions to ask — your answers pre-fill the contract.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={BROWN} />
+        </TouchableOpacity>
+      )}
+
+      <InterviewGuideModal
+        visible={guideOpen}
+        applicationId={resolvedApp?.application_id ?? null}
+        helperName={partnerName}
+        onClose={() => setGuideOpen(false)}
+      />
 
       {!resolvedApp?.interview_id ? (
         <View style={s.contractEmptyState}>

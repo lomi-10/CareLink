@@ -319,6 +319,12 @@ export default function ApplicationDetailsModal({
                 <View style={{ flex: 1 }}>
                   <Text style={[d.terminalTitle, { color: cfg.color }]}>{cfg.label}</Text>
                   <Text style={[d.terminalSub, { color: cfg.color + 'CC' }]}>{cfg.subtitle}</Text>
+                  {/* The employer's reject reason, when they gave one. */}
+                  {application.status === 'Rejected' && !!((application as any).parent_notes ?? (application as any).message_from_parent) && (
+                    <Text style={[d.terminalSub, { color: cfg.color, marginTop: 6, fontStyle: 'italic' }]}>
+                      Reason: {(application as any).parent_notes ?? (application as any).message_from_parent}
+                    </Text>
+                  )}
                 </View>
               </View>
             )}

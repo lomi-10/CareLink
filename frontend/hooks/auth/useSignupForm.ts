@@ -55,11 +55,12 @@ export function useSignupForm() {
   useEffect(() => {
     const { password, confirmpass } = form;
     const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
     const hasNumber = /[0-9]/.test(password);
     const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
     const hasLength = password.length >= 8;
     const isEqual = password === confirmpass && password !== "";
-    setIsPasswordValid(hasUpperCase && hasNumber && hasLength && hasSpecial && isEqual);
+    setIsPasswordValid(hasUpperCase && hasLowerCase && hasNumber && hasLength && hasSpecial && isEqual);
   }, [form.password, form.confirmpass]);
 
   const handleSignUpScreen = async () => {

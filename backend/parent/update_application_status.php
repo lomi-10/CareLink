@@ -112,7 +112,10 @@ try {
             'Shortlisted'        => ['title' => 'You\'ve Been Shortlisted! 🌟', 'msg' => 'Great news! You are shortlisted for: ' . $appRow['job_title']],
             'Interview Scheduled'=> ['title' => 'Interview Scheduled', 'msg' => 'An interview has been scheduled for: ' . $appRow['job_title']],
             'Accepted'           => ['title' => 'Congratulations! You\'re Hired! 🎉', 'msg' => 'You have been accepted for the position: ' . $appRow['job_title']],
-            'Rejected'           => ['title' => 'Application Update', 'msg' => 'The employer has decided to move forward with other candidates for: ' . $appRow['job_title']],
+            'Rejected'           => ['title' => 'Application Update', 'msg' =>
+                (trim((string) $parent_notes) !== ''
+                    ? 'The employer did not move forward with your application for "' . $appRow['job_title'] . '". Reason: ' . trim((string) $parent_notes)
+                    : 'The employer has decided to move forward with other candidates for: ' . $appRow['job_title'])],
             'Withdrawn'          => ['title' => 'Application Withdrawn', 'msg' => 'Your application for ' . $appRow['job_title'] . ' has been withdrawn.'],
             'contract_pending'   => ['title' => 'Contract pending your signature', 'msg' => 'Please review and confirm the employment contract for: ' . $appRow['job_title']],
             'hired'              => ['title' => 'You are hired', 'msg' => 'Your contract is confirmed for: ' . $appRow['job_title']],

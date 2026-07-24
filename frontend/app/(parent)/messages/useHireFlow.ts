@@ -92,6 +92,41 @@ export function useHireFlow({
     setHireTerminationConditions('');
   }, []);
 
+  // Pre-fill the contract terms from the interview guide the parent filled in
+  // (parent/interview_guide.php). Salary, rest day and start date map to their
+  // fields; the free-text answers are composed into the special conditions.
+  const REST_DAY_ABBR: Record<string, string> = {
+    sun: 'Sun', sunday: 'Sun', mon: 'Mon', monday: 'Mon', tue: 'Tue', tues: 'Tue', tuesday: 'Tue',
+    wed: 'Wed', wednesday: 'Wed', thu: 'Thu', thurs: 'Thu', thursday: 'Thu',
+    fri: 'Fri', friday: 'Fri', sat: 'Sat', saturday: 'Sat',
+  };
+  const applyInterviewGuide = async (applicationId: number) => {
+    try {
+      const raw = await AsyncStorage.getItem('user_data');
+      const uid = raw ? JSON.parse(raw)?.user_id : '';
+      const res = await fetch(`${API_URL}/parent/interview_guide.php?application_id=${applicationId}&requester_id=${uid}`);
+      const data = await res.json();
+      const a = data?.answers;
+      if (!a) return;
+
+      const salary = String(a.salary ?? '').replace(/[^0-9.]/g, '');
+      if (salary) setHireConfirmedSalary(salary);
+
+      const day = REST_DAY_ABBR[String(a.rest_day ?? '').trim().toLowerCase()];
+      if (day) setHireRestDays([day]);
+
+      const start = toYmdInput(a.start_date);
+      if (start) setHireContractStartDate(start);
+
+      const special = [
+        a.experience ? `Experience: ${a.experience}` : '',
+        a.house_rules ? `Agreed house rules: ${a.house_rules}` : '',
+        a.notes ? `Notes: ${a.notes}` : '',
+      ].filter(Boolean).join('\n');
+      if (special) setHireSpecialConditions((prev) => (prev && prev.trim() ? prev : special));
+    } catch { /* guide is optional — ignore */ }
+  };
+
   const beginHireFlow = async () => {
     if (!resolvedApp) return;
     setContractFlowMode('hire');
@@ -147,6 +182,7 @@ export function useHireFlow({
         resetHireFormState();
         setHireConfirmedSalary(row?.salary_offered != null ? String(row.salary_offered) : '');
         setHireWorkSchedule(row?.work_schedule === 'Part-time' ? 'Part-time' : row?.work_schedule === 'Any' ? 'Any' : 'Full-time');
+        await applyInterviewGuide(resolvedApp.application_id); // overlay saved interview answers
         setHireTermsVisible(true);
         return;
       }
@@ -163,7 +199,7 @@ export function useHireFlow({
     }
   };
 
-  const confirmHireJobSelection = () => {
+  const confirmHireJobSelection = async () => {
     const row = hirePickApps.find(a => a.application_id === hirePickSelectedId);
     if (!row) return;
     setHirePayload({
@@ -176,6 +212,7 @@ export function useHireFlow({
     resetHireFormState();
     setHireConfirmedSalary(row.salary_offered != null ? String(row.salary_offered) : '');
     setHireWorkSchedule(row.work_schedule === 'Part-time' ? 'Part-time' : row.work_schedule === 'Any' ? 'Any' : 'Full-time');
+    await applyInterviewGuide(row.application_id); // overlay saved interview answers
     setHirePickVisible(false);
     setHireTermsVisible(true);
   };

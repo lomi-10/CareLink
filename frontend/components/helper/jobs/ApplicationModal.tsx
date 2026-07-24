@@ -3,6 +3,7 @@
 import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { isShareableWithEmployer } from '@/constants/documents';
+import { pickCoverLetter, MAX_GENERATIONS } from '@/lib/coverLetterTemplates';
 import type { JobPost } from '@/hooks/helper';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -59,22 +60,11 @@ function fmtPeriod(p: string) {
   return p;
 }
 
-function generateCoverLetter(job: JobPost): string {
-  return `Dear ${job.parent_name || 'Employer'},
-
-I am writing to express my strong interest in the ${job.title} position you have posted. I believe my skills and experience make me a great fit for this role.
-
-I have experience in ${job.categories?.join(', ') || 'household work'} and I am confident I can perform the duties required. I am hardworking, reliable, and eager to contribute to your household.
-
-I would welcome the opportunity to discuss how I can be of service to you and your family. Thank you for considering my application!
-
-Sincerely,
-[Your Name]`;
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function ApplicationModal({ visible, job, onSubmit, onClose }: ApplicationModalProps) {
   const [coverLetter,   setCoverLetter]   = useState('');
+  const [genCount,      setGenCount]      = useState(0); // cover-letter generations used
   const [submitting,    setSubmitting]    = useState(false);
   const [error,         setError]         = useState<string | null>(null);
   const [expanded,      setExpanded]      = useState(false); // full-screen cover-letter editor
@@ -86,6 +76,8 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
 
   useEffect(() => {
     if (!visible) return;
+    // Fresh application: reset the generation counter (and last generated letter).
+    setGenCount(0);
 
     let cancelled = false;
     (async () => {
@@ -224,15 +216,29 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
               </View>
               <Text style={s.sectionSub}>Write your own or generate one, then review it before submitting</Text>
 
-              {/* Generate button */}
-              <TouchableOpacity
-                style={s.generateBtn}
-                onPress={() => { setCoverLetter(generateCoverLetter(job)); setError(null); }}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="sparkles-outline" size={16} color={ORANGE} />
-                <Text style={s.generateBtnText}>Generate Cover Letter</Text>
-              </TouchableOpacity>
+              {/* Generate button — up to MAX_GENERATIONS templates per application. */}
+              {(() => {
+                const left = MAX_GENERATIONS - genCount;
+                const locked = left <= 0;
+                return (
+                  <TouchableOpacity
+                    style={[s.generateBtn, locked && { opacity: 0.5 }]}
+                    onPress={() => {
+                      if (locked) return;
+                      setCoverLetter(pickCoverLetter(job, genCount));
+                      setGenCount((n) => n + 1);
+                      setError(null);
+                    }}
+                    activeOpacity={0.8}
+                    disabled={locked}
+                  >
+                    <Ionicons name="sparkles-outline" size={16} color={ORANGE} />
+                    <Text style={s.generateBtnText}>
+                      {locked ? "You've used your 3 previews — edit or submit" : `Generate Cover Letter${genCount > 0 ? ` (${left} left)` : ''}`}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })()}
 
               {/* Textarea */}
               <View style={[s.textareaWrap, error ? s.textareaError : null]}>
@@ -373,12 +379,13 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
           />
           <View style={s.editorFooter}>
             <TouchableOpacity
-              style={s.editorGenerate}
-              onPress={() => job && setCoverLetter(generateCoverLetter(job))}
+              style={[s.editorGenerate, genCount >= MAX_GENERATIONS && { opacity: 0.5 }]}
+              onPress={() => { if (!job || genCount >= MAX_GENERATIONS) return; setCoverLetter(pickCoverLetter(job, genCount)); setGenCount((n) => n + 1); }}
               activeOpacity={0.8}
+              disabled={genCount >= MAX_GENERATIONS}
             >
               <Ionicons name="sparkles-outline" size={15} color={ORANGE} />
-              <Text style={s.editorGenerateText}>Regenerate</Text>
+              <Text style={s.editorGenerateText}>{genCount >= MAX_GENERATIONS ? 'No previews left' : 'Regenerate'}</Text>
             </TouchableOpacity>
             <Text style={s.charCount}>{coverLetter.length}/1000</Text>
           </View>

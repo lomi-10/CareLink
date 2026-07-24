@@ -3,7 +3,7 @@
 // No detail pop-ups; post/edit/duplicate + interview reuse the existing form modals,
 // confirms and the doc viewer stay modal. pt design system.
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, Pressable, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, Pressable, Modal, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -107,6 +107,7 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
   const [docsLoading, setDocsLoading] = useState(false);
   const [viewingDoc, setViewingDoc] = useState<{ file_url: string; document_type: string } | null>(null);
   const [statusConfirm, setStatusConfirm] = useState<{ visible: boolean; appId: string; action: 'Shortlisted' | 'Rejected' | null }>({ visible: false, appId: '', action: null });
+  const [rejectReason, setRejectReason] = useState('');
   const [interviewTarget, setInterviewTarget] = useState<{ appId: number; helperName: string; jobTitle: string } | null>(null);
 
   const visibleJobs = useMemo(
@@ -232,9 +233,11 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
   const executeStatusUpdate = async () => {
     if (!statusConfirm.action || !statusConfirm.appId) return;
     const action = statusConfirm.action; const appId = statusConfirm.appId;
+    const reason = action === 'Rejected' ? rejectReason.trim() : undefined;
     setStatusConfirm({ visible: false, appId: '', action: null });
+    setRejectReason('');
     try {
-      const result = await updateApplicationStatus(appId, action);
+      const result = await updateApplicationStatus(appId, action, reason);
       if (result.success) setNotif({ visible: true, msg: `Applicant ${action === 'Shortlisted' ? 'shortlisted' : 'rejected'}.`, type: 'success' });
     } catch (err: any) { setNotif({ visible: true, msg: err.message || 'Failed to update status', type: 'error' }); }
   };
@@ -436,10 +439,36 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
         <InterviewModal visible={!!interviewTarget} onClose={() => setInterviewTarget(null)} applicationId={interviewTarget.appId} helperName={interviewTarget.helperName} jobTitle={interviewTarget.jobTitle} scheduledBy={Number(userData?.user_id ?? 0)}
           onScheduled={() => { setInterviewTarget(null); refreshApps(); setNotif({ visible: true, msg: 'Interview invite sent!', type: 'success' }); }} />
       )}
-      <ConfirmationModal visible={statusConfirm.visible} title={statusConfirm.action === 'Shortlisted' ? 'Shortlist Applicant?' : 'Reject Applicant?'}
-        message={statusConfirm.action === 'Shortlisted' ? 'Shortlist this applicant? They will be notified.' : 'Reject this applicant? This cannot be undone.'}
-        confirmText={statusConfirm.action === 'Shortlisted' ? 'Yes, Shortlist' : 'Yes, Reject'} cancelText="Cancel" type={statusConfirm.action === 'Shortlisted' ? 'success' : 'danger'}
+      {/* Shortlist uses the plain confirm; Reject needs a reason. */}
+      <ConfirmationModal visible={statusConfirm.visible && statusConfirm.action === 'Shortlisted'} title="Shortlist Applicant?"
+        message="Shortlist this applicant? They will be notified." confirmText="Yes, Shortlist" cancelText="Cancel" type="success"
         onConfirm={executeStatusUpdate} onCancel={() => setStatusConfirm({ visible: false, appId: '', action: null })} />
+
+      <Modal visible={statusConfirm.visible && statusConfirm.action === 'Rejected'} transparent animationType="fade" onRequestClose={() => setStatusConfirm({ visible: false, appId: '', action: null })}>
+        <View style={s.rejOverlay}>
+          <View style={s.rejCard}>
+            <View style={s.rejIcon}><Ionicons name="close-circle" size={26} color={pt.red} /></View>
+            <Text style={s.rejTitle}>Reject Applicant?</Text>
+            <Text style={s.rejSub}>Let the helper know why — it's shared with them and helps them improve. This can't be undone.</Text>
+            <View style={s.rejChips}>
+              {['Different experience needed', 'Role already filled', 'Looking for closer location', 'Salary expectations differ'].map((r) => (
+                <Pressable key={r} onPress={() => setRejectReason(r)} style={({ hovered }: any) => [s.rejChip, rejectReason === r && s.rejChipOn, TRANS, hovered && { borderColor: pt.accent }]}>
+                  <Text style={[s.rejChipText, rejectReason === r && { color: pt.accent }]}>{r}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <TextInput style={s.rejInput} value={rejectReason} onChangeText={setRejectReason} placeholder="Add a short reason (optional)…" placeholderTextColor={pt.subtle} multiline />
+            <View style={s.rejRow}>
+              <Pressable onPress={() => { setStatusConfirm({ visible: false, appId: '', action: null }); setRejectReason(''); }} style={({ hovered }: any) => [s.rejCancel, TRANS, hovered && { backgroundColor: pt.lineSoft }]}>
+                <Text style={s.rejCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable onPress={executeStatusUpdate} style={({ hovered }: any) => [s.rejConfirm, TRANS, hovered && { opacity: 0.9 }]}>
+                <Text style={s.rejConfirmText}>Reject Applicant</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <Modal visible={!!viewingDoc} transparent animationType="fade" onRequestClose={() => setViewingDoc(null)}>
         <View style={s.docOverlay}>
           <View style={s.docHeader}>
@@ -854,6 +883,22 @@ const s = StyleSheet.create({
   emptySmSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: pt.muted, textAlign: 'center', lineHeight: 17 },
   emptyText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: pt.muted, paddingVertical: 10 },
 
+  // Reject-with-reason modal
+  rejOverlay: { flex: 1, backgroundColor: 'rgba(42,20,9,0.45)', alignItems: 'center', justifyContent: 'center', padding: 22 },
+  rejCard: { width: '100%', maxWidth: 460, backgroundColor: pt.surface, borderRadius: 18, padding: 22 },
+  rejIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: pt.redSoft, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  rejTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 18, color: pt.ink, marginTop: 12, textAlign: 'center' },
+  rejSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: pt.muted, marginTop: 8, lineHeight: 19, textAlign: 'center' },
+  rejChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
+  rejChip: { borderWidth: 1, borderColor: pt.line, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: pt.surface },
+  rejChipOn: { borderColor: pt.accent, backgroundColor: pt.accentSoft },
+  rejChipText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: pt.muted },
+  rejInput: { borderWidth: 1, borderColor: pt.line, borderRadius: 10, padding: 12, minHeight: 70, marginTop: 12, fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: pt.ink, backgroundColor: pt.raise, textAlignVertical: 'top', outlineStyle: 'none' as any },
+  rejRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  rejCancel: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: pt.line, alignItems: 'center' },
+  rejCancelText: { fontFamily: FontFamily.fredokaSemiBold, color: pt.ink },
+  rejConfirm: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: pt.red, alignItems: 'center' },
+  rejConfirmText: { fontFamily: FontFamily.fredokaSemiBold, color: '#fff' },
   docOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)' },
   docHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
   docHeaderTitle: { flex: 1, color: '#fff', fontSize: 16, fontFamily: FontFamily.fredokaSemiBold },
