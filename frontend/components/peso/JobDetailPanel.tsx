@@ -333,7 +333,7 @@ function parseDaysOff(val: any): string {
 }
 
 const s = StyleSheet.create({
-  panel: { flex: 1, backgroundColor: theme.color.surface, borderRadius: 16, borderWidth: 1, borderColor: theme.color.line, overflow: 'hidden' },
+  panel: { flex: 1, backgroundColor: theme.color.surface, overflow: 'hidden' },
   emptyPanel: { alignItems: 'center', justifyContent: 'center', padding: 40, gap: 10 },
   emptyTitle: { fontSize: 16, fontWeight: '800', color: theme.color.ink, marginTop: 6 },
   emptyBody: { fontSize: 13, color: theme.color.muted, textAlign: 'center', maxWidth: 280, lineHeight: 19 },

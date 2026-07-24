@@ -100,7 +100,7 @@ export default function JobVerification() {
   };
 
   const listPane = (
-    <View style={wide ? styles.listPaneWide : styles.listPaneFull}>
+    <View style={styles.flex1}>
       <View style={styles.searchBar}>
         <Ionicons name="search" size={16} color={theme.color.muted} />
         <TextInput style={styles.searchInput} placeholder="Search jobs…" value={search} onChangeText={setSearch} placeholderTextColor={theme.color.subtle} />
@@ -134,17 +134,14 @@ export default function JobVerification() {
     </View>
   );
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
+  const header = (
+    <>
       <View style={styles.pageHeader}>
         <View>
           <Text style={styles.pageTitle}>Job Verification</Text>
           <Text style={styles.pageSubtitle}>Review and approve parent job postings</Text>
         </View>
       </View>
-
-      {/* Stat cards */}
       <View style={styles.statsRow}>
         {[
           { label: "Total Jobs", count: counts.All, color: theme.color.peso, icon: "briefcase" as const, bg: theme.color.pesoSoft },
@@ -161,24 +158,30 @@ export default function JobVerification() {
           </View>
         ))}
       </View>
+    </>
+  );
 
-      {/* Body */}
-      {wide ? (
-        <View style={styles.body}>
+  return (
+    <View style={styles.container}>
+      {/* Master-detail: list column (with its header) + full-height detail on the right. */}
+      <View style={wide ? styles.splitRow : styles.flex1}>
+        <View style={wide ? styles.leftPane : styles.flex1}>
+          {header}
           {listPane}
-          <View style={{ flex: 1 }}>
+        </View>
+        {wide && (
+          <View style={styles.rightPane}>
             <JobDetailPanel jobId={selectedJobId} onStatusChanged={onStatusChanged} />
           </View>
-        </View>
-      ) : (
-        <>
-          {listPane}
-          <Modal visible={!!selectedJobId} animationType="slide" transparent onRequestClose={() => setSelectedJobId(null)}>
-            <View style={styles.modalWrap}>
-              <JobDetailPanel jobId={selectedJobId} onStatusChanged={onStatusChanged} onClose={() => setSelectedJobId(null)} showClose />
-            </View>
-          </Modal>
-        </>
+        )}
+      </View>
+
+      {!wide && (
+        <Modal visible={!!selectedJobId} animationType="slide" transparent onRequestClose={() => setSelectedJobId(null)}>
+          <View style={styles.modalWrap}>
+            <JobDetailPanel jobId={selectedJobId} onStatusChanged={onStatusChanged} onClose={() => setSelectedJobId(null)} showClose />
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -191,14 +194,16 @@ const styles = StyleSheet.create({
   pageSubtitle: { fontSize: 13, color: theme.color.muted, marginTop: 2 },
 
   statsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  statCard: { flex: 1, minWidth: 150, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: theme.color.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line, padding: 14 },
+  statCard: { flex: 1, minWidth: 150, maxWidth: 220, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: theme.color.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line, padding: 14 },
   statIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   statCount: { fontSize: 22, fontWeight: "800", color: theme.color.ink },
   statLabel: { fontSize: 12, color: theme.color.muted, fontWeight: "600" },
 
-  body: { flex: 1, flexDirection: "row", gap: 16, paddingHorizontal: 24, paddingBottom: 20, paddingTop: 4 },
-  listPaneWide: { width: 360, backgroundColor: theme.color.surface, borderRadius: 16, borderWidth: 1, borderColor: theme.color.line, overflow: "hidden" },
-  listPaneFull: { flex: 1 },
+  // Master-detail: list column on the left, full-height detail on the right
+  flex1: { flex: 1, minHeight: 0 },
+  splitRow: { flex: 1, flexDirection: "row", minHeight: 0 },
+  leftPane: { flex: 1, minWidth: 0, minHeight: 0 },
+  rightPane: { width: 520, minHeight: 0, borderLeftWidth: 1, borderLeftColor: theme.color.line, backgroundColor: theme.color.surfaceElevated },
 
   searchBar: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: theme.color.canvasPeso, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, margin: 12, marginBottom: 8 },
   searchInput: { flex: 1, fontSize: 14, color: theme.color.ink },

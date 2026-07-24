@@ -284,7 +284,7 @@ export default function PesoApplicationsScreen() {
     ) : rows.length === 0 ? (
       <View style={s.empty}><Ionicons name="reader-outline" size={34} color={P.subtle} /><Text style={s.emptyText}>No applications{filter === "flagged" ? " flagged" : ""} yet.</Text></View>
     ) : (
-      <ScrollView contentContainerStyle={{ gap: 10, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={s.flex1} contentContainerStyle={{ gap: 10, paddingHorizontal: 24, paddingTop: 2, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         {rows.map((a) => <ListCard key={a.application_id} a={a} />)}
       </ScrollView>
     )
@@ -292,46 +292,49 @@ export default function PesoApplicationsScreen() {
 
   return (
     <View style={s.page}>
-      {/* Header */}
-      <View style={s.header}>
-        <Text style={s.title}>Applications</Text>
-        <Text style={s.subtitle}>Oversight of job applications. Flag & unsubmit any that look abusive or fraudulent — PESO does not approve applications.</Text>
-        <View style={s.statRow}>
-          <StatChip label="Total" value={summary.total} color={P.ink} />
-          <StatChip label="Active" value={summary.active} color={P.success} />
-          <StatChip label="Flagged" value={summary.flagged} color={P.danger} />
-        </View>
-        <View style={s.controls}>
-          <View style={s.chips}>
-            {(["all", "active", "flagged"] as Filter[]).map((f) => (
-              <TouchableOpacity key={f} style={[s.chip, filter === f && s.chipActive]} onPress={() => setFilter(f)}>
-                <Text style={[s.chipText, filter === f && s.chipTextActive]}>{f === "all" ? "All" : f === "active" ? "Active" : "Flagged"}</Text>
-              </TouchableOpacity>
-            ))}
+     {/* Master-detail: the list column (with its own header) on the left, and the
+         case file spanning the FULL height on the right. */}
+     <View style={[s.splitRow, !wide && { flexDirection: "column" }]}>
+      <View style={wide ? s.leftPane : s.flex1}>
+        {/* Header */}
+        <View style={s.header}>
+          <Text style={s.title}>Applications</Text>
+          <Text style={s.subtitle}>Oversight of job applications. Flag & unsubmit any that look abusive or fraudulent — PESO does not approve applications.</Text>
+          <View style={s.statRow}>
+            <StatChip label="Total" value={summary.total} color={P.ink} />
+            <StatChip label="Active" value={summary.active} color={P.success} />
+            <StatChip label="Flagged" value={summary.flagged} color={P.danger} />
           </View>
-          <View style={s.search}>
-            <Ionicons name="search" size={17} color={P.subtle} />
-            <TextInput style={s.searchInput} value={q} onChangeText={setQ} onSubmitEditing={() => load(filter, q)}
-              placeholder="Search helper, employer or job…" placeholderTextColor={P.subtle} returnKeyType="search" />
+          <View style={s.controls}>
+            <View style={s.chips}>
+              {(["all", "active", "flagged"] as Filter[]).map((f) => (
+                <TouchableOpacity key={f} style={[s.chip, filter === f && s.chipActive]} onPress={() => setFilter(f)}>
+                  <Text style={[s.chipText, filter === f && s.chipTextActive]}>{f === "all" ? "All" : f === "active" ? "Active" : "Flagged"}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={s.search}>
+              <Ionicons name="search" size={17} color={P.subtle} />
+              <TextInput style={s.searchInput} value={q} onChangeText={setQ} onSubmitEditing={() => load(filter, q)}
+                placeholder="Search helper, employer or job…" placeholderTextColor={P.subtle} returnKeyType="search" />
+            </View>
           </View>
         </View>
+        {list}
       </View>
 
-      {/* Body: two-pane on desktop, list-only on mobile */}
-      <View style={[s.body, !wide && { flexDirection: "column" }]}>
-        <View style={wide ? s.listPane : s.listPaneFull}>{list}</View>
-        {wide && (
-          <View style={s.detailArea}>
-            {viewing ? renderDetail(true) : (
-              <View style={s.detailEmpty}>
-                <Ionicons name="reader-outline" size={40} color={P.subtle} />
-                <Text style={s.detailEmptyTitle}>Select an application</Text>
-                <Text style={s.detailEmptySub}>Choose one on the left to review the full case file here.</Text>
-              </View>
-            )}
-          </View>
-        )}
-      </View>
+      {wide && (
+        <View style={s.rightPane}>
+          {viewing ? renderDetail(true) : (
+            <View style={s.detailEmpty}>
+              <Ionicons name="reader-outline" size={40} color={P.subtle} />
+              <Text style={s.detailEmptyTitle}>Select an application</Text>
+              <Text style={s.detailEmptySub}>Choose one on the left to review the full case file here.</Text>
+            </View>
+          )}
+        </View>
+      )}
+     </View>
 
       {/* Mobile: case file in a modal */}
       {!wide && (
@@ -422,11 +425,11 @@ const s = StyleSheet.create({
   search: { flex: 1, minWidth: 220, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: P.surface, borderWidth: 1, borderColor: P.line, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
   searchInput: { flex: 1, color: P.ink, fontSize: 14, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}) },
 
-  // Two-pane workspace
-  body: { flex: 1, flexDirection: "row", gap: 16, paddingHorizontal: 24, paddingBottom: 20, paddingTop: 4 },
-  listPane: { width: 380 },
-  listPaneFull: { flex: 1 },
-  detailArea: { flex: 1 },
+  // Master-detail: list column on the left, full-height detail on the right
+  flex1: { flex: 1, minHeight: 0 },
+  splitRow: { flex: 1, flexDirection: "row", minHeight: 0 },
+  leftPane: { flex: 1, minWidth: 0, minHeight: 0 },
+  rightPane: { width: 520, minHeight: 0, borderLeftWidth: 1, borderLeftColor: P.line, backgroundColor: P.surface },
 
   // List card (selector)
   listCard: { backgroundColor: P.surface, borderRadius: 14, borderWidth: 1, borderColor: P.line, padding: 14 },
@@ -444,9 +447,9 @@ const s = StyleSheet.create({
   statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   statusText: { fontSize: 11, fontWeight: "800" },
 
-  // Detail panel (desktop)
-  detailPanel: { flex: 1, backgroundColor: P.surface, borderRadius: 16, borderWidth: 1, borderColor: P.line, overflow: "hidden" },
-  detailEmpty: { flex: 1, backgroundColor: P.surface, borderRadius: 16, borderWidth: 1, borderColor: P.line, alignItems: "center", justifyContent: "center", gap: 8, padding: 40 },
+  // Detail panel (desktop) — fills the full-height rightPane frame
+  detailPanel: { flex: 1 },
+  detailEmpty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 40 },
   detailEmptyTitle: { fontSize: 16, fontWeight: "800", color: P.ink },
   detailEmptySub: { fontSize: 13, color: P.muted, textAlign: "center", maxWidth: 260, lineHeight: 19 },
 
