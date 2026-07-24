@@ -334,7 +334,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
 
   // Per-section completion + the next section to guide the helper to ("Start here").
   const sectionDone: Record<string, boolean> = {
-    personal:     !!(firstName.trim() && lastName.trim() && contactNumber.trim() && birthDate && province && municipality && barangay),
+    personal:     !!(firstName.trim() && lastName.trim() && birthDate && province && municipality && barangay), // contact number is optional
     skills:       selectedCategoryIds.length > 0 && selectedLanguageIds.length > 0,
     preferences:  !!(expectedSalary && parseFloat(expectedSalary) >= 6000),
     experience:   !!(parseInt(experienceYears || '0', 10) > 0 || workRows.length > 0),
@@ -452,8 +452,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       case 'personal':
         if (!firstName.trim()) return 'First name is required';
         if (!lastName.trim())  return 'Last name is required';
-        if (!contactNumber.trim()) return 'Contact number is required';
-        if (!isValidPhMobile(contactNumber)) return 'Enter a valid PH mobile number, like 0917 123 4567';
+        // Contact number is optional — validate only if one was entered.
+        if (contactNumber.trim() && !isValidPhMobile(contactNumber)) return 'Enter a valid PH mobile number, like 0917 123 4567 — or leave it blank';
         if (!birthDate) return 'Birth date is required';
         if (!province || !municipality || !barangay) return 'Province, municipality and barangay are required';
         return null;
@@ -545,7 +545,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
     );
     if (step === 3) return (
       <>
-        <Label>Contact Number <Req /></Label>
+        <Label>Contact Number <OptTag /></Label>
         <StyledInput value={contactNumber} onChangeText={setContactNumber} placeholder="09XX XXX XXXX" keyboardType="phone-pad" />
         <Label>Email Address</Label>
         <VerifiedRow value={email || 'Not set'} onChange={() => setChangeField('email')} />

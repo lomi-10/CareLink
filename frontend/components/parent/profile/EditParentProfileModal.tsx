@@ -330,8 +330,8 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
       case 'personal':
         if (!firstName.trim()) return 'First name is required';
         if (!lastName.trim()) return 'Last name is required';
-        if (!contactNumber.trim()) return 'Contact number is required';
-        if (!isValidPhMobile(contactNumber)) return 'Enter a valid PH mobile number, like 0917 123 4567';
+        // Contact number is optional — validate only if one was entered.
+        if (contactNumber.trim() && !isValidPhMobile(contactNumber)) return 'Enter a valid PH mobile number, like 0917 123 4567 — or leave it blank';
         if (bio.trim() && bio.trim().length < 15) return 'Bio must be at least 15 characters';
         return null;
       case 'address':
@@ -384,7 +384,7 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
       />
       <Text style={s.inputHint}>If provided, must be at least 15 characters</Text>
 
-      <Label>Contact Number <Req /></Label>
+      <Label>Contact Number <OptTag /></Label>
       <StyledInput value={contactNumber} onChangeText={setContactNumber} placeholder="09XX XXX XXXX" keyboardType="phone-pad" />
       <Label>Email Address</Label>
       <PVerifiedRow value={email || 'Not set'} onChange={() => setChangeField('email')} />
@@ -570,7 +570,7 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
 
   // ── Guided "Start here" — highlight the next incomplete section ─────────────
   const sectionDone: Record<SectionKey, boolean> = {
-    personal:  !!contactNumber.trim(),
+    personal:  !!(firstName.trim() && lastName.trim()), // contact number is optional
     address:   !!(province.trim() && municipality.trim() && barangay.trim()),
     household: !!householdType,
   };

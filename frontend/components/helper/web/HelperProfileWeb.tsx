@@ -97,7 +97,8 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
 
   const workHistory: WorkHistoryEntry[] = profileData?.work_history ?? [];
   const docVerified = docs.filter((d) => d.status === 'Verified').length;
-  const personalDone = !!(p.contact_number && (p.city || p.municipality || p.address));
+  // Contact number is optional — completion is gated on having a location set.
+  const personalDone = !!(p.city || p.municipality || p.address);
   // Roles are required; skills are an optional refinement, so they don't gate "done".
   const skillsDone = roles.length > 0;
   const prefsDone = !!(p.employment_type || p.work_schedule || p.expected_salary);
@@ -204,12 +205,13 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
   // Address is a derived "barangay, municipality, province" string (same
   // convention the mobile edit modal uses) — recomputed at save time.
   const savePersonal = () => {
-    if (!isValidPhMobile(form.contact_number)) {
-      setNotif({ visible: true, msg: 'Please enter a valid Philippine mobile number, like 0917 123 4567.', type: 'error' });
+    // Contact number is optional — but if one is entered it must be a real PH mobile.
+    if (form.contact_number?.trim() && !isValidPhMobile(form.contact_number)) {
+      setNotif({ visible: true, msg: 'Please enter a valid Philippine mobile number, like 0917 123 4567 — or leave it blank.', type: 'error' });
       return;
     }
     const address = [form.barangay, form.municipality, form.province].filter(Boolean).join(', ');
-    save({ ...form, address, contact_number: normalizePhMobile(form.contact_number) ?? form.contact_number });
+    save({ ...form, address, contact_number: normalizePhMobile(form.contact_number) ?? (form.contact_number ?? '') });
   };
 
   const startEdit = (key: SecKey) => {
@@ -588,7 +590,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
                       <SelectField value={form.religion} onChange={(v) => setF('religion', v)} options={RELIGION_OPTIONS} placeholder="Select religion" />
                       <FLabel>Education Level</FLabel>
                       <PillSelect options={['Elementary', 'High School Undergrad', 'High School Grad', 'College Undergrad', 'College Grad', 'Vocational']} value={form.education_level} onChange={(v) => setF('education_level', v)} />
-                      <FLabel>Contact Number</FLabel>
+                      <FLabel>Contact Number <Opt /></FLabel>
                       <FInput value={form.contact_number} onChange={(v) => setF('contact_number', v)} placeholder="0917 000 0000" />
                       <VerifiedField label="Email Address" value={U.email || 'Not set'} accent={wt.accent} onChange={() => setChangeField('email')} />
                       <FLabel>Current Address</FLabel>

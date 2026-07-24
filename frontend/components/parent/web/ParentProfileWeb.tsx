@@ -93,7 +93,9 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
   const location = [p.barangay, p.municipality, p.province].filter(Boolean).join(', ') || 'Address not set';
 
   const docVerified = docs.filter((d) => d.status === 'Verified').length;
-  const personalDone = !!p.contact_number;
+  // Personal info is complete once the name (from signup) is present — contact
+  // number and bio are optional, so they don't gate completion.
+  const personalDone = !!((U.first_name ?? '').trim() || (U.last_name ?? '').trim());
   const addressDone = !!(p.province && p.municipality && p.barangay);
   const householdDone = !!household?.household_type;
   const docsDone = DOC_SLOTS.every((slot) => docs.some((d) => d.document_type === slot.type));
@@ -201,8 +203,8 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
     if (editing === 'personal') {
       if (!form.first_name?.trim()) return err('First name is required');
       if (!form.last_name?.trim()) return err('Last name is required');
-      if (!form.contact_number?.trim()) return err('Contact number is required');
-      if (!isValidPhMobile(form.contact_number)) return err('Enter a valid PH mobile number, like 0917 123 4567');
+      // Contact number is optional — validate only if one was entered.
+      if (form.contact_number?.trim() && !isValidPhMobile(form.contact_number)) return err('Enter a valid PH mobile number, like 0917 123 4567 — or leave it blank');
       if (form.bio?.trim() && form.bio.trim().length < 15) return err('Bio must be at least 15 characters');
       // Email is changed via the verified flow; everything else saves here.
       return submit({ first_name: form.first_name, middle_name: form.middle_name, last_name: form.last_name, contact_number: normalizePhMobile(form.contact_number) ?? form.contact_number, bio: form.bio }, { success: 'Personal information saved!', onDone: () => setEditing(null) });
@@ -558,7 +560,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
                       </View>
                       <FLabel>Middle Name <Opt /></FLabel>
                       <FInput value={form.middle_name} onChange={(v) => setF('middle_name', v)} placeholder="(optional)" />
-                      <FLabel>Contact Number <Req /></FLabel>
+                      <FLabel>Contact Number <Opt /></FLabel>
                       <FInput value={form.contact_number} onChange={(v) => setF('contact_number', v)} placeholder="09XX XXX XXXX" />
                       <PVerifiedField label="Email Address" value={U.email || 'Not set'} onChange={() => setChangeField('email')} />
                       <FLabel>About the Household <Opt /></FLabel>
