@@ -33,8 +33,8 @@ export function VerificationQueue({ queue, router }: { queue: QueueData; router:
             key={entry.user_id}
             entry={entry}
             onReview={() => router.push({
-              pathname: '/(peso)/users/view_profile',
-              params: { user_id: String(entry.user_id), user_type: tab === 'helpers' ? 'helper' : 'parent' },
+              pathname: '/(peso)/users',
+              params: { focus: String(entry.user_id), focus_type: tab === 'helpers' ? 'helper' : 'parent' },
             } as never)}
           />
         ))

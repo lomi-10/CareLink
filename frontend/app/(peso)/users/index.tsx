@@ -1,7 +1,7 @@
 // app/(peso)/users/index.tsx  — User Verification queue
 // PHP: peso/get_pending_users.php, peso/approve_user.php, peso/reject_user.php, peso/get_user_documents.php
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -44,6 +44,7 @@ type FilterStatus = (typeof FILTER_TABS)[number];
 
 export default function UserVerification() {
   const router = useRouter();
+  const { focus, focus_type } = useLocalSearchParams<{ focus?: string; focus_type?: string }>();
   const { width } = useWindowDimensions();
   const twoPane = Platform.OS === "web" && width >= 1024;
 
@@ -56,6 +57,19 @@ export default function UserVerification() {
   const [selected, setSelected]       = useState<VerificationUser | null>(null);
 
   useEffect(() => { fetchUsers(); }, []);
+
+  // Deep-link from the dashboard's verification queue: open this screen (the full
+  // master-detail view) with the chosen user already selected on the right, instead
+  // of the old standalone profile page.
+  useEffect(() => {
+    if (!focus || users.length === 0) return;
+    const target = users.find((u) => String(u.user_id) === String(focus));
+    if (!target) return;
+    setActiveRole(target.user_type === "parent" ? "parent" : "helper");
+    setFilterStatus("All");
+    if (twoPane) setSelected(target);
+    else router.push({ pathname: "/(peso)/users/view_profile", params: { user_id: String(target.user_id), user_type: target.user_type } });
+  }, [focus, focus_type, users, twoPane]); // eslint-disable-line
 
   const fetchUsers = async () => {
     try {

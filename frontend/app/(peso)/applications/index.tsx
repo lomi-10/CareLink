@@ -3,7 +3,10 @@
 // or approve applications (that would bottleneck every hire). This is an
 // exception-based safeguard: PESO can see applications and, if one looks abusive or
 // fraudulent, flag + unsubmit it (retracts it and notifies both parties).
-// PHP: peso/list_applications.php, peso/flag_application.php
+//
+// Desktop-first master/detail: a list on the left, the full case file on the right
+// (no modal on desktop). On mobile the case file opens in a modal.
+// PHP: peso/list_applications.php, peso/flag_application.php, peso/application_detail.php
 
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -39,11 +42,13 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string }> 
   auto_rejected: { label: "Closed", color: P.muted, bg: P.line },
 };
 const meta = (s: string) => STATUS_META[s] ?? { label: s, color: P.muted, bg: P.line };
+const CAN_FLAG = (status: string, flagged: boolean) =>
+  !["hired", "terminated", "termination_pending", "Withdrawn"].includes(status) && !flagged;
 
 export default function PesoApplicationsScreen() {
   const { notify, noticeHost } = useNotice();
   const { width } = useWindowDimensions();
-  const wide = width > 900;
+  const wide = width >= 1000;
 
   const [staffId, setStaffId] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -89,6 +94,13 @@ export default function PesoApplicationsScreen() {
 
   useEffect(() => { void load(filter, ""); }, [filter]); // eslint-disable-line
 
+  // Desktop: keep the detail pane populated — open the first row automatically.
+  useEffect(() => {
+    if (wide && rows.length && !rows.some((r) => r.application_id === viewing?.application_id)) void openDetail(rows[0]);
+    if (!rows.length) closeDetail();
+    // eslint-disable-next-line
+  }, [wide, rows]);
+
   const submitFlag = async () => {
     if (!flagFor) return;
     if (!reason.trim()) { notify("Reason needed", "Please explain why so the helper understands."); return; }
@@ -108,27 +120,187 @@ export default function PesoApplicationsScreen() {
     }
   };
 
-  const StatCard = ({ label, value, color }: { label: string; value: number; color: string }) => (
-    <View style={s.statCard}>
-      <Text style={[s.statValue, { color }]}>{value}</Text>
-      <Text style={s.statLabel}>{label}</Text>
-    </View>
+  // ── List card (selector) ──
+  const ListCard = ({ a }: { a: AppRow }) => {
+    const m = meta(a.status);
+    const active = viewing?.application_id === a.application_id;
+    return (
+      <TouchableOpacity style={[s.listCard, active && s.listCardActive, a.is_flagged && !active && s.listCardFlagged]} onPress={() => openDetail(a)} activeOpacity={0.85}>
+        <View style={s.listCardTop}>
+          <Text style={s.listTitle} numberOfLines={1}>{a.job_title}</Text>
+          <View style={[s.statusDot, { backgroundColor: m.color }]} />
+        </View>
+        <Text style={s.listParties} numberOfLines={1}>
+          <Text style={s.strong}>{a.helper_name}</Text>{a.helper_verification === "Verified" ? " ✓" : ""} → {a.parent_name}
+        </Text>
+        <View style={s.listFoot}>
+          <View style={[s.statusPill, { backgroundColor: m.bg }]}><Text style={[s.statusText, { color: m.color }]}>{m.label}</Text></View>
+          {a.is_flagged && <View style={s.flagChip}><Ionicons name="flag" size={10} color={P.danger} /><Text style={s.flagChipText}>Flagged</Text></View>}
+          <Text style={s.listApplied}>{timeAgo(a.applied_at)}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // ── Detail (case file) — inline on desktop, modal on mobile ──
+  const renderDetail = (inPanel: boolean) => {
+    const flagAction = !!viewing && CAN_FLAG(viewing.status, viewing.is_flagged);
+    return (
+      <View style={inPanel ? s.detailPanel : [s.modalCard, { maxWidth: 720, padding: 0, overflow: "hidden" }]}>
+        <View style={s.dHead}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={s.dEyebrow}>APPLICATION #{viewing?.application_id} · {viewing?.category_name || "—"}</Text>
+            <Text style={s.dTitle} numberOfLines={2}>{detail?.job?.title ?? viewing?.job_title}</Text>
+          </View>
+          {!!viewing && <View style={[s.statusPill, { backgroundColor: meta(viewing.status).bg }]}><Text style={[s.statusText, { color: meta(viewing.status).color }]}>{meta(viewing.status).label}</Text></View>}
+          {!inPanel && <TouchableOpacity onPress={closeDetail} hitSlop={8} style={{ marginLeft: 8 }}><Ionicons name="close" size={22} color={P.muted} /></TouchableOpacity>}
+        </View>
+
+        {detailLoading && !detail ? (
+          <ActivityIndicator color={P.peso} style={{ marginVertical: 60 }} />
+        ) : (
+          <ScrollView style={inPanel ? { flex: 1 } : { maxHeight: 540 }} contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
+            {/* Risk signals — the reason this screen exists */}
+            {Array.isArray(detail?.risk_signals) && detail.risk_signals.length > 0 && (
+              <View style={{ marginBottom: 18 }}>
+                <Text style={s.secTitle}>Oversight checks</Text>
+                <View style={{ gap: 8 }}>
+                  {detail.risk_signals.map((sig: any, i: number) => {
+                    const cfg = sig.level === "high" ? { c: P.danger, bg: P.dangerSoft, ic: "alert-circle" as const }
+                      : sig.level === "warn" ? { c: P.warning, bg: P.warningSoft, ic: "warning" as const }
+                      : sig.level === "ok" ? { c: P.success, bg: P.successSoft, ic: "checkmark-circle" as const }
+                      : { c: P.info, bg: P.infoSoft, ic: "information-circle" as const };
+                    return (
+                      <View key={i} style={[s.signal, { backgroundColor: cfg.bg }]}>
+                        <Ionicons name={cfg.ic} size={16} color={cfg.c} />
+                        <Text style={[s.signalText, { color: cfg.c }]}>{sig.text}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* Applicant + Employer */}
+            <View style={[s.pair, !wide && { flexDirection: "column" }]}>
+              <View style={s.entity}>
+                <Text style={s.entityLabel}>APPLICANT (HELPER)</Text>
+                <Text style={s.entityName}>{detail?.helper?.name ?? viewing?.helper_name}</Text>
+                <View style={s.badgeRow2}>
+                  {detail?.helper?.verification_status === "Verified"
+                    ? <View style={[s.miniBadge, { backgroundColor: P.pesoSoft }]}><Ionicons name="shield-checkmark" size={11} color={P.peso} /><Text style={[s.miniBadgeText, { color: P.peso }]}>PESO Verified</Text></View>
+                    : <View style={[s.miniBadge, { backgroundColor: P.warningSoft }]}><Text style={[s.miniBadgeText, { color: P.warning }]}>Not verified</Text></View>}
+                </View>
+                <Fact label="Age" value={detail?.helper?.age != null ? `${detail.helper.age} yrs` : "—"} />
+                <Fact label="Gender" value={detail?.helper?.gender || "—"} />
+                <Fact label="Location" value={detail?.helper?.location || "—"} />
+                <Fact label="Experience" value={detail ? `${detail.helper.experience_years} yr${detail.helper.experience_years === 1 ? "" : "s"}` : "—"} />
+                <Fact label="Expected salary" value={detail?.helper?.expected_salary ? `₱${Number(detail.helper.expected_salary).toLocaleString()}` : "—"} />
+                <Fact label="Rating" value={detail?.helper?.rating_count ? `${detail.helper.rating_average.toFixed(1)}★ (${detail.helper.rating_count})` : "No reviews"} />
+                <Fact label="Verified docs" value={detail ? String(detail.helper.verified_documents) : "—"} last />
+              </View>
+
+              <View style={s.entity}>
+                <Text style={s.entityLabel}>EMPLOYER (HOUSEHOLD)</Text>
+                <Text style={s.entityName}>{detail?.employer?.name ?? viewing?.parent_name}</Text>
+                <View style={s.badgeRow2}>
+                  {(detail?.employer?.verification_status === "Verified" || String(detail?.employer?.account_status).toLowerCase() === "approved")
+                    ? <View style={[s.miniBadge, { backgroundColor: P.pesoSoft }]}><Ionicons name="shield-checkmark" size={11} color={P.peso} /><Text style={[s.miniBadgeText, { color: P.peso }]}>PESO Verified</Text></View>
+                    : <View style={[s.miniBadge, { backgroundColor: P.warningSoft }]}><Text style={[s.miniBadgeText, { color: P.warning }]}>Not approved</Text></View>}
+                </View>
+                <Fact label="Location" value={detail?.employer?.location || "—"} />
+                <Fact label="Active posts" value={detail ? String(detail.employer.active_posts) : "—"} />
+                <Fact label="Complaints" value={detail ? String(detail.employer.complaints_against) : "—"} danger={!!detail && detail.employer.complaints_against > 0} last />
+              </View>
+            </View>
+
+            {/* Job terms */}
+            <Text style={[s.secTitle, { marginTop: 18 }]}>Job terms</Text>
+            <View style={s.termsGrid}>
+              <Fact label="Salary" value={detail ? `₱${Number(detail.job.salary_monthly).toLocaleString()} / mo` : "—"} inline />
+              <Fact label="Employment" value={detail?.job?.employment_type || "—"} inline />
+              <Fact label="Schedule" value={detail?.job?.work_schedule || "—"} inline />
+              <Fact label="Min. experience" value={detail ? `${detail.job.min_experience_years} yr` : "—"} inline />
+              <Fact label="Location" value={detail?.job?.location || "—"} inline />
+            </View>
+            {Array.isArray(detail?.job?.roles) && detail.job.roles.length > 0 && (
+              <View style={{ marginTop: 10 }}>
+                <Text style={s.chipsLabel}>Roles</Text>
+                <View style={s.chipsWrap}>{detail.job.roles.map((r: string, i: number) => <View key={i} style={s.roleChip}><Text style={s.roleChipText}>{r}</Text></View>)}</View>
+              </View>
+            )}
+            {Array.isArray(detail?.job?.skills) && detail.job.skills.length > 0 && (
+              <View style={{ marginTop: 10 }}>
+                <Text style={s.chipsLabel}>Skills</Text>
+                <View style={s.chipsWrap}>{detail.job.skills.map((r: string, i: number) => <View key={i} style={[s.roleChip, { backgroundColor: P.infoSoft }]}><Text style={[s.roleChipText, { color: P.info }]}>{r}</Text></View>)}</View>
+              </View>
+            )}
+
+            {/* Shared documents */}
+            <Text style={[s.secTitle, { marginTop: 18 }]}>Documents shared with the employer</Text>
+            {Array.isArray(detail?.shared_documents) && detail.shared_documents.length > 0 ? (
+              <View style={{ gap: 6 }}>
+                {detail.shared_documents.map((d: any, i: number) => (
+                  <View key={i} style={s.docRow}>
+                    <Ionicons name="document-text-outline" size={15} color={P.peso} />
+                    <Text style={s.docName}>{d.document_type}</Text>
+                    <Text style={[s.docStatus, { color: d.status === "Verified" ? P.success : P.warning }]}>{d.status}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : <Text style={s.muted}>None shared — only the helper's profile is visible to the employer.</Text>}
+
+            {/* Cover letter */}
+            <Text style={[s.secTitle, { marginTop: 18 }]}>Cover letter</Text>
+            <View style={s.coverBox}><Text style={s.coverFull}>{(detail?.application?.cover_letter ?? viewing?.cover_letter)?.trim() || "No cover letter was written."}</Text></View>
+
+            {detail?.flag && (
+              <View style={[s.signal, { backgroundColor: P.dangerSoft, marginTop: 16 }]}>
+                <Ionicons name="flag" size={16} color={P.danger} />
+                <Text style={[s.signalText, { color: P.danger }]}>Flagged by PESO: {detail.flag.reason}</Text>
+              </View>
+            )}
+          </ScrollView>
+        )}
+
+        {/* Footer — only shows when there's an action or a modal to close */}
+        {(flagAction || !inPanel) && (
+          <View style={s.dFooter}>
+            {!inPanel && <TouchableOpacity style={s.dSecondary} onPress={closeDetail} activeOpacity={0.85}><Text style={s.dSecondaryText}>Close</Text></TouchableOpacity>}
+            {flagAction && (
+              <TouchableOpacity style={s.dDanger} onPress={() => { const a = viewing!; if (!inPanel) closeDetail(); setFlagFor(a); setReason(""); }} activeOpacity={0.85}>
+                <Ionicons name="flag-outline" size={15} color="#fff" /><Text style={s.dDangerText}>Flag & Unsubmit</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const list = (
+    loading ? (
+      <ActivityIndicator size="large" color={P.peso} style={{ marginTop: 50 }} />
+    ) : rows.length === 0 ? (
+      <View style={s.empty}><Ionicons name="reader-outline" size={34} color={P.subtle} /><Text style={s.emptyText}>No applications{filter === "flagged" ? " flagged" : ""} yet.</Text></View>
+    ) : (
+      <ScrollView contentContainerStyle={{ gap: 10, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+        {rows.map((a) => <ListCard key={a.application_id} a={a} />)}
+      </ScrollView>
+    )
   );
 
   return (
     <View style={s.page}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <View style={s.header}>
         <Text style={s.title}>Applications</Text>
         <Text style={s.subtitle}>Oversight of job applications. Flag & unsubmit any that look abusive or fraudulent — PESO does not approve applications.</Text>
-
-        {/* Summary */}
         <View style={s.statRow}>
-          <StatCard label="Total" value={summary.total} color={P.ink} />
-          <StatCard label="Active" value={summary.active} color={P.success} />
-          <StatCard label="Flagged" value={summary.flagged} color={P.danger} />
+          <StatChip label="Total" value={summary.total} color={P.ink} />
+          <StatChip label="Active" value={summary.active} color={P.success} />
+          <StatChip label="Flagged" value={summary.flagged} color={P.danger} />
         </View>
-
-        {/* Filters + search */}
         <View style={s.controls}>
           <View style={s.chips}>
             {(["all", "active", "flagged"] as Filter[]).map((f) => (
@@ -143,190 +315,30 @@ export default function PesoApplicationsScreen() {
               placeholder="Search helper, employer or job…" placeholderTextColor={P.subtle} returnKeyType="search" />
           </View>
         </View>
+      </View>
 
-        {loading ? (
-          <ActivityIndicator size="large" color={P.peso} style={{ marginTop: 50 }} />
-        ) : rows.length === 0 ? (
-          <View style={s.empty}><Ionicons name="reader-outline" size={34} color={P.subtle} /><Text style={s.emptyText}>No applications{filter === "flagged" ? " flagged" : ""} yet.</Text></View>
-        ) : (
-          rows.map((a) => {
-            const m = meta(a.status);
-            const canFlag = !["hired", "terminated", "termination_pending", "Withdrawn"].includes(a.status) && !a.is_flagged;
-            return (
-              <View key={a.application_id} style={[s.card, a.is_flagged && s.cardFlagged]}>
-                <View style={s.cardTop}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={s.jobTitle} numberOfLines={1}>{a.job_title}</Text>
-                    <Text style={s.parties} numberOfLines={1}>
-                      <Text style={s.strong}>{a.helper_name}</Text>{a.helper_verification === "Verified" ? " ✓" : ""} → {a.parent_name}
-                    </Text>
-                  </View>
-                  <View style={[s.statusPill, { backgroundColor: m.bg }]}><Text style={[s.statusText, { color: m.color }]}>{m.label}</Text></View>
-                </View>
-
-                {!!a.cover_letter && <Text style={s.cover} numberOfLines={2}>“{a.cover_letter}”</Text>}
-
-                {a.is_flagged && (
-                  <View style={s.flagBanner}>
-                    <Ionicons name="flag" size={14} color={P.danger} />
-                    <Text style={s.flagText}>Flagged by PESO: {a.flag_reason}</Text>
-                  </View>
-                )}
-
-                <View style={s.cardFoot}>
-                  <Text style={s.applied}>{a.category_name ? a.category_name + " · " : ""}Applied {timeAgo(a.applied_at)}</Text>
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    <TouchableOpacity style={s.viewBtn} onPress={() => openDetail(a)} activeOpacity={0.85}>
-                      <Ionicons name="eye-outline" size={15} color={P.peso} />
-                      <Text style={s.viewBtnText}>Review</Text>
-                    </TouchableOpacity>
-                    {canFlag && (
-                      <TouchableOpacity style={s.flagBtn} onPress={() => { setFlagFor(a); setReason(""); }} activeOpacity={0.85}>
-                        <Ionicons name="flag-outline" size={15} color="#fff" />
-                        <Text style={s.flagBtnText}>Flag & Unsubmit</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
+      {/* Body: two-pane on desktop, list-only on mobile */}
+      <View style={[s.body, !wide && { flexDirection: "column" }]}>
+        <View style={wide ? s.listPane : s.listPaneFull}>{list}</View>
+        {wide && (
+          <View style={s.detailArea}>
+            {viewing ? renderDetail(true) : (
+              <View style={s.detailEmpty}>
+                <Ionicons name="reader-outline" size={40} color={P.subtle} />
+                <Text style={s.detailEmptyTitle}>Select an application</Text>
+                <Text style={s.detailEmptySub}>Choose one on the left to review the full case file here.</Text>
               </View>
-            );
-          })
-        )}
-      </ScrollView>
-
-      {/* Case-review modal */}
-      <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={closeDetail}>
-        <View style={s.modalBg}>
-          <View style={[s.modalCard, { maxWidth: 720, padding: 0, overflow: "hidden" }]}>
-            {/* Header */}
-            <View style={s.dHead}>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={s.dEyebrow}>APPLICATION #{viewing?.application_id} · {viewing?.category_name || "—"}</Text>
-                <Text style={s.dTitle} numberOfLines={2}>{detail?.job?.title ?? viewing?.job_title}</Text>
-              </View>
-              {!!viewing && <View style={[s.statusPill, { backgroundColor: meta(viewing.status).bg }]}><Text style={[s.statusText, { color: meta(viewing.status).color }]}>{meta(viewing.status).label}</Text></View>}
-              <TouchableOpacity onPress={closeDetail} hitSlop={8} style={{ marginLeft: 8 }}><Ionicons name="close" size={22} color={P.muted} /></TouchableOpacity>
-            </View>
-
-            {detailLoading && !detail ? (
-              <ActivityIndicator color={P.peso} style={{ marginVertical: 60 }} />
-            ) : (
-              <ScrollView style={{ maxHeight: 540 }} contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
-                {/* Risk signals — the reason this screen exists */}
-                {Array.isArray(detail?.risk_signals) && detail.risk_signals.length > 0 && (
-                  <View style={{ marginBottom: 18 }}>
-                    <Text style={s.secTitle}>Oversight checks</Text>
-                    <View style={{ gap: 8 }}>
-                      {detail.risk_signals.map((sig: any, i: number) => {
-                        const cfg = sig.level === "high" ? { c: P.danger, bg: P.dangerSoft, ic: "alert-circle" as const }
-                          : sig.level === "warn" ? { c: P.warning, bg: P.warningSoft, ic: "warning" as const }
-                          : sig.level === "ok" ? { c: P.success, bg: P.successSoft, ic: "checkmark-circle" as const }
-                          : { c: P.info, bg: P.infoSoft, ic: "information-circle" as const };
-                        return (
-                          <View key={i} style={[s.signal, { backgroundColor: cfg.bg }]}>
-                            <Ionicons name={cfg.ic} size={16} color={cfg.c} />
-                            <Text style={[s.signalText, { color: cfg.c }]}>{sig.text}</Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  </View>
-                )}
-
-                {/* Applicant + Employer, side by side on wide */}
-                <View style={[s.pair, !wide && { flexDirection: "column" }]}>
-                  <View style={s.entity}>
-                    <Text style={s.entityLabel}>APPLICANT (HELPER)</Text>
-                    <Text style={s.entityName}>{detail?.helper?.name ?? viewing?.helper_name}</Text>
-                    <View style={s.badgeRow2}>
-                      {detail?.helper?.verification_status === "Verified"
-                        ? <View style={[s.miniBadge, { backgroundColor: P.pesoSoft }]}><Ionicons name="shield-checkmark" size={11} color={P.peso} /><Text style={[s.miniBadgeText, { color: P.peso }]}>PESO Verified</Text></View>
-                        : <View style={[s.miniBadge, { backgroundColor: P.warningSoft }]}><Text style={[s.miniBadgeText, { color: P.warning }]}>Not verified</Text></View>}
-                    </View>
-                    <Fact label="Age" value={detail?.helper?.age != null ? `${detail.helper.age} yrs` : "—"} />
-                    <Fact label="Gender" value={detail?.helper?.gender || "—"} />
-                    <Fact label="Location" value={detail?.helper?.location || "—"} />
-                    <Fact label="Experience" value={detail ? `${detail.helper.experience_years} yr${detail.helper.experience_years === 1 ? "" : "s"}` : "—"} />
-                    <Fact label="Expected salary" value={detail?.helper?.expected_salary ? `₱${Number(detail.helper.expected_salary).toLocaleString()}` : "—"} />
-                    <Fact label="Rating" value={detail?.helper?.rating_count ? `${detail.helper.rating_average.toFixed(1)}★ (${detail.helper.rating_count})` : "No reviews"} />
-                    <Fact label="Verified docs" value={detail ? String(detail.helper.verified_documents) : "—"} last />
-                  </View>
-
-                  <View style={s.entity}>
-                    <Text style={s.entityLabel}>EMPLOYER (HOUSEHOLD)</Text>
-                    <Text style={s.entityName}>{detail?.employer?.name ?? viewing?.parent_name}</Text>
-                    <View style={s.badgeRow2}>
-                      {(detail?.employer?.verification_status === "Verified" || String(detail?.employer?.account_status).toLowerCase() === "approved")
-                        ? <View style={[s.miniBadge, { backgroundColor: P.pesoSoft }]}><Ionicons name="shield-checkmark" size={11} color={P.peso} /><Text style={[s.miniBadgeText, { color: P.peso }]}>PESO Verified</Text></View>
-                        : <View style={[s.miniBadge, { backgroundColor: P.warningSoft }]}><Text style={[s.miniBadgeText, { color: P.warning }]}>Not approved</Text></View>}
-                    </View>
-                    <Fact label="Location" value={detail?.employer?.location || "—"} />
-                    <Fact label="Active posts" value={detail ? String(detail.employer.active_posts) : "—"} />
-                    <Fact label="Complaints" value={detail ? String(detail.employer.complaints_against) : "—"} danger={!!detail && detail.employer.complaints_against > 0} last />
-                  </View>
-                </View>
-
-                {/* Job terms */}
-                <Text style={[s.secTitle, { marginTop: 18 }]}>Job terms</Text>
-                <View style={s.termsGrid}>
-                  <Fact label="Salary" value={detail ? `₱${Number(detail.job.salary_monthly).toLocaleString()} / mo` : "—"} inline />
-                  <Fact label="Employment" value={detail?.job?.employment_type || "—"} inline />
-                  <Fact label="Schedule" value={detail?.job?.work_schedule || "—"} inline />
-                  <Fact label="Min. experience" value={detail ? `${detail.job.min_experience_years} yr` : "—"} inline />
-                  <Fact label="Location" value={detail?.job?.location || "—"} inline />
-                </View>
-                {Array.isArray(detail?.job?.roles) && detail.job.roles.length > 0 && (
-                  <View style={{ marginTop: 10 }}>
-                    <Text style={s.chipsLabel}>Roles</Text>
-                    <View style={s.chipsWrap}>{detail.job.roles.map((r: string, i: number) => <View key={i} style={s.roleChip}><Text style={s.roleChipText}>{r}</Text></View>)}</View>
-                  </View>
-                )}
-                {Array.isArray(detail?.job?.skills) && detail.job.skills.length > 0 && (
-                  <View style={{ marginTop: 10 }}>
-                    <Text style={s.chipsLabel}>Skills</Text>
-                    <View style={s.chipsWrap}>{detail.job.skills.map((r: string, i: number) => <View key={i} style={[s.roleChip, { backgroundColor: P.infoSoft }]}><Text style={[s.roleChipText, { color: P.info }]}>{r}</Text></View>)}</View>
-                  </View>
-                )}
-
-                {/* Shared documents */}
-                <Text style={[s.secTitle, { marginTop: 18 }]}>Documents shared with the employer</Text>
-                {Array.isArray(detail?.shared_documents) && detail.shared_documents.length > 0 ? (
-                  <View style={{ gap: 6 }}>
-                    {detail.shared_documents.map((d: any, i: number) => (
-                      <View key={i} style={s.docRow}>
-                        <Ionicons name="document-text-outline" size={15} color={P.peso} />
-                        <Text style={s.docName}>{d.document_type}</Text>
-                        <Text style={[s.docStatus, { color: d.status === "Verified" ? P.success : P.warning }]}>{d.status}</Text>
-                      </View>
-                    ))}
-                  </View>
-                ) : <Text style={s.muted}>None shared — only the helper's profile is visible to the employer.</Text>}
-
-                {/* Cover letter */}
-                <Text style={[s.secTitle, { marginTop: 18 }]}>Cover letter</Text>
-                <View style={s.coverBox}><Text style={s.coverFull}>{(detail?.application?.cover_letter ?? viewing?.cover_letter)?.trim() || "No cover letter was written."}</Text></View>
-
-                {detail?.flag && (
-                  <View style={[s.signal, { backgroundColor: P.dangerSoft, marginTop: 16 }]}>
-                    <Ionicons name="flag" size={16} color={P.danger} />
-                    <Text style={[s.signalText, { color: P.danger }]}>Flagged by PESO: {detail.flag.reason}</Text>
-                  </View>
-                )}
-              </ScrollView>
             )}
-
-            {/* Footer actions */}
-            <View style={s.dFooter}>
-              <TouchableOpacity style={s.dSecondary} onPress={closeDetail} activeOpacity={0.85}><Text style={s.dSecondaryText}>Close</Text></TouchableOpacity>
-              {!!viewing && !["hired", "terminated", "termination_pending", "Withdrawn"].includes(viewing.status) && !viewing.is_flagged && (
-                <TouchableOpacity style={s.dDanger} onPress={() => { const a = viewing; closeDetail(); setFlagFor(a); setReason(""); }} activeOpacity={0.85}>
-                  <Ionicons name="flag-outline" size={15} color="#fff" /><Text style={s.dDangerText}>Flag & Unsubmit</Text>
-                </TouchableOpacity>
-              )}
-            </View>
           </View>
-        </View>
-      </Modal>
+        )}
+      </View>
+
+      {/* Mobile: case file in a modal */}
+      {!wide && (
+        <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={closeDetail}>
+          <View style={s.modalBg}>{renderDetail(false)}</View>
+        </Modal>
+      )}
 
       {/* Flag modal */}
       <Modal visible={!!flagFor} transparent animationType="fade" onRequestClose={() => setFlagFor(null)}>
@@ -349,6 +361,15 @@ export default function PesoApplicationsScreen() {
         </View>
       </Modal>
       {noticeHost}
+    </View>
+  );
+}
+
+function StatChip({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <View style={s.statCard}>
+      <Text style={[s.statValue, { color }]}>{value}</Text>
+      <Text style={s.statLabel}>{label}</Text>
     </View>
   );
 }
@@ -383,15 +404,16 @@ function timeAgo(v?: string) {
 
 const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: P.canvasPeso },
+  header: { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 4 },
   title: { fontSize: 26, fontWeight: "800", color: P.ink, letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, color: P.muted, marginTop: 3, maxWidth: 680, lineHeight: 18 },
+  subtitle: { fontSize: 13, color: P.muted, marginTop: 3, maxWidth: 720, lineHeight: 18 },
 
-  statRow: { flexDirection: "row", gap: 12, marginTop: 16, marginBottom: 16 },
-  statCard: { flex: 1, backgroundColor: P.surface, borderRadius: 14, borderWidth: 1, borderColor: P.line, padding: 14, alignItems: "center" },
+  statRow: { flexDirection: "row", gap: 12, marginTop: 16, marginBottom: 14 },
+  statCard: { flex: 1, maxWidth: 200, backgroundColor: P.surface, borderRadius: 14, borderWidth: 1, borderColor: P.line, padding: 14, alignItems: "center" },
   statValue: { fontSize: 24, fontWeight: "900" },
   statLabel: { fontSize: 12, color: P.muted, marginTop: 2, fontWeight: "600" },
 
-  controls: { flexDirection: "row", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" },
+  controls: { flexDirection: "row", gap: 12, marginBottom: 14, flexWrap: "wrap", alignItems: "center" },
   chips: { flexDirection: "row", gap: 8 },
   chip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1, borderColor: P.line, backgroundColor: P.surface },
   chipActive: { backgroundColor: P.peso, borderColor: P.peso },
@@ -400,27 +422,35 @@ const s = StyleSheet.create({
   search: { flex: 1, minWidth: 220, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: P.surface, borderWidth: 1, borderColor: P.line, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
   searchInput: { flex: 1, color: P.ink, fontSize: 14, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}) },
 
-  card: { backgroundColor: P.surface, borderRadius: 14, borderWidth: 1, borderColor: P.line, padding: 16, marginBottom: 12 },
-  cardFlagged: { borderColor: P.danger, borderWidth: 1.4 },
-  cardTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
-  jobTitle: { fontSize: 15.5, fontWeight: "800", color: P.ink },
-  parties: { fontSize: 13, color: P.muted, marginTop: 3 },
+  // Two-pane workspace
+  body: { flex: 1, flexDirection: "row", gap: 16, paddingHorizontal: 24, paddingBottom: 20, paddingTop: 4 },
+  listPane: { width: 380 },
+  listPaneFull: { flex: 1 },
+  detailArea: { flex: 1 },
+
+  // List card (selector)
+  listCard: { backgroundColor: P.surface, borderRadius: 14, borderWidth: 1, borderColor: P.line, padding: 14 },
+  listCardActive: { borderColor: P.peso, borderWidth: 1.6, ...(Platform.OS === "web" ? ({ boxShadow: "0 6px 16px rgba(15,123,84,.12)" } as any) : {}) },
+  listCardFlagged: { borderColor: P.danger },
+  listCardTop: { flexDirection: "row", alignItems: "center", gap: 8 },
+  listTitle: { flex: 1, fontSize: 14.5, fontWeight: "800", color: P.ink },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  listParties: { fontSize: 12.5, color: P.muted, marginTop: 4 },
   strong: { color: P.ink, fontWeight: "700" },
+  listFoot: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 },
+  listApplied: { fontSize: 11, color: P.subtle, marginLeft: "auto" },
+  flagChip: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: P.dangerSoft, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  flagChipText: { fontSize: 10, fontWeight: "800", color: P.danger },
   statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   statusText: { fontSize: 11, fontWeight: "800" },
-  cover: { fontSize: 13, color: P.inkMuted, fontStyle: "italic", marginTop: 10, lineHeight: 19 },
 
-  flagBanner: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: P.dangerSoft, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, marginTop: 12 },
-  flagText: { flex: 1, fontSize: 12.5, color: P.danger, fontWeight: "600" },
+  // Detail panel (desktop)
+  detailPanel: { flex: 1, backgroundColor: P.surface, borderRadius: 16, borderWidth: 1, borderColor: P.line, overflow: "hidden" },
+  detailEmpty: { flex: 1, backgroundColor: P.surface, borderRadius: 16, borderWidth: 1, borderColor: P.line, alignItems: "center", justifyContent: "center", gap: 8, padding: 40 },
+  detailEmptyTitle: { fontSize: 16, fontWeight: "800", color: P.ink },
+  detailEmptySub: { fontSize: 13, color: P.muted, textAlign: "center", maxWidth: 260, lineHeight: 19 },
 
-  cardFoot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14, gap: 10, flexWrap: "wrap" },
-  applied: { fontSize: 12, color: P.subtle },
-  flagBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: P.danger, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 },
-  flagBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  viewBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: P.line, backgroundColor: P.surface, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 },
-  viewBtnText: { color: P.peso, fontWeight: "700", fontSize: 13 },
-
-  // Case-review modal
+  // Case file
   dHead: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 20, borderBottomWidth: 1, borderBottomColor: P.line, backgroundColor: P.canvasPeso },
   dEyebrow: { fontSize: 10.5, fontWeight: "800", color: P.subtle, letterSpacing: 0.6, marginBottom: 3 },
   dTitle: { fontSize: 18, fontWeight: "800", color: P.ink, lineHeight: 23 },
