@@ -29,6 +29,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { icon: 'people', label: 'User Verification', path: '/(peso)/users' },
       { icon: 'briefcase', label: 'Job Verification', path: '/(peso)/jobs' },
+      { icon: 'reader', label: 'Applications', path: '/(peso)/applications' },
       { icon: 'pricetags', label: 'Categories & Skills', path: '/(peso)/reference' },
       { icon: 'calendar', label: 'Interviews', path: '/(peso)/interviews' },
       { icon: 'document-text', label: 'Contracts', path: '/(peso)/contracts' },
