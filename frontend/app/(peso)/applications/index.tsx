@@ -53,8 +53,22 @@ export default function PesoApplicationsScreen() {
   const [q, setQ] = useState("");
   const [flagFor, setFlagFor] = useState<AppRow | null>(null);
   const [viewing, setViewing] = useState<AppRow | null>(null);
+  const [detail, setDetail] = useState<any>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const openDetail = async (a: AppRow) => {
+    setViewing(a); setDetail(null); setDetailLoading(true);
+    try {
+      const raw = await AsyncStorage.getItem("user_data");
+      const uid = raw ? JSON.parse(raw)?.user_id : "";
+      const res = await fetch(`${API_URL}/peso/application_detail.php?application_id=${a.application_id}&staff_user_id=${uid}`);
+      const data = await res.json();
+      if (data.success) setDetail(data);
+    } catch { /* show basics */ } finally { setDetailLoading(false); }
+  };
+  const closeDetail = () => { setViewing(null); setDetail(null); };
 
   const load = useCallback(async (f: Filter, query: string) => {
     setLoading(true);
@@ -162,9 +176,9 @@ export default function PesoApplicationsScreen() {
                 <View style={s.cardFoot}>
                   <Text style={s.applied}>{a.category_name ? a.category_name + " · " : ""}Applied {timeAgo(a.applied_at)}</Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
-                    <TouchableOpacity style={s.viewBtn} onPress={() => setViewing(a)} activeOpacity={0.85}>
+                    <TouchableOpacity style={s.viewBtn} onPress={() => openDetail(a)} activeOpacity={0.85}>
                       <Ionicons name="eye-outline" size={15} color={P.peso} />
-                      <Text style={s.viewBtnText}>View</Text>
+                      <Text style={s.viewBtnText}>Review</Text>
                     </TouchableOpacity>
                     {canFlag && (
                       <TouchableOpacity style={s.flagBtn} onPress={() => { setFlagFor(a); setReason(""); }} activeOpacity={0.85}>
@@ -180,29 +194,136 @@ export default function PesoApplicationsScreen() {
         )}
       </ScrollView>
 
-      {/* Read-only detail modal */}
-      <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={() => setViewing(null)}>
+      {/* Case-review modal */}
+      <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={closeDetail}>
         <View style={s.modalBg}>
-          <View style={[s.modalCard, { maxWidth: 560 }]}>
-            <View style={s.detailHead}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.detailTitle}>{viewing?.job_title}</Text>
-                {!!viewing && <View style={[s.statusPill, { backgroundColor: meta(viewing.status).bg, alignSelf: "flex-start", marginTop: 6 }]}><Text style={[s.statusText, { color: meta(viewing.status).color }]}>{meta(viewing.status).label}</Text></View>}
+          <View style={[s.modalCard, { maxWidth: 720, padding: 0, overflow: "hidden" }]}>
+            {/* Header */}
+            <View style={s.dHead}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.dEyebrow}>APPLICATION #{viewing?.application_id} · {viewing?.category_name || "—"}</Text>
+                <Text style={s.dTitle} numberOfLines={2}>{detail?.job?.title ?? viewing?.job_title}</Text>
               </View>
-              <TouchableOpacity onPress={() => setViewing(null)} hitSlop={8}><Ionicons name="close" size={22} color={P.muted} /></TouchableOpacity>
+              {!!viewing && <View style={[s.statusPill, { backgroundColor: meta(viewing.status).bg }]}><Text style={[s.statusText, { color: meta(viewing.status).color }]}>{meta(viewing.status).label}</Text></View>}
+              <TouchableOpacity onPress={closeDetail} hitSlop={8} style={{ marginLeft: 8 }}><Ionicons name="close" size={22} color={P.muted} /></TouchableOpacity>
             </View>
-            <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
-              <DetailRow label="Helper" value={`${viewing?.helper_name ?? ""}${viewing?.helper_verification === "Verified" ? "  ✓ PESO Verified" : ""}`} />
-              <DetailRow label="Employer" value={viewing?.parent_name ?? ""} />
-              <DetailRow label="Category" value={viewing?.category_name ?? "—"} />
-              <DetailRow label="Applied" value={viewing ? timeAgo(viewing.applied_at) : ""} />
-              {viewing?.is_flagged && <DetailRow label="Flagged" value={viewing.flag_reason ?? ""} danger />}
-              <Text style={s.detailLabel}>Cover letter</Text>
-              <View style={s.coverBox}><Text style={s.coverFull}>{viewing?.cover_letter?.trim() || "No cover letter was written."}</Text></View>
-            </ScrollView>
-            <TouchableOpacity style={s.detailClose} onPress={() => setViewing(null)} activeOpacity={0.85}>
-              <Text style={s.detailCloseText}>Close</Text>
-            </TouchableOpacity>
+
+            {detailLoading && !detail ? (
+              <ActivityIndicator color={P.peso} style={{ marginVertical: 60 }} />
+            ) : (
+              <ScrollView style={{ maxHeight: 540 }} contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
+                {/* Risk signals — the reason this screen exists */}
+                {Array.isArray(detail?.risk_signals) && detail.risk_signals.length > 0 && (
+                  <View style={{ marginBottom: 18 }}>
+                    <Text style={s.secTitle}>Oversight checks</Text>
+                    <View style={{ gap: 8 }}>
+                      {detail.risk_signals.map((sig: any, i: number) => {
+                        const cfg = sig.level === "high" ? { c: P.danger, bg: P.dangerSoft, ic: "alert-circle" as const }
+                          : sig.level === "warn" ? { c: P.warning, bg: P.warningSoft, ic: "warning" as const }
+                          : sig.level === "ok" ? { c: P.success, bg: P.successSoft, ic: "checkmark-circle" as const }
+                          : { c: P.info, bg: P.infoSoft, ic: "information-circle" as const };
+                        return (
+                          <View key={i} style={[s.signal, { backgroundColor: cfg.bg }]}>
+                            <Ionicons name={cfg.ic} size={16} color={cfg.c} />
+                            <Text style={[s.signalText, { color: cfg.c }]}>{sig.text}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+
+                {/* Applicant + Employer, side by side on wide */}
+                <View style={[s.pair, !wide && { flexDirection: "column" }]}>
+                  <View style={s.entity}>
+                    <Text style={s.entityLabel}>APPLICANT (HELPER)</Text>
+                    <Text style={s.entityName}>{detail?.helper?.name ?? viewing?.helper_name}</Text>
+                    <View style={s.badgeRow2}>
+                      {detail?.helper?.verification_status === "Verified"
+                        ? <View style={[s.miniBadge, { backgroundColor: P.pesoSoft }]}><Ionicons name="shield-checkmark" size={11} color={P.peso} /><Text style={[s.miniBadgeText, { color: P.peso }]}>PESO Verified</Text></View>
+                        : <View style={[s.miniBadge, { backgroundColor: P.warningSoft }]}><Text style={[s.miniBadgeText, { color: P.warning }]}>Not verified</Text></View>}
+                    </View>
+                    <Fact label="Age" value={detail?.helper?.age != null ? `${detail.helper.age} yrs` : "—"} />
+                    <Fact label="Gender" value={detail?.helper?.gender || "—"} />
+                    <Fact label="Location" value={detail?.helper?.location || "—"} />
+                    <Fact label="Experience" value={detail ? `${detail.helper.experience_years} yr${detail.helper.experience_years === 1 ? "" : "s"}` : "—"} />
+                    <Fact label="Expected salary" value={detail?.helper?.expected_salary ? `₱${Number(detail.helper.expected_salary).toLocaleString()}` : "—"} />
+                    <Fact label="Rating" value={detail?.helper?.rating_count ? `${detail.helper.rating_average.toFixed(1)}★ (${detail.helper.rating_count})` : "No reviews"} />
+                    <Fact label="Verified docs" value={detail ? String(detail.helper.verified_documents) : "—"} last />
+                  </View>
+
+                  <View style={s.entity}>
+                    <Text style={s.entityLabel}>EMPLOYER (HOUSEHOLD)</Text>
+                    <Text style={s.entityName}>{detail?.employer?.name ?? viewing?.parent_name}</Text>
+                    <View style={s.badgeRow2}>
+                      {(detail?.employer?.verification_status === "Verified" || String(detail?.employer?.account_status).toLowerCase() === "approved")
+                        ? <View style={[s.miniBadge, { backgroundColor: P.pesoSoft }]}><Ionicons name="shield-checkmark" size={11} color={P.peso} /><Text style={[s.miniBadgeText, { color: P.peso }]}>PESO Verified</Text></View>
+                        : <View style={[s.miniBadge, { backgroundColor: P.warningSoft }]}><Text style={[s.miniBadgeText, { color: P.warning }]}>Not approved</Text></View>}
+                    </View>
+                    <Fact label="Location" value={detail?.employer?.location || "—"} />
+                    <Fact label="Active posts" value={detail ? String(detail.employer.active_posts) : "—"} />
+                    <Fact label="Complaints" value={detail ? String(detail.employer.complaints_against) : "—"} danger={!!detail && detail.employer.complaints_against > 0} last />
+                  </View>
+                </View>
+
+                {/* Job terms */}
+                <Text style={[s.secTitle, { marginTop: 18 }]}>Job terms</Text>
+                <View style={s.termsGrid}>
+                  <Fact label="Salary" value={detail ? `₱${Number(detail.job.salary_monthly).toLocaleString()} / mo` : "—"} inline />
+                  <Fact label="Employment" value={detail?.job?.employment_type || "—"} inline />
+                  <Fact label="Schedule" value={detail?.job?.work_schedule || "—"} inline />
+                  <Fact label="Min. experience" value={detail ? `${detail.job.min_experience_years} yr` : "—"} inline />
+                  <Fact label="Location" value={detail?.job?.location || "—"} inline />
+                </View>
+                {Array.isArray(detail?.job?.roles) && detail.job.roles.length > 0 && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={s.chipsLabel}>Roles</Text>
+                    <View style={s.chipsWrap}>{detail.job.roles.map((r: string, i: number) => <View key={i} style={s.roleChip}><Text style={s.roleChipText}>{r}</Text></View>)}</View>
+                  </View>
+                )}
+                {Array.isArray(detail?.job?.skills) && detail.job.skills.length > 0 && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={s.chipsLabel}>Skills</Text>
+                    <View style={s.chipsWrap}>{detail.job.skills.map((r: string, i: number) => <View key={i} style={[s.roleChip, { backgroundColor: P.infoSoft }]}><Text style={[s.roleChipText, { color: P.info }]}>{r}</Text></View>)}</View>
+                  </View>
+                )}
+
+                {/* Shared documents */}
+                <Text style={[s.secTitle, { marginTop: 18 }]}>Documents shared with the employer</Text>
+                {Array.isArray(detail?.shared_documents) && detail.shared_documents.length > 0 ? (
+                  <View style={{ gap: 6 }}>
+                    {detail.shared_documents.map((d: any, i: number) => (
+                      <View key={i} style={s.docRow}>
+                        <Ionicons name="document-text-outline" size={15} color={P.peso} />
+                        <Text style={s.docName}>{d.document_type}</Text>
+                        <Text style={[s.docStatus, { color: d.status === "Verified" ? P.success : P.warning }]}>{d.status}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : <Text style={s.muted}>None shared — only the helper's profile is visible to the employer.</Text>}
+
+                {/* Cover letter */}
+                <Text style={[s.secTitle, { marginTop: 18 }]}>Cover letter</Text>
+                <View style={s.coverBox}><Text style={s.coverFull}>{(detail?.application?.cover_letter ?? viewing?.cover_letter)?.trim() || "No cover letter was written."}</Text></View>
+
+                {detail?.flag && (
+                  <View style={[s.signal, { backgroundColor: P.dangerSoft, marginTop: 16 }]}>
+                    <Ionicons name="flag" size={16} color={P.danger} />
+                    <Text style={[s.signalText, { color: P.danger }]}>Flagged by PESO: {detail.flag.reason}</Text>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+
+            {/* Footer actions */}
+            <View style={s.dFooter}>
+              <TouchableOpacity style={s.dSecondary} onPress={closeDetail} activeOpacity={0.85}><Text style={s.dSecondaryText}>Close</Text></TouchableOpacity>
+              {!!viewing && !["hired", "terminated", "termination_pending", "Withdrawn"].includes(viewing.status) && !viewing.is_flagged && (
+                <TouchableOpacity style={s.dDanger} onPress={() => { const a = viewing; closeDetail(); setFlagFor(a); setReason(""); }} activeOpacity={0.85}>
+                  <Ionicons name="flag-outline" size={15} color="#fff" /><Text style={s.dDangerText}>Flag & Unsubmit</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
       </Modal>
@@ -232,11 +353,19 @@ export default function PesoApplicationsScreen() {
   );
 }
 
-function DetailRow({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
+function Fact({ label, value, danger, last, inline }: { label: string; value: string; danger?: boolean; last?: boolean; inline?: boolean }) {
+  if (inline) {
+    return (
+      <View style={s.factInline}>
+        <Text style={s.factInlineLabel}>{label}</Text>
+        <Text style={[s.factInlineValue, danger && { color: P.danger }]}>{value}</Text>
+      </View>
+    );
+  }
   return (
-    <View style={s.detailRow}>
-      <Text style={s.detailRowLabel}>{label}</Text>
-      <Text style={[s.detailRowValue, danger && { color: P.danger }]}>{value}</Text>
+    <View style={[s.factRow, last && { borderBottomWidth: 0 }]}>
+      <Text style={s.factLabel}>{label}</Text>
+      <Text style={[s.factValue, danger && { color: P.danger }]} numberOfLines={1}>{value}</Text>
     </View>
   );
 }
@@ -291,16 +420,43 @@ const s = StyleSheet.create({
   viewBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: P.line, backgroundColor: P.surface, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 },
   viewBtnText: { color: P.peso, fontWeight: "700", fontSize: 13 },
 
-  detailHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 },
-  detailTitle: { fontSize: 18, fontWeight: "800", color: P.ink },
-  detailRow: { flexDirection: "row", justifyContent: "space-between", gap: 12, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: P.line },
-  detailRowLabel: { fontSize: 12.5, color: P.muted, fontWeight: "600" },
-  detailRowValue: { fontSize: 13, color: P.ink, fontWeight: "700", flexShrink: 1, textAlign: "right" },
-  detailLabel: { fontSize: 12.5, fontWeight: "800", color: P.muted, marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
+  // Case-review modal
+  dHead: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 20, borderBottomWidth: 1, borderBottomColor: P.line, backgroundColor: P.canvasPeso },
+  dEyebrow: { fontSize: 10.5, fontWeight: "800", color: P.subtle, letterSpacing: 0.6, marginBottom: 3 },
+  dTitle: { fontSize: 18, fontWeight: "800", color: P.ink, lineHeight: 23 },
+  secTitle: { fontSize: 12, fontWeight: "800", color: P.muted, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 },
+  signal: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  signalText: { flex: 1, fontSize: 12.5, fontWeight: "600", lineHeight: 17 },
+
+  pair: { flexDirection: "row", gap: 12 },
+  entity: { flex: 1, backgroundColor: P.surface, borderWidth: 1, borderColor: P.line, borderRadius: 14, padding: 14 },
+  entityLabel: { fontSize: 10, fontWeight: "800", color: P.subtle, letterSpacing: 0.6 },
+  entityName: { fontSize: 15.5, fontWeight: "800", color: P.ink, marginTop: 3 },
+  badgeRow2: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6, marginBottom: 6 },
+  miniBadge: { flexDirection: "row", alignItems: "center", gap: 3, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  miniBadgeText: { fontSize: 10.5, fontWeight: "800" },
+  factRow: { flexDirection: "row", justifyContent: "space-between", gap: 10, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: P.line },
+  factLabel: { fontSize: 12, color: P.muted, fontWeight: "600" },
+  factValue: { fontSize: 12.5, color: P.ink, fontWeight: "700", flexShrink: 1, textAlign: "right" },
+  factInline: { minWidth: 130, marginBottom: 6 },
+  factInlineLabel: { fontSize: 11, color: P.subtle, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 },
+  factInlineValue: { fontSize: 13.5, color: P.ink, fontWeight: "700", marginTop: 1 },
+  termsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, columnGap: 24 },
+  chipsLabel: { fontSize: 11.5, color: P.muted, fontWeight: "700", marginBottom: 6 },
+  chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  roleChip: { backgroundColor: P.pesoSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  roleChipText: { fontSize: 12, fontWeight: "700", color: P.peso },
+  docRow: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: P.surface, borderWidth: 1, borderColor: P.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
+  docName: { flex: 1, fontSize: 13, color: P.ink, fontWeight: "600" },
+  docStatus: { fontSize: 11.5, fontWeight: "800" },
+  muted: { fontSize: 13, color: P.muted },
   coverBox: { backgroundColor: P.canvasPeso, borderRadius: 12, borderWidth: 1, borderColor: P.line, padding: 14 },
   coverFull: { fontSize: 13.5, color: P.ink, lineHeight: 20 },
-  detailClose: { marginTop: 16, backgroundColor: P.ink, borderRadius: 12, paddingVertical: 13, alignItems: "center" },
-  detailCloseText: { color: "#fff", fontWeight: "800", fontSize: 14.5 },
+  dFooter: { flexDirection: "row", gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: P.line, backgroundColor: P.canvasPeso },
+  dSecondary: { flex: 1, paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: P.line, alignItems: "center", backgroundColor: P.surface },
+  dSecondaryText: { fontWeight: "800", color: P.ink, fontSize: 14 },
+  dDanger: { flex: 1.3, flexDirection: "row", gap: 7, paddingVertical: 13, borderRadius: 12, backgroundColor: P.danger, alignItems: "center", justifyContent: "center" },
+  dDangerText: { fontWeight: "800", color: "#fff", fontSize: 14 },
 
   empty: { alignItems: "center", gap: 10, paddingVertical: 50 },
   emptyText: { fontSize: 14, color: P.muted },
