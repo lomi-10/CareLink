@@ -1,66 +1,47 @@
-// app/(peso)/users/index.tsx  — User Verification queue
-// PHP: peso/get_pending_users.php, peso/approve_user.php, peso/reject_user.php, peso/get_user_documents.php
+// app/(peso)/users/index.tsx  — User Verification queue (reference redesign)
+// Built on the shared PESO design system (components/peso/ui): theme-aware
+// (light/dark), animated list, gradient header. Master-detail: list + filters on
+// the left, the full-height detail panel on the right.
+// PHP: peso/get_pending_users.php, peso/approve_user.php, peso/reject_user.php
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from "react-native";
-import API_URL from "../../../constants/api";
-import { theme } from "@/constants/theme";
+import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
 import UserDetailPanel from "@/components/peso/UserDetailPanel";
+import {
+  usePesoTheme, ScreenHeader, StatRow, StatTile, ListRow, Pill, EmptyState, IconButton, layout, font, radius, space,
+  type Tone,
+} from "@/components/peso/ui";
+import API_URL from "../../../constants/api";
 
 export interface VerificationUser {
-  user_id: number;
-  name: string;
-  email: string;
-  user_type: string;
-  contact_number?: string;
-  profile_image?: string;
-  verification_status: string;
-  created_at?: string;
+  user_id: number; name: string; email: string; user_type: string;
+  contact_number?: string; profile_image?: string; verification_status: string; created_at?: string;
 }
-
-const STATUS_CONFIG = {
-  Pending:  { bg: theme.color.warningSoft,  text: theme.color.warning, icon: "time-outline"             as const },
-  Verified: { bg: theme.color.successSoft,  text: theme.color.success, icon: "shield-checkmark-outline" as const },
-  Rejected: { bg: theme.color.dangerSoft,   text: theme.color.danger,  icon: "close-circle-outline"     as const },
-  Unverified:{ bg: theme.color.surface,     text: theme.color.muted,   icon: "ellipse-outline"          as const },
-};
 
 const FILTER_TABS = ["Pending", "Verified", "Rejected", "All"] as const;
 type FilterStatus = (typeof FILTER_TABS)[number];
+const STATUS_TONE: Record<string, Tone> = { Pending: "warn", Verified: "ok", Rejected: "bad", Unverified: "neutral" };
 
 export default function UserVerification() {
   const router = useRouter();
-  const { focus, focus_type } = useLocalSearchParams<{ focus?: string; focus_type?: string }>();
+  const { c } = usePesoTheme();
+  const { focus } = useLocalSearchParams<{ focus?: string; focus_type?: string }>();
   const { width } = useWindowDimensions();
   const twoPane = Platform.OS === "web" && width >= 1024;
 
-  const [users, setUsers]             = useState<VerificationUser[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [refreshing, setRefreshing]   = useState(false);
+  const [users, setUsers] = useState<VerificationUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("Pending");
-  const [activeRole, setActiveRole]   = useState<"helper" | "parent">("helper");
-  const [selected, setSelected]       = useState<VerificationUser | null>(null);
+  const [activeRole, setActiveRole] = useState<"helper" | "parent">("helper");
+  const [selected, setSelected] = useState<VerificationUser | null>(null);
 
   useEffect(() => { fetchUsers(); }, []);
 
-  // Deep-link from the dashboard's verification queue: open this screen (the full
-  // master-detail view) with the chosen user already selected on the right, instead
-  // of the old standalone profile page.
+  // Deep-link from the dashboard queue: open with the user pre-selected.
   useEffect(() => {
     if (!focus || users.length === 0) return;
     const target = users.find((u) => String(u.user_id) === String(focus));
@@ -69,36 +50,23 @@ export default function UserVerification() {
     setFilterStatus("All");
     if (twoPane) setSelected(target);
     else router.push({ pathname: "/(peso)/users/view_profile", params: { user_id: String(target.user_id), user_type: target.user_type } });
-  }, [focus, focus_type, users, twoPane]); // eslint-disable-line
+  }, [focus, users, twoPane]); // eslint-disable-line
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res  = await fetch(`${API_URL}/peso/get_pending_users.php`);
-      const text = await res.text();
-      const data = JSON.parse(text);
+      const res = await fetch(`${API_URL}/peso/get_pending_users.php`);
+      const data = JSON.parse(await res.text());
       if (data.success) setUsers(data.data ?? []);
-    } catch (e) {
-      console.error("fetchUsers:", e);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.error("fetchUsers:", e); } finally { setLoading(false); }
   };
+  const onRefresh = async () => { setRefreshing(true); await fetchUsers(); setRefreshing(false); };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchUsers();
-    setRefreshing(false);
-  };
-
-  // ─── derived counts ────────────────────────────────────────────────────────
-  const helperCount  = useMemo(() => users.filter((u) => u.user_type === "helper").length,  [users]);
-  const parentCount  = useMemo(() => users.filter((u) => u.user_type === "parent").length,  [users]);
+  const helperCount = useMemo(() => users.filter((u) => u.user_type === "helper").length, [users]);
+  const parentCount = useMemo(() => users.filter((u) => u.user_type === "parent").length, [users]);
   const pendingHelpers = useMemo(() => users.filter((u) => u.user_type === "helper" && u.verification_status === "Pending").length, [users]);
   const pendingParents = useMemo(() => users.filter((u) => u.user_type === "parent" && u.verification_status === "Pending").length, [users]);
-
-  const countFor = (status: string) =>
-    users.filter((u) => u.user_type === activeRole && u.verification_status === status).length;
+  const countFor = (status: string) => users.filter((u) => u.user_type === activeRole && u.verification_status === status).length;
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -106,491 +74,132 @@ export default function UserVerification() {
       if (u.user_type !== activeRole) return false;
       if (filterStatus !== "All" && u.verification_status !== filterStatus) return false;
       if (!q) return true;
-      return (
-        u.name.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        (u.contact_number ?? "").includes(q)
-      );
+      return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.contact_number ?? "").includes(q);
     });
   }, [users, activeRole, filterStatus, searchQuery]);
 
-  // ─── card ──────────────────────────────────────────────────────────────────
+  const openUser = (item: VerificationUser) => {
+    if (twoPane) setSelected(item);
+    else router.push({ pathname: "/(peso)/users/view_profile", params: { user_id: item.user_id, user_type: item.user_type } });
+  };
+
   const renderCard = ({ item, index }: { item: VerificationUser; index: number }) => {
-    const cfg = STATUS_CONFIG[item.verification_status as keyof typeof STATUS_CONFIG]
-      ?? STATUS_CONFIG.Unverified;
     const isHelper = item.user_type === "helper";
-    const ringColor = isHelper ? theme.color.helper : theme.color.parent;
-    const ringBg    = isHelper ? theme.color.helperSoft : theme.color.parentSoft;
-    const joinDate  = item.created_at
-      ? new Date(item.created_at).toLocaleDateString("en-PH", { month: "short", year: "numeric" })
-      : null;
-    const isSelected = twoPane && selected?.user_id === item.user_id;
-
+    const joinDate = item.created_at ? new Date(item.created_at).toLocaleDateString("en-PH", { month: "short", year: "numeric" }) : null;
     return (
-      <TouchableOpacity
-        style={[styles.card, index === 0 && { marginTop: 0 }, isSelected && styles.cardSelected]}
-        activeOpacity={0.78}
-        onPress={() => {
-          if (twoPane) setSelected(item);
-          else router.push({
-            pathname: "/(peso)/users/view_profile",
-            params: { user_id: item.user_id, user_type: item.user_type },
-          });
-        }}
-      >
-        {/* Avatar */}
-        <View style={[styles.avatarRing, { backgroundColor: ringBg, borderColor: ringColor + "55" }]}>
-          {item.profile_image ? (
-            <Image source={{ uri: item.profile_image }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatarFallback, { backgroundColor: ringBg }]}>
-              <Ionicons name={isHelper ? "person" : "people"} size={30} color={ringColor} />
-            </View>
-          )}
+      <ListRow selected={twoPane && selected?.user_id === item.user_id} onPress={() => openUser(item)} delay={Math.min(index * 45, 320)}>
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: isHelper ? c.accentSoft : c.infoSoft, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+          {item.profile_image ? <Image source={{ uri: item.profile_image }} style={{ width: 44, height: 44 }} contentFit="cover" />
+            : <Ionicons name={isHelper ? "person" : "people"} size={22} color={isHelper ? c.accent : c.info} />}
         </View>
-
-        {/* Info */}
-        <View style={styles.cardBody}>
-          <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.cardEmail} numberOfLines={1}>{item.email}</Text>
-
-          <View style={styles.cardMeta}>
-            {item.contact_number ? (
-              <View style={styles.metaChip}>
-                <Ionicons name="call-outline" size={12} color={theme.color.muted} />
-                <Text style={styles.metaText}>{item.contact_number}</Text>
-              </View>
-            ) : null}
-            {joinDate && (
-              <View style={styles.metaChip}>
-                <Ionicons name="calendar-outline" size={12} color={theme.color.muted} />
-                <Text style={styles.metaText}>Joined {joinDate}</Text>
-              </View>
-            )}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontFamily: font.semibold, fontSize: 14.5, color: c.ink }} numberOfLines={1}>{item.name}</Text>
+          <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: c.muted }} numberOfLines={1}>{item.email}</Text>
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 5 }}>
+            {!!item.contact_number && <Meta icon="call-outline" text={item.contact_number} />}
+            {!!joinDate && <Meta icon="calendar-outline" text={`Joined ${joinDate}`} />}
           </View>
         </View>
-
-        {/* Status + arrow */}
-        <View style={styles.cardRight}>
-          <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
-            <Ionicons name={cfg.icon} size={13} color={cfg.text} />
-            <Text style={[styles.statusPillText, { color: cfg.text }]}>
-              {item.verification_status}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={theme.color.subtle} style={{ marginTop: 8 }} />
-        </View>
-      </TouchableOpacity>
+        <Pill label={item.verification_status} tone={STATUS_TONE[item.verification_status] ?? "neutral"} />
+        <Ionicons name="chevron-forward" size={16} color={c.subtle} />
+      </ListRow>
     );
   };
 
-  return (
-    <View style={styles.container}>
-     <View style={twoPane ? styles.splitRow : styles.flex1}>
-      <View style={twoPane ? styles.leftPane : styles.flex1}>
+  const Meta = ({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) => (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      <Ionicons name={icon} size={12} color={c.subtle} />
+      <Text style={{ fontFamily: font.regular, fontSize: 11.5, color: c.subtle }}>{text}</Text>
+    </View>
+  );
 
-      {/* ── PAGE HEADER ── */}
-      <View style={styles.pageHeader}>
-        <View>
-          <Text style={styles.pageTitle}>User Verification</Text>
-          <Text style={styles.pageSubtitle}>
-            {loading ? "Loading…" : `${users.length} total account${users.length !== 1 ? "s" : ""} in queue`}
-          </Text>
+  const leftColumn = (
+    <View style={twoPane ? layout.leftPane : layout.flex1}>
+      <ScreenHeader eyebrow="Verification & Management" title="User Verification"
+        subtitle={loading ? "Loading…" : `${users.length} total account${users.length !== 1 ? "s" : ""} · reviewing ${activeRole}s`}
+        right={<IconButton icon="refresh" tone="accent" onPress={fetchUsers} />} />
+
+      <View style={{ paddingHorizontal: space.xl, paddingTop: space.md }}>
+        {!loading && (
+          <StatRow>
+            <StatTile label="Pending" value={pendingHelpers + pendingParents} tone="warn" sub="awaiting review" delay={0} />
+            <StatTile label="Helpers" value={helperCount} tone="accent" sub="total" delay={60} />
+            <StatTile label="Parents" value={parentCount} tone="info" sub="total" delay={120} />
+          </StatRow>
+        )}
+
+        {/* Role segmented */}
+        <View style={{ flexDirection: "row", gap: 8, marginTop: space.lg }}>
+          {(["helper", "parent"] as const).map((role) => {
+            const active = activeRole === role;
+            const pending = role === "helper" ? pendingHelpers : pendingParents;
+            return (
+              <Pressable key={role} onPress={() => setActiveRole(role)}
+                style={{ flex: 1, maxWidth: 220, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 11, borderRadius: radius.md,
+                  backgroundColor: active ? c.accentSoft : c.surface, borderWidth: 1.4, borderColor: active ? c.accent : c.line }}>
+                <Ionicons name={role === "helper" ? "briefcase-outline" : "people-outline"} size={17} color={active ? c.accent : c.muted} />
+                <Text style={{ fontFamily: font.semibold, fontSize: 13.5, color: active ? c.accentInk : c.muted }}>{role === "helper" ? "Helpers" : "Parents"}</Text>
+                {pending > 0 && <View style={{ minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 10, backgroundColor: active ? c.accent : c.sunken, alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ color: active ? "#fff" : c.muted, fontSize: 11, fontFamily: font.semibold }}>{pending}</Text></View>}
+              </Pressable>
+            );
+          })}
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={fetchUsers} activeOpacity={0.8}>
-          <Ionicons name="refresh" size={16} color={theme.color.peso} />
-          <Text style={styles.refreshText}>Refresh</Text>
-        </TouchableOpacity>
+
+        {/* Search */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, borderRadius: radius.md, paddingHorizontal: 13, paddingVertical: 10, marginTop: space.md }}>
+          <Ionicons name="search" size={16} color={c.subtle} />
+          <TextInput style={{ flex: 1, fontFamily: font.regular, fontSize: 14, color: c.ink, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}) }}
+            placeholder={`Search ${activeRole}s by name or email…`} placeholderTextColor={c.subtle} value={searchQuery} onChangeText={setSearchQuery} />
+          {!!searchQuery && <Pressable onPress={() => setSearchQuery("")} hitSlop={10}><Ionicons name="close-circle" size={16} color={c.subtle} /></Pressable>}
+        </View>
+
+        {/* Filter chips */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: space.md }} contentContainerStyle={{ gap: 8 }}>
+          {FILTER_TABS.map((status) => {
+            const active = filterStatus === status;
+            const count = status === "All" ? undefined : countFor(status);
+            return (
+              <Pressable key={status} onPress={() => setFilterStatus(status)}
+                style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: active ? c.accent : c.surface, borderWidth: 1, borderColor: active ? c.accent : c.line }}>
+                <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: active ? "#fff" : c.muted }}>{status === "All" ? "All statuses" : status}</Text>
+                {count !== undefined && <View style={{ minWidth: 18, paddingHorizontal: 5, borderRadius: 9, backgroundColor: active ? "rgba(255,255,255,0.25)" : c.sunken, alignItems: "center" }}>
+                  <Text style={{ fontSize: 11, fontFamily: font.semibold, color: active ? "#fff" : c.muted }}>{count}</Text></View>}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      {/* ── SUMMARY STATS ── */}
-      {!loading && (
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Ionicons name="time-outline" size={20} color={theme.color.warning} />
-            <Text style={styles.statNum}>{pendingHelpers + pendingParents}</Text>
-            <Text style={styles.statLabel}>Pending</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="briefcase-outline" size={20} color={theme.color.helper} />
-            <Text style={styles.statNum}>{helperCount}</Text>
-            <Text style={styles.statLabel}>Helpers</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="people-outline" size={20} color={theme.color.parent} />
-            <Text style={styles.statNum}>{parentCount}</Text>
-            <Text style={styles.statLabel}>Parents</Text>
-          </View>
-        </View>
-      )}
-
-      {/* ── ROLE TABS ── */}
-      <View style={styles.roleTabs}>
-        {(["helper", "parent"] as const).map((role) => {
-          const active   = activeRole === role;
-          const accent   = role === "helper" ? theme.color.helper : theme.color.parent;
-          const accentBg = role === "helper" ? theme.color.helperSoft : theme.color.parentSoft;
-          const pending  = role === "helper" ? pendingHelpers : pendingParents;
-          const icon     = role === "helper" ? "briefcase-outline" : "people-outline" as const;
-
-          return (
-            <TouchableOpacity
-              key={role}
-              style={[
-                styles.roleTab,
-                active && { backgroundColor: accent, borderColor: accent },
-              ]}
-              onPress={() => setActiveRole(role)}
-              activeOpacity={0.8}
-            >
-              <Ionicons name={icon} size={18} color={active ? "#fff" : accent} />
-              <Text style={[styles.roleTabLabel, active ? { color: "#fff" } : { color: accent }]}>
-                {role === "helper" ? "Helpers" : "Parents"}
-              </Text>
-              {pending > 0 && (
-                <View
-                  style={[
-                    styles.roleTabBadge,
-                    { backgroundColor: active ? "rgba(255,255,255,0.3)" : accentBg },
-                  ]}
-                >
-                  <Text style={[styles.roleTabBadgeText, { color: active ? "#fff" : accent }]}>
-                    {pending}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* ── SEARCH ── */}
-      <View style={styles.searchWrap}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={16} color={theme.color.muted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={`Search ${activeRole}s by name or email…`}
-            placeholderTextColor={theme.color.subtle}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {!!searchQuery && (
-            <TouchableOpacity onPress={() => setSearchQuery("")} hitSlop={10}>
-              <Ionicons name="close-circle" size={16} color={theme.color.subtle} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* ── STATUS FILTER CHIPS ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterChipsScroll}
-        contentContainerStyle={styles.filterChipsRow}
-      >
-        {FILTER_TABS.map((status) => {
-          const active = filterStatus === status;
-          const cfg    = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
-          const count  = status === "All" ? undefined : countFor(status);
-          return (
-            <TouchableOpacity
-              key={status}
-              style={[styles.filterChip, active && styles.filterChipActive]}
-              onPress={() => setFilterStatus(status)}
-              activeOpacity={0.75}
-            >
-              {cfg && !active && (
-                <Ionicons name={cfg.icon} size={13} color={active ? "#fff" : cfg.text} />
-              )}
-              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-                {status === "All" ? "All statuses" : status}
-              </Text>
-              {count !== undefined && (
-                <View style={[styles.chipCount, active && styles.chipCountActive]}>
-                  <Text style={[styles.chipCountText, active && styles.chipCountTextActive]}>
-                    {count}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* ── LIST ── */}
+      {/* List */}
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.color.peso} />
-          <Text style={styles.centerText}>Loading accounts…</Text>
-        </View>
+        <ActivityIndicator size="large" color={c.accent} style={{ marginTop: 50 }} />
       ) : filtered.length === 0 ? (
-        <View style={styles.center}>
-          <Ionicons
-            name={activeRole === "helper" ? "briefcase-outline" : "people-outline"}
-            size={64}
-            color={theme.color.subtle}
-          />
-          <Text style={styles.emptyTitle}>
-            No {activeRole}s {filterStatus !== "All" ? `with "${filterStatus}" status` : "found"}
-          </Text>
-          <Text style={styles.emptyBody}>
-            {searchQuery
-              ? "Try a different search term or clear filters."
-              : filterStatus === "Pending"
-              ? `No ${activeRole}s are waiting for review right now.`
-              : `No ${filterStatus.toLowerCase()} ${activeRole} accounts match.`}
-          </Text>
-        </View>
+        <EmptyState icon={activeRole === "helper" ? "briefcase-outline" : "people-outline"} title={`No ${activeRole}s ${filterStatus !== "All" ? `with "${filterStatus}" status` : "found"}`}
+          sub={searchQuery ? "Try a different search or clear filters." : `No ${activeRole}s are waiting for review right now.`} />
       ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => String(item.user_id)}
-          renderItem={renderCard}
-          contentContainerStyle={styles.listContent}
+        <FlatList style={layout.flex1} data={filtered} keyExtractor={(i) => String(i.user_id)} renderItem={renderCard}
+          contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.md, paddingBottom: 40, gap: 10 }}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.color.peso} />}
-          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        />
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.accent} />} />
       )}
-      </View>
+    </View>
+  );
 
-      {twoPane && (
-        <View style={styles.rightPane}>
-          {selected ? (
-            <UserDetailPanel
-              key={selected.user_id}
-              userId={selected.user_id}
-              userType={selected.user_type}
-              onChanged={fetchUsers}
-              onClose={() => setSelected(null)}
-            />
-          ) : (
-            <View style={styles.detailEmpty}>
-              <View style={styles.detailEmptyIcon}>
-                <Ionicons name="person-circle-outline" size={56} color={theme.color.subtle} />
-              </View>
-              <Text style={styles.detailEmptyTitle}>Select an account to review</Text>
-              <Text style={styles.detailEmptyBody}>
-                Pick a user from the list to view their profile, documents, and job posts.
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-     </View>
+  return (
+    <View style={layout.page(c.canvas)}>
+      <View style={twoPane ? layout.splitRow : layout.flex1}>
+        {leftColumn}
+        {twoPane && (
+          <View style={layout.rightPane(c.line, c.surface)}>
+            {selected ? (
+              <UserDetailPanel key={selected.user_id} userId={selected.user_id} userType={selected.user_type} onChanged={fetchUsers} onClose={() => setSelected(null)} />
+            ) : (
+              <EmptyState icon="person-circle-outline" title="Select an account to review" sub="Pick a user from the list to view their profile, documents, and job posts." />
+            )}
+          </View>
+        )}
+      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "transparent" },
-  flex1: { flex: 1, minHeight: 0 },
-  splitRow: { flex: 1, flexDirection: "row", minHeight: 0 },
-  leftPane: { flex: 1, minWidth: 0, minHeight: 0 },
-  rightPane: {
-    width: 460,
-    borderLeftWidth: 1,
-    borderLeftColor: theme.color.line,
-    backgroundColor: theme.color.surfaceElevated,
-  },
-  detailEmpty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40, gap: 10 },
-  detailEmptyIcon: {
-    width: 96, height: 96, borderRadius: 48, alignItems: "center", justifyContent: "center",
-    backgroundColor: theme.color.surface, borderWidth: 1, borderColor: theme.color.line,
-  },
-  detailEmptyTitle: { fontSize: 17, fontWeight: "800", color: theme.color.ink, marginTop: 6 },
-  detailEmptyBody: { fontSize: 13, color: theme.color.muted, textAlign: "center", lineHeight: 19, maxWidth: 280 },
-  cardSelected: { borderColor: theme.color.peso, borderWidth: 1.5, ...theme.shadow.card },
-
-  pageHeader: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 16,
-  },
-  pageTitle: {
-    fontSize: 26,
-    fontWeight: "900",
-    color: theme.color.ink,
-    letterSpacing: -0.4,
-  },
-  pageSubtitle: {
-    fontSize: 13,
-    color: theme.color.muted,
-    fontWeight: "600",
-    marginTop: 3,
-  },
-  refreshBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    backgroundColor: theme.color.surfaceElevated,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    ...theme.shadow.nav,
-  },
-  refreshText: { fontSize: 13, fontWeight: "700", color: theme.color.ink },
-
-  statsRow: {
-    flexDirection: "row",
-    gap: 10,
-    paddingHorizontal: 24,
-    marginBottom: 16,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: theme.radius.lg,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    ...theme.shadow.nav,
-  },
-  statNum: { fontSize: 22, fontWeight: "900", color: theme.color.ink },
-  statLabel: { fontSize: 12, fontWeight: "700", color: theme.color.muted },
-
-  roleTabs: {
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 24,
-    marginBottom: 14,
-  },
-  roleTab: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 13,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.color.surfaceElevated,
-    borderWidth: 1.5,
-    borderColor: theme.color.line,
-    ...theme.shadow.nav,
-  },
-  roleTabLabel: { fontSize: 15, fontWeight: "800" },
-  roleTabBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    minWidth: 24,
-    alignItems: "center",
-  },
-  roleTabBadgeText: { fontSize: 12, fontWeight: "900" },
-
-  searchWrap: { paddingHorizontal: 24, marginBottom: 12 },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-  },
-  searchInput: { flex: 1, fontSize: 14, color: theme.color.ink, fontWeight: "500" },
-
-  filterChipsScroll: { flexGrow: 0, flexShrink: 0 },
-  filterChipsRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 24, paddingBottom: 14, gap: 8 },
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: 38,
-    gap: 6,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    backgroundColor: theme.color.surfaceElevated,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-  },
-  filterChipActive: { backgroundColor: theme.color.peso, borderColor: theme.color.peso },
-  filterChipText: { fontSize: 13, fontWeight: "700", color: theme.color.muted },
-  filterChipTextActive: { color: "#fff" },
-  chipCount: {
-    backgroundColor: theme.color.surface,
-    borderRadius: 999,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    minWidth: 22,
-    alignItems: "center",
-  },
-  chipCountActive: { backgroundColor: "rgba(255,255,255,0.25)" },
-  chipCountText: { fontSize: 11, fontWeight: "800", color: theme.color.muted },
-  chipCountTextActive: { color: "#fff" },
-
-  listContent: { paddingHorizontal: 24, paddingBottom: 40, paddingTop: 4 },
-
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: theme.radius.lg,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-    ...theme.shadow.card,
-  },
-
-  avatarRing: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-    overflow: "hidden",
-  },
-  avatar: { width: 56, height: 56, borderRadius: 28 },
-  avatarFallback: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  cardBody: { flex: 1, gap: 3 },
-  cardName: { fontSize: 15, fontWeight: "800", color: theme.color.ink },
-  cardEmail: { fontSize: 13, color: theme.color.muted, fontWeight: "500" },
-  cardMeta: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
-  metaChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: theme.color.surface,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: theme.color.line,
-  },
-  metaText: { fontSize: 11, color: theme.color.muted, fontWeight: "600" },
-
-  cardRight: { alignItems: "flex-end", gap: 4, marginLeft: 10 },
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-  },
-  statusPillText: { fontSize: 12, fontWeight: "800" },
-
-  center: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80, paddingHorizontal: 24 },
-  centerText: { marginTop: 12, color: theme.color.muted, fontSize: 14 },
-  emptyTitle: { marginTop: 16, fontSize: 17, fontWeight: "800", color: theme.color.ink, textAlign: "center" },
-  emptyBody: { marginTop: 8, fontSize: 13, color: theme.color.muted, textAlign: "center", lineHeight: 20 },
-});
