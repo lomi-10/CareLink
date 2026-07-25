@@ -1,6 +1,19 @@
 # CareLink
 
-A platform connecting domestic helpers and employers.
+**Hiring a household helper in the Philippines — done right, and done safe.**
+
+CareLink is a mobile + web platform that connects Filipino families with domestic
+helpers (*kasambahay*) through a trusted, government-verified process. Before anyone
+can hire or be hired, both sides are vetted by the local **PESO** (Public Employment
+Service Office) — so every match comes with verified IDs, signed digital contracts,
+and a real paper trail instead of guesswork.
+
+The whole employment journey lives in one app: browse and apply, interview, sign
+contracts, track attendance and leave, and resolve disputes — all under PESO
+oversight and compliant with the Kasambahay Law (RA 10361).
+
+**Industry:** HR Tech / Recruitment & Staffing — a **GovTech-enabled employment
+marketplace** for the domestic-work (care economy) sector.
 
 ## Structure
 
