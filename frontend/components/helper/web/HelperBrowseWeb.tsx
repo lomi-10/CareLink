@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, Pressable, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
@@ -63,6 +63,15 @@ export function HelperBrowseWeb({ userName, avatar, verified, onLogout }: { user
 
   const openJob = (job: JobPost) => setPanel({ mode: 'job', job });
   const openFamily = (parentId: string, parentName: string) => setPanel({ mode: 'family', parentId, parentName, tab: 'overview' });
+
+  // Deep-link from an accepted job invitation: ?open_job=<id> opens that job's panel.
+  const { open_job } = useLocalSearchParams<{ open_job?: string }>();
+  const [handledOpenJob, setHandledOpenJob] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open_job || jobs.length === 0 || handledOpenJob === open_job) return;
+    const job = jobs.find((j) => String(j.job_post_id) === String(open_job));
+    if (job) { setPanel({ mode: 'job', job }); setHandledOpenJob(String(open_job)); }
+  }, [open_job, jobs, handledOpenJob]);
 
   // Parent profile fetch (shared by job + family panels)
   const currentParentId = panel ? (panel.mode === 'family' ? panel.parentId : panel.job.parent_id) : null;
