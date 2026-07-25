@@ -5,3 +5,4 @@ export * from './primitives';
 export * from './ScreenHeader';
 export * from './PesoBackground';
 export { usePesoTheme, space, radius, font, shadow } from '@/contexts/PesoThemeContext';
+export type { PesoColors } from '@/contexts/PesoThemeContext';

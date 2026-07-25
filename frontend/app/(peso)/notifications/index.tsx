@@ -1,62 +1,30 @@
-// app/(PESO)/notifications.tsx
+// app/(peso)/notifications/index.tsx — PESO notifications
+// Shared PESO design system: theme-aware (light/dark), animated, branded backdrop.
+// Unread items get the accent rail + soft tint (via ListRow selected) and a dot.
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
-  RefreshControl,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, FlatList, RefreshControl, ActivityIndicator, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "@/constants/theme";
 import { useNotifications } from "@/hooks/shared";
 import type { Notification } from "@/hooks/shared";
 import { getPesoNotificationRoute } from "@/utils/notification-routes";
+import {
+  usePesoTheme, ScreenHeader, ListRow, EmptyState, layout, font, space,
+} from "@/components/peso/ui";
+import { type PesoColors } from "@/contexts/PesoThemeContext";
 
-import { styles as s } from "./notifications.styles";
-
-const TYPE_CONFIG: Record<
-  string,
-  { icon: React.ComponentProps<typeof Ionicons>["name"]; color: string; bg: string }
-> = {
-  peso_queue_user: {
-    icon: "people-outline",
-    color: theme.color.peso,
-    bg: theme.color.pesoSoft,
-  },
-  peso_queue_job: {
-    icon: "briefcase-outline",
-    color: theme.color.peso,
-    bg: theme.color.pesoSoft,
-  },
-  contract_signed: {
-    icon: "document-text-outline",
-    color: theme.color.peso,
-    bg: theme.color.pesoSoft,
-  },
-  contract_terminated: {
-    icon: "hand-left-outline",
-    color: theme.color.danger,
-    bg: theme.color.danger + "18",
-  },
-  account_verified: {
-    icon: "shield-checkmark",
-    color: theme.color.success,
-    bg: theme.color.successSoft,
-  },
-  account_rejected: {
-    icon: "close-circle-outline",
-    color: theme.color.danger,
-    bg: theme.color.dangerSoft,
-  },
-  new_message: {
-    icon: "chatbubble-outline",
-    color: theme.color.info,
-    bg: theme.color.infoSoft,
-  },
-};
+function typeConfig(type: string, c: PesoColors): { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string } {
+  switch (type) {
+    case "peso_queue_user": return { icon: "people-outline", color: c.accent, bg: c.accentSoft };
+    case "peso_queue_job": return { icon: "briefcase-outline", color: c.accent, bg: c.accentSoft };
+    case "contract_signed": return { icon: "document-text-outline", color: c.accent, bg: c.accentSoft };
+    case "contract_terminated": return { icon: "hand-left-outline", color: c.bad, bg: c.badSoft };
+    case "account_verified": return { icon: "shield-checkmark", color: c.ok, bg: c.okSoft };
+    case "account_rejected": return { icon: "close-circle-outline", color: c.bad, bg: c.badSoft };
+    case "new_message": return { icon: "chatbubble-outline", color: c.info, bg: c.infoSoft };
+    default: return { icon: "notifications-outline", color: c.muted, bg: c.sunken };
+  }
+}
 
 function timeAgo(dateStr: string) {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -67,116 +35,60 @@ function timeAgo(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
 }
 
-function NotifItem({
-  item,
-  accent,
-  onPress,
-}: {
-  item: Notification;
-  accent: string;
-  onPress: () => void;
-}) {
-  const cfg = TYPE_CONFIG[item.type] ?? {
-    icon: "notifications-outline" as const,
-    color: theme.color.muted,
-    bg: theme.color.surface,
-  };
-  return (
-    <TouchableOpacity
-      style={[s.item, !item.is_read && s.itemUnread]}
-      onPress={onPress}
-      activeOpacity={0.85}
-    >
-      <View style={[s.iconWrap, { backgroundColor: cfg.bg }]}>
-        <Ionicons name={cfg.icon} size={20} color={cfg.color} />
-      </View>
-      <View style={s.itemBody}>
-        <View style={s.itemTopRow}>
-          <Text style={[s.itemTitle, !item.is_read && s.itemTitleUnread]} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text style={s.itemTime}>{timeAgo(item.created_at)}</Text>
-        </View>
-        <Text style={s.itemMsg} numberOfLines={3}>
-          {item.message}
-        </Text>
-      </View>
-      {!item.is_read && <View style={[s.unreadDot, { backgroundColor: accent }]} />}
-    </TouchableOpacity>
-  );
-}
-
-function NotifContent({ accent }: { accent: string }) {
+export default function PesoNotificationsScreen() {
+  const { c } = usePesoTheme();
   const router = useRouter();
-  const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } =
-    useNotifications("peso");
+  const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } = useNotifications("peso");
 
   const onItemPress = (item: Notification) => {
     if (!item.is_read) markOneRead(item.notification_id);
     const route = getPesoNotificationRoute(item);
-    if (route) {
-      router.push(route as never);
-    }
+    if (route) router.push(route as never);
   };
 
   return (
-    <View style={s.panel}>
-      <View style={s.panelHeader}>
-        <View style={s.panelHeaderLeft}>
-          <Text style={s.panelTitle}>Notifications</Text>
-          {unreadCount > 0 && (
-            <View style={[s.headerBadge, { backgroundColor: accent }]}>
-              <Text style={s.headerBadgeText}>{unreadCount}</Text>
-            </View>
-          )}
-        </View>
-        {unreadCount > 0 ? (
-          <TouchableOpacity onPress={markAllRead} hitSlop={8}>
-            <Text style={[s.markAllText, { color: accent }]}>Mark all read</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
+    <View style={layout.page(c.canvas)}>
+      <ScreenHeader eyebrow="PESO Portal" title="Notifications"
+        subtitle={unreadCount > 0 ? `${unreadCount} unread · new accounts and job posts awaiting review` : "You're all caught up."}
+        right={unreadCount > 0 ? (
+          <Pressable onPress={markAllRead}
+            style={({ hovered }: any) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 9, paddingHorizontal: 13, borderRadius: 10, transitionDuration: "140ms", backgroundColor: hovered ? c.accentSoft : c.surface, borderWidth: 1, borderColor: hovered ? c.accent : c.line } as any]}>
+            <Ionicons name="checkmark-done" size={16} color={c.accent} />
+            <Text style={{ fontFamily: font.semibold, fontSize: 13, color: c.accent }}>Mark all read</Text>
+          </Pressable>
+        ) : undefined} />
 
       {loading ? (
-        <View style={s.center}>
-          <ActivityIndicator size="large" color={accent} />
-        </View>
+        <ActivityIndicator size="large" color={c.accent} style={{ marginTop: 50 }} />
       ) : notifications.length === 0 ? (
-        <View style={s.empty}>
-          <View style={[s.emptyCircle, { backgroundColor: theme.color.pesoSoft }]}>
-            <Ionicons name="notifications-off-outline" size={36} color={accent} />
-          </View>
-          <Text style={s.emptyTitle}>All caught up!</Text>
-          <Text style={s.emptyBody}>
-            New accounts and job posts waiting for PESO verification will appear here.
-          </Text>
-        </View>
+        <EmptyState icon="notifications-off-outline" title="All caught up!" sub="New accounts and job posts waiting for PESO verification will appear here." />
       ) : (
         <FlatList
           data={notifications}
           keyExtractor={(item) => String(item.notification_id)}
-          renderItem={({ item }) => (
-            <NotifItem item={item} accent={accent} onPress={() => onItemPress(item)} />
-          )}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={accent} />}
-          ItemSeparatorComponent={() => <View style={s.sep} />}
-          contentContainerStyle={s.listContent}
+          style={layout.flex1}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={c.accent} />}
+          contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.lg, paddingBottom: 40, gap: 10 }}
+          renderItem={({ item, index }) => {
+            const cfg = typeConfig(item.type, c);
+            return (
+              <ListRow selected={!item.is_read} onPress={() => onItemPress(item)} delay={Math.min(index * 40, 320)}>
+                <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: cfg.bg, alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name={cfg.icon} size={20} color={cfg.color} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Text style={{ flex: 1, fontFamily: item.is_read ? font.semibold : font.display, fontSize: 14, color: c.ink }} numberOfLines={1}>{item.title}</Text>
+                    <Text style={{ fontFamily: font.regular, fontSize: 11, color: c.subtle }}>{timeAgo(item.created_at)}</Text>
+                  </View>
+                  <Text style={{ fontFamily: font.regular, fontSize: 12.5, color: c.muted, marginTop: 3, lineHeight: 18 }} numberOfLines={3}>{item.message}</Text>
+                </View>
+                {!item.is_read && <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: c.accent }} />}
+              </ListRow>
+            );
+          }}
         />
       )}
-    </View>
-  );
-}
-
-export default function PesoNotificationsScreen() {
-  const accent = theme.color.peso;
-
-  return (
-    <View style={s.root}>
-      <View style={s.pageHeader}>
-        <Text style={s.pageTitle}>Notifications</Text>
-        <Text style={s.pageSubtitle}>PESO Portal</Text>
-      </View>
-      <NotifContent accent={accent} />
     </View>
   );
 }
