@@ -5,7 +5,7 @@
 // comes for free.
 
 import React, { useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, Text, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { MotiView } from 'moti';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,7 @@ import { usePesoTheme, shadow, radius, space, font } from '@/contexts/PesoThemeC
 const tap = () => { if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); };
 
 // ── AnimateIn — fade + rise on mount, for staggering any block in ────────────
-export function AnimateIn({ children, delay = 0, from = 'up', style }: { children: React.ReactNode; delay?: number; from?: 'up' | 'left'; style?: ViewStyle }) {
+export function AnimateIn({ children, delay = 0, from = 'up', style }: { children: React.ReactNode; delay?: number; from?: 'up' | 'left'; style?: StyleProp<ViewStyle> }) {
   const off = from === 'left' ? { translateX: -10 } : { translateY: 10 };
   return (
     <MotiView from={{ opacity: 0, ...off }} animate={{ opacity: 1, translateX: 0, translateY: 0 }} transition={{ type: 'timing', duration: 320, delay }} style={style}>
