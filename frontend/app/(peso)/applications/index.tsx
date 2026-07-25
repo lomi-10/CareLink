@@ -4,21 +4,23 @@
 // exception-based safeguard: PESO can see applications and, if one looks abusive or
 // fraudulent, flag + unsubmit it (retracts it and notifies both parties).
 //
-// Desktop-first master/detail: a list on the left, the full case file on the right
-// (no modal on desktop). On mobile the case file opens in a modal.
+// Desktop-first master/detail on the shared PESO design system (theme-aware
+// light/dark, animated, branded backdrop): a list on the left, the full case file
+// on the right (no modal on desktop). On mobile the case file opens in a modal.
 // PHP: peso/list_applications.php, peso/flag_application.php, peso/application_detail.php
 
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions,
+  ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions,
 } from "react-native";
-import { theme } from "@/constants/theme";
 import { useNotice } from "@/hooks/shared/useNotice";
 import API_URL from "@/constants/api";
-
-const P = theme.color;
+import {
+  usePesoTheme, ScreenHeader, StatRow, StatTile, ListRow, EmptyState, IconButton, AnimateIn, layout, font, radius, space,
+} from "@/components/peso/ui";
+import { type PesoColors } from "@/contexts/PesoThemeContext";
 
 type AppRow = {
   application_id: number; status: string; applied_at: string; cover_letter?: string | null;
@@ -29,26 +31,30 @@ type AppRow = {
 };
 type Filter = "all" | "active" | "flagged";
 
-const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
-  Pending: { label: "Pending", color: P.warning, bg: P.warningSoft },
-  Reviewed: { label: "Reviewed", color: P.info, bg: P.infoSoft },
-  Shortlisted: { label: "Shortlisted", color: "#7C5CD6", bg: "#EEE9FB" },
-  "Interview Scheduled": { label: "Interview", color: P.peso, bg: P.pesoSoft },
-  Accepted: { label: "Accepted", color: P.success, bg: P.successSoft },
-  contract_pending: { label: "Contract", color: P.warning, bg: P.warningSoft },
-  hired: { label: "Hired", color: P.success, bg: P.successSoft },
-  Withdrawn: { label: "Withdrawn", color: P.muted, bg: P.line },
-  Rejected: { label: "Rejected", color: P.danger, bg: P.dangerSoft },
-  auto_rejected: { label: "Closed", color: P.muted, bg: P.line },
-};
-const meta = (s: string) => STATUS_META[s] ?? { label: s, color: P.muted, bg: P.line };
+function statusMeta(status: string, c: PesoColors): { label: string; color: string; bg: string } {
+  switch (status) {
+    case "Pending": return { label: "Pending", color: c.warn, bg: c.warnSoft };
+    case "Reviewed": return { label: "Reviewed", color: c.info, bg: c.infoSoft };
+    case "Shortlisted": return { label: "Shortlisted", color: "#8B6FE0", bg: c.accentSoft };
+    case "Interview Scheduled": return { label: "Interview", color: c.accent, bg: c.accentSoft };
+    case "Accepted": return { label: "Accepted", color: c.ok, bg: c.okSoft };
+    case "contract_pending": return { label: "Contract", color: c.warn, bg: c.warnSoft };
+    case "hired": return { label: "Hired", color: c.ok, bg: c.okSoft };
+    case "Withdrawn": return { label: "Withdrawn", color: c.muted, bg: c.sunken };
+    case "Rejected": return { label: "Rejected", color: c.bad, bg: c.badSoft };
+    case "auto_rejected": return { label: "Closed", color: c.muted, bg: c.sunken };
+    default: return { label: status, color: c.muted, bg: c.sunken };
+  }
+}
 const CAN_FLAG = (status: string, flagged: boolean) =>
   !["hired", "terminated", "termination_pending", "Withdrawn"].includes(status) && !flagged;
 
 export default function PesoApplicationsScreen() {
+  const { c } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const { notify, noticeHost } = useNotice();
   const { width } = useWindowDimensions();
-  const wide = width >= 1000;
+  const wide = Platform.OS === "web" && width >= 1024;
 
   const [staffId, setStaffId] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -120,31 +126,34 @@ export default function PesoApplicationsScreen() {
     }
   };
 
-  // ── List card (selector) ──
-  const ListCard = ({ a }: { a: AppRow }) => {
-    const m = meta(a.status);
+  // ── List row (selector) ──
+  const ListCard = ({ a, index }: { a: AppRow; index: number }) => {
+    const m = statusMeta(a.status, c);
     const active = viewing?.application_id === a.application_id;
     return (
-      <TouchableOpacity style={[s.listCard, active && s.listCardActive, a.is_flagged && !active && s.listCardFlagged]} onPress={() => openDetail(a)} activeOpacity={0.85}>
-        <View style={s.listCardTop}>
-          <Text style={s.listTitle} numberOfLines={1}>{a.job_title}</Text>
-          <View style={[s.statusDot, { backgroundColor: m.color }]} />
+      <ListRow selected={active} tone={a.is_flagged && !active ? "bad" : undefined} onPress={() => openDetail(a)} delay={Math.min(index * 45, 320)}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={s.listCardTop}>
+            <Text style={s.listTitle} numberOfLines={1}>{a.job_title}</Text>
+            <View style={[s.statusDot, { backgroundColor: m.color }]} />
+          </View>
+          <Text style={s.listParties} numberOfLines={1}>
+            <Text style={s.strong}>{a.helper_name}</Text>{a.helper_verification === "Verified" ? " ✓" : ""} → {a.parent_name}
+          </Text>
+          <View style={s.listFoot}>
+            <View style={[s.statusPill, { backgroundColor: m.bg }]}><Text style={[s.statusText, { color: m.color }]}>{m.label}</Text></View>
+            {a.is_flagged && <View style={s.flagChip}><Ionicons name="flag" size={10} color={c.bad} /><Text style={s.flagChipText}>Flagged</Text></View>}
+            <Text style={s.listApplied}>{timeAgo(a.applied_at)}</Text>
+          </View>
         </View>
-        <Text style={s.listParties} numberOfLines={1}>
-          <Text style={s.strong}>{a.helper_name}</Text>{a.helper_verification === "Verified" ? " ✓" : ""} → {a.parent_name}
-        </Text>
-        <View style={s.listFoot}>
-          <View style={[s.statusPill, { backgroundColor: m.bg }]}><Text style={[s.statusText, { color: m.color }]}>{m.label}</Text></View>
-          {a.is_flagged && <View style={s.flagChip}><Ionicons name="flag" size={10} color={P.danger} /><Text style={s.flagChipText}>Flagged</Text></View>}
-          <Text style={s.listApplied}>{timeAgo(a.applied_at)}</Text>
-        </View>
-      </TouchableOpacity>
+      </ListRow>
     );
   };
 
   // ── Detail (case file) — inline on desktop, modal on mobile ──
   const renderDetail = (inPanel: boolean) => {
     const flagAction = !!viewing && CAN_FLAG(viewing.status, viewing.is_flagged);
+    const vm = viewing ? statusMeta(viewing.status, c) : null;
     return (
       <View style={inPanel ? s.detailPanel : [s.modalCard, { maxWidth: 720, padding: 0, overflow: "hidden" }]}>
         <View style={s.dHead}>
@@ -152,12 +161,12 @@ export default function PesoApplicationsScreen() {
             <Text style={s.dEyebrow}>APPLICATION #{viewing?.application_id} · {viewing?.category_name || "—"}</Text>
             <Text style={s.dTitle} numberOfLines={2}>{detail?.job?.title ?? viewing?.job_title}</Text>
           </View>
-          {!!viewing && <View style={[s.statusPill, { backgroundColor: meta(viewing.status).bg }]}><Text style={[s.statusText, { color: meta(viewing.status).color }]}>{meta(viewing.status).label}</Text></View>}
-          {!inPanel && <TouchableOpacity onPress={closeDetail} hitSlop={8} style={{ marginLeft: 8 }}><Ionicons name="close" size={22} color={P.muted} /></TouchableOpacity>}
+          {!!vm && <View style={[s.statusPill, { backgroundColor: vm.bg }]}><Text style={[s.statusText, { color: vm.color }]}>{vm.label}</Text></View>}
+          {!inPanel && <TouchableOpacity onPress={closeDetail} hitSlop={8} style={{ marginLeft: 8 }}><Ionicons name="close" size={22} color={c.muted} /></TouchableOpacity>}
         </View>
 
         {detailLoading && !detail ? (
-          <ActivityIndicator color={P.peso} style={{ marginVertical: 60 }} />
+          <ActivityIndicator color={c.accent} style={{ marginVertical: 60 }} />
         ) : (
           <ScrollView style={inPanel ? { flex: 1 } : { maxHeight: 540 }} contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
             {/* Risk signals — the reason this screen exists */}
@@ -166,14 +175,14 @@ export default function PesoApplicationsScreen() {
                 <Text style={s.secTitle}>Oversight checks</Text>
                 <View style={{ gap: 8 }}>
                   {detail.risk_signals.map((sig: any, i: number) => {
-                    const cfg = sig.level === "high" ? { c: P.danger, bg: P.dangerSoft, ic: "alert-circle" as const }
-                      : sig.level === "warn" ? { c: P.warning, bg: P.warningSoft, ic: "warning" as const }
-                      : sig.level === "ok" ? { c: P.success, bg: P.successSoft, ic: "checkmark-circle" as const }
-                      : { c: P.info, bg: P.infoSoft, ic: "information-circle" as const };
+                    const cfg = sig.level === "high" ? { col: c.bad, bg: c.badSoft, ic: "alert-circle" as const }
+                      : sig.level === "warn" ? { col: c.warn, bg: c.warnSoft, ic: "warning" as const }
+                      : sig.level === "ok" ? { col: c.ok, bg: c.okSoft, ic: "checkmark-circle" as const }
+                      : { col: c.info, bg: c.infoSoft, ic: "information-circle" as const };
                     return (
                       <View key={i} style={[s.signal, { backgroundColor: cfg.bg }]}>
-                        <Ionicons name={cfg.ic} size={16} color={cfg.c} />
-                        <Text style={[s.signalText, { color: cfg.c }]}>{sig.text}</Text>
+                        <Ionicons name={cfg.ic} size={16} color={cfg.col} />
+                        <Text style={[s.signalText, { color: cfg.col }]}>{sig.text}</Text>
                       </View>
                     );
                   })}
@@ -188,8 +197,8 @@ export default function PesoApplicationsScreen() {
                 <Text style={s.entityName}>{detail?.helper?.name ?? viewing?.helper_name}</Text>
                 <View style={s.badgeRow2}>
                   {detail?.helper?.verification_status === "Verified"
-                    ? <View style={[s.miniBadge, { backgroundColor: P.pesoSoft }]}><Ionicons name="shield-checkmark" size={11} color={P.peso} /><Text style={[s.miniBadgeText, { color: P.peso }]}>PESO Verified</Text></View>
-                    : <View style={[s.miniBadge, { backgroundColor: P.warningSoft }]}><Text style={[s.miniBadgeText, { color: P.warning }]}>Not verified</Text></View>}
+                    ? <View style={[s.miniBadge, { backgroundColor: c.okSoft }]}><Ionicons name="shield-checkmark" size={11} color={c.ok} /><Text style={[s.miniBadgeText, { color: c.ok }]}>PESO Verified</Text></View>
+                    : <View style={[s.miniBadge, { backgroundColor: c.warnSoft }]}><Text style={[s.miniBadgeText, { color: c.warn }]}>Not verified</Text></View>}
                 </View>
                 <Fact label="Age" value={detail?.helper?.age != null ? `${detail.helper.age} yrs` : "—"} />
                 <Fact label="Gender" value={detail?.helper?.gender || "—"} />
@@ -205,8 +214,8 @@ export default function PesoApplicationsScreen() {
                 <Text style={s.entityName}>{detail?.employer?.name ?? viewing?.parent_name}</Text>
                 <View style={s.badgeRow2}>
                   {(detail?.employer?.verification_status === "Verified" || String(detail?.employer?.account_status).toLowerCase() === "approved")
-                    ? <View style={[s.miniBadge, { backgroundColor: P.pesoSoft }]}><Ionicons name="shield-checkmark" size={11} color={P.peso} /><Text style={[s.miniBadgeText, { color: P.peso }]}>PESO Verified</Text></View>
-                    : <View style={[s.miniBadge, { backgroundColor: P.warningSoft }]}><Text style={[s.miniBadgeText, { color: P.warning }]}>Not approved</Text></View>}
+                    ? <View style={[s.miniBadge, { backgroundColor: c.okSoft }]}><Ionicons name="shield-checkmark" size={11} color={c.ok} /><Text style={[s.miniBadgeText, { color: c.ok }]}>PESO Verified</Text></View>
+                    : <View style={[s.miniBadge, { backgroundColor: c.warnSoft }]}><Text style={[s.miniBadgeText, { color: c.warn }]}>Not approved</Text></View>}
                 </View>
                 <Fact label="Location" value={detail?.employer?.location || "—"} />
                 <Fact label="Active posts" value={detail ? String(detail.employer.active_posts) : "—"} />
@@ -232,7 +241,7 @@ export default function PesoApplicationsScreen() {
             {Array.isArray(detail?.job?.skills) && detail.job.skills.length > 0 && (
               <View style={{ marginTop: 10 }}>
                 <Text style={s.chipsLabel}>Skills</Text>
-                <View style={s.chipsWrap}>{detail.job.skills.map((r: string, i: number) => <View key={i} style={[s.roleChip, { backgroundColor: P.infoSoft }]}><Text style={[s.roleChipText, { color: P.info }]}>{r}</Text></View>)}</View>
+                <View style={s.chipsWrap}>{detail.job.skills.map((r: string, i: number) => <View key={i} style={[s.roleChip, { backgroundColor: c.infoSoft }]}><Text style={[s.roleChipText, { color: c.info }]}>{r}</Text></View>)}</View>
               </View>
             )}
 
@@ -242,22 +251,22 @@ export default function PesoApplicationsScreen() {
               <View style={{ gap: 6 }}>
                 {detail.shared_documents.map((d: any, i: number) => (
                   <View key={i} style={s.docRow}>
-                    <Ionicons name="document-text-outline" size={15} color={P.peso} />
+                    <Ionicons name="document-text-outline" size={15} color={c.accent} />
                     <Text style={s.docName}>{d.document_type}</Text>
-                    <Text style={[s.docStatus, { color: d.status === "Verified" ? P.success : P.warning }]}>{d.status}</Text>
+                    <Text style={[s.docStatus, { color: d.status === "Verified" ? c.ok : c.warn }]}>{d.status}</Text>
                   </View>
                 ))}
               </View>
-            ) : <Text style={s.muted}>None shared — only the helper's profile is visible to the employer.</Text>}
+            ) : <Text style={s.mutedText}>None shared — only the helper's profile is visible to the employer.</Text>}
 
             {/* Cover letter */}
             <Text style={[s.secTitle, { marginTop: 18 }]}>Cover letter</Text>
             <View style={s.coverBox}><Text style={s.coverFull}>{(detail?.application?.cover_letter ?? viewing?.cover_letter)?.trim() || "No cover letter was written."}</Text></View>
 
             {detail?.flag && (
-              <View style={[s.signal, { backgroundColor: P.dangerSoft, marginTop: 16 }]}>
-                <Ionicons name="flag" size={16} color={P.danger} />
-                <Text style={[s.signalText, { color: P.danger }]}>Flagged by PESO: {detail.flag.reason}</Text>
+              <View style={[s.signal, { backgroundColor: c.badSoft, marginTop: 16 }]}>
+                <Ionicons name="flag" size={16} color={c.bad} />
+                <Text style={[s.signalText, { color: c.bad }]}>Flagged by PESO: {detail.flag.reason}</Text>
               </View>
             )}
           </ScrollView>
@@ -280,57 +289,69 @@ export default function PesoApplicationsScreen() {
 
   const list = (
     loading ? (
-      <ActivityIndicator size="large" color={P.peso} style={{ marginTop: 50 }} />
+      <ActivityIndicator size="large" color={c.accent} style={{ marginTop: 50 }} />
     ) : rows.length === 0 ? (
-      <View style={s.empty}><Ionicons name="reader-outline" size={34} color={P.subtle} /><Text style={s.emptyText}>No applications{filter === "flagged" ? " flagged" : ""} yet.</Text></View>
+      <EmptyState icon="reader-outline" title={`No applications${filter === "flagged" ? " flagged" : ""} yet`}
+        sub={filter === "flagged" ? "Nothing has been flagged for oversight." : "Applications will appear here as helpers apply."} />
     ) : (
-      <ScrollView style={s.flex1} contentContainerStyle={{ gap: 10, paddingHorizontal: 24, paddingTop: 2, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
-        {rows.map((a) => <ListCard key={a.application_id} a={a} />)}
+      <ScrollView style={s.flex1} contentContainerStyle={{ gap: 10, paddingHorizontal: space.xl, paddingTop: space.md, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+        {rows.map((a, i) => <ListCard key={a.application_id} a={a} index={i} />)}
       </ScrollView>
     )
   );
 
   return (
-    <View style={s.page}>
+    <View style={layout.page(c.canvas)}>
      {/* Master-detail: the list column (with its own header) on the left, and the
          case file spanning the FULL height on the right. */}
-     <View style={[s.splitRow, !wide && { flexDirection: "column" }]}>
-      <View style={wide ? s.leftPane : s.flex1}>
-        {/* Header */}
-        <View style={s.header}>
-          <Text style={s.title}>Applications</Text>
-          <Text style={s.subtitle}>Oversight of job applications. Flag & unsubmit any that look abusive or fraudulent — PESO does not approve applications.</Text>
-          <View style={s.statRow}>
-            <StatChip label="Total" value={summary.total} color={P.ink} />
-            <StatChip label="Active" value={summary.active} color={P.success} />
-            <StatChip label="Flagged" value={summary.flagged} color={P.danger} />
-          </View>
-          <View style={s.controls}>
-            <View style={s.chips}>
-              {(["all", "active", "flagged"] as Filter[]).map((f) => (
-                <TouchableOpacity key={f} style={[s.chip, filter === f && s.chipActive]} onPress={() => setFilter(f)}>
-                  <Text style={[s.chipText, filter === f && s.chipTextActive]}>{f === "all" ? "All" : f === "active" ? "Active" : "Flagged"}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={s.search}>
-              <Ionicons name="search" size={17} color={P.subtle} />
-              <TextInput style={s.searchInput} value={q} onChangeText={setQ} onSubmitEditing={() => load(filter, q)}
-                placeholder="Search helper, employer or job…" placeholderTextColor={P.subtle} returnKeyType="search" />
-            </View>
-          </View>
+     <View style={wide ? layout.splitRow : layout.flex1}>
+      <View style={wide ? layout.leftPane : layout.flex1}>
+        <ScreenHeader eyebrow="Oversight & Safeguards" title="Applications"
+          subtitle="Flag & unsubmit any application that looks abusive or fraudulent — PESO does not approve applications."
+          right={<IconButton icon="refresh" tone="accent" onPress={() => load(filter, q)} />} />
+
+        <View style={{ paddingHorizontal: space.xl, paddingTop: space.md }}>
+          {!loading && (
+            <StatRow>
+              <StatTile label="Total" value={summary.total} tone="accent" sub="applications" delay={0} />
+              <StatTile label="Active" value={summary.active} tone="ok" sub="in progress" delay={60} />
+              <StatTile label="Flagged" value={summary.flagged} tone="bad" sub="unsubmitted" delay={120} />
+            </StatRow>
+          )}
+
+          {/* Search */}
+          <AnimateIn delay={200} style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, borderRadius: radius.md, paddingHorizontal: 13, paddingVertical: 10, marginTop: space.lg }}>
+            <Ionicons name="search" size={16} color={c.subtle} />
+            <TextInput style={s.searchInput} value={q} onChangeText={setQ} onSubmitEditing={() => load(filter, q)}
+              placeholder="Search helper, employer or job…" placeholderTextColor={c.subtle} returnKeyType="search" />
+            {!!q && <Pressable onPress={() => { setQ(""); load(filter, ""); }} hitSlop={10}><Ionicons name="close-circle" size={16} color={c.subtle} /></Pressable>}
+          </AnimateIn>
+
+          {/* Filter chips */}
+          <AnimateIn delay={250}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: space.md }} contentContainerStyle={{ gap: 8 }}>
+            {(["all", "active", "flagged"] as Filter[]).map((f) => {
+              const active = filter === f;
+              const count = f === "all" ? summary.total : f === "active" ? summary.active : summary.flagged;
+              return (
+                <Pressable key={f} onPress={() => setFilter(f)}
+                  style={({ hovered }: any) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.pill, transitionDuration: "140ms", backgroundColor: active ? c.accent : hovered ? c.accentSoft : c.surface, borderWidth: 1, borderColor: active ? c.accent : hovered ? c.accent : c.line } as any]}>
+                  <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: active ? "#fff" : c.muted }}>{f === "all" ? "All" : f === "active" ? "Active" : "Flagged"}</Text>
+                  <View style={{ minWidth: 18, paddingHorizontal: 5, borderRadius: 9, backgroundColor: active ? "rgba(255,255,255,0.25)" : c.sunken, alignItems: "center" }}>
+                    <Text style={{ fontSize: 11, fontFamily: font.semibold, color: active ? "#fff" : c.muted }}>{count}</Text></View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          </AnimateIn>
         </View>
         {list}
       </View>
 
       {wide && (
-        <View style={s.rightPane}>
+        <View style={layout.rightPane(c.line, c.surface)}>
           {viewing ? renderDetail(true) : (
-            <View style={s.detailEmpty}>
-              <Ionicons name="reader-outline" size={40} color={P.subtle} />
-              <Text style={s.detailEmptyTitle}>Select an application</Text>
-              <Text style={s.detailEmptySub}>Choose one on the left to review the full case file here.</Text>
-            </View>
+            <EmptyState icon="reader-outline" title="Select an application" sub="Choose one on the left to review the full case file here." />
           )}
         </View>
       )}
@@ -347,13 +368,13 @@ export default function PesoApplicationsScreen() {
       <Modal visible={!!flagFor} transparent animationType="fade" onRequestClose={() => setFlagFor(null)}>
         <View style={s.modalBg}>
           <View style={s.modalCard}>
-            <View style={s.modalIcon}><Ionicons name="flag" size={26} color={P.danger} /></View>
+            <View style={s.modalIcon}><Ionicons name="flag" size={26} color={c.bad} /></View>
             <Text style={s.modalTitle}>Flag & Unsubmit Application</Text>
             <Text style={s.modalHint}>
               This retracts {flagFor?.helper_name}'s application for “{flagFor?.job_title}” and notifies both the helper and the employer. Use only for abusive or fraudulent applications.
             </Text>
             <Text style={s.label}>Reason (shown to the helper)</Text>
-            <TextInput style={[s.input, s.multiline]} value={reason} onChangeText={setReason} placeholder="e.g. Duplicate / suspicious application, policy violation…" placeholderTextColor={P.subtle} multiline autoFocus />
+            <TextInput style={[s.input, s.multiline]} value={reason} onChangeText={setReason} placeholder="e.g. Duplicate / suspicious application, policy violation…" placeholderTextColor={c.subtle} multiline autoFocus />
             <View style={s.modalRow}>
               <TouchableOpacity style={[s.mBtn, s.mCancel]} onPress={() => setFlagFor(null)}><Text style={s.mCancelText}>Cancel</Text></TouchableOpacity>
               <TouchableOpacity style={[s.mBtn, s.mDanger, busy && { opacity: 0.6 }]} onPress={submitFlag} disabled={busy}>
@@ -368,28 +389,21 @@ export default function PesoApplicationsScreen() {
   );
 }
 
-function StatChip({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <View style={s.statCard}>
-      <Text style={[s.statValue, { color }]}>{value}</Text>
-      <Text style={s.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 function Fact({ label, value, danger, last, inline }: { label: string; value: string; danger?: boolean; last?: boolean; inline?: boolean }) {
+  const { c } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   if (inline) {
     return (
       <View style={s.factInline}>
         <Text style={s.factInlineLabel}>{label}</Text>
-        <Text style={[s.factInlineValue, danger && { color: P.danger }]}>{value}</Text>
+        <Text style={[s.factInlineValue, danger && { color: c.bad }]}>{value}</Text>
       </View>
     );
   }
   return (
     <View style={[s.factRow, last && { borderBottomWidth: 0 }]}>
       <Text style={s.factLabel}>{label}</Text>
-      <Text style={[s.factValue, danger && { color: P.danger }]} numberOfLines={1}>{value}</Text>
+      <Text style={[s.factValue, danger && { color: c.bad }]} numberOfLines={1}>{value}</Text>
     </View>
   );
 }
@@ -405,107 +419,77 @@ function timeAgo(v?: string) {
   return d.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
 }
 
-const s = StyleSheet.create({
-  page: { flex: 1, backgroundColor: P.canvasPeso },
-  header: { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 4 },
-  title: { fontSize: 26, fontWeight: "800", color: P.ink, letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, color: P.muted, marginTop: 3, maxWidth: 720, lineHeight: 18 },
+const makeStyles = (c: PesoColors) => StyleSheet.create({
+  searchInput: { flex: 1, color: c.ink, fontSize: 14, fontFamily: font.regular, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}) },
 
-  statRow: { flexDirection: "row", gap: 12, marginTop: 16, marginBottom: 14 },
-  statCard: { flex: 1, maxWidth: 200, backgroundColor: P.surface, borderRadius: 14, borderWidth: 1, borderColor: P.line, padding: 14, alignItems: "center" },
-  statValue: { fontSize: 24, fontWeight: "900" },
-  statLabel: { fontSize: 12, color: P.muted, marginTop: 2, fontWeight: "600" },
-
-  controls: { flexDirection: "row", gap: 12, marginBottom: 14, flexWrap: "wrap", alignItems: "center" },
-  chips: { flexDirection: "row", gap: 8 },
-  chip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1, borderColor: P.line, backgroundColor: P.surface },
-  chipActive: { backgroundColor: P.peso, borderColor: P.peso },
-  chipText: { color: P.muted, fontWeight: "700", fontSize: 13 },
-  chipTextActive: { color: "#fff" },
-  search: { flex: 1, minWidth: 220, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: P.surface, borderWidth: 1, borderColor: P.line, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
-  searchInput: { flex: 1, color: P.ink, fontSize: 14, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}) },
-
-  // Master-detail: list column on the left, full-height detail on the right
   flex1: { flex: 1, minHeight: 0 },
-  splitRow: { flex: 1, flexDirection: "row", minHeight: 0 },
-  leftPane: { flex: 1, minWidth: 0, minHeight: 0 },
-  rightPane: { width: 520, minHeight: 0, borderLeftWidth: 1, borderLeftColor: P.line, backgroundColor: P.surface },
 
-  // List card (selector)
-  listCard: { backgroundColor: P.surface, borderRadius: 14, borderWidth: 1, borderColor: P.line, padding: 14 },
-  listCardActive: { borderColor: P.peso, borderWidth: 1.6, ...(Platform.OS === "web" ? ({ boxShadow: "0 6px 16px rgba(15,123,84,.12)" } as any) : {}) },
-  listCardFlagged: { borderColor: P.danger },
+  // List card (selector) — inner content; ListRow provides the frame/animation
   listCardTop: { flexDirection: "row", alignItems: "center", gap: 8 },
-  listTitle: { flex: 1, fontSize: 14.5, fontWeight: "800", color: P.ink },
+  listTitle: { flex: 1, fontSize: 14.5, fontFamily: font.semibold, color: c.ink },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  listParties: { fontSize: 12.5, color: P.muted, marginTop: 4 },
-  strong: { color: P.ink, fontWeight: "700" },
+  listParties: { fontSize: 12.5, color: c.muted, marginTop: 4, fontFamily: font.regular },
+  strong: { color: c.ink, fontFamily: font.semibold },
   listFoot: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 },
-  listApplied: { fontSize: 11, color: P.subtle, marginLeft: "auto" },
-  flagChip: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: P.dangerSoft, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
-  flagChipText: { fontSize: 10, fontWeight: "800", color: P.danger },
+  listApplied: { fontSize: 11, color: c.subtle, marginLeft: "auto", fontFamily: font.regular },
+  flagChip: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: c.badSoft, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  flagChipText: { fontSize: 10, fontFamily: font.semibold, color: c.bad },
   statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  statusText: { fontSize: 11, fontWeight: "800" },
+  statusText: { fontSize: 11, fontFamily: font.semibold },
 
   // Detail panel (desktop) — fills the full-height rightPane frame
   detailPanel: { flex: 1 },
-  detailEmpty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 40 },
-  detailEmptyTitle: { fontSize: 16, fontWeight: "800", color: P.ink },
-  detailEmptySub: { fontSize: 13, color: P.muted, textAlign: "center", maxWidth: 260, lineHeight: 19 },
 
   // Case file
-  dHead: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 20, borderBottomWidth: 1, borderBottomColor: P.line, backgroundColor: P.canvasPeso },
-  dEyebrow: { fontSize: 10.5, fontWeight: "800", color: P.subtle, letterSpacing: 0.6, marginBottom: 3 },
-  dTitle: { fontSize: 18, fontWeight: "800", color: P.ink, lineHeight: 23 },
-  secTitle: { fontSize: 12, fontWeight: "800", color: P.muted, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 },
+  dHead: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 20, borderBottomWidth: 1, borderBottomColor: c.line, backgroundColor: c.sunken },
+  dEyebrow: { fontSize: 10.5, fontFamily: font.semibold, color: c.subtle, letterSpacing: 0.6, marginBottom: 3 },
+  dTitle: { fontSize: 18, fontFamily: font.display, color: c.ink, lineHeight: 23 },
+  secTitle: { fontSize: 12, fontFamily: font.semibold, color: c.muted, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 },
   signal: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  signalText: { flex: 1, fontSize: 12.5, fontWeight: "600", lineHeight: 17 },
+  signalText: { flex: 1, fontSize: 12.5, fontFamily: font.regular, lineHeight: 17 },
 
   pair: { flexDirection: "row", gap: 12 },
-  entity: { flex: 1, backgroundColor: P.surface, borderWidth: 1, borderColor: P.line, borderRadius: 14, padding: 14 },
-  entityLabel: { fontSize: 10, fontWeight: "800", color: P.subtle, letterSpacing: 0.6 },
-  entityName: { fontSize: 15.5, fontWeight: "800", color: P.ink, marginTop: 3 },
+  entity: { flex: 1, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, borderRadius: radius.lg, padding: 14 },
+  entityLabel: { fontSize: 10, fontFamily: font.semibold, color: c.subtle, letterSpacing: 0.6 },
+  entityName: { fontSize: 15.5, fontFamily: font.semibold, color: c.ink, marginTop: 3 },
   badgeRow2: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6, marginBottom: 6 },
   miniBadge: { flexDirection: "row", alignItems: "center", gap: 3, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
-  miniBadgeText: { fontSize: 10.5, fontWeight: "800" },
-  factRow: { flexDirection: "row", justifyContent: "space-between", gap: 10, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: P.line },
-  factLabel: { fontSize: 12, color: P.muted, fontWeight: "600" },
-  factValue: { fontSize: 12.5, color: P.ink, fontWeight: "700", flexShrink: 1, textAlign: "right" },
+  miniBadgeText: { fontSize: 10.5, fontFamily: font.semibold },
+  factRow: { flexDirection: "row", justifyContent: "space-between", gap: 10, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: c.line },
+  factLabel: { fontSize: 12, color: c.muted, fontFamily: font.regular },
+  factValue: { fontSize: 12.5, color: c.ink, fontFamily: font.semibold, flexShrink: 1, textAlign: "right" },
   factInline: { minWidth: 130, marginBottom: 6 },
-  factInlineLabel: { fontSize: 11, color: P.subtle, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 },
-  factInlineValue: { fontSize: 13.5, color: P.ink, fontWeight: "700", marginTop: 1 },
+  factInlineLabel: { fontSize: 11, color: c.subtle, fontFamily: font.semibold, textTransform: "uppercase", letterSpacing: 0.4 },
+  factInlineValue: { fontSize: 13.5, color: c.ink, fontFamily: font.semibold, marginTop: 1 },
   termsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, columnGap: 24 },
-  chipsLabel: { fontSize: 11.5, color: P.muted, fontWeight: "700", marginBottom: 6 },
+  chipsLabel: { fontSize: 11.5, color: c.muted, fontFamily: font.semibold, marginBottom: 6 },
   chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  roleChip: { backgroundColor: P.pesoSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  roleChipText: { fontSize: 12, fontWeight: "700", color: P.peso },
-  docRow: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: P.surface, borderWidth: 1, borderColor: P.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
-  docName: { flex: 1, fontSize: 13, color: P.ink, fontWeight: "600" },
-  docStatus: { fontSize: 11.5, fontWeight: "800" },
-  muted: { fontSize: 13, color: P.muted },
-  coverBox: { backgroundColor: P.canvasPeso, borderRadius: 12, borderWidth: 1, borderColor: P.line, padding: 14 },
-  coverFull: { fontSize: 13.5, color: P.ink, lineHeight: 20 },
-  dFooter: { flexDirection: "row", gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: P.line, backgroundColor: P.canvasPeso },
-  dSecondary: { flex: 1, paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: P.line, alignItems: "center", backgroundColor: P.surface },
-  dSecondaryText: { fontWeight: "800", color: P.ink, fontSize: 14 },
-  dDanger: { flex: 1.3, flexDirection: "row", gap: 7, paddingVertical: 13, borderRadius: 12, backgroundColor: P.danger, alignItems: "center", justifyContent: "center" },
-  dDangerText: { fontWeight: "800", color: "#fff", fontSize: 14 },
+  roleChip: { backgroundColor: c.accentSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  roleChipText: { fontSize: 12, fontFamily: font.semibold, color: c.accentInk },
+  docRow: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
+  docName: { flex: 1, fontSize: 13, color: c.ink, fontFamily: font.regular },
+  docStatus: { fontSize: 11.5, fontFamily: font.semibold },
+  mutedText: { fontSize: 13, color: c.muted, fontFamily: font.regular },
+  coverBox: { backgroundColor: c.sunken, borderRadius: 12, borderWidth: 1, borderColor: c.line, padding: 14 },
+  coverFull: { fontSize: 13.5, color: c.ink, lineHeight: 20, fontFamily: font.regular },
+  dFooter: { flexDirection: "row", gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: c.line, backgroundColor: c.sunken },
+  dSecondary: { flex: 1, paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: c.line, alignItems: "center", backgroundColor: c.surface },
+  dSecondaryText: { fontFamily: font.semibold, color: c.ink, fontSize: 14 },
+  dDanger: { flex: 1.3, flexDirection: "row", gap: 7, paddingVertical: 13, borderRadius: 12, backgroundColor: c.bad, alignItems: "center", justifyContent: "center" },
+  dDangerText: { fontFamily: font.semibold, color: "#fff", fontSize: 14 },
 
-  empty: { alignItems: "center", gap: 10, paddingVertical: 50 },
-  emptyText: { fontSize: 14, color: P.muted },
-
-  modalBg: { flex: 1, backgroundColor: "rgba(42,20,9,0.45)", alignItems: "center", justifyContent: "center", padding: 22 },
-  modalCard: { width: "100%", maxWidth: 460, backgroundColor: P.surface, borderRadius: 18, padding: 22 },
-  modalIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: P.dangerSoft, alignItems: "center", justifyContent: "center", alignSelf: "center" },
-  modalTitle: { fontSize: 18, fontWeight: "800", color: P.ink, marginTop: 12, textAlign: "center" },
-  modalHint: { fontSize: 13, color: P.muted, marginTop: 8, lineHeight: 19, textAlign: "center" },
-  label: { fontSize: 13, fontWeight: "700", color: P.inkMuted, marginTop: 16, marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: P.line, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11, fontSize: 14, color: P.ink, backgroundColor: P.canvasPeso, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}) },
+  modalBg: { flex: 1, backgroundColor: c.overlay, alignItems: "center", justifyContent: "center", padding: 22 },
+  modalCard: { width: "100%", maxWidth: 460, backgroundColor: c.surface, borderRadius: 18, padding: 22 },
+  modalIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: c.badSoft, alignItems: "center", justifyContent: "center", alignSelf: "center" },
+  modalTitle: { fontSize: 18, fontFamily: font.display, color: c.ink, marginTop: 12, textAlign: "center" },
+  modalHint: { fontSize: 13, color: c.muted, marginTop: 8, lineHeight: 19, textAlign: "center", fontFamily: font.regular },
+  label: { fontSize: 13, fontFamily: font.semibold, color: c.muted, marginTop: 16, marginBottom: 6 },
+  input: { borderWidth: 1, borderColor: c.line, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11, fontSize: 14, color: c.ink, backgroundColor: c.sunken, fontFamily: font.regular, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}) },
   multiline: { minHeight: 80, textAlignVertical: "top" },
   modalRow: { flexDirection: "row", gap: 10, marginTop: 18 },
   mBtn: { flex: 1, paddingVertical: 12, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-  mCancel: { borderWidth: 1, borderColor: P.line, backgroundColor: P.surface },
-  mCancelText: { fontWeight: "700", color: P.ink },
-  mDanger: { backgroundColor: P.danger },
-  mDangerText: { fontWeight: "800", color: "#fff" },
+  mCancel: { borderWidth: 1, borderColor: c.line, backgroundColor: c.surface },
+  mCancelText: { fontFamily: font.semibold, color: c.ink },
+  mDanger: { backgroundColor: c.bad },
+  mDangerText: { fontFamily: font.semibold, color: "#fff" },
 });

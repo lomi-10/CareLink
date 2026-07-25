@@ -1,13 +1,19 @@
 // app/(peso)/jobs/index.tsx — PESO Job Verification (two-pane master-detail)
+// Built on the shared PESO design system (components/peso/ui): theme-aware
+// (light/dark), animated list + controls, gradient header, branded backdrop.
+// PHP: peso/get_jobs_for_verification.php, peso/update_job_status.php
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator, FlatList, Modal, RefreshControl, ScrollView, StyleSheet,
-  Text, TextInput, TouchableOpacity, View, useWindowDimensions,
+  ActivityIndicator, FlatList, Modal, Platform, Pressable, RefreshControl,
+  ScrollView, Text, TextInput, useWindowDimensions, View,
 } from "react-native";
+import { JobDetailPanel } from "@/components/peso/JobDetailPanel";
+import {
+  usePesoTheme, ScreenHeader, StatRow, StatTile, ListRow, Pill, EmptyState, IconButton, AnimateIn, layout, font, radius, space,
+  type Tone,
+} from "@/components/peso/ui";
 import API_URL from "../../../constants/api";
-import { theme } from "../../../constants/theme";
-import { JobDetailPanel } from "../../../components/peso/JobDetailPanel";
 
 export interface VerificationJob {
   job_post_id: number;
@@ -23,23 +29,20 @@ export interface VerificationJob {
 }
 
 const STATUS_FILTERS = ["All", "Pending", "Open", "Rejected", "Closed"] as const;
-const CFG: Record<string, { label: string; color: string; bg: string; icon: React.ComponentProps<typeof Ionicons>["name"] }> = {
-  Pending:  { label: "Pending",  color: theme.color.warning, bg: theme.color.warningSoft, icon: "time" },
-  Open:     { label: "Approved", color: theme.color.success, bg: theme.color.successSoft, icon: "checkmark-circle" },
-  Rejected: { label: "Rejected", color: theme.color.danger,  bg: theme.color.dangerSoft,  icon: "close-circle" },
-  Closed:   { label: "Closed",   color: theme.color.muted,   bg: theme.color.surface,     icon: "archive" },
-};
+const STATUS_TONE: Record<string, Tone> = { Pending: "warn", Open: "ok", Rejected: "bad", Closed: "neutral" };
+const STATUS_LABEL = (s: string) => (s === "Open" ? "Approved" : s);
 
 export default function JobVerification() {
+  const { c } = usePesoTheme();
+  const { width } = useWindowDimensions();
+  const twoPane = Platform.OS === "web" && width >= 1024;
+
   const [jobs, setJobs] = useState<VerificationJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilter] = useState<string>("All");
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
-
-  const { width } = useWindowDimensions();
-  const wide = width >= 1000;
 
   useEffect(() => { fetchJobs(); }, []);
 
@@ -51,7 +54,6 @@ export default function JobVerification() {
       if (data.success) setJobs(data.data ?? []);
     } catch (e) { console.error("JobVerification fetch:", e); } finally { setLoading(false); }
   };
-
   const onRefresh = async () => { setRefreshing(true); await fetchJobs(); setRefreshing(false); };
 
   const filtered = useMemo(() => {
@@ -66,119 +68,119 @@ export default function JobVerification() {
   }, [jobs, filterStatus, search]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { All: jobs.length };
-    for (const st of ["Pending", "Open", "Rejected", "Closed"]) c[st] = jobs.filter((j) => j.status === st).length;
-    return c;
+    const map: Record<string, number> = { All: jobs.length };
+    for (const st of ["Pending", "Open", "Rejected", "Closed"]) map[st] = jobs.filter((j) => j.status === st).length;
+    return map;
   }, [jobs]);
 
   // Keep a valid selection on wide screens.
   useEffect(() => {
-    if (wide && !selectedJobId && filtered.length) setSelectedJobId(filtered[0].job_post_id);
-  }, [wide, filtered, selectedJobId]);
+    if (twoPane && !selectedJobId && filtered.length) setSelectedJobId(filtered[0].job_post_id);
+  }, [twoPane, filtered, selectedJobId]);
 
   const onStatusChanged = () => { fetchJobs(); };
 
-  const renderJobCard = ({ item }: { item: VerificationJob }) => {
-    const cfg = CFG[item.status] ?? CFG.Pending;
-    const active = selectedJobId === item.job_post_id;
+  const renderJobCard = ({ item, index }: { item: VerificationJob; index: number }) => {
+    const category = item.custom_category || item.category_name || "General";
+    const posted = item.posted_at ? new Date(item.posted_at).toLocaleDateString("en-PH", { dateStyle: "medium" }) : null;
     return (
-      <TouchableOpacity
-        style={[styles.jobCard, active && styles.jobCardActive]}
-        onPress={() => setSelectedJobId(item.job_post_id)}
-        activeOpacity={0.85}
-      >
-        <View style={[styles.jobIcon, { backgroundColor: cfg.bg }]}><Ionicons name="briefcase" size={22} color={cfg.color} /></View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.jobTitle} numberOfLines={1}>{item.title || "Untitled Job"}</Text>
-          <Text style={styles.jobCat} numberOfLines={1}>{item.custom_category || item.category_name || "General"}</Text>
-          <View style={styles.jobMeta}><Ionicons name="location-outline" size={12} color={theme.color.muted} /><Text style={styles.jobMetaText} numberOfLines={1}>{item.parent_name}</Text></View>
-          <View style={styles.jobMeta}><Ionicons name="calendar-outline" size={12} color={theme.color.muted} /><Text style={styles.jobMetaText}>Posted {new Date(item.posted_at).toLocaleDateString("en-PH", { dateStyle: "medium" })}</Text></View>
+      <ListRow selected={twoPane && selectedJobId === item.job_post_id} onPress={() => setSelectedJobId(item.job_post_id)} delay={Math.min(index * 45, 320)}>
+        <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: c.accentSoft, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="briefcase" size={21} color={c.accent} />
         </View>
-        <View style={[styles.pill, { backgroundColor: cfg.bg }]}><Text style={[styles.pillText, { color: cfg.color }]}>{cfg.label}</Text></View>
-      </TouchableOpacity>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontFamily: font.semibold, fontSize: 14.5, color: c.ink }} numberOfLines={1}>{item.title || "Untitled Job"}</Text>
+          <Text style={{ fontFamily: font.semibold, fontSize: 12, color: c.accentInk }} numberOfLines={1}>{category}</Text>
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 5 }}>
+            <Meta icon="person-outline" text={item.parent_name} />
+            {!!posted && <Meta icon="calendar-outline" text={`Posted ${posted}`} />}
+          </View>
+        </View>
+        <Pill label={STATUS_LABEL(item.status)} tone={STATUS_TONE[item.status] ?? "neutral"} />
+        <Ionicons name="chevron-forward" size={16} color={c.subtle} />
+      </ListRow>
     );
   };
 
-  const listPane = (
-    <View style={styles.flex1}>
-      <View style={styles.searchBar}>
-        <Ionicons name="search" size={16} color={theme.color.muted} />
-        <TextInput style={styles.searchInput} placeholder="Search jobs…" value={search} onChangeText={setSearch} placeholderTextColor={theme.color.subtle} />
-        {!!search && <TouchableOpacity onPress={() => setSearch("")} hitSlop={8}><Ionicons name="close-circle" size={16} color={theme.color.subtle} /></TouchableOpacity>}
+  const Meta = ({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) => (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, minWidth: 0, flexShrink: 1 }}>
+      <Ionicons name={icon} size={12} color={c.subtle} />
+      <Text style={{ fontFamily: font.regular, fontSize: 11.5, color: c.subtle }} numberOfLines={1}>{text}</Text>
+    </View>
+  );
+
+  const leftColumn = (
+    <View style={twoPane ? layout.leftPane : layout.flex1}>
+      <ScreenHeader eyebrow="Verification & Compliance" title="Job Verification"
+        subtitle={loading ? "Loading…" : `${counts.Pending} pending · ${counts.All} total posting${counts.All !== 1 ? "s" : ""}`}
+        right={<IconButton icon="refresh" tone="accent" onPress={fetchJobs} />} />
+
+      <View style={{ paddingHorizontal: space.xl, paddingTop: space.md }}>
+        {!loading && (
+          <StatRow>
+            <StatTile label="Total" value={counts.All} tone="accent" sub="postings" delay={0} />
+            <StatTile label="Pending" value={counts.Pending} tone="warn" sub="to review" delay={60} />
+            <StatTile label="Approved" value={counts.Open} tone="ok" sub="live" delay={120} />
+            <StatTile label="Rejected" value={counts.Rejected} tone="bad" sub="declined" delay={180} />
+          </StatRow>
+        )}
+
+        {/* Search */}
+        <AnimateIn delay={215} style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, borderRadius: radius.md, paddingHorizontal: 13, paddingVertical: 10, marginTop: space.lg }}>
+          <Ionicons name="search" size={16} color={c.subtle} />
+          <TextInput style={{ flex: 1, fontFamily: font.regular, fontSize: 14, color: c.ink, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}) }}
+            placeholder="Search jobs by title, employer or category…" placeholderTextColor={c.subtle} value={search} onChangeText={setSearch} />
+          {!!search && <Pressable onPress={() => setSearch("")} hitSlop={10}><Ionicons name="close-circle" size={16} color={c.subtle} /></Pressable>}
+        </AnimateIn>
+
+        {/* Filter chips */}
+        <AnimateIn delay={260}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: space.md }} contentContainerStyle={{ gap: 8 }}>
+          {STATUS_FILTERS.map((st) => {
+            const active = filterStatus === st;
+            const count = st === "All" ? counts.All : counts[st] ?? 0;
+            return (
+              <Pressable key={st} onPress={() => setFilter(st)}
+                style={({ hovered }: any) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.pill, transitionDuration: "140ms", backgroundColor: active ? c.accent : hovered ? c.accentSoft : c.surface, borderWidth: 1, borderColor: active ? c.accent : hovered ? c.accent : c.line } as any]}>
+                <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: active ? "#fff" : c.muted }}>{st === "All" ? "All statuses" : STATUS_LABEL(st)}</Text>
+                <View style={{ minWidth: 18, paddingHorizontal: 5, borderRadius: 9, backgroundColor: active ? "rgba(255,255,255,0.25)" : c.sunken, alignItems: "center" }}>
+                  <Text style={{ fontSize: 11, fontFamily: font.semibold, color: active ? "#fff" : c.muted }}>{count}</Text></View>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+        </AnimateIn>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
-        {STATUS_FILTERS.map((st) => {
-          const active = filterStatus === st;
-          return (
-            <TouchableOpacity key={st} style={[styles.chip, active && styles.chipActive]} onPress={() => setFilter(st)} activeOpacity={0.8}>
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>{st === "Open" ? "Approved" : st}</Text>
-              <View style={[styles.chipBadge, active && styles.chipBadgeActive]}><Text style={[styles.chipBadgeText, active && { color: "#fff" }]}>{counts[st] ?? 0}</Text></View>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+
+      {/* List */}
       {loading ? (
-        <View style={styles.centered}><ActivityIndicator size="large" color={theme.color.peso} /></View>
+        <ActivityIndicator size="large" color={c.accent} style={{ marginTop: 50 }} />
       ) : filtered.length === 0 ? (
-        <View style={styles.centered}><Ionicons name="briefcase-outline" size={52} color={theme.color.subtle} /><Text style={styles.emptyTitle}>No jobs found</Text></View>
+        <EmptyState icon="briefcase-outline" title="No jobs found"
+          sub={search ? "Try a different search or clear filters." : "No job postings match this filter right now."} />
       ) : (
-        <FlatList
-          data={filtered}
-          renderItem={renderJobCard}
-          keyExtractor={(i) => String(i.job_post_id)}
-          contentContainerStyle={{ padding: 12, paddingBottom: 40, gap: 10 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.color.peso} />}
+        <FlatList style={layout.flex1} data={filtered} keyExtractor={(i) => String(i.job_post_id)} renderItem={renderJobCard}
+          contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.md, paddingBottom: 40, gap: 10 }}
           showsVerticalScrollIndicator={false}
-        />
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.accent} />} />
       )}
     </View>
   );
 
-  const header = (
-    <>
-      <View style={styles.pageHeader}>
-        <View>
-          <Text style={styles.pageTitle}>Job Verification</Text>
-          <Text style={styles.pageSubtitle}>Review and approve parent job postings</Text>
-        </View>
-      </View>
-      <View style={styles.statsRow}>
-        {[
-          { label: "Total Jobs", count: counts.All, color: theme.color.peso, icon: "briefcase" as const, bg: theme.color.pesoSoft },
-          { label: "Pending", count: counts.Pending, color: theme.color.warning, icon: "time" as const, bg: theme.color.warningSoft },
-          { label: "Approved", count: counts.Open, color: theme.color.success, icon: "checkmark-circle" as const, bg: theme.color.successSoft },
-          { label: "Rejected", count: counts.Rejected, color: theme.color.danger, icon: "close-circle" as const, bg: theme.color.dangerSoft },
-        ].map((st) => (
-          <View key={st.label} style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: st.bg }]}><Ionicons name={st.icon} size={20} color={st.color} /></View>
-            <View>
-              <Text style={styles.statCount}>{st.count ?? 0}</Text>
-              <Text style={styles.statLabel}>{st.label}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-    </>
-  );
-
   return (
-    <View style={styles.container}>
-      {/* Master-detail: list column (with its header) + full-height detail on the right. */}
-      <View style={wide ? styles.splitRow : styles.flex1}>
-        <View style={wide ? styles.leftPane : styles.flex1}>
-          {header}
-          {listPane}
-        </View>
-        {wide && (
-          <View style={styles.rightPane}>
+    <View style={layout.page(c.canvas)}>
+      <View style={twoPane ? layout.splitRow : layout.flex1}>
+        {leftColumn}
+        {twoPane && (
+          <View style={layout.rightPane(c.line, c.surface)}>
             <JobDetailPanel jobId={selectedJobId} onStatusChanged={onStatusChanged} />
           </View>
         )}
       </View>
 
-      {!wide && (
+      {!twoPane && (
         <Modal visible={!!selectedJobId} animationType="slide" transparent onRequestClose={() => setSelectedJobId(null)}>
-          <View style={styles.modalWrap}>
+          <View style={{ flex: 1, backgroundColor: c.canvas, paddingTop: 40 }}>
             <JobDetailPanel jobId={selectedJobId} onStatusChanged={onStatusChanged} onClose={() => setSelectedJobId(null)} showClose />
           </View>
         </Modal>
@@ -186,48 +188,3 @@ export default function JobVerification() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.color.canvasPeso },
-  pageHeader: { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 8 },
-  pageTitle: { fontSize: 26, fontWeight: "800", color: theme.color.ink, letterSpacing: -0.5 },
-  pageSubtitle: { fontSize: 13, color: theme.color.muted, marginTop: 2 },
-
-  statsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  statCard: { flex: 1, minWidth: 150, maxWidth: 220, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: theme.color.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line, padding: 14 },
-  statIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  statCount: { fontSize: 22, fontWeight: "800", color: theme.color.ink },
-  statLabel: { fontSize: 12, color: theme.color.muted, fontWeight: "600" },
-
-  // Master-detail: list column on the left, full-height detail on the right
-  flex1: { flex: 1, minHeight: 0 },
-  splitRow: { flex: 1, flexDirection: "row", minHeight: 0 },
-  leftPane: { flex: 1, minWidth: 0, minHeight: 0 },
-  rightPane: { width: 520, minHeight: 0, borderLeftWidth: 1, borderLeftColor: theme.color.line, backgroundColor: theme.color.surfaceElevated },
-
-  searchBar: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: theme.color.canvasPeso, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, margin: 12, marginBottom: 8 },
-  searchInput: { flex: 1, fontSize: 14, color: theme.color.ink },
-  filterScroll: { flexGrow: 0, flexShrink: 0 },
-  filterRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingBottom: 8 },
-  chip: { flexDirection: "row", alignItems: "center", height: 34, gap: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: theme.color.canvasPeso, borderWidth: 1, borderColor: theme.color.line },
-  chipActive: { backgroundColor: theme.color.peso, borderColor: theme.color.peso },
-  chipText: { fontSize: 12.5, fontWeight: "700", color: theme.color.muted },
-  chipTextActive: { color: "#fff" },
-  chipBadge: { backgroundColor: theme.color.line, borderRadius: 10, paddingHorizontal: 6, minWidth: 18, alignItems: "center" },
-  chipBadgeActive: { backgroundColor: "rgba(255,255,255,0.25)" },
-  chipBadgeText: { fontSize: 11, fontWeight: "800", color: theme.color.muted },
-
-  jobCard: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: theme.color.surface, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: theme.color.line },
-  jobCardActive: { borderColor: theme.color.peso, borderWidth: 2, backgroundColor: theme.color.pesoSoft },
-  jobIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  jobTitle: { fontSize: 14, fontWeight: "800", color: theme.color.ink },
-  jobCat: { fontSize: 12, fontWeight: "700", color: theme.color.peso, marginBottom: 4 },
-  jobMeta: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 1 },
-  jobMetaText: { fontSize: 11.5, color: theme.color.muted, flexShrink: 1 },
-  pill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10 },
-  pillText: { fontSize: 11, fontWeight: "800" },
-
-  centered: { padding: 40, alignItems: "center", gap: 10 },
-  emptyTitle: { fontSize: 15, fontWeight: "700", color: theme.color.ink },
-  modalWrap: { flex: 1, backgroundColor: theme.color.canvasPeso, paddingTop: 40 },
-});
