@@ -36,7 +36,8 @@ export function pendingConnectionLabel(status: string | null): string {
   return (status && PENDING_CONNECTION_LABELS[status]) || 'Start the conversation';
 }
 
-export type MessageType = 'text' | 'image' | 'video_call';
+export type MessageType = 'text' | 'image' | 'video_call' | 'job_invite';
+export type InviteStatus = 'pending' | 'accepted' | 'declined';
 
 export interface Message {
   message_id:   number;
@@ -50,6 +51,10 @@ export interface Message {
   is_read:      boolean;
   sent_at:      string;
   job_post_id:  number | null;
+  /** Present on 'job_invite' messages: whether the helper accepted/declined. */
+  invite_status?: InviteStatus | null;
+  /** Title of the linked job (for invite cards). */
+  job_title?:   string | null;
 }
 
 // ─── useConversations ─────────────────────────────────────────────────────────
@@ -250,5 +255,27 @@ export function useChat(partnerId: number) {
     return sent ? callUrl : null;
   }, [partnerId, sendMessage]);
 
-  return { messages, loading, sending, sendError, clearSendError, myUserId, fetchMessages, sendMessage, editMessage, sendImage, sendVideoCall };
+  // ── Respond to a job invitation (helper accepts / declines) ────────────────
+  const respondInvite = useCallback(async (
+    messageId: number,
+    action: 'accept' | 'decline',
+  ): Promise<{ ok: boolean; jobPostId?: number | null }> => {
+    try {
+      const raw  = await AsyncStorage.getItem('user_data');
+      if (!raw) return { ok: false };
+      const user = JSON.parse(raw);
+      const res  = await fetch(`${API_URL}/parent/respond_invite.php`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message_id: messageId, helper_id: user.user_id, action, requester_id: user.user_id }),
+      });
+      const data = await res.json();
+      if (data.success) await fetchMessages();
+      return { ok: !!data.success, jobPostId: data?.data?.job_post_id ?? null };
+    } catch {
+      return { ok: false };
+    }
+  }, [fetchMessages]);
+
+  return { messages, loading, sending, sendError, clearSendError, myUserId, fetchMessages, sendMessage, editMessage, sendImage, sendVideoCall, respondInvite };
 }

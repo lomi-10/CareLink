@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit();
 ini_set('display_errors', 0);
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
+require_once __DIR__ . '/../shared/job_invites_table.php';
 
 $user_id      = isset($_GET['user_id'])      ? intval($_GET['user_id'])      : 0;
 $partner_id   = isset($_GET['partner_id'])   ? intval($_GET['partner_id'])   : 0;
@@ -25,6 +26,8 @@ try {
     // for the other.
     carelink_require_self($requester_id, $user_id, 'You are not allowed to view this conversation.');
 
+    ensure_job_invites_table($conn);
+
     // Mark messages from partner as read
     $markStmt = $conn->prepare(
         "UPDATE messages SET is_read = 1, read_at = NOW()
@@ -34,15 +37,18 @@ try {
     $markStmt->execute();
     $markStmt->close();
 
-    // Fetch all messages in the thread
+    // Fetch all messages in the thread (with invite status + job title for invites)
     $stmt = $conn->prepare("
-        SELECT message_id, sender_id, receiver_id, message_text,
-               message_type, image_url, is_edited, edited_at,
-               is_read, sent_at, job_post_id
-        FROM messages
-        WHERE (sender_id = ? AND receiver_id = ?)
-           OR (sender_id = ? AND receiver_id = ?)
-        ORDER BY sent_at ASC
+        SELECT m.message_id, m.sender_id, m.receiver_id, m.message_text,
+               m.message_type, m.image_url, m.is_edited, m.edited_at,
+               m.is_read, m.sent_at, m.job_post_id,
+               ji.status AS invite_status, jp.title AS job_title
+        FROM messages m
+        LEFT JOIN job_invites ji ON ji.message_id = m.message_id
+        LEFT JOIN job_posts   jp ON jp.job_post_id = m.job_post_id
+        WHERE (m.sender_id = ? AND m.receiver_id = ?)
+           OR (m.sender_id = ? AND m.receiver_id = ?)
+        ORDER BY m.sent_at ASC
     ");
     $stmt->bind_param("iiii", $user_id, $partner_id, $partner_id, $user_id);
     $stmt->execute();
@@ -78,6 +84,8 @@ try {
             'is_read'      => (bool)$row['is_read'],
             'sent_at'      => $row['sent_at'],
             'job_post_id'  => $row['job_post_id'] ? (int)$row['job_post_id'] : null,
+            'invite_status' => $row['invite_status'] ?? null,
+            'job_title'     => $row['job_title'] ?? null,
         ];
     }
     $stmt->close();

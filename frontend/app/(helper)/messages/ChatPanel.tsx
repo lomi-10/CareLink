@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChat, Message } from '@/hooks/shared';
 import { ConfirmationModal, NotificationModal, PasswordConfirmModal, RequestContractChangesModal } from '@/components/shared/';
@@ -36,8 +37,10 @@ export default function ChatPanel({
   jobPostId?: number | null; onBack?: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { s } = useMessagesAppearance();
-  const { messages, loading, sending, sendError, clearSendError, myUserId, sendMessage, editMessage, sendImage, sendVideoCall, fetchMessages } = useChat(partnerId);
+  const { messages, loading, sending, sendError, clearSendError, myUserId, sendMessage, editMessage, sendImage, sendVideoCall, fetchMessages, respondInvite } = useChat(partnerId);
+  const [inviteBusyId, setInviteBusyId] = useState<number | null>(null);
   const [text, setText]                   = useState('');
   const [editTarget, setEditTarget]       = useState<Message | null>(null);
   const [viewerUri,  setViewerUri]        = useState<string | null>(null);
@@ -148,6 +151,21 @@ export default function ChatPanel({
     if (!t) return;
     setText('');
     await sendMessage(t, jobPostId);
+  };
+
+  // ── Job invitation: accept opens the job to apply; decline notifies employer ──
+  const openInviteJob = (jobId?: number | null) => {
+    if (!jobId) { showChatNotif('This job is no longer available.', 'warning'); return; }
+    router.push({ pathname: '/(helper)/browse', params: { open_job: String(jobId) } } as any);
+  };
+
+  const handleInviteResponse = async (msg: Message, action: 'accept' | 'decline') => {
+    setInviteBusyId(msg.message_id);
+    const { ok, jobPostId: jid } = await respondInvite(msg.message_id, action);
+    setInviteBusyId(null);
+    if (!ok) { showChatNotif('Could not respond to the invitation. Please try again.', 'error'); return; }
+    if (action === 'accept') openInviteJob(jid ?? msg.job_post_id);
+    else showChatNotif('Invitation declined. The employer has been notified.', 'info');
   };
 
   const handlePickImage = async () => {
@@ -386,6 +404,10 @@ export default function ChatPanel({
           setViewerUri={setViewerUri}
           editMessage={editMessage}
           insets={insets}
+          onAcceptInvite={(m) => handleInviteResponse(m, 'accept')}
+          onDeclineInvite={(m) => handleInviteResponse(m, 'decline')}
+          onOpenInviteJob={(m) => openInviteJob(m.job_post_id)}
+          inviteBusyId={inviteBusyId}
         />
       )}
 

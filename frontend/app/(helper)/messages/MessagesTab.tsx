@@ -17,6 +17,7 @@ export default function MessagesTab({
   messages, myUserId, sending, partnerName, flatRef,
   text, setText, handleSend, handlePickImage,
   editTarget, setEditTarget, viewerUri, setViewerUri, editMessage, insets,
+  onAcceptInvite, onDeclineInvite, onOpenInviteJob, inviteBusyId,
 }: {
   messages: Message[];
   myUserId: number;
@@ -33,6 +34,10 @@ export default function MessagesTab({
   setViewerUri: (uri: string | null) => void;
   editMessage: (messageId: number, newText: string) => Promise<boolean>;
   insets: EdgeInsets;
+  onAcceptInvite?: (m: Message) => void;
+  onDeclineInvite?: (m: Message) => void;
+  onOpenInviteJob?: (m: Message) => void;
+  inviteBusyId?: number | null;
 }) {
   const { s } = useMessagesAppearance();
 
@@ -62,6 +67,10 @@ export default function MessagesTab({
                 onLongPress={() => setEditTarget(item)}
                 onEditPress={item.message_type === 'text' && isMine ? () => setEditTarget(item) : undefined}
                 onImagePress={uri => setViewerUri(uri)}
+                onAcceptInvite={onAcceptInvite ? () => onAcceptInvite(item) : undefined}
+                onDeclineInvite={onDeclineInvite ? () => onDeclineInvite(item) : undefined}
+                onOpenInviteJob={onOpenInviteJob ? () => onOpenInviteJob(item) : undefined}
+                inviteBusy={inviteBusyId === item.message_id}
               />
             </>
           );

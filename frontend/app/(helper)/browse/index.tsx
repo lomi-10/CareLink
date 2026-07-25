@@ -3,7 +3,7 @@
 // PHP: helper/browse_jobs.php (via useBrowseJobs), helper/save_job.php
 
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
@@ -39,6 +39,7 @@ import { useHelperProfile }              from '@/hooks/helper';
 
 export default function BrowseJobs() {
   const router          = useRouter();
+  const { open_job }    = useLocalSearchParams<{ open_job?: string }>();
   const t               = useBrowseTheme();
   const { DARK, MUTED, ORANGE } = t;
   const s               = useMemo(() => createHelperBrowseJobsStyles(t), [t]);
@@ -99,6 +100,15 @@ export default function BrowseJobs() {
   }).length;
 
   const handleViewJob = (job: JobPost) => { setSelectedJob(job); setJobDetails(true); };
+
+  // Deep-link: a helper who accepted a job invitation lands here with ?open_job=<id>
+  // — open that job's details so they can apply. Guarded so closing it won't reopen.
+  const [handledOpenJob, setHandledOpenJob] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open_job || jobs.length === 0 || handledOpenJob === open_job) return;
+    const job = jobs.find((j) => String(j.job_post_id) === String(open_job));
+    if (job) { setSelectedJob(job); setJobDetails(true); setHandledOpenJob(String(open_job)); }
+  }, [open_job, jobs, handledOpenJob]);
 
   const handleApplicationSubmit = async () => {
     setNotification({ visible: true, message: 'Application submitted successfully!', type: 'success' });

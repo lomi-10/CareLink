@@ -16,6 +16,7 @@ ob_start();
 require_once '../dbcon.php';
 require_once '../shared/create_notification.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
+require_once __DIR__ . '/../shared/job_invites_table.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -54,11 +55,12 @@ try {
     if (!$job) throw new Exception('Job post not found or does not belong to this parent');
     $jobTitle = $job['title'];
 
-    // ── Check: helper hasn't already applied or been invited ────────────────
+    ensure_job_invites_table($conn);
+
+    // ── Check: helper hasn't already been invited to this job ───────────────
     $stmt = $conn->prepare(
-        "SELECT message_id FROM messages
-         WHERE sender_id = ? AND receiver_id = ? AND job_post_id = ?
-           AND message_text LIKE '%invited you to apply%'
+        "SELECT invite_id FROM job_invites
+         WHERE parent_id = ? AND helper_id = ? AND job_post_id = ?
          LIMIT 1"
     );
     $stmt->bind_param("iii", $parent_id, $helper_id, $job_post_id);
@@ -67,13 +69,13 @@ try {
     $stmt->close();
     if ($existing) throw new Exception('You have already sent an invitation for this job to this helper.');
 
-    // ── Send invitation message ──────────────────────────────────────────────
+    // ── Send invitation message (special 'job_invite' type) ─────────────────
     $messageText = "Hi! I'd like to invite you to apply for my job posting: \"{$jobTitle}\". "
         . "Please check the job listing and apply if you're interested. Looking forward to hearing from you!";
 
     $stmt = $conn->prepare(
         "INSERT INTO messages (sender_id, receiver_id, message_text, job_post_id, message_type, sent_at)
-         VALUES (?, ?, ?, ?, 'text', NOW())"
+         VALUES (?, ?, ?, ?, 'job_invite', NOW())"
     );
     $stmt->bind_param("iisi", $parent_id, $helper_id, $messageText, $job_post_id);
     $stmt->execute();
@@ -81,6 +83,15 @@ try {
     $stmt->close();
 
     if (!$message_id) throw new Exception('Failed to send invitation message');
+
+    // ── Track the invite so the helper can Accept / Decline it ──────────────
+    $stmt = $conn->prepare(
+        "INSERT INTO job_invites (message_id, job_post_id, parent_id, helper_id, status)
+         VALUES (?, ?, ?, ?, 'pending')"
+    );
+    $stmt->bind_param("iiii", $message_id, $job_post_id, $parent_id, $helper_id);
+    $stmt->execute();
+    $stmt->close();
 
     // ── Notify the helper ────────────────────────────────────────────────────
     createNotification(
