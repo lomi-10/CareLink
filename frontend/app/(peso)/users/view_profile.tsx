@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import NotificationModal from "../../../components/peso/NotificationModal";
 import API_URL from "../../../constants/api";
-import { theme } from "@/constants/theme";
+import { usePesoTheme, radius, shadow, type PesoColors } from "@/contexts/PesoThemeContext";
 import { formatParentHouseholdType } from "@/constants/parentHousehold";
 
 const DOC_ICONS: Record<string, React.ComponentProps<typeof Ionicons>["name"]> = {
@@ -28,6 +28,8 @@ const DOC_ICONS: Record<string, React.ComponentProps<typeof Ionicons>["name"]> =
 };
 
 export default function ViewUserProfile() {
+  const { c, dark } = usePesoTheme();
+  const styles = useMemo(() => makeStyles(c, dark), [c, dark]);
   const router = useRouter();
   const params = useLocalSearchParams();
   const userIdParam   = Array.isArray(params.user_id)   ? params.user_id[0]   : params.user_id;
@@ -324,7 +326,7 @@ export default function ViewUserProfile() {
   if (loading) {
     return (
       <View style={styles.fullCenter}>
-        <ActivityIndicator size="large" color={theme.color.peso} />
+        <ActivityIndicator size="large" color={c.accent} />
         <Text style={styles.loadingText}>Loading profile…</Text>
       </View>
     );
@@ -333,7 +335,7 @@ export default function ViewUserProfile() {
   if (!userData) {
     return (
       <View style={styles.fullCenter}>
-        <Ionicons name="alert-circle-outline" size={64} color={theme.color.subtle} />
+        <Ionicons name="alert-circle-outline" size={64} color={c.subtle} />
         <Text style={styles.errorTitle}>{loadError ?? "User not found"}</Text>
         <TouchableOpacity style={styles.retryBtn} onPress={fetchUserDetails}>
           <Text style={styles.retryBtnText}>Retry</Text>
@@ -345,19 +347,19 @@ export default function ViewUserProfile() {
   // ─── status config ────────────────────────────────────────────────────────
   const vs = profile?.verification_status ?? "Unverified";
   const isHelper = user.user_type === "helper";
-  const roleAccent = isHelper ? theme.color.helper : theme.color.parent;
-  const roleAccentSoft = isHelper ? theme.color.helperSoft : theme.color.parentSoft;
+  const roleAccent = isHelper ? c.accent : c.info;
+  const roleAccentSoft = isHelper ? c.accentSoft : c.infoSoft;
 
   const STATUS_VISUAL: Record<
     string,
     { bg: string; icon: React.ComponentProps<typeof Ionicons>['name'] }
   > = {
-    Pending: { bg: theme.color.warning, icon: 'time' },
-    Verified: { bg: theme.color.success, icon: 'shield-checkmark' },
-    Rejected: { bg: theme.color.danger, icon: 'close-circle' },
-    Unverified: { bg: theme.color.muted, icon: 'ellipse-outline' },
+    Pending: { bg: c.warn, icon: 'time' },
+    Verified: { bg: c.ok, icon: 'shield-checkmark' },
+    Rejected: { bg: c.bad, icon: 'close-circle' },
+    Unverified: { bg: c.muted, icon: 'ellipse-outline' },
   };
-  const vsCfg = STATUS_VISUAL[vs] ?? { bg: theme.color.muted, icon: 'ellipse-outline' as const };
+  const vsCfg = STATUS_VISUAL[vs] ?? { bg: c.muted, icon: 'ellipse-outline' as const };
 
   return (
     <View style={styles.container}>
@@ -374,7 +376,7 @@ export default function ViewUserProfile() {
       {/* ── HEADER ── */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color={theme.color.ink} />
+          <Ionicons name="arrow-back" size={22} color={c.ink} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>User Profile</Text>
@@ -391,12 +393,12 @@ export default function ViewUserProfile() {
             style={[
               styles.noticeBanner,
               hasRejectedDoc
-                ? { backgroundColor: theme.color.dangerSoft, borderColor: theme.color.danger + "33" }
+                ? { backgroundColor: c.badSoft, borderColor: c.bad + "33" }
                 : hasPendingDoc
-                ? { backgroundColor: theme.color.warningSoft, borderColor: theme.color.warning + "33" }
+                ? { backgroundColor: c.warnSoft, borderColor: c.warn + "33" }
                 : canApproveUser
-                ? { backgroundColor: theme.color.successSoft, borderColor: theme.color.success + "33" }
-                : { backgroundColor: theme.color.infoSoft, borderColor: theme.color.info + "33" },
+                ? { backgroundColor: c.okSoft, borderColor: c.ok + "33" }
+                : { backgroundColor: c.infoSoft, borderColor: c.info + "33" },
             ]}
           >
             <View
@@ -404,12 +406,12 @@ export default function ViewUserProfile() {
                 styles.noticeDot,
                 {
                   backgroundColor: hasRejectedDoc
-                    ? theme.color.danger
+                    ? c.bad
                     : hasPendingDoc
-                    ? theme.color.warning
+                    ? c.warn
                     : canApproveUser
-                    ? theme.color.success
-                    : theme.color.info,
+                    ? c.ok
+                    : c.info,
                 },
               ]}
             >
@@ -426,7 +428,7 @@ export default function ViewUserProfile() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.noticeBannerTitle, {
-                color: hasRejectedDoc ? theme.color.danger : hasPendingDoc ? theme.color.warning : canApproveUser ? theme.color.success : theme.color.info
+                color: hasRejectedDoc ? c.bad : hasPendingDoc ? c.warn : canApproveUser ? c.ok : c.info
               }]}>
                 {hasRejectedDoc  ? "Documents Rejected"    :
                  hasPendingDoc   ? "Documents Pending"     :
@@ -471,7 +473,7 @@ export default function ViewUserProfile() {
                 </View>
                 {user.created_at && (
                   <View style={styles.pillMuted}>
-                    <Ionicons name="calendar-outline" size={12} color={theme.color.muted} />
+                    <Ionicons name="calendar-outline" size={12} color={c.muted} />
                     <Text style={styles.pillMutedText}>
                       Joined {new Date(user.created_at).toLocaleDateString("en-PH", { month: "short", year: "numeric" })}
                     </Text>
@@ -507,7 +509,7 @@ export default function ViewUserProfile() {
           {profile?.latitude && profile?.longitude ? (
             <View style={styles.locationRow}>
               <View style={styles.locationCoords}>
-                <Ionicons name="navigate-circle-outline" size={16} color={theme.color.peso} />
+                <Ionicons name="navigate-circle-outline" size={16} color={c.accent} />
                 <Text style={styles.locationText}>
                   GPS: {Number(profile.latitude).toFixed(5)}, {Number(profile.longitude).toFixed(5)}
                 </Text>
@@ -574,8 +576,8 @@ export default function ViewUserProfile() {
             {helperSpecialties?.skills?.length > 0 ? (
               <View style={styles.tagsRow}>
                 {helperSpecialties.skills.map((s: string) => (
-                  <View key={s} style={[styles.tag, { backgroundColor: theme.color.helperSoft, borderColor: theme.color.helper + "33" }]}>
-                    <Text style={[styles.tagText, { color: theme.color.helper }]}>{s}</Text>
+                  <View key={s} style={[styles.tag, { backgroundColor: c.accentSoft, borderColor: c.accent + "33" }]}>
+                    <Text style={[styles.tagText, { color: c.accent }]}>{s}</Text>
                   </View>
                 ))}
               </View>
@@ -586,8 +588,8 @@ export default function ViewUserProfile() {
             {helperSpecialties?.languages?.length > 0 ? (
               <View style={styles.tagsRow}>
                 {helperSpecialties.languages.map((l: string) => (
-                  <View key={l} style={[styles.tag, { backgroundColor: theme.color.infoSoft, borderColor: theme.color.info + "33" }]}>
-                    <Text style={[styles.tagText, { color: theme.color.info }]}>{l}</Text>
+                  <View key={l} style={[styles.tag, { backgroundColor: c.infoSoft, borderColor: c.info + "33" }]}>
+                    <Text style={[styles.tagText, { color: c.info }]}>{l}</Text>
                   </View>
                 ))}
               </View>
@@ -631,7 +633,7 @@ export default function ViewUserProfile() {
         <SectionCard title="Verification Documents" icon="document-text-outline">
           {docList.length === 0 ? (
             <View style={styles.noDocWrap}>
-              <Ionicons name="document-outline" size={40} color={theme.color.subtle} />
+              <Ionicons name="document-outline" size={40} color={c.subtle} />
               <Text style={styles.noDocText}>No documents uploaded yet</Text>
             </View>
           ) : (
@@ -640,21 +642,21 @@ export default function ViewUserProfile() {
               const isPending  = doc.status === "Pending";
               const isVerified = doc.status === "Verified";
               const isRejected = doc.status === "Rejected";
-              const docStatusBg   = isVerified ? theme.color.successSoft : isRejected ? theme.color.dangerSoft : theme.color.warningSoft;
-              const docStatusText = isVerified ? theme.color.success     : isRejected ? theme.color.danger     : theme.color.warning;
-              const docBorder     = isVerified ? theme.color.success + "33" : isRejected ? theme.color.danger + "33" : theme.color.line;
+              const docStatusBg   = isVerified ? c.okSoft : isRejected ? c.badSoft : c.warnSoft;
+              const docStatusText = isVerified ? c.ok     : isRejected ? c.bad     : c.warn;
+              const docBorder     = isVerified ? c.ok + "33" : isRejected ? c.bad + "33" : c.line;
 
               return (
                 <View key={doc.document_id} style={[styles.docCard, { borderColor: docBorder }]}>
                   {/* Doc header */}
                   <View style={styles.docCardTop}>
                     <View style={[styles.docIconWrap, {
-                      backgroundColor: isVerified ? theme.color.successSoft : isRejected ? theme.color.dangerSoft : theme.color.pesoSoft,
+                      backgroundColor: isVerified ? c.okSoft : isRejected ? c.badSoft : c.accentSoft,
                     }]}>
                       <Ionicons
                         name={docIcon}
                         size={22}
-                        color={isVerified ? theme.color.success : isRejected ? theme.color.danger : theme.color.peso}
+                        color={isVerified ? c.ok : isRejected ? c.bad : c.accent}
                       />
                     </View>
                     <View style={styles.docInfo}>
@@ -681,7 +683,7 @@ export default function ViewUserProfile() {
                       onPress={() => setViewingDocument(doc)}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="eye-outline" size={16} color={theme.color.info} />
+                      <Ionicons name="eye-outline" size={16} color={c.info} />
                       <Text style={styles.docViewBtnText}>View</Text>
                     </TouchableOpacity>
 
@@ -710,7 +712,7 @@ export default function ViewUserProfile() {
                   {/* Rejection note */}
                   {isRejected && doc.rejection_reason && (
                     <View style={styles.docRejectionNote}>
-                      <Ionicons name="information-circle-outline" size={14} color={theme.color.danger} />
+                      <Ionicons name="information-circle-outline" size={14} color={c.bad} />
                       <Text style={styles.docRejectionText}>Reason: {doc.rejection_reason}</Text>
                     </View>
                   )}
@@ -725,12 +727,12 @@ export default function ViewUserProfile() {
           <SectionCard title="Job Posts" icon="briefcase-outline">
             {parentJobsLoading ? (
               <View style={{ alignItems: "center", paddingVertical: 24 }}>
-                <ActivityIndicator size="small" color={theme.color.peso} />
+                <ActivityIndicator size="small" color={c.accent} />
                 <Text style={[styles.emptyLine, { marginTop: 8 }]}>Loading job posts…</Text>
               </View>
             ) : parentJobs.length === 0 ? (
               <View style={styles.noDocWrap}>
-                <Ionicons name="briefcase-outline" size={40} color={theme.color.subtle} />
+                <Ionicons name="briefcase-outline" size={40} color={c.subtle} />
                 <Text style={styles.noDocText}>No job posts yet</Text>
               </View>
             ) : (
@@ -738,9 +740,9 @@ export default function ViewUserProfile() {
                 const isPendingJob  = job.status === "Pending";
                 const isApproved    = job.status === "Open";
                 const isRejectedJob = job.status === "Rejected";
-                const jobBg   = isApproved ? theme.color.successSoft : isRejectedJob ? theme.color.dangerSoft  : theme.color.warningSoft;
-                const jobText = isApproved ? theme.color.success      : isRejectedJob ? theme.color.danger       : theme.color.warning;
-                const jobBorder = isApproved ? theme.color.success + "44" : isRejectedJob ? theme.color.danger + "44" : theme.color.line;
+                const jobBg   = isApproved ? c.okSoft : isRejectedJob ? c.badSoft  : c.warnSoft;
+                const jobText = isApproved ? c.ok      : isRejectedJob ? c.bad       : c.warn;
+                const jobBorder = isApproved ? c.ok + "44" : isRejectedJob ? c.bad + "44" : c.line;
                 const isProcessing = processingJobId === job.job_post_id;
 
                 return (
@@ -796,14 +798,14 @@ export default function ViewUserProfile() {
 
                     {isRejectedJob && job.rejection_reason && (
                       <View style={styles.docRejectionNote}>
-                        <Ionicons name="information-circle-outline" size={14} color={theme.color.danger} />
+                        <Ionicons name="information-circle-outline" size={14} color={c.bad} />
                         <Text style={styles.docRejectionText}>Reason: {job.rejection_reason}</Text>
                       </View>
                     )}
                     {isApproved && job.verified_by_name && (
-                      <View style={[styles.docRejectionNote, { backgroundColor: theme.color.successSoft, borderColor: theme.color.success + "33" }]}>
-                        <Ionicons name="shield-checkmark-outline" size={14} color={theme.color.success} />
-                        <Text style={[styles.docRejectionText, { color: theme.color.success }]}>
+                      <View style={[styles.docRejectionNote, { backgroundColor: c.okSoft, borderColor: c.ok + "33" }]}>
+                        <Ionicons name="shield-checkmark-outline" size={14} color={c.ok} />
+                        <Text style={[styles.docRejectionText, { color: c.ok }]}>
                           Verified by {job.verified_by_name}
                         </Text>
                       </View>
@@ -820,7 +822,7 @@ export default function ViewUserProfile() {
           <View style={styles.actionSection}>
             {!canApproveUser && approvalBlockReason !== "" && (
               <View style={styles.actionHintBox}>
-                <Ionicons name="information-circle-outline" size={16} color={theme.color.warning} />
+                <Ionicons name="information-circle-outline" size={16} color={c.warn} />
                 <Text style={styles.actionHintText}>{approvalBlockReason}</Text>
               </View>
             )}
@@ -862,7 +864,7 @@ export default function ViewUserProfile() {
             </View>
             {viewingDocument?.file_path?.toLowerCase().endsWith(".pdf") ? (
               <View style={styles.docViewerPDF}>
-                <Ionicons name="document-text" size={72} color={theme.color.info} />
+                <Ionicons name="document-text" size={72} color={c.info} />
                 <Text style={styles.docViewerPDFTitle}>PDF Document</Text>
                 <Text style={styles.docViewerPDFHint}>Open in a browser to view</Text>
               </View>
@@ -918,11 +920,13 @@ export default function ViewUserProfile() {
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function SectionCard({ title, icon, children }: { title: string; icon: React.ComponentProps<typeof Ionicons>["name"]; children: React.ReactNode }) {
+  const { c, dark } = usePesoTheme();
+  const styles = useMemo(() => makeStyles(c, dark), [c, dark]);
   return (
     <View style={styles.sectionCard}>
       <View style={styles.sectionCardHeader}>
         <View style={styles.sectionIconWrap}>
-          <Ionicons name={icon} size={17} color={theme.color.peso} />
+          <Ionicons name={icon} size={17} color={c.accent} />
         </View>
         <Text style={styles.sectionCardTitle}>{title}</Text>
       </View>
@@ -932,6 +936,8 @@ function SectionCard({ title, icon, children }: { title: string; icon: React.Com
 }
 
 function InfoRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  const { c, dark } = usePesoTheme();
+  const styles = useMemo(() => makeStyles(c, dark), [c, dark]);
   return (
     <View style={[styles.infoRow, last && { borderBottomWidth: 0 }]}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -946,18 +952,20 @@ function RejectModal({
   title: string; subtitle: string; value: string; onChange: (v: string) => void;
   onCancel: () => void; onConfirm: () => void; processing: boolean;
 }) {
+  const { c, dark } = usePesoTheme();
+  const styles = useMemo(() => makeStyles(c, dark), [c, dark]);
   return (
     <View style={styles.modalOverlay}>
       <View style={styles.rejectModalBox}>
         <View style={styles.rejectModalIcon}>
-          <Ionicons name="warning-outline" size={30} color={theme.color.danger} />
+          <Ionicons name="warning-outline" size={30} color={c.bad} />
         </View>
         <Text style={styles.rejectModalTitle}>{title}</Text>
         <Text style={styles.rejectModalSub}>{subtitle}</Text>
         <TextInput
           style={styles.rejectInput}
           placeholder="Enter rejection reason…"
-          placeholderTextColor={theme.color.subtle}
+          placeholderTextColor={c.subtle}
           value={value}
           onChangeText={onChange}
           multiline
@@ -983,22 +991,22 @@ function RejectModal({
 }
 
 // ─── styles ──────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
+const makeStyles = (c: PesoColors, dark: boolean) => StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
 
   fullCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
-  loadingText: { marginTop: 14, fontSize: 14, color: theme.color.muted, fontWeight: "600" },
-  errorTitle: { marginTop: 16, fontSize: 17, fontWeight: "700", color: theme.color.ink, textAlign: "center" },
+  loadingText: { marginTop: 14, fontSize: 14, color: c.muted, fontWeight: "600" },
+  errorTitle: { marginTop: 16, fontSize: 17, fontWeight: "700", color: c.ink, textAlign: "center" },
   retryBtn: {
     marginTop: 16,
     paddingVertical: 11,
     paddingHorizontal: 24,
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: theme.radius.md,
+    backgroundColor: c.surface,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: theme.color.line,
+    borderColor: c.line,
   },
-  retryBtnText: { fontWeight: "800", color: theme.color.ink, fontSize: 14 },
+  retryBtnText: { fontWeight: "800", color: c.ink, fontSize: 14 },
 
   header: {
     flexDirection: "row",
@@ -1006,15 +1014,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: theme.color.surfaceElevated,
+    backgroundColor: c.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.color.line,
-    ...theme.shadow.nav,
+    borderBottomColor: c.line,
+    ...shadow('sm', dark),
   },
   backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20 },
   headerCenter: { flex: 1, alignItems: "center" },
-  headerTitle: { fontSize: 17, fontWeight: "800", color: theme.color.ink },
-  headerSub:   { fontSize: 12, color: theme.color.muted, fontWeight: "600", marginTop: 1 },
+  headerTitle: { fontSize: 17, fontWeight: "800", color: c.ink },
+  headerSub:   { fontSize: 12, color: c.muted, fontWeight: "600", marginTop: 1 },
 
   scrollContent: { padding: 20, paddingBottom: 40 },
 
@@ -1024,7 +1032,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
     padding: 14,
-    borderRadius: theme.radius.lg,
+    borderRadius: radius.lg,
     borderWidth: 1,
     marginBottom: 16,
   },
@@ -1036,17 +1044,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   noticeBannerTitle: { fontSize: 14, fontWeight: "900", marginBottom: 4 },
-  noticeBannerBody:  { fontSize: 13, color: theme.color.inkMuted, lineHeight: 19 },
+  noticeBannerBody:  { fontSize: 13, color: c.muted, lineHeight: 19 },
 
   // profile card
   profileCard: {
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: theme.radius.lg,
+    backgroundColor: c.surface,
+    borderRadius: radius.lg,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: theme.color.line,
-    ...theme.shadow.card,
+    borderColor: c.line,
+    ...shadow('sm', dark),
   },
   profileAvatarRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
   avatarRing: {
@@ -1062,8 +1070,8 @@ const styles = StyleSheet.create({
   avatarImg: { width: 80, height: 80, borderRadius: 40 },
   avatarFallback: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center" },
   profileMeta:  { flex: 1 },
-  profileName:  { fontSize: 19, fontWeight: "800", color: theme.color.ink, marginBottom: 3 },
-  profileEmail: { fontSize: 13, color: theme.color.muted, fontWeight: "500", marginBottom: 8 },
+  profileName:  { fontSize: 19, fontWeight: "800", color: c.ink, marginBottom: 3 },
+  profileEmail: { fontSize: 13, color: c.muted, fontWeight: "500", marginBottom: 8 },
   pillsRow:     { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   pill: {
     flexDirection: "row",
@@ -1082,30 +1090,30 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 999,
-    backgroundColor: theme.color.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: theme.color.line,
+    borderColor: c.line,
   },
-  pillMutedText: { fontSize: 12, fontWeight: "600", color: theme.color.muted },
+  pillMutedText: { fontSize: 12, fontWeight: "600", color: c.muted },
   vsBanner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingVertical: 10,
-    borderRadius: theme.radius.md,
+    borderRadius: radius.md,
   },
   vsBannerText: { fontSize: 14, fontWeight: "800", color: "#fff" },
 
   // section card
   sectionCard: {
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: theme.radius.lg,
+    backgroundColor: c.surface,
+    borderRadius: radius.lg,
     padding: 20,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: theme.color.line,
-    ...theme.shadow.card,
+    borderColor: c.line,
+    ...shadow('sm', dark),
   },
   sectionCardHeader: {
     flexDirection: "row",
@@ -1114,79 +1122,79 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: theme.color.line,
+    borderBottomColor: c.line,
   },
   sectionIconWrap: {
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: theme.color.pesoSoft,
+    backgroundColor: c.accentSoft,
     alignItems: "center",
     justifyContent: "center",
   },
-  sectionCardTitle: { fontSize: 15, fontWeight: "900", color: theme.color.ink },
-  subLabel: { fontSize: 11, fontWeight: "900", color: theme.color.muted, letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 10 },
+  sectionCardTitle: { fontSize: 15, fontWeight: "900", color: c.ink },
+  subLabel: { fontSize: 11, fontWeight: "900", color: c.muted, letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 10 },
 
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: theme.color.line,
+    borderBottomColor: c.line,
   },
-  infoLabel: { fontSize: 13, color: theme.color.muted, fontWeight: "600" },
-  infoValue: { fontSize: 13, color: theme.color.ink, fontWeight: "700", textAlign: "right", flex: 1, marginLeft: 16 },
+  infoLabel: { fontSize: 13, color: c.muted, fontWeight: "600" },
+  infoValue: { fontSize: 13, color: c.ink, fontWeight: "700", textAlign: "right", flex: 1, marginLeft: 16 },
 
-  emptyLine: { fontSize: 13, color: theme.color.muted, fontStyle: "italic", paddingVertical: 4 },
+  emptyLine: { fontSize: 13, color: c.muted, fontStyle: "italic", paddingVertical: 4 },
 
   categoryGrid: { gap: 10 },
   categoryCard: {
-    backgroundColor: theme.color.surface,
-    borderRadius: theme.radius.md,
+    backgroundColor: c.surface,
+    borderRadius: radius.md,
     padding: 12,
     borderWidth: 1,
-    borderColor: theme.color.line,
+    borderColor: c.line,
   },
   categoryHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  categoryTitle:  { fontSize: 13, fontWeight: "900", color: theme.color.ink },
+  categoryTitle:  { fontSize: 13, fontWeight: "900", color: c.ink },
   categoryCountPill: {
-    backgroundColor: theme.color.pesoSoft,
+    backgroundColor: c.accentSoft,
     borderRadius: 999,
     paddingHorizontal: 9,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: theme.color.peso + "22",
+    borderColor: c.accent + "22",
   },
-  categoryCountText: { fontSize: 11, fontWeight: "900", color: theme.color.peso },
+  categoryCountText: { fontSize: 11, fontWeight: "900", color: c.accent },
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   tag: {
-    backgroundColor: theme.color.surfaceElevated,
+    backgroundColor: c.surface,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderWidth: 1,
-    borderColor: theme.color.line,
+    borderColor: c.line,
   },
-  tagText: { fontSize: 12, fontWeight: "700", color: theme.color.inkMuted },
+  tagText: { fontSize: 12, fontWeight: "700", color: c.muted },
 
   miniCard: {
-    backgroundColor: theme.color.surface,
-    borderRadius: theme.radius.md,
+    backgroundColor: c.surface,
+    borderRadius: radius.md,
     padding: 12,
     borderWidth: 1,
-    borderColor: theme.color.line,
+    borderColor: c.line,
     marginBottom: 8,
   },
-  miniCardTitle: { fontSize: 13, fontWeight: "800", color: theme.color.ink, marginBottom: 3 },
-  miniCardBody:  { fontSize: 13, color: theme.color.muted, lineHeight: 18 },
+  miniCardTitle: { fontSize: 13, fontWeight: "800", color: c.ink, marginBottom: 3 },
+  miniCardBody:  { fontSize: 13, color: c.muted, lineHeight: 18 },
 
   // documents
   noDocWrap: { alignItems: "center", paddingVertical: 24, gap: 10 },
-  noDocText: { fontSize: 14, color: theme.color.muted, fontWeight: "600" },
+  noDocText: { fontSize: 14, color: c.muted, fontWeight: "600" },
 
   docCard: {
-    backgroundColor: theme.color.surface,
-    borderRadius: theme.radius.md,
+    backgroundColor: c.surface,
+    borderRadius: radius.md,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
@@ -1194,9 +1202,9 @@ const styles = StyleSheet.create({
   docCardTop: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 12 },
   docIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   docInfo: { flex: 1 },
-  docTitle: { fontSize: 14, fontWeight: "800", color: theme.color.ink, marginBottom: 2 },
-  docSub:   { fontSize: 12, color: theme.color.muted, fontWeight: "600", marginBottom: 2 },
-  docDate:  { fontSize: 11, color: theme.color.subtle, fontWeight: "600" },
+  docTitle: { fontSize: 14, fontWeight: "800", color: c.ink, marginBottom: 2 },
+  docSub:   { fontSize: 12, color: c.muted, fontWeight: "600", marginBottom: 2 },
+  docDate:  { fontSize: 11, color: c.subtle, fontWeight: "600" },
   docStatusPill: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" },
   docStatusText: { fontSize: 11, fontWeight: "800" },
   docActions: { flexDirection: "row", gap: 8 },
@@ -1207,20 +1215,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingVertical: 9,
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.color.infoSoft,
+    borderRadius: radius.sm,
+    backgroundColor: c.infoSoft,
     borderWidth: 1,
-    borderColor: theme.color.info + "33",
+    borderColor: c.info + "33",
   },
-  docViewBtnText: { fontSize: 13, fontWeight: "700", color: theme.color.info },
+  docViewBtnText: { fontSize: 13, fontWeight: "700", color: c.info },
   docApproveBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
     paddingVertical: 9,
     paddingHorizontal: 14,
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.color.success,
+    borderRadius: radius.sm,
+    backgroundColor: c.ok,
   },
   docRejectBtn: {
     flexDirection: "row",
@@ -1228,8 +1236,8 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingVertical: 9,
     paddingHorizontal: 14,
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.color.danger,
+    borderRadius: radius.sm,
+    backgroundColor: c.bad,
   },
   docActionBtnText: { fontSize: 13, fontWeight: "700", color: "#fff" },
   docRejectionNote: {
@@ -1238,10 +1246,10 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 10,
     padding: 10,
-    backgroundColor: theme.color.dangerSoft,
-    borderRadius: theme.radius.sm,
+    backgroundColor: c.badSoft,
+    borderRadius: radius.sm,
   },
-  docRejectionText: { flex: 1, fontSize: 12, color: theme.color.danger, fontWeight: "600", lineHeight: 17 },
+  docRejectionText: { flex: 1, fontSize: 12, color: c.bad, fontWeight: "600", lineHeight: 17 },
 
   // action section
   actionSection: { gap: 10, marginTop: 4 },
@@ -1250,20 +1258,20 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 8,
     padding: 12,
-    backgroundColor: theme.color.warningSoft,
-    borderRadius: theme.radius.md,
+    backgroundColor: c.warnSoft,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: theme.color.warning + "44",
+    borderColor: c.warn + "44",
   },
-  actionHintText: { flex: 1, fontSize: 13, color: theme.color.warning, fontWeight: "600", lineHeight: 18 },
+  actionHintText: { flex: 1, fontSize: 13, color: c.warn, fontWeight: "600", lineHeight: 18 },
   approveBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
     paddingVertical: 16,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.color.success,
+    borderRadius: radius.lg,
+    backgroundColor: c.ok,
   },
   rejectBtn: {
     flexDirection: "row",
@@ -1271,8 +1279,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     paddingVertical: 16,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.color.danger,
+    borderRadius: radius.lg,
+    backgroundColor: c.bad,
   },
   btnDisabled: { opacity: 0.45 },
   actionBtnText: { fontSize: 16, fontWeight: "800", color: "#fff" },
@@ -1282,8 +1290,8 @@ const styles = StyleSheet.create({
   docViewerBox: {
     width: "90%",
     height: "80%",
-    backgroundColor: theme.color.ink,
-    borderRadius: theme.radius.xl,
+    backgroundColor: c.ink,
+    borderRadius: radius.xl,
     overflow: "hidden",
   },
   docViewerHeader: {
@@ -1291,62 +1299,62 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-    backgroundColor: theme.color.inkMuted,
+    backgroundColor: c.muted,
   },
   docViewerTitle: { color: "#fff", fontSize: 16, fontWeight: "700" },
   docViewerImg:   { flex: 1, width: "100%" },
   docViewerPDF:   { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   docViewerPDFTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
-  docViewerPDFHint:  { color: theme.color.subtle, fontSize: 14 },
+  docViewerPDFHint:  { color: c.subtle, fontSize: 14 },
 
   rejectModalBox: {
-    backgroundColor: theme.color.surfaceElevated,
-    borderRadius: theme.radius.xl,
+    backgroundColor: c.surface,
+    borderRadius: radius.xl,
     padding: 24,
     width: "88%",
     maxWidth: 400,
     alignItems: "center",
-    ...theme.shadow.card,
+    ...shadow('sm', dark),
   },
   rejectModalIcon: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: theme.color.dangerSoft,
+    backgroundColor: c.badSoft,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
   },
-  rejectModalTitle: { fontSize: 19, fontWeight: "900", color: theme.color.ink, marginBottom: 6 },
-  rejectModalSub:   { fontSize: 13, color: theme.color.muted, textAlign: "center", marginBottom: 16, lineHeight: 19 },
+  rejectModalTitle: { fontSize: 19, fontWeight: "900", color: c.ink, marginBottom: 6 },
+  rejectModalSub:   { fontSize: 13, color: c.muted, textAlign: "center", marginBottom: 16, lineHeight: 19 },
   rejectInput: {
     width: "100%",
-    backgroundColor: theme.color.surface,
-    borderRadius: theme.radius.md,
+    backgroundColor: c.surface,
+    borderRadius: radius.md,
     padding: 14,
     fontSize: 14,
-    color: theme.color.ink,
+    color: c.ink,
     height: 110,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: theme.color.line,
+    borderColor: c.line,
   },
   rejectModalBtns: { flexDirection: "row", gap: 12, width: "100%" },
   cancelBtn: {
     flex: 1,
     paddingVertical: 13,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.color.surface,
+    borderRadius: radius.md,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: theme.color.line,
+    borderColor: c.line,
     alignItems: "center",
   },
-  cancelBtnText: { fontSize: 15, fontWeight: "700", color: theme.color.ink },
+  cancelBtnText: { fontSize: 15, fontWeight: "700", color: c.ink },
   confirmRejectBtn: {
     flex: 1,
     paddingVertical: 13,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.color.danger,
+    borderRadius: radius.md,
+    backgroundColor: c.bad,
     alignItems: "center",
   },
   confirmRejectBtnText: { fontSize: 15, fontWeight: "800", color: "#fff" },
@@ -1359,7 +1367,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 4,
     borderTopWidth: 1,
-    borderTopColor: theme.color.line,
+    borderTopColor: c.line,
     marginTop: 6,
   },
   locationCoords: {
@@ -1370,17 +1378,17 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 12,
-    color: theme.color.muted,
+    color: c.muted,
     fontFamily: "monospace",
   },
   mapBtn: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 4,
-    backgroundColor: theme.color.peso,
+    backgroundColor: c.accent,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: theme.radius.sm,
+    borderRadius: radius.sm,
   },
   mapBtnText: { fontSize: 12, fontWeight: "700" as const, color: "#fff" },
 });

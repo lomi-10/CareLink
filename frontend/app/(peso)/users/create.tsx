@@ -1,54 +1,35 @@
-// app/(PESO)/create_peso_user.tsx
-// Create PESO User - Form to create new PESO admin accounts
+// app/(peso)/users/create.tsx
+// Create PESO User — form to create new PESO admin accounts.
+// Shared PESO design system: theme-aware (light/dark), animated, branded backdrop.
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { NotificationModal } from "@/components/shared/NotificationModal";
+import { usePesoTheme, ScreenHeader, PButton, IconButton, AnimateIn, layout, font, radius, space, type PesoColors } from "@/components/peso/ui";
 import API_URL from "../../../constants/api";
 
 const emptyForm = {
-  first_name: "",
-  middle_name: "",
-  last_name: "",
-  email: "",
-  username: "",
-  password: "",
-  confirm_password: "",
-  contact_number: "",
+  first_name: "", middle_name: "", last_name: "", email: "",
+  username: "", password: "", confirm_password: "", contact_number: "",
 };
 
 export default function CreatePESOUser() {
   const router = useRouter();
+  const { c } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
 
   const [formData, setFormData] = useState({ ...emptyForm });
-
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [modal, setModal] = useState<{
-    visible: boolean;
-    type: "success" | "error" | "warning" | "info";
-    message: string;
-    title?: string;
-  }>({ visible: false, type: "info", message: "" });
+  const [modal, setModal] = useState<{ visible: boolean; type: "success" | "error" | "warning" | "info"; message: string; title?: string }>({ visible: false, type: "info", message: "" });
   const pendingNavigateBack = useRef(false);
 
-  const showModal = (
-    type: "success" | "error" | "warning" | "info",
-    message: string,
-    title?: string
-  ) => setModal({ visible: true, type, message, title });
+  const showModal = (type: "success" | "error" | "warning" | "info", message: string, title?: string) => setModal({ visible: true, type, message, title });
 
   const closeModal = () => {
     setModal((m) => ({ ...m, visible: false }));
@@ -59,62 +40,31 @@ export default function CreatePESOUser() {
     }
   };
 
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+  const handleChange = (field: string, value: string) => setFormData((prev) => ({ ...prev, [field]: value }));
 
   const validateForm = () => {
-    if (
-      !formData.first_name ||
-      !formData.last_name ||
-      !formData.email ||
-      !formData.username ||
-      !formData.password
-    ) {
-      showModal("error", "Please fill in all required fields");
-      return false;
+    if (!formData.first_name || !formData.last_name || !formData.email || !formData.username || !formData.password) {
+      showModal("error", "Please fill in all required fields"); return false;
     }
-
-    if (formData.password !== formData.confirm_password) {
-      showModal("error", "Passwords do not match");
-      return false;
-    }
-
-    if (formData.password.length < 6) {
-      showModal("error", "Password must be at least 6 characters");
-      return false;
-    }
-
+    if (formData.password !== formData.confirm_password) { showModal("error", "Passwords do not match"); return false; }
+    if (formData.password.length < 6) { showModal("error", "Password must be at least 6 characters"); return false; }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      showModal("error", "Please enter a valid email address");
-      return false;
-    }
-
+    if (!emailRegex.test(formData.email)) { showModal("error", "Please enter a valid email address"); return false; }
     return true;
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-
     try {
       setLoading(true);
-
       const raw = await AsyncStorage.getItem("user_data");
       const staffUserId = raw ? JSON.parse(raw)?.user_id : null;
-
       const response = await fetch(`${API_URL}/peso/create_peso_user.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, staff_user_id: staffUserId }),
       });
-
       const text = await response.text();
-      console.log("Response:", text);
       const data = JSON.parse(text);
-
       if (data.success) {
         pendingNavigateBack.current = true;
         showModal("success", "PESO user account created successfully.", "Success");
@@ -129,185 +79,60 @@ export default function CreatePESOUser() {
     }
   };
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1A1C1E" />
-        </TouchableOpacity>
-        <View style={styles.headerTitle}>
-          <Text style={styles.pageTitle}>Create PESO User</Text>
-          <Text style={styles.pageSubtitle}>Add new PESO admin account</Text>
-        </View>
-        <View style={{ width: 40 }} />
+  const Field = ({ label, field, required, ...rest }: any) => (
+    <View style={{ marginBottom: 14 }}>
+      <Text style={s.label}>{label}{required ? <Text style={s.required}> *</Text> : null}</Text>
+      <TextInput style={s.input} placeholderTextColor={c.subtle} value={(formData as any)[field]} onChangeText={(v) => handleChange(field, v)} {...rest} />
+    </View>
+  );
+
+  const PasswordField = ({ label, field, show, toggle }: any) => (
+    <View style={{ marginBottom: 14 }}>
+      <Text style={s.label}>{label} <Text style={s.required}>*</Text></Text>
+      <View style={s.passwordRow}>
+        <TextInput style={s.passwordInput} placeholder={field === "password" ? "Enter password (min 6 characters)" : "Re-enter password"}
+          placeholderTextColor={c.subtle} value={(formData as any)[field]} onChangeText={(v) => handleChange(field, v)} secureTextEntry={!show} autoCapitalize="none" />
+        <Pressable onPress={toggle} style={s.eyeIcon} hitSlop={8}>
+          <Ionicons name={show ? "eye-off" : "eye"} size={20} color={c.subtle} />
+        </Pressable>
       </View>
+    </View>
+  );
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Info Card */}
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={24} color="#007AFF" />
-          <Text style={styles.infoText}>
-            Create a new PESO admin account for managing user verification and documents.
-          </Text>
-        </View>
+  return (
+    <View style={layout.page(c.canvas)}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: "transparent" }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScreenHeader eyebrow="User Management" title="Create PESO User"
+          subtitle="Add a new PESO admin account for managing verification and documents."
+          right={<IconButton icon="arrow-back" onPress={() => router.back()} />} />
 
-        {/* Form */}
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.lg, paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
+          <AnimateIn delay={80} style={s.infoCard}>
+            <Ionicons name="information-circle" size={22} color={c.accent} />
+            <Text style={s.infoText}>PESO admin accounts can review user verification, manage job posts, and oversee the platform.</Text>
+          </AnimateIn>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              First Name <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter first name"
-              value={formData.first_name}
-              onChangeText={(value) => handleChange("first_name", value)}
-              placeholderTextColor="#999"
-            />
-          </View>
+          <AnimateIn delay={140} style={s.formCard}>
+            <Text style={s.sectionTitle}>Personal Information</Text>
+            <Field label="First Name" field="first_name" required placeholder="Enter first name" />
+            <Field label="Middle Name" field="middle_name" placeholder="Enter middle name (optional)" />
+            <Field label="Last Name" field="last_name" required placeholder="Enter last name" />
+            <Field label="Contact Number" field="contact_number" placeholder="09XX XXX XXXX" keyboardType="phone-pad" />
+          </AnimateIn>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Middle Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter middle name (optional)"
-              value={formData.middle_name}
-              onChangeText={(value) => handleChange("middle_name", value)}
-              placeholderTextColor="#999"
-            />
-          </View>
+          <AnimateIn delay={200} style={s.formCard}>
+            <Text style={s.sectionTitle}>Account Credentials</Text>
+            <Field label="Email" field="email" required placeholder="name@peso.gov.ph" keyboardType="email-address" autoCapitalize="none" />
+            <Field label="Username" field="username" required placeholder="Choose username" autoCapitalize="none" />
+            <PasswordField label="Password" field="password" show={showPassword} toggle={() => setShowPassword((v) => !v)} />
+            <PasswordField label="Confirm Password" field="confirm_password" show={showConfirmPassword} toggle={() => setShowConfirmPassword((v) => !v)} />
+          </AnimateIn>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Last Name <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter last name"
-              value={formData.last_name}
-              onChangeText={(value) => handleChange("last_name", value)}
-              placeholderTextColor="#999"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Contact Number</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="09XX XXX XXXX"
-              value={formData.contact_number}
-              onChangeText={(value) => handleChange("contact_number", value)}
-              keyboardType="phone-pad"
-              placeholderTextColor="#999"
-            />
-          </View>
-        </View>
-
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>Account Credentials</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Email <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="name@peso.gov.ph"
-              value={formData.email}
-              onChangeText={(value) => handleChange("email", value)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              placeholderTextColor="#999"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Username <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Choose username"
-              value={formData.username}
-              onChangeText={(value) => handleChange("username", value)}
-              autoCapitalize="none"
-              placeholderTextColor="#999"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Password <Text style={styles.required}>*</Text>
-            </Text>
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="Enter password (min 6 characters)"
-                value={formData.password}
-                onChangeText={(value) => handleChange("password", value)}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                placeholderTextColor="#999"
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons
-                  name={showPassword ? "eye-off" : "eye"}
-                  size={22}
-                  color="#999"
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Confirm Password <Text style={styles.required}>*</Text>
-            </Text>
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="Re-enter password"
-                value={formData.confirm_password}
-                onChangeText={(value) => handleChange("confirm_password", value)}
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-                placeholderTextColor="#999"
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? "eye-off" : "eye"}
-                  size={22}
-                  color="#999"
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          <Ionicons name="person-add" size={22} color="#fff" />
-          <Text style={styles.submitButtonText}>
-            {loading ? "Creating Account..." : "Create PESO Account"}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
+          <AnimateIn delay={260}>
+            <PButton label={loading ? "Creating Account…" : "Create PESO Account"} icon="person-add" size="lg" full loading={loading} onPress={handleSubmit} style={{ marginTop: 4 }} />
+          </AnimateIn>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <NotificationModal
         visible={modal.visible}
@@ -318,141 +143,30 @@ export default function CreatePESOUser() {
         autoClose={modal.type === "success"}
         duration={2200}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8F9FA",
-  },
+const makeStyles = (c: PesoColors) => StyleSheet.create({
+  infoCard: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: c.accentSoft, borderRadius: radius.md, padding: 14, marginBottom: 16 },
+  infoText: { flex: 1, fontSize: 12.5, color: c.accentInk, lineHeight: 18, fontFamily: font.regular },
 
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 20,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    flex: 1,
-    alignItems: "center",
-  },
-  pageTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1C1E",
-  },
-  pageSubtitle: {
-    fontSize: 13,
-    color: "#666",
-  },
-
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-
-  infoCard: {
-    flexDirection: "row",
-    backgroundColor: "#E3F2FD",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    gap: 12,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 14,
-    color: "#007AFF",
-    lineHeight: 20,
-  },
-
-  formCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1A1C1E",
-    marginBottom: 20,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1A1C1E",
-    marginBottom: 8,
-  },
-  required: {
-    color: "#FF3B30",
-  },
+  formCard: { backgroundColor: c.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: c.line, padding: 18, marginBottom: 16 },
+  sectionTitle: { fontSize: 15, fontFamily: font.display, color: c.ink, marginBottom: 14 },
+  label: { fontSize: 13, fontFamily: font.semibold, color: c.muted, marginBottom: 6 },
+  required: { color: c.bad, fontFamily: font.semibold },
   input: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-    color: "#1A1C1E",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderWidth: 1, borderColor: c.line, borderRadius: radius.md, paddingHorizontal: 13, paddingVertical: 11,
+    fontSize: 14.5, color: c.ink, backgroundColor: c.sunken, fontFamily: font.regular,
+    ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}),
   },
-  passwordContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
+  passwordRow: {
+    flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: c.line, borderRadius: radius.md,
+    backgroundColor: c.sunken, paddingRight: 8,
   },
   passwordInput: {
-    flex: 1,
-    padding: 16,
-    fontSize: 15,
-    color: "#1A1C1E",
+    flex: 1, paddingHorizontal: 13, paddingVertical: 11, fontSize: 14.5, color: c.ink, fontFamily: font.regular,
+    ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}),
   },
-  eyeIcon: {
-    padding: 12,
-  },
-
-  submitButton: {
-    flexDirection: "row",
-    backgroundColor: "#FF9500",
-    borderRadius: 12,
-    padding: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    shadowColor: "#FF9500",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  submitButtonDisabled: {
-    backgroundColor: "#ccc",
-    shadowOpacity: 0,
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#fff",
-  },
+  eyeIcon: { padding: 6 },
 });
