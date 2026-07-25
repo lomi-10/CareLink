@@ -87,14 +87,18 @@ export function Sidebar({ router, pathname, collapsed, onToggleCollapse, userNam
 function NavItem({ item, active, collapsed, badge, onPress }: { item: (typeof NAV_GROUPS)[number]['items'][number]; active: boolean; collapsed: boolean; badge: number; onPress: () => void }) {
   const { c } = usePesoTheme();
   const [hovered, setHovered] = useState(false);
+  const hot = hovered && !active;              // hovered but not the active item
+  const fg = active ? c.onAccent : hot ? c.accent : c.muted;
   return (
     <Pressable onPress={onPress} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)}>
-      <MotiView animate={{ translateX: hovered && !active ? 2 : 0 }} transition={{ type: 'timing', duration: 130 }}
+      <MotiView animate={{ translateX: hot ? 3 : 0, scale: hot ? 1.015 : 1 }} transition={{ type: 'timing', duration: 150 }}
         style={{ borderRadius: radius.md, overflow: 'hidden', marginBottom: 3 }}>
         {active && <LinearGradient colors={c.accentGrad as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />}
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 11, paddingHorizontal: 12, gap: collapsed ? 0 : 11, backgroundColor: !active && hovered ? c.raise : 'transparent' }}>
-          <Ionicons name={item.icon} size={19} color={active ? c.onAccent : c.muted} />
-          {!collapsed && <Text style={{ flex: 1, fontFamily: font.semibold, fontSize: 13.5, color: active ? c.onAccent : c.muted }} numberOfLines={1}>{item.label}</Text>}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 11, paddingHorizontal: 12, gap: collapsed ? 0 : 11, backgroundColor: hot ? c.accentSoft : 'transparent' }}>
+          {/* left accent bar appears on hover — a common modern cue */}
+          {hot && <View style={{ position: 'absolute', left: 0, top: 6, bottom: 6, width: 3, borderRadius: 3, backgroundColor: c.accent }} />}
+          <Ionicons name={item.icon} size={19} color={fg} />
+          {!collapsed && <Text style={{ flex: 1, fontFamily: font.semibold, fontSize: 13.5, color: fg }} numberOfLines={1}>{item.label}</Text>}
           {!collapsed && badge > 0 && (
             <View style={{ minWidth: 20, height: 20, paddingHorizontal: 6, borderRadius: 10, backgroundColor: active ? 'rgba(255,255,255,0.28)' : c.bad, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: '#fff', fontSize: 11, fontFamily: font.semibold }}>{badge > 99 ? '99+' : badge}</Text>
