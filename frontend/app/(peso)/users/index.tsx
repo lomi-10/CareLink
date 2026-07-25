@@ -10,7 +10,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
 import UserDetailPanel from "@/components/peso/UserDetailPanel";
 import {
-  usePesoTheme, ScreenHeader, StatRow, StatTile, ListRow, Pill, EmptyState, IconButton, layout, font, radius, space,
+  usePesoTheme, ScreenHeader, StatRow, StatTile, ListRow, Pill, EmptyState, IconButton, AnimateIn, layout, font, radius, space,
   type Tone,
 } from "@/components/peso/ui";
 import API_URL from "../../../constants/api";
@@ -129,14 +129,14 @@ export default function UserVerification() {
         )}
 
         {/* Role segmented */}
-        <View style={{ flexDirection: "row", gap: 8, marginTop: space.lg }}>
+        <AnimateIn delay={170} style={{ flexDirection: "row", gap: 8, marginTop: space.lg }}>
           {(["helper", "parent"] as const).map((role) => {
             const active = activeRole === role;
             const pending = role === "helper" ? pendingHelpers : pendingParents;
             return (
               <Pressable key={role} onPress={() => setActiveRole(role)}
-                style={{ flex: 1, maxWidth: 220, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 11, borderRadius: radius.md,
-                  backgroundColor: active ? c.accentSoft : c.surface, borderWidth: 1.4, borderColor: active ? c.accent : c.line }}>
+                style={({ hovered }: any) => [{ flex: 1, maxWidth: 220, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 11, borderRadius: radius.md, transitionDuration: "140ms",
+                  backgroundColor: active ? c.accentSoft : hovered ? c.raise : c.surface, borderWidth: 1.4, borderColor: active ? c.accent : hovered ? c.accent : c.line } as any]}>
                 <Ionicons name={role === "helper" ? "briefcase-outline" : "people-outline"} size={17} color={active ? c.accent : c.muted} />
                 <Text style={{ fontFamily: font.semibold, fontSize: 13.5, color: active ? c.accentInk : c.muted }}>{role === "helper" ? "Helpers" : "Parents"}</Text>
                 {pending > 0 && <View style={{ minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 10, backgroundColor: active ? c.accent : c.sunken, alignItems: "center", justifyContent: "center" }}>
@@ -144,24 +144,25 @@ export default function UserVerification() {
               </Pressable>
             );
           })}
-        </View>
+        </AnimateIn>
 
         {/* Search */}
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, borderRadius: radius.md, paddingHorizontal: 13, paddingVertical: 10, marginTop: space.md }}>
+        <AnimateIn delay={215} style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, borderRadius: radius.md, paddingHorizontal: 13, paddingVertical: 10, marginTop: space.md }}>
           <Ionicons name="search" size={16} color={c.subtle} />
           <TextInput style={{ flex: 1, fontFamily: font.regular, fontSize: 14, color: c.ink, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}) }}
             placeholder={`Search ${activeRole}s by name or email…`} placeholderTextColor={c.subtle} value={searchQuery} onChangeText={setSearchQuery} />
           {!!searchQuery && <Pressable onPress={() => setSearchQuery("")} hitSlop={10}><Ionicons name="close-circle" size={16} color={c.subtle} /></Pressable>}
-        </View>
+        </AnimateIn>
 
         {/* Filter chips */}
+        <AnimateIn delay={260}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: space.md }} contentContainerStyle={{ gap: 8 }}>
           {FILTER_TABS.map((status) => {
             const active = filterStatus === status;
             const count = status === "All" ? undefined : countFor(status);
             return (
               <Pressable key={status} onPress={() => setFilterStatus(status)}
-                style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: active ? c.accent : c.surface, borderWidth: 1, borderColor: active ? c.accent : c.line }}>
+                style={({ hovered }: any) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.pill, transitionDuration: "140ms", backgroundColor: active ? c.accent : hovered ? c.accentSoft : c.surface, borderWidth: 1, borderColor: active ? c.accent : hovered ? c.accent : c.line } as any]}>
                 <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: active ? "#fff" : c.muted }}>{status === "All" ? "All statuses" : status}</Text>
                 {count !== undefined && <View style={{ minWidth: 18, paddingHorizontal: 5, borderRadius: 9, backgroundColor: active ? "rgba(255,255,255,0.25)" : c.sunken, alignItems: "center" }}>
                   <Text style={{ fontSize: 11, fontFamily: font.semibold, color: active ? "#fff" : c.muted }}>{count}</Text></View>}
@@ -169,6 +170,7 @@ export default function UserVerification() {
             );
           })}
         </ScrollView>
+        </AnimateIn>
       </View>
 
       {/* List */}

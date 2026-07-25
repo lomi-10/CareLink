@@ -3,4 +3,5 @@
 // theme-aware (light/dark) and animated.
 export * from './primitives';
 export * from './ScreenHeader';
+export * from './PesoBackground';
 export { usePesoTheme, space, radius, font, shadow } from '@/contexts/PesoThemeContext';

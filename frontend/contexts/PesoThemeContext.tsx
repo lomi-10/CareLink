@@ -30,34 +30,38 @@ export interface PesoColors {
   overlay: string;
 }
 
+// Accent is CareLink ORANGE — it's the brand colour and pairs far better with the
+// warm brown ground than green did. Green is kept ONLY for the "verified/success"
+// status, so the two never fight (orange = brand/interactive, green = verified).
 const LIGHT: PesoColors = {
-  canvas: '#FAF7F1', surface: '#FFFFFF', raise: '#FFFDFB', sunken: '#F3ECE1',
+  canvas: '#FBF6EE', surface: '#FFFFFF', raise: '#FFFCF7', sunken: '#F4ECDF',
   ink: '#2B1608', muted: '#7C6047', subtle: '#A8927A',
-  line: '#EFE4D5', lineStrong: '#E2D3BE',
-  accent: '#0F7B54', accent2: '#149468', accentSoft: '#E6F4EF', accentInk: '#0B5C3F', onAccent: '#FFFFFF',
-  ok: '#059669', okSoft: '#ECFDF5',
-  warn: '#B87309', warnSoft: '#FAEFD6',
+  line: '#EFE2D0', lineStrong: '#E4D3BB',
+  accent: '#E8641A', accent2: '#F2871F', accentSoft: '#FCEAD9', accentInk: '#B44810', onAccent: '#FFFFFF',
+  ok: '#0E9F6E', okSoft: '#E7F6EE',
+  warn: '#C97A0E', warnSoft: '#FBEFD3',
   bad: '#DC2626', badSoft: '#FBE9E9',
   info: '#2563EB', infoSoft: '#E9F0FD',
-  accentGrad: ['#149468', '#0C6A49'] as const,
-  heroGrad: ['#F1FAF6', '#FAF7F1'] as const,
-  blob: 'rgba(15,123,84,0.10)',
+  accentGrad: ['#F2871F', '#E05B12'] as const,
+  heroGrad: ['#FDEFE0', '#FBF6EE'] as const,
+  blob: 'rgba(232,100,26,0.10)',
   overlay: 'rgba(42,20,9,0.45)',
 };
 
 const DARK: PesoColors = {
-  canvas: '#241206', surface: '#33190B', raise: '#3E1F0E', sunken: '#1C0E04',
-  ink: '#FBEFE4', muted: '#D9BFA6', subtle: '#A8886A',
-  line: 'rgba(255,236,220,0.12)', lineStrong: 'rgba(255,236,220,0.20)',
-  accent: '#22A06B', accent2: '#2CB77C', accentSoft: 'rgba(34,160,107,0.18)', accentInk: '#8FE7C1', onAccent: '#08140E',
-  ok: '#2FBF87', okSoft: 'rgba(47,191,135,0.15)',
-  warn: '#E8A33D', warnSoft: 'rgba(232,163,61,0.15)',
-  bad: '#F2635C', badSoft: 'rgba(242,99,92,0.15)',
-  info: '#5B9BF5', infoSoft: 'rgba(91,155,245,0.15)',
-  accentGrad: ['#2CB77C', '#158A5A'] as const,
-  heroGrad: ['#341B0C', '#241206'] as const,
-  blob: 'rgba(44,183,124,0.14)',
-  overlay: 'rgba(0,0,0,0.6)',
+  // Warm layered browns (not a single flat brown) + a glowing orange accent.
+  canvas: '#20100A', surface: '#2E1810', raise: '#3A2015', sunken: '#180B06',
+  ink: '#FBEEE3', muted: '#D8BFA9', subtle: '#A88B72',
+  line: 'rgba(255,224,200,0.13)', lineStrong: 'rgba(255,224,200,0.22)',
+  accent: '#FF8A3D', accent2: '#FFA35C', accentSoft: 'rgba(255,138,61,0.17)', accentInk: '#FFC08A', onAccent: '#2A1206',
+  ok: '#34C88A', okSoft: 'rgba(52,200,138,0.16)',
+  warn: '#E8A33D', warnSoft: 'rgba(232,163,61,0.16)',
+  bad: '#F2635C', badSoft: 'rgba(242,99,92,0.16)',
+  info: '#5B9BF5', infoSoft: 'rgba(91,155,245,0.16)',
+  accentGrad: ['#FF9A4D', '#E86A1E'] as const,
+  heroGrad: ['#3A2013', '#20100A'] as const,
+  blob: 'rgba(255,138,61,0.16)',
+  overlay: 'rgba(0,0,0,0.62)',
 };
 
 // Systematic tokens — identical in both themes.

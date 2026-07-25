@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import NotificationModal from "./NotificationModal";
 import API_URL from "@/constants/api";
-import { theme } from "@/constants/theme";
+import { usePesoTheme, radius, type PesoColors } from "@/contexts/PesoThemeContext";
 import { formatParentHouseholdType } from "@/constants/parentHousehold";
 
 const DOC_ICONS: Record<string, React.ComponentProps<typeof Ionicons>["name"]> = {
@@ -28,7 +28,7 @@ type TabKey = "overview" | "documents" | "jobs";
 
 function legitLabel(v: number) { return v >= 90 ? "High" : v >= 70 ? "Medium" : "Low"; }
 function clarityLabel(v: number) { return v >= 85 ? "Very Clear" : v >= 60 ? "Readable" : "Low"; }
-function scoreColor(v: number) { return v >= 85 ? theme.color.success : v >= 60 ? theme.color.warning : theme.color.danger; }
+function scoreColor(v: number, c: PesoColors) { return v >= 85 ? c.ok : v >= 60 ? c.warn : c.bad; }
 
 export default function UserDetailPanel({
   userId, userType, onChanged, onClose,
@@ -38,6 +38,8 @@ export default function UserDetailPanel({
   onChanged?: () => void;
   onClose?: () => void;
 }) {
+  const { c } = usePesoTheme();
+  const st = useMemo(() => makeStyles(c), [c]);
   const [verifierId, setVerifierId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
@@ -250,25 +252,25 @@ export default function UserDetailPanel({
 
   // ── render ──
   if (loading) {
-    return <View style={st.center}><ActivityIndicator size="large" color={theme.color.peso} /><Text style={st.muted}>Loading profile…</Text></View>;
+    return <View style={st.center}><ActivityIndicator size="large" color={c.accent} /><Text style={st.muted}>Loading profile…</Text></View>;
   }
   if (!userData) {
     return (
       <View style={st.center}>
-        <Ionicons name="alert-circle-outline" size={56} color={theme.color.subtle} />
+        <Ionicons name="alert-circle-outline" size={56} color={c.subtle} />
         <Text style={st.errTitle}>{loadError ?? "User not found"}</Text>
         <TouchableOpacity style={st.retryBtn} onPress={fetchUserDetails}><Text style={st.retryText}>Retry</Text></TouchableOpacity>
       </View>
     );
   }
 
-  const roleAccent = isHelper ? theme.color.helper : theme.color.parent;
-  const roleAccentSoft = isHelper ? theme.color.helperSoft : theme.color.parentSoft;
+  const roleAccent = isHelper ? c.accent : c.info;
+  const roleAccentSoft = isHelper ? c.accentSoft : c.infoSoft;
   const STATUS_VISUAL: Record<string, { bg: string; icon: React.ComponentProps<typeof Ionicons>["name"] }> = {
-    Pending: { bg: theme.color.warning, icon: "time" },
-    Verified: { bg: theme.color.success, icon: "shield-checkmark" },
-    Rejected: { bg: theme.color.danger, icon: "close-circle" },
-    Unverified: { bg: theme.color.muted, icon: "ellipse-outline" },
+    Pending: { bg: c.warn, icon: "time" },
+    Verified: { bg: c.ok, icon: "shield-checkmark" },
+    Rejected: { bg: c.bad, icon: "close-circle" },
+    Unverified: { bg: c.muted, icon: "ellipse-outline" },
   };
   const vsCfg = STATUS_VISUAL[vs] ?? STATUS_VISUAL.Unverified;
   const fullName = [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(" ") || user.name || "—";
@@ -305,7 +307,7 @@ export default function UserDetailPanel({
           <Text style={st.statusPillText}>{vs}</Text>
         </View>
         {onClose && (
-          <TouchableOpacity onPress={onClose} hitSlop={8} style={st.closeBtn}><Ionicons name="close" size={20} color={theme.color.muted} /></TouchableOpacity>
+          <TouchableOpacity onPress={onClose} hitSlop={8} style={st.closeBtn}><Ionicons name="close" size={20} color={c.muted} /></TouchableOpacity>
         )}
       </View>
 
@@ -324,7 +326,7 @@ export default function UserDetailPanel({
           <>
             {vs === "Pending" && approvalBlockReason !== "" && (
               <View style={st.noticeBox}>
-                <Ionicons name="information-circle" size={16} color={theme.color.warning} />
+                <Ionicons name="information-circle" size={16} color={c.warn} />
                 <Text style={st.noticeText}>{approvalBlockReason}</Text>
               </View>
             )}
@@ -340,7 +342,7 @@ export default function UserDetailPanel({
                 { label: "Religion", value: profile?.religion || "—" },
               ]} />
               <View style={st.addressRow}>
-                <Ionicons name="location-outline" size={15} color={theme.color.peso} />
+                <Ionicons name="location-outline" size={15} color={c.accent} />
                 <View style={{ flex: 1 }}>
                   <Text style={st.infoLabel}>Address</Text>
                   <Text style={st.infoValue}>{addressFull}</Text>
@@ -360,9 +362,9 @@ export default function UserDetailPanel({
                   ]} />
                 </Section>
                 <Section title="Specialties" icon="star-outline">
-                  <TagBlock label="Job roles" tags={jobsByCategory.flatMap((g) => g.titles)} accent={theme.color.helper} accentSoft={theme.color.helperSoft} />
-                  <TagBlock label="Skills" tags={helperSpecialties?.skills ?? []} accent={theme.color.peso} accentSoft={theme.color.pesoSoft} />
-                  <TagBlock label="Languages" tags={helperSpecialties?.languages ?? []} accent={theme.color.info} accentSoft={theme.color.infoSoft} />
+                  <TagBlock label="Job roles" tags={jobsByCategory.flatMap((g) => g.titles)} accent={c.accent} accentSoft={c.accentSoft} />
+                  <TagBlock label="Skills" tags={helperSpecialties?.skills ?? []} accent={c.accent} accentSoft={c.accentSoft} />
+                  <TagBlock label="Languages" tags={helperSpecialties?.languages ?? []} accent={c.info} accentSoft={c.infoSoft} />
                 </Section>
               </>
             ) : (
@@ -386,18 +388,18 @@ export default function UserDetailPanel({
               <Text style={st.sectionTitle}>Documents Submitted</Text>
               {aiChecked && (
                 <View style={st.aiBadge}>
-                  <Ionicons name="sparkles" size={11} color={theme.color.success} />
+                  <Ionicons name="sparkles" size={11} color={c.ok} />
                   <Text style={st.aiBadgeText}>AI Pre-Verification Completed</Text>
                 </View>
               )}
             </View>
 
             {docList.length === 0 ? (
-              <View style={st.emptyBox}><Ionicons name="document-outline" size={40} color={theme.color.subtle} /><Text style={st.muted}>No documents uploaded yet</Text></View>
+              <View style={st.emptyBox}><Ionicons name="document-outline" size={40} color={c.subtle} /><Text style={st.muted}>No documents uploaded yet</Text></View>
             ) : docList.map((doc) => {
               const isPending = doc.status === "Pending", isVerified = doc.status === "Verified", isRejected = doc.status === "Rejected";
-              const sBg = isVerified ? theme.color.successSoft : isRejected ? theme.color.dangerSoft : theme.color.warningSoft;
-              const sText = isVerified ? theme.color.success : isRejected ? theme.color.danger : theme.color.warning;
+              const sBg = isVerified ? c.okSoft : isRejected ? c.badSoft : c.warnSoft;
+              const sText = isVerified ? c.ok : isRejected ? c.bad : c.warn;
               const legit = doc.ai_legitimacy_score != null ? Math.round(Number(doc.ai_legitimacy_score)) : null;
               const clarity = doc.ai_confidence_score != null ? Math.round(Number(doc.ai_confidence_score)) : null;
               return (
@@ -420,16 +422,16 @@ export default function UserDetailPanel({
                   {(legit != null || clarity != null) && (
                     <View style={st.scoreRow}>
                       {legit != null && (
-                        <View style={[st.scoreBox, { backgroundColor: theme.color.successSoft }]}>
+                        <View style={[st.scoreBox, { backgroundColor: c.okSoft }]}>
                           <Text style={st.scoreLabel}>Legitimacy</Text>
-                          <Text style={[st.scoreVal, { color: scoreColor(legit) }]}>{legit}%</Text>
+                          <Text style={[st.scoreVal, { color: scoreColor(legit, c) }]}>{legit}%</Text>
                           <Text style={st.scoreTag}>{legitLabel(legit)}</Text>
                         </View>
                       )}
                       {clarity != null && (
-                        <View style={[st.scoreBox, { backgroundColor: theme.color.pesoSoft }]}>
+                        <View style={[st.scoreBox, { backgroundColor: c.accentSoft }]}>
                           <Text style={st.scoreLabel}>Clarity</Text>
-                          <Text style={[st.scoreVal, { color: scoreColor(clarity) }]}>{clarity}%</Text>
+                          <Text style={[st.scoreVal, { color: scoreColor(clarity, c) }]}>{clarity}%</Text>
                           <Text style={st.scoreTag}>{clarityLabel(clarity)}</Text>
                         </View>
                       )}
@@ -452,11 +454,11 @@ export default function UserDetailPanel({
 
                   <View style={st.docActions}>
                     <TouchableOpacity style={st.docViewBtn} onPress={() => { setViewBack(false); setViewingDocument(doc); }} activeOpacity={0.8}>
-                      <Ionicons name="eye-outline" size={15} color={theme.color.info} /><Text style={st.docViewText}>{doc.file_url_back ? 'Front' : 'View'}</Text>
+                      <Ionicons name="eye-outline" size={15} color={c.info} /><Text style={st.docViewText}>{doc.file_url_back ? 'Front' : 'View'}</Text>
                     </TouchableOpacity>
                     {!!doc.file_url_back && (
                       <TouchableOpacity style={st.docViewBtn} onPress={() => { setViewBack(true); setViewingDocument(doc); }} activeOpacity={0.8}>
-                        <Ionicons name="eye-outline" size={15} color={theme.color.info} /><Text style={st.docViewText}>Back</Text>
+                        <Ionicons name="eye-outline" size={15} color={c.info} /><Text style={st.docViewText}>Back</Text>
                       </TouchableOpacity>
                     )}
                     {isPending && (
@@ -472,7 +474,7 @@ export default function UserDetailPanel({
                   </View>
 
                   {isRejected && doc.rejection_reason && (
-                    <View style={st.docNote}><Ionicons name="information-circle-outline" size={13} color={theme.color.danger} /><Text style={st.docNoteText}>Reason: {doc.rejection_reason}</Text></View>
+                    <View style={st.docNote}><Ionicons name="information-circle-outline" size={13} color={c.bad} /><Text style={st.docNoteText}>Reason: {doc.rejection_reason}</Text></View>
                   )}
                 </View>
               );
@@ -481,7 +483,7 @@ export default function UserDetailPanel({
             {aiChecked && docList.length > 0 && (
               <View style={st.aiSummary}>
                 <View style={st.aiSummaryHead}>
-                  <Ionicons name="shield-checkmark" size={16} color={theme.color.peso} />
+                  <Ionicons name="shield-checkmark" size={16} color={c.accent} />
                   <Text style={st.aiSummaryTitle}>AI Verification Summary</Text>
                 </View>
                 <Text style={st.aiSummarySub}>Our AI analyzed the submitted documents and extracted key information.</Text>
@@ -491,7 +493,7 @@ export default function UserDetailPanel({
                   docList.some((d) => (d.ai_warnings ?? []).length > 0) ? "Some documents were flagged for review" : "No signs of tampering detected",
                 ].map((t, i) => (
                   <View key={i} style={st.aiCheck}>
-                    <Ionicons name="checkmark-circle" size={14} color={theme.color.success} /><Text style={st.aiCheckText}>{t}</Text>
+                    <Ionicons name="checkmark-circle" size={14} color={c.ok} /><Text style={st.aiCheckText}>{t}</Text>
                   </View>
                 ))}
               </View>
@@ -502,15 +504,15 @@ export default function UserDetailPanel({
         {/* ── JOBS POSTED ── */}
         {tab === "jobs" && (
           isHelper ? (
-            <View style={st.emptyBox}><Ionicons name="briefcase-outline" size={40} color={theme.color.subtle} /><Text style={st.muted}>Helpers don’t post jobs.</Text></View>
+            <View style={st.emptyBox}><Ionicons name="briefcase-outline" size={40} color={c.subtle} /><Text style={st.muted}>Helpers don’t post jobs.</Text></View>
           ) : parentJobsLoading ? (
-            <View style={st.emptyBox}><ActivityIndicator size="small" color={theme.color.peso} /><Text style={st.muted}>Loading job posts…</Text></View>
+            <View style={st.emptyBox}><ActivityIndicator size="small" color={c.accent} /><Text style={st.muted}>Loading job posts…</Text></View>
           ) : parentJobs.length === 0 ? (
-            <View style={st.emptyBox}><Ionicons name="briefcase-outline" size={40} color={theme.color.subtle} /><Text style={st.muted}>No job posts yet.</Text></View>
+            <View style={st.emptyBox}><Ionicons name="briefcase-outline" size={40} color={c.subtle} /><Text style={st.muted}>No job posts yet.</Text></View>
           ) : parentJobs.map((job) => {
             const isPendingJob = job.status === "Pending", isApproved = job.status === "Open", isRejectedJob = job.status === "Rejected";
-            const jBg = isApproved ? theme.color.successSoft : isRejectedJob ? theme.color.dangerSoft : theme.color.warningSoft;
-            const jText = isApproved ? theme.color.success : isRejectedJob ? theme.color.danger : theme.color.warning;
+            const jBg = isApproved ? c.okSoft : isRejectedJob ? c.badSoft : c.warnSoft;
+            const jText = isApproved ? c.ok : isRejectedJob ? c.bad : c.warn;
             const isProc = processingJobId === job.job_post_id;
             return (
               <View key={String(job.job_post_id)} style={[st.docCard, { borderColor: jText + "33" }]}>
@@ -537,7 +539,7 @@ export default function UserDetailPanel({
                   </View>
                 )}
                 {isRejectedJob && job.rejection_reason && (
-                  <View style={st.docNote}><Ionicons name="information-circle-outline" size={13} color={theme.color.danger} /><Text style={st.docNoteText}>Reason: {job.rejection_reason}</Text></View>
+                  <View style={st.docNote}><Ionicons name="information-circle-outline" size={13} color={c.bad} /><Text style={st.docNoteText}>Reason: {job.rejection_reason}</Text></View>
                 )}
               </View>
             );
@@ -551,11 +553,11 @@ export default function UserDetailPanel({
       {vs === "Pending" && (
         <View style={st.footer}>
           <TouchableOpacity style={st.infoBtn} onPress={requestMoreInfo} activeOpacity={0.85}>
-            <Ionicons name="chatbubble-ellipses-outline" size={16} color={theme.color.ink} /><Text style={st.infoBtnText}>Request More Info</Text>
+            <Ionicons name="chatbubble-ellipses-outline" size={16} color={c.ink} /><Text style={st.infoBtnText}>Request More Info</Text>
           </TouchableOpacity>
           <View style={st.footerRow}>
             <TouchableOpacity style={st.rejectBtn} onPress={() => { setRejectReason(""); setRejectUserModal(true); }} disabled={processing} activeOpacity={0.85}>
-              <Ionicons name="close-circle-outline" size={16} color={theme.color.danger} /><Text style={st.rejectBtnText}>Reject</Text>
+              <Ionicons name="close-circle-outline" size={16} color={c.bad} /><Text style={st.rejectBtnText}>Reject</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[st.approveBtn, !canApproveUser && { opacity: 0.5 }]} onPress={handleApproveUser} disabled={processing || !canApproveUser} activeOpacity={0.85}>
               <Ionicons name="checkmark-circle" size={16} color="#fff" /><Text style={st.approveBtnText} numberOfLines={1}>{processing ? "Processing…" : "Approve"}</Text>
@@ -573,7 +575,7 @@ export default function UserDetailPanel({
               <TouchableOpacity onPress={() => setViewingDocument(null)} hitSlop={10}><Ionicons name="close" size={24} color="#fff" /></TouchableOpacity>
             </View>
             {viewingDocument?.file_path?.toLowerCase().endsWith(".pdf") ? (
-              <View style={st.viewerPdf}><Ionicons name="document-text" size={64} color={theme.color.info} /><Text style={st.viewerPdfText}>PDF Document — open in a browser to view</Text></View>
+              <View style={st.viewerPdf}><Ionicons name="document-text" size={64} color={c.info} /><Text style={st.viewerPdfText}>PDF Document — open in a browser to view</Text></View>
             ) : (
               <Image source={{ uri: viewBack ? viewingDocument?.file_url_back : viewingDocument?.file_url }} style={st.viewerImg} resizeMode="contain" />
             )}
@@ -603,10 +605,12 @@ export default function UserDetailPanel({
 
 // ── small components ──
 function Section({ title, icon, children }: { title: string; icon: React.ComponentProps<typeof Ionicons>["name"]; children: React.ReactNode }) {
+  const { c } = usePesoTheme();
+  const st = useMemo(() => makeStyles(c), [c]);
   return (
     <View style={st.section}>
       <View style={st.sectionHead}>
-        <View style={st.sectionIcon}><Ionicons name={icon} size={15} color={theme.color.peso} /></View>
+        <View style={st.sectionIcon}><Ionicons name={icon} size={15} color={c.accent} /></View>
         <Text style={st.sectionTitle}>{title}</Text>
       </View>
       {children}
@@ -615,6 +619,8 @@ function Section({ title, icon, children }: { title: string; icon: React.Compone
 }
 
 function InfoGrid({ items }: { items: { label: string; value: string }[] }) {
+  const { c } = usePesoTheme();
+  const st = useMemo(() => makeStyles(c), [c]);
   return (
     <View style={st.grid}>
       {items.map((it) => (
@@ -628,6 +634,8 @@ function InfoGrid({ items }: { items: { label: string; value: string }[] }) {
 }
 
 function TagBlock({ label, tags, accent, accentSoft }: { label: string; tags: string[]; accent: string; accentSoft: string }) {
+  const { c } = usePesoTheme();
+  const st = useMemo(() => makeStyles(c), [c]);
   return (
     <View style={{ marginTop: 10 }}>
       <Text style={st.subLabel}>{label}</Text>
@@ -643,6 +651,8 @@ function TagBlock({ label, tags, accent, accentSoft }: { label: string; tags: st
 function RejectModal({ title, subtitle, value, onChange, onCancel, onConfirm, processing, presets = [] }: {
   title: string; subtitle: string; value: string; onChange: (v: string) => void; onCancel: () => void; onConfirm: () => void; processing: boolean; presets?: string[];
 }) {
+  const { c } = usePesoTheme();
+  const st = useMemo(() => makeStyles(c), [c]);
   // Tapping a preset fills the box (and stays editable). Appends when the officer
   // wants to combine a few; removes on second tap so it works like a toggle.
   const applyPreset = (p: string) => {
@@ -653,7 +663,7 @@ function RejectModal({ title, subtitle, value, onChange, onCancel, onConfirm, pr
   return (
     <View style={st.overlay}>
       <View style={st.rejectBox}>
-        <View style={st.rejectIcon}><Ionicons name="warning-outline" size={28} color={theme.color.danger} /></View>
+        <View style={st.rejectIcon}><Ionicons name="warning-outline" size={28} color={c.bad} /></View>
         <Text style={st.rejectTitle}>{title}</Text>
         <Text style={st.rejectSub}>{subtitle}</Text>
         {presets.length > 0 && (
@@ -672,7 +682,7 @@ function RejectModal({ title, subtitle, value, onChange, onCancel, onConfirm, pr
             </View>
           </>
         )}
-        <TextInput style={st.rejectInput} placeholder="Enter reason…" placeholderTextColor={theme.color.subtle} value={value} onChangeText={onChange} multiline numberOfLines={4} textAlignVertical="top" />
+        <TextInput style={st.rejectInput} placeholder="Enter reason…" placeholderTextColor={c.subtle} value={value} onChangeText={onChange} multiline numberOfLines={4} textAlignVertical="top" />
         <View style={st.rejectBtns}>
           <TouchableOpacity style={st.cancelBtn} onPress={onCancel} activeOpacity={0.8}><Text style={st.cancelText}>Cancel</Text></TouchableOpacity>
           <TouchableOpacity style={[st.confirmReject, processing && { opacity: 0.6 }]} onPress={onConfirm} disabled={processing} activeOpacity={0.85}>
@@ -684,127 +694,127 @@ function RejectModal({ title, subtitle, value, onChange, onCancel, onConfirm, pr
   );
 }
 
-const st = StyleSheet.create({
-  panel: { flex: 1, backgroundColor: theme.color.surfaceElevated },
+const makeStyles = (c: PesoColors) => StyleSheet.create({
+  panel: { flex: 1, backgroundColor: c.surface },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28, gap: 12 },
-  muted: { color: theme.color.muted, fontSize: 13, fontWeight: "600", textAlign: "center" },
-  errTitle: { fontSize: 16, fontWeight: "800", color: theme.color.ink, textAlign: "center" },
-  retryBtn: { paddingVertical: 10, paddingHorizontal: 22, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.color.line },
-  retryText: { fontWeight: "800", color: theme.color.ink },
+  muted: { color: c.muted, fontSize: 13, fontWeight: "600", textAlign: "center" },
+  errTitle: { fontSize: 16, fontWeight: "800", color: c.ink, textAlign: "center" },
+  retryBtn: { paddingVertical: 10, paddingHorizontal: 22, borderRadius: radius.md, borderWidth: 1, borderColor: c.line },
+  retryText: { fontWeight: "800", color: c.ink },
 
-  header: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  header: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: c.line },
   avatarRing: { width: 50, height: 50, borderRadius: 25, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   avatarImg: { width: 46, height: 46, borderRadius: 23 },
-  name: { fontSize: 17, fontWeight: "900", color: theme.color.ink },
+  name: { fontSize: 17, fontWeight: "900", color: c.ink },
   chipRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 3 },
   roleChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   roleChipText: { fontSize: 11, fontWeight: "800" },
-  joined: { fontSize: 11, color: theme.color.muted, fontWeight: "600" },
+  joined: { fontSize: 11, color: c.muted, fontWeight: "600" },
   statusPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   statusPillText: { color: "#fff", fontSize: 11.5, fontWeight: "800" },
   closeBtn: { padding: 4 },
 
-  tabsRow: { flexDirection: "row", paddingHorizontal: 12, gap: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  tabsRow: { flexDirection: "row", paddingHorizontal: 12, gap: 6, borderBottomWidth: 1, borderBottomColor: c.line },
   tab: { paddingVertical: 12, paddingHorizontal: 12, borderBottomWidth: 2, borderBottomColor: "transparent" },
-  tabActive: { borderBottomColor: theme.color.peso },
-  tabText: { fontSize: 13.5, fontWeight: "700", color: theme.color.muted },
-  tabTextActive: { color: theme.color.peso },
+  tabActive: { borderBottomColor: c.accent },
+  tabText: { fontSize: 13.5, fontWeight: "700", color: c.muted },
+  tabTextActive: { color: c.accent },
 
   scroll: { padding: 16, paddingBottom: 24 },
 
-  noticeBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: theme.color.warningSoft, borderRadius: theme.radius.md, padding: 11, marginBottom: 14 },
-  noticeText: { flex: 1, fontSize: 12, color: theme.color.inkMuted, fontWeight: "600", lineHeight: 17 },
+  noticeBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: c.warnSoft, borderRadius: radius.md, padding: 11, marginBottom: 14 },
+  noticeText: { flex: 1, fontSize: 12, color: c.muted, fontWeight: "600", lineHeight: 17 },
 
-  section: { backgroundColor: theme.color.surface, borderRadius: theme.radius.lg, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: theme.color.line },
+  section: { backgroundColor: c.surface, borderRadius: radius.lg, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: c.line },
   sectionHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
-  sectionIcon: { width: 28, height: 28, borderRadius: 8, backgroundColor: theme.color.pesoSoft, alignItems: "center", justifyContent: "center" },
-  sectionTitle: { fontSize: 14, fontWeight: "800", color: theme.color.ink },
+  sectionIcon: { width: 28, height: 28, borderRadius: 8, backgroundColor: c.accentSoft, alignItems: "center", justifyContent: "center" },
+  sectionTitle: { fontSize: 14, fontWeight: "800", color: c.ink },
 
   grid: { flexDirection: "row", flexWrap: "wrap" },
   gridItem: { width: "50%", paddingVertical: 7, paddingRight: 8 },
-  infoLabel: { fontSize: 11, color: theme.color.muted, fontWeight: "700", marginBottom: 2 },
-  infoValue: { fontSize: 13.5, color: theme.color.ink, fontWeight: "600" },
-  addressRow: { flexDirection: "row", gap: 8, marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.color.line },
+  infoLabel: { fontSize: 11, color: c.muted, fontWeight: "700", marginBottom: 2 },
+  infoValue: { fontSize: 13.5, color: c.ink, fontWeight: "600" },
+  addressRow: { flexDirection: "row", gap: 8, marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: c.line },
 
-  subLabel: { fontSize: 12, fontWeight: "800", color: theme.color.muted, marginBottom: 6 },
+  subLabel: { fontSize: 12, fontWeight: "800", color: c.muted, marginBottom: 6 },
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   tagText: { fontSize: 12, fontWeight: "700" },
 
   docHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 },
-  aiBadge: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: theme.color.successSoft, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
-  aiBadgeText: { fontSize: 11, fontWeight: "800", color: theme.color.success },
+  aiBadge: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: c.okSoft, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
+  aiBadgeText: { fontSize: 11, fontWeight: "800", color: c.ok },
 
-  docCard: { borderWidth: 1, borderRadius: theme.radius.lg, padding: 13, marginBottom: 12, backgroundColor: theme.color.surface },
+  docCard: { borderWidth: 1, borderRadius: radius.lg, padding: 13, marginBottom: 12, backgroundColor: c.surface },
   docTop: { flexDirection: "row", gap: 11, alignItems: "flex-start" },
   docIcon: { width: 40, height: 40, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-  docTitle: { fontSize: 14, fontWeight: "800", color: theme.color.ink },
-  docSub: { fontSize: 11.5, color: theme.color.muted, fontWeight: "600", marginTop: 1 },
-  docDate: { fontSize: 11, color: theme.color.subtle, marginTop: 2 },
+  docTitle: { fontSize: 14, fontWeight: "800", color: c.ink },
+  docSub: { fontSize: 11.5, color: c.muted, fontWeight: "600", marginTop: 1 },
+  docDate: { fontSize: 11, color: c.subtle, marginTop: 2 },
   docStatusPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   docStatusText: { fontSize: 11, fontWeight: "800" },
 
   scoreRow: { flexDirection: "row", gap: 10, marginTop: 12 },
   scoreBox: { flex: 1, borderRadius: 12, paddingVertical: 9, paddingHorizontal: 10 },
-  scoreLabel: { fontSize: 10.5, fontWeight: "700", color: theme.color.muted },
+  scoreLabel: { fontSize: 10.5, fontWeight: "700", color: c.muted },
   scoreVal: { fontSize: 19, fontWeight: "900", marginTop: 1 },
-  scoreTag: { fontSize: 10.5, fontWeight: "700", color: theme.color.muted },
+  scoreTag: { fontSize: 10.5, fontWeight: "700", color: c.muted },
 
   docActions: { flexDirection: "row", gap: 8, marginTop: 12 },
-  docViewBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: theme.color.info + "55" },
-  docViewText: { fontSize: 12.5, fontWeight: "800", color: theme.color.info },
-  docApprove: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 9, borderRadius: 10, backgroundColor: theme.color.success },
-  docReject: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 9, borderRadius: 10, backgroundColor: theme.color.danger },
+  docViewBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: c.info + "55" },
+  docViewText: { fontSize: 12.5, fontWeight: "800", color: c.info },
+  docApprove: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 9, borderRadius: 10, backgroundColor: c.ok },
+  docReject: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 9, borderRadius: 10, backgroundColor: c.bad },
   docActionText: { color: "#fff", fontSize: 12.5, fontWeight: "800" },
-  docNote: { flexDirection: "row", gap: 6, alignItems: "center", marginTop: 10, backgroundColor: theme.color.dangerSoft, borderRadius: 8, padding: 8 },
-  docNoteText: { flex: 1, fontSize: 11.5, color: theme.color.danger, fontWeight: "600" },
+  docNote: { flexDirection: "row", gap: 6, alignItems: "center", marginTop: 10, backgroundColor: c.badSoft, borderRadius: 8, padding: 8 },
+  docNoteText: { flex: 1, fontSize: 11.5, color: c.bad, fontWeight: "600" },
 
-  aiSummary: { backgroundColor: theme.color.pesoSoft, borderRadius: theme.radius.lg, padding: 14, marginTop: 4 },
+  aiSummary: { backgroundColor: c.accentSoft, borderRadius: radius.lg, padding: 14, marginTop: 4 },
   aiSummaryHead: { flexDirection: "row", alignItems: "center", gap: 8 },
-  aiSummaryTitle: { fontSize: 13.5, fontWeight: "800", color: theme.color.ink },
-  aiSummarySub: { fontSize: 12, color: theme.color.inkMuted, marginTop: 4, marginBottom: 8, lineHeight: 17 },
+  aiSummaryTitle: { fontSize: 13.5, fontWeight: "800", color: c.ink },
+  aiSummarySub: { fontSize: 12, color: c.muted, marginTop: 4, marginBottom: 8, lineHeight: 17 },
   aiCheck: { flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 3 },
-  aiCheckText: { fontSize: 12.5, color: theme.color.ink, fontWeight: "600" },
+  aiCheckText: { fontSize: 12.5, color: c.ink, fontWeight: "600" },
 
   emptyBox: { alignItems: "center", justifyContent: "center", paddingVertical: 50, gap: 10 },
 
-  footer: { gap: 8, padding: 12, borderTopWidth: 1, borderTopColor: theme.color.line, backgroundColor: theme.color.surfaceElevated },
+  footer: { gap: 8, padding: 12, borderTopWidth: 1, borderTopColor: c.line, backgroundColor: c.surface },
   footerRow: { flexDirection: "row", gap: 8 },
-  infoBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 11, borderWidth: 1, borderColor: theme.color.line },
-  infoBtnText: { fontSize: 12.5, fontWeight: "800", color: theme.color.ink },
-  rejectBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 11, borderWidth: 1.5, borderColor: theme.color.danger + "55" },
-  rejectBtnText: { fontSize: 13, fontWeight: "800", color: theme.color.danger },
-  approveBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 11, backgroundColor: theme.color.success },
+  infoBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 11, borderWidth: 1, borderColor: c.line },
+  infoBtnText: { fontSize: 12.5, fontWeight: "800", color: c.ink },
+  rejectBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 11, borderWidth: 1.5, borderColor: c.bad + "55" },
+  rejectBtnText: { fontSize: 13, fontWeight: "800", color: c.bad },
+  approveBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 11, backgroundColor: c.ok },
   approveBtnText: { fontSize: 13, fontWeight: "800", color: "#fff" },
 
-  exBox: { marginTop: 12, backgroundColor: theme.color.surfaceElevated, borderRadius: 10, padding: 11, borderWidth: 1, borderColor: theme.color.line },
-  exTitle: { fontSize: 11, fontWeight: "800", color: theme.color.muted, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 7 },
-  exRow: { flexDirection: "row", justifyContent: "space-between", gap: 12, paddingVertical: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.color.line },
-  exLabel: { fontSize: 12, color: theme.color.muted, fontWeight: "600", flexShrink: 0, maxWidth: "45%" },
-  exValue: { fontSize: 12.5, color: theme.color.ink, fontWeight: "700", flex: 1, textAlign: "right" },
+  exBox: { marginTop: 12, backgroundColor: c.surface, borderRadius: 10, padding: 11, borderWidth: 1, borderColor: c.line },
+  exTitle: { fontSize: 11, fontWeight: "800", color: c.muted, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 7 },
+  exRow: { flexDirection: "row", justifyContent: "space-between", gap: 12, paddingVertical: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.line },
+  exLabel: { fontSize: 12, color: c.muted, fontWeight: "600", flexShrink: 0, maxWidth: "45%" },
+  exValue: { fontSize: 12.5, color: c.ink, fontWeight: "700", flex: 1, textAlign: "right" },
 
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 20 },
-  viewerBox: { width: "100%", maxWidth: 560, backgroundColor: "#111", borderRadius: theme.radius.lg, overflow: "hidden" },
+  viewerBox: { width: "100%", maxWidth: 560, backgroundColor: "#111", borderRadius: radius.lg, overflow: "hidden" },
   viewerHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14 },
   viewerTitle: { color: "#fff", fontSize: 15, fontWeight: "800" },
   viewerImg: { width: "100%", height: 440, backgroundColor: "#000" },
   viewerPdf: { alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 12 },
   viewerPdfText: { color: "#fff", fontSize: 13, fontWeight: "600" },
 
-  rejectBox: { width: "100%", maxWidth: 400, backgroundColor: theme.color.surfaceElevated, borderRadius: theme.radius.lg, padding: 22, alignItems: "center" },
-  rejectIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: theme.color.dangerSoft, alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  rejectTitle: { fontSize: 17, fontWeight: "900", color: theme.color.ink },
-  rejectSub: { fontSize: 13, color: theme.color.muted, textAlign: "center", marginTop: 4, marginBottom: 14 },
-  rejectPresetLabel: { alignSelf: "stretch", fontSize: 12, fontWeight: "700", color: theme.color.muted, marginBottom: 8 },
+  rejectBox: { width: "100%", maxWidth: 400, backgroundColor: c.surface, borderRadius: radius.lg, padding: 22, alignItems: "center" },
+  rejectIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.badSoft, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  rejectTitle: { fontSize: 17, fontWeight: "900", color: c.ink },
+  rejectSub: { fontSize: 13, color: c.muted, textAlign: "center", marginTop: 4, marginBottom: 14 },
+  rejectPresetLabel: { alignSelf: "stretch", fontSize: 12, fontWeight: "700", color: c.muted, marginBottom: 8 },
   rejectChips: { flexDirection: "row", flexWrap: "wrap", gap: 7, alignSelf: "stretch", marginBottom: 12 },
-  rejectChip: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderColor: theme.color.line, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6, backgroundColor: theme.color.surface },
-  rejectChipActive: { backgroundColor: theme.color.danger, borderColor: theme.color.danger },
-  rejectChipText: { fontSize: 12, fontWeight: "600", color: theme.color.ink },
+  rejectChip: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderColor: c.line, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6, backgroundColor: c.surface },
+  rejectChipActive: { backgroundColor: c.bad, borderColor: c.bad },
+  rejectChipText: { fontSize: 12, fontWeight: "600", color: c.ink },
   rejectChipTextActive: { color: "#fff" },
-  rejectInput: { alignSelf: "stretch", minHeight: 90, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, padding: 12, fontSize: 13.5, color: theme.color.ink, backgroundColor: theme.color.surface },
+  rejectInput: { alignSelf: "stretch", minHeight: 90, borderWidth: 1, borderColor: c.line, borderRadius: radius.md, padding: 12, fontSize: 13.5, color: c.ink, backgroundColor: c.surface },
   rejectBtns: { flexDirection: "row", gap: 10, alignSelf: "stretch", marginTop: 14 },
-  cancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 11, borderWidth: 1, borderColor: theme.color.line, alignItems: "center" },
-  cancelText: { fontSize: 13.5, fontWeight: "800", color: theme.color.ink },
-  confirmReject: { flex: 1, paddingVertical: 12, borderRadius: 11, backgroundColor: theme.color.danger, alignItems: "center" },
+  cancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 11, borderWidth: 1, borderColor: c.line, alignItems: "center" },
+  cancelText: { fontSize: 13.5, fontWeight: "800", color: c.ink },
+  confirmReject: { flex: 1, paddingVertical: 12, borderRadius: 11, backgroundColor: c.bad, alignItems: "center" },
   confirmRejectText: { fontSize: 13.5, fontWeight: "800", color: "#fff" },
 });

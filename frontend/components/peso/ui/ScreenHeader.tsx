@@ -44,7 +44,9 @@ export function StatRow({ children }: { children: React.ReactNode }) {
 }
 
 export const layout = {
-  page: (bg: string): ViewStyle => ({ flex: 1, backgroundColor: bg }),
+  // Transparent so the decorative PesoBackground (rendered by the layout) shows
+  // through the gaps between cards. The canvas colour lives on the layout itself.
+  page: (_bg?: string): ViewStyle => ({ flex: 1, backgroundColor: 'transparent' }),
   splitRow: { flex: 1, flexDirection: 'row', minHeight: 0 } as ViewStyle,
   leftPane: { flex: 1, minWidth: 0, minHeight: 0 } as ViewStyle,
   rightPane: (line: string, surface: string): ViewStyle => ({ width: 520, minHeight: 0, borderLeftWidth: 1, borderLeftColor: line, backgroundColor: surface }),

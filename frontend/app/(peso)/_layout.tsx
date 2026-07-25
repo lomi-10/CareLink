@@ -16,6 +16,7 @@ import type { BadgeKey } from "@/components/peso/layout/navConfig";
 import { useNotifications } from "@/hooks/shared";
 import { fetchPesoComplaints } from "@/lib/complaintsApi";
 import { PesoThemeProvider, usePesoTheme, font, radius } from "@/contexts/PesoThemeContext";
+import { PesoBackground } from "@/components/peso/ui";
 
 export default function PESOLayout() {
   return (
@@ -86,6 +87,7 @@ function PesoLayoutInner() {
           <Sidebar router={router} pathname={pathname ?? ''} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed((v) => !v)} userName={userName} badges={badges} onLogout={() => setLogoutModalVisible(true)} />
         )}
         <View style={{ flex: 1, minWidth: 0, backgroundColor: c.canvas }}>
+          <PesoBackground />
           <Slot />
         </View>
       </View>
