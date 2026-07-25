@@ -19,17 +19,21 @@ interface Job {
   salary_offered: number | string;
   status: string;
   category_name?: string;
+  already_applied?: boolean;
+  already_invited?: boolean;
+  can_invite?: boolean;
 }
 
 interface Props {
   visible: boolean;
   helper: HelperProfile | null;
-  jobs: Job[] | null;
+  /** @deprecated jobs are now fetched per-helper (smart matching); kept for callers. */
+  jobs?: Job[] | null;
   onClose: () => void;
   onSuccess?: (helperId: number, helperName: string, jobPostId: string) => void;
 }
 
-export function InviteHelperModal({ visible, helper, jobs, onClose, onSuccess }: Props) {
+export function InviteHelperModal({ visible, helper, onClose, onSuccess }: Props) {
   const router = useRouter();
   const [availableJobs, setAvailableJobs] = useState<Job[]>([]);
   const [selectedJobId,  setSelectedJobId]  = useState<string | null>(null);
@@ -41,23 +45,27 @@ export function InviteHelperModal({ visible, helper, jobs, onClose, onSuccess }:
 
   useEffect(() => {
     if (!visible) { setSent(false); setSelectedJobId(null); setError(''); return; }
-    if (jobs && jobs.length > 0) {
-      setAvailableJobs(jobs.filter(j => j.status === 'Open'));
-    } else {
-      fetchJobs();
-    }
-  }, [visible, jobs]);
+    if (helper) fetchInvitableJobs();
+  }, [visible, helper]);
 
-  const fetchJobs = async () => {
+  // Smart matching: load THIS parent's open jobs annotated with whether the helper
+  // has already applied / been invited, so we only offer jobs worth inviting to.
+  const fetchInvitableJobs = async () => {
+    if (!helper) return;
     setLoading(true);
+    setSelectedJobId(null);
     try {
       const raw  = await AsyncStorage.getItem('user_data');
       if (!raw) throw new Error('Not logged in');
       const user = JSON.parse(raw);
-      const res  = await fetch(`${API_URL}/parent/get_posted_jobs.php?parent_id=${user.user_id}&requester_id=${user.user_id}`);
+      const res  = await fetch(`${API_URL}/parent/get_invitable_jobs.php?parent_id=${user.user_id}&helper_id=${helper.user_id}&requester_id=${user.user_id}`);
       const data = await res.json();
       if (data.success) {
-        setAvailableJobs((data.jobs ?? []).filter((j: Job) => j.status === 'Open'));
+        const list: Job[] = data.jobs ?? [];
+        setAvailableJobs(list);
+        // Pre-select the first invitable job for convenience.
+        const firstInvitable = list.find((j) => j.can_invite);
+        if (firstInvitable) setSelectedJobId(firstInvitable.job_post_id);
       } else throw new Error(data.message || 'Failed to load jobs');
     } catch (e: any) {
       setError(e.message || 'Failed to load job posts.');
@@ -165,25 +173,70 @@ export function InviteHelperModal({ visible, helper, jobs, onClose, onSuccess }:
                   </View>
                 )}
 
-                {!loading && availableJobs.map(j => (
-                  <TouchableOpacity
-                    key={j.job_post_id}
-                    style={[s.jobCard, selectedJobId === j.job_post_id && s.jobCardSelected]}
-                    onPress={() => setSelectedJobId(j.job_post_id)}
-                    activeOpacity={0.75}
-                  >
-                    <View style={{ flex: 1 }}>
-                      {j.category_name && (
-                        <Text style={s.jobCat}>{j.category_name}</Text>
+                {!loading && (() => {
+                  const invitable = availableJobs.filter(j => j.can_invite);
+                  const covered   = availableJobs.filter(j => !j.can_invite);
+
+                  return (
+                    <>
+                      {/* Jobs the helper can still be invited to */}
+                      {invitable.map(j => (
+                        <TouchableOpacity
+                          key={j.job_post_id}
+                          style={[s.jobCard, selectedJobId === j.job_post_id && s.jobCardSelected]}
+                          onPress={() => setSelectedJobId(j.job_post_id)}
+                          activeOpacity={0.75}
+                        >
+                          <View style={{ flex: 1 }}>
+                            {j.category_name && (
+                              <Text style={s.jobCat}>{j.category_name}</Text>
+                            )}
+                            <Text style={s.jobTitle} numberOfLines={1}>{j.title}</Text>
+                            <Text style={s.jobSalary}>₱{Number(j.salary_offered).toLocaleString()} / mo</Text>
+                          </View>
+                          {selectedJobId === j.job_post_id && (
+                            <Ionicons name="checkmark-circle" size={22} color={theme.color.parent} />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+
+                      {/* Smart note: helper has already covered every open job */}
+                      {availableJobs.length > 0 && invitable.length === 0 && (
+                        <View style={s.allCoveredBox}>
+                          <Ionicons name="checkmark-done-circle-outline" size={40} color={theme.color.success} />
+                          <Text style={s.emptyTitle}>Already covered</Text>
+                          <Text style={s.emptySub}>
+                            {helper.full_name} has already applied to or been invited to all of your open job posts. Post a new job to invite them to something new.
+                          </Text>
+                        </View>
                       )}
-                      <Text style={s.jobTitle} numberOfLines={1}>{j.title}</Text>
-                      <Text style={s.jobSalary}>₱{Number(j.salary_offered).toLocaleString()} / mo</Text>
-                    </View>
-                    {selectedJobId === j.job_post_id && (
-                      <Ionicons name="checkmark-circle" size={22} color={theme.color.parent} />
-                    )}
-                  </TouchableOpacity>
-                ))}
+
+                      {/* Already applied / invited — shown disabled so it's clear why */}
+                      {covered.length > 0 && (
+                        <>
+                          <Text style={s.coveredHeader}>Already applied or invited</Text>
+                          {covered.map(j => (
+                            <View key={j.job_post_id} style={[s.jobCard, s.jobCardDisabled]}>
+                              <View style={{ flex: 1 }}>
+                                {j.category_name && <Text style={s.jobCat}>{j.category_name}</Text>}
+                                <Text style={[s.jobTitle, { color: theme.color.muted }]} numberOfLines={1}>{j.title}</Text>
+                                <Text style={s.jobSalary}>₱{Number(j.salary_offered).toLocaleString()} / mo</Text>
+                              </View>
+                              <View style={s.coveredBadge}>
+                                <Ionicons
+                                  name={j.already_applied ? 'document-text-outline' : 'paper-plane-outline'}
+                                  size={12}
+                                  color={theme.color.muted}
+                                />
+                                <Text style={s.coveredBadgeText}>{j.already_applied ? 'Applied' : 'Invited'}</Text>
+                              </View>
+                            </View>
+                          ))}
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {error ? <Text style={s.errorTxt}>{error}</Text> : null}
               </ScrollView>
@@ -257,6 +310,11 @@ const s = StyleSheet.create({
   emptyBox:   { alignItems: 'center', paddingVertical: 32 },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: theme.color.ink, marginTop: 12 },
   emptySub:   { fontSize: 13, color: theme.color.muted, marginTop: 4, textAlign: 'center' },
+  allCoveredBox:   { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 8 },
+  coveredHeader:   { fontSize: 12, fontWeight: '800', color: theme.color.subtle, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 14, marginBottom: 8 },
+  jobCardDisabled: { opacity: 0.65, backgroundColor: theme.color.surface },
+  coveredBadge:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.color.line, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  coveredBadgeText:{ fontSize: 11, fontWeight: '700', color: theme.color.muted },
 
   // Job card
   jobCard:         { flexDirection: 'row', alignItems: 'center', padding: 14, borderWidth: 1.5, borderColor: theme.color.line, borderRadius: 12, marginBottom: 10 },

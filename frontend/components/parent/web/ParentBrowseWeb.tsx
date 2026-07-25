@@ -570,12 +570,44 @@ function DetailRow({ label, value, last = false }: { label: string; value: strin
 }
 
 // ─── Inline invite panel ───
-function InvitePanel({ helper, jobs, onSent, onMessage }: { helper: HelperProfile; jobs: any[]; onSent: (name: string) => void; onMessage: () => void }) {
-  const openJobs = useMemo(() => (jobs ?? []).filter((j) => j.status === 'Open'), [jobs]);
+function InvitePanel({ helper, onSent, onMessage }: { helper: HelperProfile; jobs?: any[]; onSent: (name: string) => void; onMessage: () => void }) {
+  // Smart matching: fetch THIS parent's open jobs annotated with whether this
+  // helper already applied / was invited, so we only offer jobs worth inviting to.
+  const [allJobs, setAllJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
+
+  const invitable = useMemo(() => allJobs.filter((j) => j.can_invite), [allJobs]);
+  const covered   = useMemo(() => allJobs.filter((j) => !j.can_invite), [allJobs]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setSelectedJobId(null);
+      try {
+        const raw = await AsyncStorage.getItem('user_data');
+        if (!raw) throw new Error('Not logged in');
+        const user = JSON.parse(raw);
+        const res = await fetch(`${API_URL}/parent/get_invitable_jobs.php?parent_id=${user.user_id}&helper_id=${helper.user_id}&requester_id=${user.user_id}`);
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.success) {
+          const list: any[] = data.jobs ?? [];
+          setAllJobs(list);
+          const firstInvitable = list.find((j) => j.can_invite);
+          if (firstInvitable) setSelectedJobId(String(firstInvitable.job_post_id));
+        } else throw new Error(data.message || 'Failed to load jobs');
+      } catch (e: any) {
+        if (!cancelled) setError(e.message || 'Failed to load your jobs.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [helper.user_id]);
 
   const send = async () => {
     if (!selectedJobId) return;
@@ -623,14 +655,17 @@ function InvitePanel({ helper, jobs, onSent, onMessage }: { helper: HelperProfil
 
       <View style={{ marginTop: 18 }}>
         <Text style={s.fpSecTitle}>Your Open Jobs</Text>
-        {openJobs.length === 0 ? (
+
+        {loading ? (
+          <View style={s.empty}><ActivityIndicator color={pt.accent} /><Text style={s.emptyText}>Loading your jobs…</Text></View>
+        ) : allJobs.length === 0 ? (
           <View style={s.empty}>
             <Ionicons name="briefcase-outline" size={30} color={pt.subtle} />
             <Text style={s.emptyText}>No open jobs. Post a job first to invite helpers.</Text>
           </View>
         ) : (
           <View style={{ gap: 10, marginTop: 8 }}>
-            {openJobs.map((j) => {
+            {invitable.map((j) => {
               const on = selectedJobId === String(j.job_post_id);
               return (
                 <Pressable key={j.job_post_id} onPress={() => setSelectedJobId(String(j.job_post_id))} style={[s.jobPick, on && { borderColor: pt.accent, backgroundColor: '#FFFCF6' }]}>
@@ -644,12 +679,39 @@ function InvitePanel({ helper, jobs, onSent, onMessage }: { helper: HelperProfil
                 </Pressable>
               );
             })}
+
+            {invitable.length === 0 && (
+              <View style={[s.empty, { paddingVertical: 20 }]}>
+                <Ionicons name="checkmark-done-circle-outline" size={34} color={pt.green} />
+                <Text style={[s.emptyText, { fontFamily: FontFamily.fredokaSemiBold, color: pt.ink, marginTop: 6 }]}>Already covered</Text>
+                <Text style={[s.emptyText, { marginTop: 2 }]}>{helper.full_name} has already applied to or been invited to all your open jobs. Post a new job to invite them to something new.</Text>
+              </View>
+            )}
+
+            {covered.length > 0 && (
+              <>
+                <Text style={[s.jobPickCat, { marginTop: 8, color: pt.subtle }]}>ALREADY APPLIED OR INVITED</Text>
+                {covered.map((j) => (
+                  <View key={j.job_post_id} style={[s.jobPick, { opacity: 0.6 }]}>
+                    <View style={s.recIc}><Ionicons name={CAT_ICON(j.category_name || j.title)} size={18} color={pt.subtle} /></View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      {!!j.category_name && <Text style={s.jobPickCat}>{j.category_name}</Text>}
+                      <Text style={[s.jobRowTitle, { color: pt.muted }]} numberOfLines={1}>{j.title}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: pt.lineSoft ?? '#F0E9DF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+                      <Ionicons name={j.already_applied ? 'document-text-outline' : 'paper-plane-outline'} size={12} color={pt.muted} />
+                      <Text style={{ fontSize: 11, fontFamily: FontFamily.fredokaSemiBold, color: pt.muted }}>{j.already_applied ? 'Applied' : 'Invited'}</Text>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
           </View>
         )}
         {!!error && <View style={s.errRow}><Ionicons name="alert-circle" size={14} color={pt.red} /><Text style={s.errText}>{error}</Text></View>}
       </View>
 
-      {openJobs.length > 0 && (
+      {invitable.length > 0 && (
         <Pressable disabled={!selectedJobId || sending} onPress={send} style={({ hovered, pressed }: any) => [{ marginTop: 18 }, TRANS, (!selectedJobId || sending) && { opacity: 0.5 }, hovered && selectedJobId && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
           <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.inviteBtn}>
             {sending ? <ActivityIndicator color="#fff" size="small" /> : <><Ionicons name="paper-plane" size={16} color="#fff" /><Text style={s.inviteBtnText}>Send Invite</Text></>}
