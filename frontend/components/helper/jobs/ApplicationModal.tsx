@@ -3,7 +3,7 @@
 import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { isShareableWithEmployer } from '@/constants/documents';
-import { pickCoverLetter, MAX_GENERATIONS } from '@/lib/coverLetterTemplates';
+import { pickCoverLetter, MAX_GENERATIONS, type HelperInfo } from '@/lib/coverLetterTemplates';
 import type { JobPost } from '@/hooks/helper';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -74,6 +74,10 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
   const [verifiedDocs,   setVerifiedDocs]   = useState<VerifiedDocument[]>([]);
   const [selectedDocIds, setSelectedDocIds] = useState<number[]>([]);
 
+  // The helper's own details — used to personalise the generated cover letter so
+  // no two helpers produce the same text.
+  const [helperInfo, setHelperInfo] = useState<HelperInfo | null>(null);
+
   useEffect(() => {
     if (!visible) return;
     // Fresh application: reset the generation counter (and last generated letter).
@@ -98,6 +102,30 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
         }
       } catch {
         // Sharing is optional — silently skip if documents can't be loaded
+      }
+
+      // Load the helper's profile to personalise the generated cover letter.
+      try {
+        const userData = await AsyncStorage.getItem('user_data');
+        if (!userData) return;
+        const user = JSON.parse(userData);
+        const res = await fetch(`${API_URL}/helper/get_profile.php?user_id=${user.user_id}&requester_id=${user.user_id}`);
+        const data = await res.json();
+        if (!cancelled && data.success && data.profile) {
+          const p = data.profile;
+          const nameMap: Record<number, string> = {};
+          (data.available_skills ?? []).forEach((s: any) => { nameMap[Number(s.skill_id)] = s.skill_name; });
+          const selectedSkillNames: string[] = (data.selected_skills ?? []).map((id: number) => nameMap[Number(id)]).filter(Boolean);
+          const customSkills: string[] = Array.isArray(p.custom_skills) ? p.custom_skills.filter(Boolean) : [];
+          setHelperInfo({
+            name: [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || (user.first_name ? `${user.first_name} ${user.last_name ?? ''}`.trim() : null),
+            experienceYears: p.experience_years != null ? Number(p.experience_years) : null,
+            skills: [...selectedSkillNames, ...customSkills],
+            location: p.municipality || p.barangay || null,
+          });
+        }
+      } catch {
+        // Personalisation is best-effort — fall back to the base template.
       }
     })();
 
@@ -225,7 +253,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
                     style={[s.generateBtn, locked && { opacity: 0.5 }]}
                     onPress={() => {
                       if (locked) return;
-                      setCoverLetter(pickCoverLetter(job, genCount));
+                      setCoverLetter(pickCoverLetter(job, genCount, helperInfo ?? undefined));
                       setGenCount((n) => n + 1);
                       setError(null);
                     }}
@@ -380,7 +408,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
           <View style={s.editorFooter}>
             <TouchableOpacity
               style={[s.editorGenerate, genCount >= MAX_GENERATIONS && { opacity: 0.5 }]}
-              onPress={() => { if (!job || genCount >= MAX_GENERATIONS) return; setCoverLetter(pickCoverLetter(job, genCount)); setGenCount((n) => n + 1); }}
+              onPress={() => { if (!job || genCount >= MAX_GENERATIONS) return; setCoverLetter(pickCoverLetter(job, genCount, helperInfo ?? undefined)); setGenCount((n) => n + 1); }}
               activeOpacity={0.8}
               disabled={genCount >= MAX_GENERATIONS}
             >

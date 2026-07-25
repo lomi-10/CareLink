@@ -4,16 +4,30 @@
 // WHY: the "Generate Cover Letter" button used ONE hardcoded paragraph, so every
 // helper's letter read identically. This provides 5 distinct letters for each of
 // the 6 job categories (30 total), tailored to that kind of work, so a Cook's
-// letter talks about meals and a Gardener's about plants. The helper can cycle
-// through templates (capped per application) and then edit the result.
+// letter talks about meals and a Gardener's about plants.
 //
-// Placeholders filled at pick time: {employer}, {job}, {category}.
+// UNIQUENESS: on top of the per-category variety, each generated letter is
+// PERSONALISED with the helper's own details — their name, years of experience,
+// top skills and location — woven into a middle paragraph whose phrasing is
+// chosen from several variants by a per-(helper, job, generation) seed. Two
+// different helpers therefore almost never produce the same letter, while the
+// helper is still assisted with a ready first draft they can edit.
+//
+// Placeholders filled at pick time: {employer}, {job}, {category}, {name}.
 
 export type JobLike = {
   parent_name?: string | null;
   title?: string | null;
   categories?: (string | null | undefined)[] | null;
   category_name?: string | null;
+};
+
+/** The applying helper's own details, used to make the letter uniquely theirs. */
+export type HelperInfo = {
+  name?: string | null;
+  experienceYears?: number | null;
+  skills?: (string | null | undefined)[] | null;
+  location?: string | null; // barangay / city
 };
 
 /** Max times a helper may press "Generate" for a single application. */
@@ -88,16 +102,97 @@ function resolveCategory(job: JobLike): CategoryKey {
   return 'Others';
 }
 
+// ── Personalisation ──────────────────────────────────────────────────────────
+
+/** Small stable string hash → non-negative int, for deterministic variant picks. */
+function seedFrom(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+const pick = <T,>(arr: T[], seed: number): T => arr[seed % arr.length];
+
+/** Join a short list naturally: "a, b and c" (caps at 3 items). */
+function humanList(items: string[]): string {
+  const xs = items.filter(Boolean).slice(0, 3);
+  if (xs.length === 0) return '';
+  if (xs.length === 1) return xs[0];
+  if (xs.length === 2) return `${xs[0]} and ${xs[1]}`;
+  return `${xs[0]}, ${xs[1]} and ${xs[2]}`;
+}
+
+/**
+ * Build a personalised paragraph from the helper's own details. Returns '' when
+ * there's nothing to say (so the letter stays clean). Phrasing is chosen by the
+ * seed so the same helper+job is stable but different helpers read differently.
+ */
+function personalParagraph(helper: HelperInfo | undefined, seed: number): string {
+  if (!helper) return '';
+  const sentences: string[] = [];
+
+  const years = Number(helper.experienceYears ?? 0);
+  if (Number.isFinite(years) && years >= 1) {
+    const y = `${years} year${years === 1 ? '' : 's'}`;
+    sentences.push(pick([
+      `With ${y} of hands-on experience, I know how to do this work well and with care.`,
+      `I have ${y} of experience in this kind of work, and I take my responsibilities seriously.`,
+      `Over my ${y} of experience, I have learned to work efficiently, honestly, and with attention to detail.`,
+    ], seed));
+  } else {
+    sentences.push(pick([
+      `I am eager to learn and give my very best effort every single day.`,
+      `Although I am building my experience, I am hardworking, willing to learn, and always give my full effort.`,
+    ], seed >> 2));
+  }
+
+  const skills = humanList((helper.skills ?? []).map((s) => String(s ?? '').trim()).filter(Boolean));
+  if (skills) {
+    sentences.push(pick([
+      `Among my strengths are ${skills}.`,
+      `I am confident with ${skills}.`,
+      `My skills include ${skills}, and I am happy to take on more.`,
+    ], seed >> 3));
+  }
+
+  const loc = helper.location?.trim();
+  if (loc) {
+    sentences.push(pick([
+      `I live in ${loc}, so I can report to work reliably and on time.`,
+      `Being based in ${loc}, I can start promptly and be dependable with my schedule.`,
+    ], seed >> 5));
+  }
+
+  return sentences.join(' ');
+}
+
 /**
  * Return the n-th cover-letter template for a job (cycling within its category),
- * with placeholders filled. `n` is a 0-based generation index.
+ * personalised with the helper's own details and with placeholders filled.
+ * `n` is a 0-based generation index.
  */
-export function pickCoverLetter(job: JobLike, n: number): string {
+export function pickCoverLetter(job: JobLike, n: number, helper?: HelperInfo): string {
   const key = resolveCategory(job);
   const bucket = TEMPLATES[key];
   const tmpl = bucket[((n % bucket.length) + bucket.length) % bucket.length];
-  return tmpl
+
+  const seed = seedFrom(`${helper?.name ?? ''}|${job.title ?? ''}|${key}|${n}`);
+  const personal = personalParagraph(helper, seed);
+
+  // Weave the personal paragraph in after the first body paragraph (before the
+  // sign-off), so the letter reads: greeting → intro → their own details → close.
+  let body = tmpl;
+  if (personal) {
+    const segs = tmpl.split('\n\n');
+    const insertAt = Math.min(2, segs.length - 1);
+    segs.splice(insertAt, 0, personal);
+    body = segs.join('\n\n');
+  }
+
+  const name = helper?.name?.trim();
+  return body
     .replace(/\{employer\}/g, job.parent_name?.trim() || 'Employer')
     .replace(/\{job\}/g, job.title?.trim() || 'this')
-    .replace(/\{category\}/g, key === 'Others' ? 'household work' : key);
+    .replace(/\{category\}/g, key === 'Others' ? 'household work' : key)
+    .replace(/\{name\}/g, name || '[Your Name]')
+    .replace(/\[Your Name\]/g, name || '[Your Name]');
 }

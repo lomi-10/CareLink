@@ -16,7 +16,7 @@ import { formatParentHouseholdType } from '@/constants/parentHousehold';
 import { NotificationModal } from '@/components/shared';
 import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
 import { isShareableWithEmployer } from '@/constants/documents';
-import { pickCoverLetter, MAX_GENERATIONS } from '@/lib/coverLetterTemplates';
+import { pickCoverLetter, MAX_GENERATIONS, type HelperInfo } from '@/lib/coverLetterTemplates';
 import { AdvancedSearchModal } from '@/components/helper/jobs';
 import { groupJobsByParent } from '@/app/(helper)/browse/browseHelpers';
 import { HelperTopNav } from './HelperTopNav';
@@ -548,6 +548,8 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
   const [selDocs, setSelDocs] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The helper's own details — personalise the generated letter so no two match.
+  const [helperInfo, setHelperInfo] = useState<HelperInfo | null>(null);
   const salary = Number(job.salary_offered);
 
   useEffect(() => {
@@ -564,6 +566,27 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
         const list = (data?.data?.documents ?? data?.documents ?? []).filter((d: any) => d.status === 'Verified' && isShareableWithEmployer(d.document_type)).map((d: any) => ({ document_id: d.document_id, document_type: d.document_type }));
         if (!cancelled) setDocs(list);
       } catch { /* optional */ }
+
+      try {
+        const raw = await AsyncStorage.getItem('user_data');
+        if (!raw) return;
+        const user = JSON.parse(raw);
+        const res = await fetch(`${API_URL}/helper/get_profile.php?user_id=${user.user_id}&requester_id=${user.user_id}`);
+        const data = await res.json();
+        if (!cancelled && data.success && data.profile) {
+          const p = data.profile;
+          const nameMap: Record<number, string> = {};
+          (data.available_skills ?? []).forEach((sk: any) => { nameMap[Number(sk.skill_id)] = sk.skill_name; });
+          const selectedSkillNames: string[] = (data.selected_skills ?? []).map((id: number) => nameMap[Number(id)]).filter(Boolean);
+          const customSkills: string[] = Array.isArray(p.custom_skills) ? p.custom_skills.filter(Boolean) : [];
+          setHelperInfo({
+            name: [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || null,
+            experienceYears: p.experience_years != null ? Number(p.experience_years) : null,
+            skills: [...selectedSkillNames, ...customSkills],
+            location: p.municipality || p.barangay || null,
+          });
+        }
+      } catch { /* personalisation is best-effort */ }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -648,7 +671,7 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
           const locked = left <= 0;
           return (
             <Pressable
-              onPress={() => { if (locked) return; setLetter(pickCoverLetter(job, genCount)); setGenCount((n) => n + 1); setError(null); }}
+              onPress={() => { if (locked) return; setLetter(pickCoverLetter(job, genCount, helperInfo ?? undefined)); setGenCount((n) => n + 1); setError(null); }}
               disabled={locked}
               style={({ hovered }: any) => [s.genBtn, TRANS, locked && { opacity: 0.5 }, hovered && !locked && { backgroundColor: wt.accentSoft }]}
             >
