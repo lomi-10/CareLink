@@ -4,14 +4,14 @@
 // requirements, compensation & benefits, a compliance checklist, and the
 // Reject / Request Changes / Approve actions. No AI pre-screen.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Modal, Platform, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
-import { theme } from '@/constants/theme';
+import { usePesoTheme, radius, type PesoColors } from '@/contexts/PesoThemeContext';
 import { useJobReferences } from '@/hooks/shared';
 import { ConfirmationModal } from '../shared/ConfirmationModal';
 import { NotificationModal } from '../shared/NotificationModal';
@@ -26,6 +26,8 @@ export function JobDetailPanel({
   onClose?: () => void;
   showClose?: boolean;
 }) {
+  const { c } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -86,22 +88,22 @@ export function JobDetailPanel({
   if (!jobId) {
     return (
       <View style={[s.panel, s.emptyPanel]}>
-        <Ionicons name="reader-outline" size={56} color={theme.color.subtle} />
+        <Ionicons name="reader-outline" size={56} color={c.subtle} />
         <Text style={s.emptyTitle}>Select a job to review</Text>
         <Text style={s.emptyBody}>Choose a posting from the list to see its details and compliance checklist.</Text>
       </View>
     );
   }
   if (loading || !job) {
-    return <View style={[s.panel, s.emptyPanel]}><ActivityIndicator size="large" color={theme.color.peso} /></View>;
+    return <View style={[s.panel, s.emptyPanel]}><ActivityIndicator size="large" color={c.accent} /></View>;
   }
 
   const category = job.custom_category || job.category_name;
   const isPending = job.status === 'Pending';
-  const statusMeta = job.status === 'Open' ? { label: 'Approved', c: theme.color.success }
-    : job.status === 'Rejected' ? { label: 'Rejected', c: theme.color.danger }
-    : job.status === 'Pending' ? { label: 'Pending', c: theme.color.warning }
-    : { label: job.status, c: theme.color.muted };
+  const statusMeta = job.status === 'Open' ? { label: 'Approved', c: c.ok }
+    : job.status === 'Rejected' ? { label: 'Rejected', c: c.bad }
+    : job.status === 'Pending' ? { label: 'Pending', c: c.warn }
+    : { label: job.status, c: c.muted };
   const lang = languages.find(l => l.language_id?.toString() === job.preferred_language_id?.toString())?.language_name || 'Any';
   const salary = Number(job.salary_offered) || 0;
 
@@ -129,7 +131,7 @@ export function JobDetailPanel({
         <View style={{ alignItems: 'flex-end', gap: 8 }}>
           <Text style={s.jobId}>Job ID: JOB-{String(job.job_post_id).padStart(4, '0')}</Text>
           {showClose && onClose ? (
-            <TouchableOpacity onPress={onClose} style={s.closeBtn}><Ionicons name="close" size={20} color={theme.color.muted} /></TouchableOpacity>
+            <TouchableOpacity onPress={onClose} style={s.closeBtn}><Ionicons name="close" size={20} color={c.muted} /></TouchableOpacity>
           ) : null}
         </View>
       </View>
@@ -141,7 +143,7 @@ export function JobDetailPanel({
             {job.parent_photo ? (
               <Image source={{ uri: job.parent_photo }} style={s.employerAvatar} />
             ) : (
-              <View style={[s.employerAvatar, s.employerAvatarFb]}><Ionicons name="person" size={26} color={theme.color.subtle} /></View>
+              <View style={[s.employerAvatar, s.employerAvatarFb]}><Ionicons name="person" size={26} color={c.subtle} /></View>
             )}
             <View style={{ flex: 1 }}>
               <View style={s.employerNameRow}>
@@ -197,10 +199,10 @@ export function JobDetailPanel({
         {/* Compliance Checklist */}
         <Card title="Compliance Checklist">
           <View style={s.checkGrid}>
-            {checklist.map((c) => (
-              <View key={c.label} style={s.checkItem}>
-                <Ionicons name={c.ok ? 'checkmark-circle' : 'close-circle'} size={18} color={c.ok ? theme.color.success : theme.color.danger} />
-                <Text style={s.checkText}>{c.label}</Text>
+            {checklist.map((item) => (
+              <View key={item.label} style={s.checkItem}>
+                <Ionicons name={item.ok ? 'checkmark-circle' : 'close-circle'} size={18} color={item.ok ? c.ok : c.bad} />
+                <Text style={s.checkText}>{item.label}</Text>
               </View>
             ))}
           </View>
@@ -208,14 +210,14 @@ export function JobDetailPanel({
 
         {job.status === 'Rejected' && job.rejection_reason ? (
           <View style={s.note}>
-            <Ionicons name="information-circle-outline" size={16} color={theme.color.danger} />
-            <Text style={[s.noteText, { color: theme.color.danger }]}>Reason: {job.rejection_reason}</Text>
+            <Ionicons name="information-circle-outline" size={16} color={c.bad} />
+            <Text style={[s.noteText, { color: c.bad }]}>Reason: {job.rejection_reason}</Text>
           </View>
         ) : null}
         {job.status === 'Open' && job.verified_by_name ? (
-          <View style={[s.note, { backgroundColor: theme.color.successSoft }]}>
-            <Ionicons name="shield-checkmark-outline" size={16} color={theme.color.success} />
-            <Text style={[s.noteText, { color: theme.color.success }]}>Verified by {job.verified_by_name}</Text>
+          <View style={[s.note, { backgroundColor: c.okSoft }]}>
+            <Ionicons name="shield-checkmark-outline" size={16} color={c.ok} />
+            <Text style={[s.noteText, { color: c.ok }]}>Verified by {job.verified_by_name}</Text>
           </View>
         ) : null}
       </ScrollView>
@@ -227,7 +229,7 @@ export function JobDetailPanel({
             <Ionicons name="close-circle-outline" size={18} color="#fff" /><Text style={s.actText}>Reject Job</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.actBtn, s.changesBtn, processing && s.dim]} disabled={processing} onPress={() => { setReason(''); setReasonModal('changes'); }}>
-            <Ionicons name="create-outline" size={18} color={theme.color.ink} /><Text style={[s.actText, { color: theme.color.ink }]}>Request Changes</Text>
+            <Ionicons name="create-outline" size={18} color={c.ink} /><Text style={[s.actText, { color: c.ink }]}>Request Changes</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.actBtn, s.approveBtn, processing && s.dim]} disabled={processing} onPress={() => setConfirmVisible(true)}>
             {processing ? <ActivityIndicator color="#fff" /> : <><Ionicons name="checkmark-circle-outline" size={18} color="#fff" /><Text style={s.actText}>Approve Job</Text></>}
@@ -235,7 +237,7 @@ export function JobDetailPanel({
         </View>
       ) : showClose && onClose ? (
         <View style={s.footer}>
-          <TouchableOpacity style={[s.actBtn, { backgroundColor: theme.color.ink, flex: 1 }]} onPress={onClose}><Text style={s.actText}>Close</Text></TouchableOpacity>
+          <TouchableOpacity style={[s.actBtn, { backgroundColor: c.ink, flex: 1 }]} onPress={onClose}><Text style={s.actText}>Close</Text></TouchableOpacity>
         </View>
       ) : null}
 
@@ -261,13 +263,13 @@ export function JobDetailPanel({
             <TextInput
               style={s.reasonInput}
               placeholder={reasonModal === 'changes' ? 'e.g. Please clarify the work schedule and add rest days.' : 'e.g. Salary below the CareLink standard; incomplete duties.'}
-              placeholderTextColor={theme.color.subtle}
+              placeholderTextColor={c.subtle}
               value={reason} onChangeText={setReason} multiline numberOfLines={4} textAlignVertical="top"
             />
             <View style={s.reasonActions}>
               <TouchableOpacity style={s.reasonCancel} onPress={() => setReasonModal(null)}><Text style={s.reasonCancelText}>Cancel</Text></TouchableOpacity>
               <TouchableOpacity
-                style={[s.reasonConfirm, !reason.trim() && s.dim, reasonModal === 'changes' && { backgroundColor: theme.color.warning }]}
+                style={[s.reasonConfirm, !reason.trim() && s.dim, reasonModal === 'changes' && { backgroundColor: c.warn }]}
                 disabled={!reason.trim()}
                 onPress={() => submitStatus('Rejected', (reasonModal === 'changes' ? 'Changes requested: ' : '') + reason.trim())}
               >
@@ -290,24 +292,32 @@ export function JobDetailPanel({
 
 // ─── small pieces ──────────────────────────────────────────────────────────────
 function Card({ title, children, style }: { title: string; children: React.ReactNode; style?: any }) {
+  const { c } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   return <View style={[s.card, style]}><Text style={s.cardTitle}>{title}</Text>{children}</View>;
 }
 function MetaLine({ icon, text }: { icon: any; text: string }) {
-  return <View style={s.metaLine}><Ionicons name={icon} size={13} color={theme.color.muted} /><Text style={s.metaText} numberOfLines={1}>{text}</Text></View>;
+  const { c } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
+  return <View style={s.metaLine}><Ionicons name={icon} size={13} color={c.muted} /><Text style={s.metaText} numberOfLines={1}>{text}</Text></View>;
 }
 function KV({ icon, label, value }: { icon: any; label: string; value: string }) {
+  const { c } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   return (
     <View style={s.kv}>
-      <Ionicons name={icon} size={16} color={theme.color.peso} />
+      <Ionicons name={icon} size={16} color={c.accent} />
       <Text style={s.kvLabel}>{label}</Text>
       <Text style={s.kvValue} numberOfLines={1}>{value}</Text>
     </View>
   );
 }
 function ReqItem({ icon, label, value }: { icon: any; label: string; value: string }) {
+  const { c } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
   return (
     <View style={s.reqItem}>
-      <Ionicons name={icon} size={16} color={theme.color.info} />
+      <Ionicons name={icon} size={16} color={c.info} />
       <View style={{ flex: 1 }}>
         <Text style={s.reqLabel}>{label}</Text>
         <Text style={s.reqValue}>{value}</Text>
@@ -316,11 +326,13 @@ function ReqItem({ icon, label, value }: { icon: any; label: string; value: stri
   );
 }
 function Perk({ ok, label, green }: { ok: boolean; label: string; green?: boolean }) {
-  const c = ok ? (green ? theme.color.success : theme.color.warning) : theme.color.subtle;
+  const { c } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
+  const tone = ok ? (green ? c.ok : c.warn) : c.subtle;
   return (
-    <View style={[s.perk, { borderColor: c + '44' }]}>
-      <Ionicons name={ok ? 'checkmark' : 'close'} size={12} color={c} />
-      <Text style={[s.perkText, { color: ok ? theme.color.ink : theme.color.subtle }]}>{label}</Text>
+    <View style={[s.perk, { borderColor: tone + '44' }]}>
+      <Ionicons name={ok ? 'checkmark' : 'close'} size={12} color={tone} />
+      <Text style={[s.perkText, { color: ok ? c.ink : c.subtle }]}>{label}</Text>
     </View>
   );
 }
@@ -332,75 +344,75 @@ function parseDaysOff(val: any): string {
   } catch { return 'Not specified'; }
 }
 
-const s = StyleSheet.create({
-  panel: { flex: 1, backgroundColor: theme.color.surface, overflow: 'hidden' },
+const makeStyles = (c: PesoColors) => StyleSheet.create({
+  panel: { flex: 1, backgroundColor: c.surface, overflow: 'hidden' },
   emptyPanel: { alignItems: 'center', justifyContent: 'center', padding: 40, gap: 10 },
-  emptyTitle: { fontSize: 16, fontWeight: '800', color: theme.color.ink, marginTop: 6 },
-  emptyBody: { fontSize: 13, color: theme.color.muted, textAlign: 'center', maxWidth: 280, lineHeight: 19 },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: c.ink, marginTop: 6 },
+  emptyBody: { fontSize: 13, color: c.muted, textAlign: 'center', maxWidth: 280, lineHeight: 19 },
 
-  head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', padding: 18, borderBottomWidth: 1, borderBottomColor: theme.color.line, gap: 12 },
-  headTitle: { fontSize: 19, fontWeight: '800', color: theme.color.ink, letterSpacing: -0.3, marginBottom: 8 },
+  head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', padding: 18, borderBottomWidth: 1, borderBottomColor: c.line, gap: 12 },
+  headTitle: { fontSize: 19, fontWeight: '800', color: c.ink, letterSpacing: -0.3, marginBottom: 8 },
   statusPill: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   statusPillText: { fontSize: 12, fontWeight: '800' },
-  jobId: { fontSize: 12, color: theme.color.subtle, fontWeight: '700' },
+  jobId: { fontSize: 12, color: c.subtle, fontWeight: '700' },
   closeBtn: { padding: 4 },
 
   scroll: { flex: 1, paddingHorizontal: 16, paddingTop: 14 },
-  card: { backgroundColor: theme.color.canvasPeso, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line, padding: 14, marginBottom: 12 },
-  cardTitle: { fontSize: 13, fontWeight: '800', color: theme.color.ink, marginBottom: 12 },
-  body: { fontSize: 13.5, lineHeight: 21, color: theme.color.muted },
+  card: { backgroundColor: c.canvas, borderRadius: 14, borderWidth: 1, borderColor: c.line, padding: 14, marginBottom: 12 },
+  cardTitle: { fontSize: 13, fontWeight: '800', color: c.ink, marginBottom: 12 },
+  body: { fontSize: 13.5, lineHeight: 21, color: c.muted },
   twoCol: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
 
   employerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  employerAvatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: theme.color.pesoSoft },
+  employerAvatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: c.accentSoft },
   employerAvatarFb: { alignItems: 'center', justifyContent: 'center' },
   employerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 },
-  employerName: { fontSize: 15, fontWeight: '800', color: theme.color.ink },
-  catPill: { backgroundColor: theme.color.infoSoft, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8 },
-  catPillText: { fontSize: 11, fontWeight: '700', color: theme.color.info },
+  employerName: { fontSize: 15, fontWeight: '800', color: c.ink },
+  catPill: { backgroundColor: c.infoSoft, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8 },
+  catPillText: { fontSize: 11, fontWeight: '700', color: c.info },
   employerContact: { gap: 4, minWidth: 180 },
   metaLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
-  metaText: { fontSize: 12.5, color: theme.color.muted, flexShrink: 1 },
+  metaText: { fontSize: 12.5, color: c.muted, flexShrink: 1 },
 
-  kv: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.color.line },
-  kvLabel: { flex: 1, fontSize: 13, color: theme.color.muted },
-  kvValue: { fontSize: 13, fontWeight: '700', color: theme.color.ink, maxWidth: '52%' },
+  kv: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.line },
+  kvLabel: { flex: 1, fontSize: 13, color: c.muted },
+  kvValue: { fontSize: 13, fontWeight: '700', color: c.ink, maxWidth: '52%' },
 
   reqGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   reqItem: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '46%' },
-  reqLabel: { fontSize: 10.5, color: theme.color.subtle, fontWeight: '700', textTransform: 'uppercase' },
-  reqValue: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
+  reqLabel: { fontSize: 10.5, color: c.subtle, fontWeight: '700', textTransform: 'uppercase' },
+  reqValue: { fontSize: 13, fontWeight: '700', color: c.ink },
 
-  salLabel: { fontSize: 11, color: theme.color.subtle, fontWeight: '700', textTransform: 'uppercase' },
-  salValue: { fontSize: 26, fontWeight: '800', color: theme.color.peso, marginTop: 2, marginBottom: 10 },
-  salPer: { fontSize: 14, fontWeight: '600', color: theme.color.muted },
+  salLabel: { fontSize: 11, color: c.subtle, fontWeight: '700', textTransform: 'uppercase' },
+  salValue: { fontSize: 26, fontWeight: '800', color: c.accent, marginTop: 2, marginBottom: 10 },
+  salPer: { fontSize: 14, fontWeight: '600', color: c.muted },
   perksRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  perk: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, borderWidth: 1, backgroundColor: theme.color.surface },
+  perk: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, borderWidth: 1, backgroundColor: c.surface },
   perkText: { fontSize: 12, fontWeight: '700' },
 
   checkGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   checkItem: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '46%' },
-  checkText: { fontSize: 13, color: theme.color.ink, fontWeight: '600', flexShrink: 1 },
+  checkText: { fontSize: 13, color: c.ink, fontWeight: '600', flexShrink: 1 },
 
-  note: { flexDirection: 'row', gap: 8, backgroundColor: theme.color.dangerSoft, padding: 12, borderRadius: 10, marginBottom: 6 },
+  note: { flexDirection: 'row', gap: 8, backgroundColor: c.badSoft, padding: 12, borderRadius: 10, marginBottom: 6 },
   noteText: { flex: 1, fontSize: 13, fontWeight: '600' },
 
-  footer: { flexDirection: 'row', gap: 10, padding: 14, borderTopWidth: 1, borderTopColor: theme.color.line },
+  footer: { flexDirection: 'row', gap: 10, padding: 14, borderTopWidth: 1, borderTopColor: c.line },
   actBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 13, borderRadius: 12 },
-  rejectBtn: { backgroundColor: theme.color.danger },
-  changesBtn: { backgroundColor: theme.color.surface, borderWidth: 1.4, borderColor: theme.color.line },
-  approveBtn: { backgroundColor: theme.color.success },
+  rejectBtn: { backgroundColor: c.bad },
+  changesBtn: { backgroundColor: c.surface, borderWidth: 1.4, borderColor: c.line },
+  approveBtn: { backgroundColor: c.ok },
   dim: { opacity: 0.55 },
   actText: { color: '#fff', fontSize: 14, fontWeight: '800' },
 
   reasonOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  reasonSheet: { width: '100%', maxWidth: 520, backgroundColor: theme.color.surface, borderRadius: 20, padding: 22 },
-  reasonTitle: { fontSize: 19, fontWeight: '800', color: theme.color.ink, marginBottom: 6 },
-  reasonSub: { fontSize: 13, color: theme.color.muted, marginBottom: 14, lineHeight: 19 },
-  reasonInput: { backgroundColor: theme.color.canvasPeso, borderRadius: 12, padding: 14, fontSize: 14, color: theme.color.ink, minHeight: 100, borderWidth: 1, borderColor: theme.color.line, marginBottom: 16 },
+  reasonSheet: { width: '100%', maxWidth: 520, backgroundColor: c.surface, borderRadius: 20, padding: 22 },
+  reasonTitle: { fontSize: 19, fontWeight: '800', color: c.ink, marginBottom: 6 },
+  reasonSub: { fontSize: 13, color: c.muted, marginBottom: 14, lineHeight: 19 },
+  reasonInput: { backgroundColor: c.canvas, borderRadius: 12, padding: 14, fontSize: 14, color: c.ink, minHeight: 100, borderWidth: 1, borderColor: c.line, marginBottom: 16 },
   reasonActions: { flexDirection: 'row', gap: 12 },
-  reasonCancel: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: theme.color.line },
-  reasonCancelText: { fontSize: 14, fontWeight: '700', color: theme.color.muted },
-  reasonConfirm: { flex: 1.5, paddingVertical: 13, borderRadius: 12, alignItems: 'center', backgroundColor: theme.color.danger },
+  reasonCancel: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: c.line },
+  reasonCancelText: { fontSize: 14, fontWeight: '700', color: c.muted },
+  reasonConfirm: { flex: 1.5, paddingVertical: 13, borderRadius: 12, alignItems: 'center', backgroundColor: c.bad },
   reasonConfirmText: { color: '#fff', fontSize: 14, fontWeight: '800' },
 });
