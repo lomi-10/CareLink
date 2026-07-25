@@ -47,14 +47,43 @@ export interface JobFormData {
   prefer_tesda_nc2: boolean;
 }
 
-const generateDescription = (category: Category | null, jobs: Job[]): string => {
-  const jobTitles = jobs.map(j => j.job_title).join(', ') || 'helper';
-  const categoryName = category?.name || 'general household';
-  
-  if (category?.category_id.toString() === '1') { // General Household
-    return `We are looking for a reliable ${jobTitles} to join our family!
+// Extra household/job context used to make each generated description specific
+// to THIS post (location, pay, arrangement, benefits…) rather than a generic,
+// identical template. All optional — lines only appear when there's data.
+export interface DescriptionContext {
+  municipality?: string;
+  barangay?: string;
+  employmentType?: string;   // Stay-in / Stay-out / Any
+  workSchedule?: string;     // Full-time / Part-time / Any
+  salaryMin?: string | number;
+  salaryMax?: string | number;
+  salaryPeriod?: string;
+  daysOff?: string[];
+  minExperienceYears?: number;
+  startDate?: string;
+  contractDuration?: string;
+  providesMeals?: boolean;
+  providesAccommodation?: boolean;
+  providesSss?: boolean;
+  providesPhilhealth?: boolean;
+  providesPagibig?: boolean;
+  benefits?: string;
+  customSkills?: string;
+}
 
-Responsibilities include:
+// Stable string hash → non-negative int, for deterministic variant selection.
+const descSeed = (s: string): number => {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h;
+};
+const descPick = <T,>(arr: T[], seed: number): T => arr[seed % arr.length];
+
+// Per-category tone + the "Responsibilities / Requirements" body.
+const CATEGORY_COPY: Record<string, { adj: string; verb: string; body: string }> = {
+  '1': {
+    adj: 'reliable', verb: 'to help keep our home clean and running smoothly',
+    body: `Responsibilities include:
 • General cleaning and maintaining a tidy home
 • Laundry and ironing clothes
 • Cooking meals for the family
@@ -64,14 +93,12 @@ Responsibilities include:
 Requirements:
 • Honest, hardworking, and trustworthy
 • Good communication skills
-• Previous experience in ${categoryName} work is a plus
-• Willing to learn and follow instructions
-
-We offer a friendly, respectful working environment with fair compensation!`;
-  } else if (category?.category_id.toString() === '2') { // Childcare/Nanny
-    return `We are looking for a loving and responsible ${jobTitles} to take care of our children!
-
-Responsibilities include:
+• Previous household experience is a plus
+• Willing to learn and follow instructions`,
+  },
+  '2': {
+    adj: 'loving and responsible', verb: 'to care for our children',
+    body: `Responsibilities include:
 • Supervise and care for our children at all times
 • Prepare nutritious meals and snacks for the kids
 • Help with homework and educational activities
@@ -82,13 +109,11 @@ Requirements:
 • Patient, caring, and energetic
 • Loves working with children
 • Previous childcare experience is a plus
-• First aid knowledge is an advantage
-
-We offer a warm, family-oriented environment with competitive pay!`;
-  } else if (category?.category_id.toString() === '3') { // Cooking
-    return `We are looking for a skilled ${jobTitles} to prepare delicious meals for our family!
-
-Responsibilities include:
+• First aid knowledge is an advantage`,
+  },
+  '3': {
+    adj: 'skilled', verb: 'to prepare delicious meals for our family',
+    body: `Responsibilities include:
 • Plan and prepare nutritious, tasty meals for the family
 • Manage kitchen inventory and grocery shopping for ingredients
 • Maintain a clean and organized kitchen
@@ -98,13 +123,11 @@ Requirements:
 • Passionate about cooking
 • Experience in home cooking is preferred
 • Knowledgeable about food safety and hygiene
-• Creative and willing to try new recipes
-
-We offer a flexible schedule and great compensation!`;
-  } else if (category?.category_id.toString() === '4') { // Gardening
-    return `We are looking for a dedicated ${jobTitles} to take care of our garden and outdoor spaces!
-
-Responsibilities include:
+• Creative and willing to try new recipes`,
+  },
+  '4': {
+    adj: 'dedicated', verb: 'to take care of our garden and outdoor spaces',
+    body: `Responsibilities include:
 • Planting, watering, and maintaining plants and flowers
 • Mowing the lawn and trimming hedges
 • Keeping the garden clean and free of debris
@@ -114,13 +137,11 @@ Requirements:
 • Enjoys working with plants and outdoors
 • Basic gardening knowledge is a plus
 • Physically fit and able to do manual work
-• Reliable and hardworking
-
-We offer a nice working environment and fair pay!`;
-  } else if (category?.category_id.toString() === '5') { // Laundry
-    return `We are looking for a reliable ${jobTitles} to handle our laundry needs!
-
-Responsibilities include:
+• Reliable and hardworking`,
+  },
+  '5': {
+    adj: 'careful and reliable', verb: 'to handle our family\'s laundry',
+    body: `Responsibilities include:
 • Washing, drying, and ironing clothes
 • Properly sorting clothes by color and fabric type
 • Folding and organizing clean laundry
@@ -130,14 +151,56 @@ Requirements:
 • Detail-oriented and careful with clothes
 • Previous laundry experience is preferred
 • Knowledgeable about different fabric care
-• Reliable and consistent
+• Reliable and consistent`,
+  },
+};
 
-We offer a steady schedule and competitive compensation!`;
+// Build the "About this role" detail lines from the actual form data.
+const buildDetailLines = (ctx: DescriptionContext): string[] => {
+  const lines: string[] = [];
+  const place = [ctx.barangay, ctx.municipality].filter(Boolean).join(', ');
+
+  const arrangement = [
+    ctx.employmentType && ctx.employmentType !== 'Any' ? ctx.employmentType : '',
+    ctx.workSchedule && ctx.workSchedule !== 'Any' ? ctx.workSchedule.toLowerCase() : '',
+  ].filter(Boolean).join(', ');
+  if (arrangement) lines.push(`• Arrangement: ${arrangement}`);
+  if (place) lines.push(`• Location: ${place}`);
+
+  const min = Number(ctx.salaryMin) || 0;
+  const max = Number(ctx.salaryMax) || 0;
+  const per = (ctx.salaryPeriod || 'Monthly').toLowerCase();
+  if (min > 0 || max > 0) {
+    const range = min > 0 && max > 0 && max !== min
+      ? `₱${min.toLocaleString()}–₱${max.toLocaleString()}`
+      : `₱${(max || min).toLocaleString()}`;
+    lines.push(`• Salary: ${range} per ${per.replace(/ly$/, per === 'daily' ? 'day' : per === 'weekly' ? 'week' : 'month')}`);
   }
-  
-  return `We are looking for a reliable ${jobTitles} to join our family!
+  if (ctx.daysOff && ctx.daysOff.length) lines.push(`• Rest day(s): ${ctx.daysOff.join(', ')}`);
+  if (ctx.minExperienceYears && ctx.minExperienceYears > 0) lines.push(`• Experience: at least ${ctx.minExperienceYears} year${ctx.minExperienceYears === 1 ? '' : 's'} preferred`);
+  if (ctx.startDate) lines.push(`• Preferred start: ${ctx.startDate}`);
+  if (ctx.contractDuration) lines.push(`• Contract: ${ctx.contractDuration}`);
 
-Responsibilities include:
+  const perks = [
+    ctx.providesMeals && 'meals provided',
+    ctx.providesAccommodation && 'accommodation provided',
+    ctx.providesSss && 'SSS',
+    ctx.providesPhilhealth && 'PhilHealth',
+    ctx.providesPagibig && 'Pag-IBIG',
+  ].filter(Boolean) as string[];
+  if (perks.length) lines.push(`• We provide: ${perks.join(', ')}`);
+  if (ctx.benefits && ctx.benefits.trim()) lines.push(`• Other benefits: ${ctx.benefits.trim()}`);
+
+  return lines;
+};
+
+const generateDescription = (category: Category | null, jobs: Job[], ctx: DescriptionContext = {}): string => {
+  const jobTitles = jobs.map(j => j.job_title).join(', ') || 'helper';
+  const categoryName = category?.name || 'general household';
+  const catId = category?.category_id?.toString() ?? '';
+  const copy = CATEGORY_COPY[catId] ?? {
+    adj: 'reliable', verb: 'to help around our home',
+    body: `Responsibilities include:
 • ${categoryName} related tasks
 • Maintaining a clean and organized home
 • Following family instructions carefully
@@ -147,9 +210,30 @@ Requirements:
 • Honest and hardworking
 • Good communication skills
 • Willing to learn
-• Previous experience is a plus
+• Previous experience is a plus`,
+  };
 
-We offer a friendly, respectful working environment!`;
+  // Deterministic-but-varied phrasing: same job is stable, different jobs differ.
+  const seed = descSeed(`${jobTitles}|${catId}|${ctx.municipality ?? ''}|${ctx.salaryMin ?? ''}|${ctx.employmentType ?? ''}`);
+
+  const intro = descPick([
+    `We are looking for a ${copy.adj} ${jobTitles} ${copy.verb}.`,
+    `Our family is searching for a ${copy.adj} ${jobTitles} ${copy.verb}.`,
+    `We'd love to welcome a ${copy.adj} ${jobTitles} into our home ${copy.verb}.`,
+  ], seed);
+
+  const closing = descPick([
+    `We offer a friendly, respectful home and fair, on-time pay. We look forward to welcoming you to our family!`,
+    `You'll be part of a warm, respectful household that values your work. We can't wait to hear from you!`,
+    `We treat our helpers with fairness and respect. If this sounds like you, we'd be glad to meet you!`,
+  ], seed >> 3);
+
+  const detailLines = buildDetailLines(ctx);
+  const detailBlock = detailLines.length
+    ? `\n\n${descPick(['About this role:', 'A few details about this role:', 'Here are the details:'], seed >> 5)}\n${detailLines.join('\n')}`
+    : '';
+
+  return `${intro}\n\n${copy.body}${detailBlock}\n\n${closing}`;
 };
 
 const DEFAULT_DESCRIPTION = generateDescription(null, []);
@@ -356,5 +440,29 @@ export function useJobForm() {
     };
   };
 
-  return { formData, errors, updateField, updateFields, validate, reset, getSubmissionData, populateForm, generateDescription };
+  // Personalise the generated description with THIS post's actual details, so two
+  // parents posting the same category get specific, non-identical descriptions.
+  const generateDescriptionWithContext = (category: Category | null, jobs: Job[]) =>
+    generateDescription(category, jobs, {
+      municipality: formData.municipality,
+      barangay: formData.barangay,
+      employmentType: formData.employment_type,
+      workSchedule: formData.work_schedule,
+      salaryMin: formData.salary_min,
+      salaryMax: formData.salary_max,
+      salaryPeriod: formData.salary_period,
+      daysOff: formData.days_off,
+      minExperienceYears: formData.min_experience_years,
+      startDate: formData.start_date,
+      contractDuration: formData.contract_duration,
+      providesMeals: formData.provides_meals,
+      providesAccommodation: formData.provides_accommodation,
+      providesSss: formData.provides_sss,
+      providesPhilhealth: formData.provides_philhealth,
+      providesPagibig: formData.provides_pagibig,
+      benefits: formData.benefits,
+      customSkills: formData.custom_skills,
+    });
+
+  return { formData, errors, updateField, updateFields, validate, reset, getSubmissionData, populateForm, generateDescription: generateDescriptionWithContext };
 }
