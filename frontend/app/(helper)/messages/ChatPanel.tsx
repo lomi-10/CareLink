@@ -14,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChat, Message } from '@/hooks/shared';
+import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { ConfirmationModal, NotificationModal, PasswordConfirmModal, RequestContractChangesModal } from '@/components/shared/';
 import API_URL from '@/constants/api';
 import {
@@ -40,6 +41,7 @@ export default function ChatPanel({
   const router = useRouter();
   const { s } = useMessagesAppearance();
   const { messages, loading, sending, sendError, clearSendError, myUserId, sendMessage, editMessage, sendImage, sendVideoCall, fetchMessages, respondInvite } = useChat(partnerId);
+  const { refresh: refreshWorkContext } = useHelperWorkMode();
   const [inviteBusyId, setInviteBusyId] = useState<number | null>(null);
   const [text, setText]                   = useState('');
   const [editTarget, setEditTarget]       = useState<Message | null>(null);
@@ -223,6 +225,9 @@ export default function ChatPanel({
       if (!data.success) throw new Error(data.message || 'Sign failed');
       await loadResolvedApp();
       fetchMessages();
+      // Both signed → the helper is now hired: refresh Work Mode so the app
+      // switches them into their work dashboard without needing a restart.
+      if (data.hire_finalized) void refreshWorkContext();
       showChatNotif(
         data.hire_finalized
           ? 'Contract confirmed. You are now hired.'

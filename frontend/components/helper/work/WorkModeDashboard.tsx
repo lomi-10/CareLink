@@ -526,7 +526,13 @@ export function WorkModeDashboard({
                 {todayTasks.slice(0, 6).map((t) => {
                   const done = t.status === 'done';
                   return (
-                    <View key={t.id} style={styles.taskRow}>
+                    <TouchableOpacity
+                      key={t.id}
+                      style={styles.taskRow}
+                      onPress={() => router.push('/(helper)/work/tasks')}
+                      activeOpacity={0.7}
+                      disabled={done}
+                    >
                       <Ionicons
                         name={done ? 'checkmark-circle' : 'ellipse-outline'}
                         size={20}
@@ -545,7 +551,7 @@ export function WorkModeDashboard({
                       ) : (
                         <Ionicons name="chevron-forward" size={16} color={SUBTLE} />
                       )}
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>

@@ -61,6 +61,12 @@ export default function HelperHome() {
     refresh: refreshWork,
   } = useHelperWorkMode();
 
+  // Re-check work status whenever Home regains focus, so a helper who was just
+  // hired (or whose placement just ended) is moved into/out of Work Mode right
+  // away — instead of being stuck in the old mode until they manually refresh
+  // or restart the app.
+  useFocusEffect(useCallback(() => { void refreshWork(); }, [refreshWork]));
+
   const [isMobileMenuOpen,    setIsMobileMenuOpen]    = useState(false);
   const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
   const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
