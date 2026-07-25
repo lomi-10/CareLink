@@ -1,20 +1,24 @@
 // components/peso/dashboard/TopCategoriesChart.tsx
 // "Top Job Categories" donut chart — % share of open/filled job posts.
-// Hand-rolled with react-native-svg (stacked Circle segments), same approach
-// as the CircularProgress ring used elsewhere in the app.
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// Hand-rolled with react-native-svg (stacked Circle segments). Theme-aware, with
+// an orange-led palette so it reads as CareLink.
+import React, { useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import type { useRouter } from 'expo-router';
 
-import { theme } from '@/constants/theme';
+import { AnimateIn } from '@/components/peso/ui';
+import { usePesoTheme, shadow, radius, font, type PesoColors } from '@/contexts/PesoThemeContext';
 import type { TopCategoryShare } from '@/lib/pesoDashboardApi';
 
-const COLORS = ['#2563EB', '#34C759', '#FF9500', '#9333EA', '#DC2626'];
 const SIZE = 130;
 const STROKE = 18;
 
 export function TopCategoriesChart({ categories, router }: { categories: TopCategoryShare[]; router: ReturnType<typeof useRouter> }) {
+  const { c, dark } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c, dark), [c, dark]);
+  const palette = useMemo(() => [c.accent, c.ok, c.info, '#8B6FE0', c.bad], [c]);
+
   const r = (SIZE - STROKE) / 2;
   const cx = SIZE / 2;
   const cy = SIZE / 2;
@@ -25,11 +29,11 @@ export function TopCategoriesChart({ categories, router }: { categories: TopCate
     const segLen = (cat.pct / 100) * circumference;
     const dashOffset = -(cumulativePct / 100) * circumference;
     cumulativePct += cat.pct;
-    return { ...cat, color: COLORS[i % COLORS.length], segLen, dashOffset };
+    return { ...cat, color: palette[i % palette.length], segLen, dashOffset };
   });
 
   return (
-    <View style={s.panel}>
+    <AnimateIn delay={260} style={s.panel}>
       <Text style={s.panelTitle}>Top Job Categories</Text>
 
       {categories.length === 0 ? (
@@ -37,7 +41,7 @@ export function TopCategoriesChart({ categories, router }: { categories: TopCate
       ) : (
         <View style={s.body}>
           <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-            <Circle cx={cx} cy={cy} r={r} stroke={theme.color.line} strokeWidth={STROKE} fill="none" />
+            <Circle cx={cx} cy={cy} r={r} stroke={c.sunken} strokeWidth={STROKE} fill="none" />
             {segments.map((seg) => (
               <Circle
                 key={seg.category_name}
@@ -47,6 +51,7 @@ export function TopCategoriesChart({ categories, router }: { categories: TopCate
                 fill="none"
                 strokeDasharray={`${seg.segLen} ${circumference - seg.segLen}`}
                 strokeDashoffset={seg.dashOffset}
+                strokeLinecap="round"
                 rotation="-90"
                 origin={`${cx}, ${cy}`}
               />
@@ -64,24 +69,24 @@ export function TopCategoriesChart({ categories, router }: { categories: TopCate
         </View>
       )}
 
-      <TouchableOpacity onPress={() => router.push('/(peso)/reports' as never)} activeOpacity={0.7}>
-        <Text style={s.viewAll}>View full report →</Text>
-      </TouchableOpacity>
-    </View>
+      <Pressable onPress={() => router.push('/(peso)/reports' as never)}>
+        {({ hovered }: any) => <Text style={[s.viewAll, hovered && { color: c.accentInk }]}>View full report →</Text>}
+      </Pressable>
+    </AnimateIn>
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (c: PesoColors, dark: boolean) => StyleSheet.create({
   panel: {
-    flex: 1, minWidth: 260, backgroundColor: theme.color.surfaceElevated, borderRadius: theme.radius.lg,
-    padding: 18, borderWidth: 1, borderColor: theme.color.line, ...theme.shadow.card,
+    flex: 1, minWidth: 260, backgroundColor: c.surface, borderRadius: radius.lg,
+    padding: 18, borderWidth: 1, borderColor: c.line, ...shadow('sm', dark),
   },
-  panelTitle: { fontSize: 15, fontWeight: '800', color: theme.color.ink, marginBottom: 14 },
-  emptyText: { fontSize: 13, color: theme.color.muted, textAlign: 'center', paddingVertical: 24 },
+  panelTitle: { fontSize: 15, fontFamily: font.display, color: c.ink, marginBottom: 14 },
+  emptyText: { fontSize: 13, color: c.muted, textAlign: 'center', paddingVertical: 24, fontFamily: font.regular },
   body: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendLabel: { flex: 1, fontSize: 12, color: theme.color.ink, fontWeight: '600' },
-  legendPct: { fontSize: 12, fontWeight: '700', color: theme.color.muted },
-  viewAll: { fontSize: 12, fontWeight: '700', color: theme.color.peso },
+  legendLabel: { flex: 1, fontSize: 12, color: c.ink, fontFamily: font.regular },
+  legendPct: { fontSize: 12, fontFamily: font.semibold, color: c.muted },
+  viewAll: { fontSize: 12, fontFamily: font.semibold, color: c.accent },
 });

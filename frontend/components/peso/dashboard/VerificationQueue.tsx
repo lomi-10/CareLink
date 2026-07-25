@@ -1,28 +1,31 @@
 // components/peso/dashboard/VerificationQueue.tsx
 // "Verification Queue" panel — Helpers/Employers tab preview with Review action.
-import { Ionicons } from '@expo/vector-icons';
+// Theme-aware (light/dark), animated entrance, hover feedback on tabs + buttons.
 import { Image } from 'expo-image';
 import type { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { theme } from '@/constants/theme';
+import { AnimateIn } from '@/components/peso/ui';
+import { usePesoTheme, shadow, radius, font, type PesoColors } from '@/contexts/PesoThemeContext';
 import type { QueueEntry, VerificationQueue as QueueData } from '@/lib/pesoDashboardApi';
 
 type Tab = 'helpers' | 'employers';
 
 export function VerificationQueue({ queue, router }: { queue: QueueData; router: ReturnType<typeof useRouter> }) {
+  const { c, dark } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c, dark), [c, dark]);
   const [tab, setTab] = useState<Tab>('helpers');
   const entries = tab === 'helpers' ? queue.helpers : queue.employers;
 
   return (
-    <View style={s.panel}>
+    <AnimateIn delay={80} style={s.panel}>
       <View style={s.headRow}>
         <Text style={s.panelTitle}>Verification Queue</Text>
       </View>
       <View style={s.tabRow}>
-        <Tab label="Helpers" count={queue.helpers_total} active={tab === 'helpers'} onPress={() => setTab('helpers')} />
-        <Tab label="Employers" count={queue.employers_total} active={tab === 'employers'} onPress={() => setTab('employers')} />
+        <TabChip label="Helpers" count={queue.helpers_total} active={tab === 'helpers'} onPress={() => setTab('helpers')} />
+        <TabChip label="Employers" count={queue.employers_total} active={tab === 'employers'} onPress={() => setTab('employers')} />
       </View>
 
       {entries.length === 0 ? (
@@ -40,25 +43,30 @@ export function VerificationQueue({ queue, router }: { queue: QueueData; router:
         ))
       )}
 
-      <TouchableOpacity onPress={() => router.push('/(peso)/users' as never)} activeOpacity={0.7}>
-        <Text style={s.viewAll}>View all {tab} →</Text>
-      </TouchableOpacity>
-    </View>
+      <Pressable onPress={() => router.push('/(peso)/users' as never)}>
+        {({ hovered }: any) => <Text style={[s.viewAll, hovered && s.viewAllHover]}>View all {tab} →</Text>}
+      </Pressable>
+    </AnimateIn>
   );
 }
 
-function Tab({ label, count, active, onPress }: { label: string; count: number; active: boolean; onPress: () => void }) {
+function TabChip({ label, count, active, onPress }: { label: string; count: number; active: boolean; onPress: () => void }) {
+  const { c, dark } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c, dark), [c, dark]);
   return (
-    <TouchableOpacity style={[s.tabChip, active && s.tabChipActive]} onPress={onPress} activeOpacity={0.8}>
+    <Pressable onPress={onPress}
+      style={({ hovered }: any) => [s.tabChip, active && s.tabChipActive, hovered && !active && s.tabChipHover]}>
       <Text style={[s.tabChipText, active && s.tabChipTextActive]}>{label}</Text>
       <View style={[s.tabCount, active && s.tabCountActive]}>
         <Text style={[s.tabCountText, active && s.tabCountTextActive]}>{count}</Text>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
 function QueueRow({ entry, onReview }: { entry: QueueEntry; onReview: () => void }) {
+  const { c, dark } = usePesoTheme();
+  const s = useMemo(() => makeStyles(c, dark), [c, dark]);
   const initials = entry.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
   return (
     <View style={s.row}>
@@ -81,48 +89,52 @@ function QueueRow({ entry, onReview }: { entry: QueueEntry; onReview: () => void
         </View>
         <Text style={s.submitted}>Submitted {entry.submitted_label}</Text>
       </View>
-      <TouchableOpacity style={s.reviewBtn} onPress={onReview} activeOpacity={0.8}>
+      <Pressable onPress={onReview} style={({ hovered }: any) => [s.reviewBtn, hovered && s.reviewBtnHover]}>
         <Text style={s.reviewBtnText}>Review</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (c: PesoColors, dark: boolean) => StyleSheet.create({
   panel: {
-    flex: 1, minWidth: 300, backgroundColor: theme.color.surfaceElevated, borderRadius: theme.radius.lg,
-    padding: 18, borderWidth: 1, borderColor: theme.color.line, ...theme.shadow.card,
+    flex: 1, minWidth: 300, backgroundColor: c.surface, borderRadius: radius.lg,
+    padding: 18, borderWidth: 1, borderColor: c.line, ...shadow('sm', dark),
   },
   headRow: { marginBottom: 12 },
-  panelTitle: { fontSize: 15, fontWeight: '800', color: theme.color.ink },
+  panelTitle: { fontSize: 15, fontFamily: font.display, color: c.ink },
   tabRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   tabChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
-    backgroundColor: theme.color.surface, borderWidth: 1, borderColor: theme.color.line,
+    backgroundColor: c.sunken, borderWidth: 1, borderColor: c.line,
+    ...(({ transitionDuration: '140ms' }) as any),
   },
-  tabChipActive: { backgroundColor: '#FFF4E5', borderColor: theme.color.peso },
-  tabChipText: { fontSize: 12, fontWeight: '700', color: theme.color.muted },
-  tabChipTextActive: { color: theme.color.peso },
-  tabCount: { backgroundColor: theme.color.line, borderRadius: 8, paddingHorizontal: 6, minWidth: 20, alignItems: 'center' },
-  tabCountActive: { backgroundColor: theme.color.peso },
-  tabCountText: { fontSize: 10, fontWeight: '700', color: theme.color.muted },
+  tabChipActive: { backgroundColor: c.accentSoft, borderColor: c.accent },
+  tabChipHover: { borderColor: c.accent, backgroundColor: c.raise },
+  tabChipText: { fontSize: 12, fontFamily: font.semibold, color: c.muted },
+  tabChipTextActive: { color: c.accentInk },
+  tabCount: { backgroundColor: c.line, borderRadius: 8, paddingHorizontal: 6, minWidth: 20, alignItems: 'center' },
+  tabCountActive: { backgroundColor: c.accent },
+  tabCountText: { fontSize: 10, fontFamily: font.semibold, color: c.muted },
   tabCountTextActive: { color: '#fff' },
 
-  emptyText: { fontSize: 13, color: theme.color.muted, paddingVertical: 16, textAlign: 'center' },
+  emptyText: { fontSize: 13, color: c.muted, paddingVertical: 16, textAlign: 'center', fontFamily: font.regular },
 
-  row: { flexDirection: 'row', gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: theme.color.line },
+  row: { flexDirection: 'row', gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: c.line },
   avatar: { width: 40, height: 40, borderRadius: 20 },
-  avatarFallback: { backgroundColor: theme.color.pesoSoft, alignItems: 'center', justifyContent: 'center' },
-  avatarInitials: { fontSize: 13, fontWeight: '700', color: theme.color.peso },
-  name: { fontSize: 13, fontWeight: '700', color: theme.color.ink },
-  code: { fontSize: 11, color: theme.color.subtle, marginTop: 1 },
+  avatarFallback: { backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  avatarInitials: { fontSize: 13, fontFamily: font.semibold, color: c.accent },
+  name: { fontSize: 13, fontFamily: font.semibold, color: c.ink },
+  code: { fontSize: 11, color: c.subtle, marginTop: 1, fontFamily: font.regular },
   tagRow: { flexDirection: 'row', gap: 6, marginTop: 5, flexWrap: 'wrap' },
-  tag: { backgroundColor: theme.color.surface, borderWidth: 1, borderColor: theme.color.line, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  tagText: { fontSize: 10, fontWeight: '600', color: theme.color.muted },
-  submitted: { fontSize: 10, color: theme.color.subtle, marginTop: 5 },
-  reviewBtn: { alignSelf: 'flex-start', backgroundColor: '#FFF4E5', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
-  reviewBtnText: { fontSize: 12, fontWeight: '700', color: theme.color.peso },
+  tag: { backgroundColor: c.sunken, borderWidth: 1, borderColor: c.line, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  tagText: { fontSize: 10, fontFamily: font.semibold, color: c.muted },
+  submitted: { fontSize: 10, color: c.subtle, marginTop: 5, fontFamily: font.regular },
+  reviewBtn: { alignSelf: 'flex-start', backgroundColor: c.accent, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7, ...(({ transitionDuration: '140ms' }) as any) },
+  reviewBtnHover: { backgroundColor: c.accent2 },
+  reviewBtnText: { fontSize: 12, fontFamily: font.semibold, color: c.onAccent },
 
-  viewAll: { fontSize: 12, fontWeight: '700', color: theme.color.peso, marginTop: 12, textAlign: 'left' },
+  viewAll: { fontSize: 12, fontFamily: font.semibold, color: c.accent, marginTop: 12, textAlign: 'left', ...(({ transitionDuration: '140ms' }) as any) },
+  viewAllHover: { color: c.accentInk },
 });
