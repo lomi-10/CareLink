@@ -38,6 +38,7 @@ import { fetchApplicationTasks, type ApplicationTask } from '@/lib/applicationTa
 import { fetchAttendanceToday, formatAttendanceTime, type AttendanceToday } from '@/lib/attendanceApi';
 import { attendanceDayCellType, weekDotState, nextRestDayYmd, type WeekDotState } from '@/lib/attendanceUi';
 import { fetchLeaveRequests, type LeaveRequestRow, labelForLeaveReasonCode } from '@/lib/leaveRequestsApi';
+import { fetchPayrollSummary, salaryPeriodAbbr, formatPeso, type PayrollSummary } from '@/lib/payrollApi';
 import { useConversations, useNotice } from '@/hooks/shared';
 import { ConfirmationModal, EndEmploymentModal, SubmitComplaintModal } from '@/components/shared';
 
@@ -88,6 +89,7 @@ export function WorkModeDashboard({
   const [todayCheckedOut, setTodayCheckedOut] = useState(false);
   const [tasks, setTasks] = useState<ApplicationTask[]>([]);
   const [upcomingLeave, setUpcomingLeave] = useState<LeaveRequestRow | null>(null);
+  const [payroll, setPayroll] = useState<PayrollSummary | null>(null);
   const [endModal, setEndModal] = useState(false);
   const [checkoutWarnVisible, setCheckoutWarnVisible] = useState(false);
   const [checkoutWarnMessage, setCheckoutWarnMessage] = useState('');
@@ -105,12 +107,14 @@ export function WorkModeDashboard({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [att, todayRes, taskRes, leaveRes] = await Promise.all([
+      const [att, todayRes, taskRes, leaveRes, payrollRes] = await Promise.all([
         fetchWeekAttendance(helperId, activeHire.application_id),
         fetchAttendanceToday(activeHire.application_id, helperId),
         fetchApplicationTasks(activeHire.application_id, helperId, 'helper'),
         fetchLeaveRequests(activeHire.application_id, helperId, 'helper'),
+        fetchPayrollSummary(activeHire.application_id, helperId, 'helper'),
       ]);
+      if (payrollRes.success && payrollRes.data?.has_contract) setPayroll(payrollRes.data);
       if (att.success && att.days) {
         setWeekDays(att.days);
         setEmploymentStartDate(att.employment_start_date ?? null);
@@ -401,6 +405,43 @@ export function WorkModeDashboard({
         <ActivityIndicator color={ORANGE} style={{ marginVertical: 24 }} />
       ) : (
         <>
+          {/* Payroll — clarity on earnings (no cash-out). Top of Work Mode. */}
+          {payroll ? (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="wallet-outline" size={18} color={ORANGE} />
+                <Text style={styles.cardHeaderTitle}>PAYROLL · {payroll.period_label.toUpperCase()}</Text>
+              </View>
+
+              <Text style={styles.payrollAmount}>{formatPeso(payroll.estimated_earned)}</Text>
+              <Text style={styles.payrollSub}>
+                {payroll.is_estimate ? 'Estimated earnings so far' : 'Earned so far'}
+                {payroll.salary_amount > 0
+                  ? ` · agreed ${formatPeso(payroll.salary_amount)}/${salaryPeriodAbbr(payroll.salary_period)}`
+                  : ''}
+              </Text>
+
+              <View style={styles.payrollStatsRow}>
+                <View style={styles.payrollStat}>
+                  <Text style={styles.payrollStatValue}>{payroll.days_worked}</Text>
+                  <Text style={styles.payrollStatLabel}>Days worked</Text>
+                </View>
+                <View style={styles.payrollStat}>
+                  <Text style={styles.payrollStatValue}>{payroll.leave_used}</Text>
+                  <Text style={styles.payrollStatLabel}>Leave used</Text>
+                </View>
+                <View style={[styles.payrollStat, { flex: 1.4 }]}>
+                  <Text style={styles.payrollStatValue} numberOfLines={1}>{payroll.next_payout}</Text>
+                  <Text style={styles.payrollStatLabel}>Next payout</Text>
+                </View>
+              </View>
+
+              <Text style={styles.payrollNote}>
+                Final pay is set by your employer — this is a summary to help you keep track.
+              </Text>
+            </View>
+          ) : null}
+
           {/* B — Today's work */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -849,6 +890,15 @@ function createWorkModeDashboardStyles() {
     },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
     cardHeaderTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: MUTED, letterSpacing: 0.5 },
+
+    // ── Payroll ────────────────────────────────────────────────────────────
+    payrollAmount: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 34, color: DARK, marginTop: 6, letterSpacing: -0.5 },
+    payrollSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: MUTED, marginTop: 2 },
+    payrollStatsRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+    payrollStat: { flex: 1, backgroundColor: SURFACE, borderRadius: 12, borderWidth: 1, borderColor: DIVIDER, paddingVertical: 10, paddingHorizontal: 12 },
+    payrollStatValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: DARK },
+    payrollStatLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginTop: 1 },
+    payrollNote: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, color: SUBTLE, marginTop: 12, lineHeight: 16 },
 
     // ── Today's work ───────────────────────────────────────────────────────
     todayInfoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },
