@@ -630,8 +630,8 @@ function SingleHelperTasks({ applicationId, helperName }: { applicationId: numbe
               <TextInput style={t.input} placeholder="Due date YYYY-MM-DD (optional)" value={dueIn} onChangeText={setDueIn} placeholderTextColor={MUTED} />
               <View style={t.switchRow}>
                 <View style={{ flex: 1, paddingRight: 10 }}>
-                  <Text style={t.switchLabel}>Ask for a photo when done</Text>
-                  <Text style={t.switchHint}>Optional — most tasks don't need one. Off by default.</Text>
+                  <Text style={t.switchLabel}>Photo proof when done (optional)</Text>
+                  <Text style={t.switchHint}>Off by default — most tasks don't need a photo. Turn on only if you want one.</Text>
                 </View>
                 <Switch value={addReqPhoto} onValueChange={setAddReqPhoto} trackColor={{ true: BROWN }} thumbColor="#fff" />
               </View>

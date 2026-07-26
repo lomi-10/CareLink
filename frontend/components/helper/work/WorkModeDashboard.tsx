@@ -162,7 +162,7 @@ export function WorkModeDashboard({
   }, [load]);
 
   const todayYmd = ymdLocal();
-  const attendanceOn = activeHire.attendance_tracking !== false; // default on
+  const attendanceOn = activeHire.attendance_tracking !== false; // off by default (backend sends false); absent flag = legacy on
   const beforeStart = !!activeHire.employment_start_date && todayYmd < activeHire.employment_start_date;
   const isRestNoCheckIn = !!todayDetail?.is_rest_day && !todayCheckedIn;
   const openTasks = tasks.filter((t) => t.status === 'pending' || t.status === 'skipped');
@@ -383,6 +383,10 @@ export function WorkModeDashboard({
         ) : null}
       </LinearGradient>
 
+      <Text style={styles.workModeExplainer}>
+        Track your earnings, rest days, and any tasks. Check-in is optional.
+      </Text>
+
       {placementTerminationPending ? (
         <View style={styles.noticeBanner}>
           <Ionicons name="hourglass-outline" size={20} color={ORANGE} />
@@ -572,40 +576,7 @@ export function WorkModeDashboard({
             )}
           </View>
 
-          {/* C — This week's attendance (only when tracking is on) */}
-          {attendanceOn && (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="calendar-outline" size={18} color={ORANGE} />
-              <Text style={styles.cardHeaderTitle}>THIS WEEK'S ATTENDANCE</Text>
-            </View>
-
-            <View style={styles.weekRow}>
-              {weekDays.map((d) => {
-                const state = weekDotState(d);
-                return (
-                  <View key={d.date} style={styles.dayCol}>
-                    <Text style={styles.dayLbl}>{d.weekday.slice(0, 1)}</Text>
-                    <WeekDot state={state} styles={styles} />
-                  </View>
-                );
-              })}
-            </View>
-
-            <Text style={styles.daysWorkedText}>
-              {presentCount}/{scheduledWorkdays} Days Worked
-            </Text>
-            <Text style={styles.encourageText}>{attendanceEncouragement}</Text>
-
-            <View style={styles.legendRow}>
-              <LegendItem styles={styles} state="present" label="Present" />
-              <LegendItem styles={styles} state="scheduled" label="Scheduled" />
-              <LegendItem styles={styles} state="missed" label="Missed" />
-            </View>
-          </View>
-          )}
-
-          {/* D — Today's tasks */}
+          {/* Tasks (priority #4 — before attendance) */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="clipboard-outline" size={18} color={ORANGE} />
@@ -658,6 +629,39 @@ export function WorkModeDashboard({
               <Text style={styles.link}>View all tasks</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Attendance (priority #5 — last; only when tracking is on) */}
+          {attendanceOn && (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="calendar-outline" size={18} color={ORANGE} />
+              <Text style={styles.cardHeaderTitle}>THIS WEEK'S ATTENDANCE</Text>
+            </View>
+
+            <View style={styles.weekRow}>
+              {weekDays.map((d) => {
+                const state = weekDotState(d);
+                return (
+                  <View key={d.date} style={styles.dayCol}>
+                    <Text style={styles.dayLbl}>{d.weekday.slice(0, 1)}</Text>
+                    <WeekDot state={state} styles={styles} />
+                  </View>
+                );
+              })}
+            </View>
+
+            <Text style={styles.daysWorkedText}>
+              {presentCount}/{scheduledWorkdays} Days Worked
+            </Text>
+            <Text style={styles.encourageText}>{attendanceEncouragement}</Text>
+
+            <View style={styles.legendRow}>
+              <LegendItem styles={styles} state="present" label="Present" />
+              <LegendItem styles={styles} state="scheduled" label="Scheduled" />
+              <LegendItem styles={styles} state="missed" label="Missed" />
+            </View>
+          </View>
+          )}
 
           {/* E — Upcoming */}
           <View style={styles.card}>
@@ -925,6 +929,9 @@ function createWorkModeDashboardStyles() {
     },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
     cardHeaderTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: MUTED, letterSpacing: 0.5 },
+
+    // ── Work Mode explainer header ───────────────────────────────────────────
+    workModeExplainer: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: MUTED, textAlign: 'center', marginTop: 12, marginBottom: 2, paddingHorizontal: 8, lineHeight: 17 },
 
     // ── Payroll ────────────────────────────────────────────────────────────
     payrollAmount: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 34, color: DARK, marginTop: 6, letterSpacing: -0.5 },

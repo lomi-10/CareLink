@@ -468,11 +468,11 @@ export default function PlacementAttendanceScreen() {
       {/* Attendance tracking opt-out — shared record-keeping, not surveillance. */}
       <View style={styles.trackingCard}>
         <View style={{ flex: 1, paddingRight: 12 }}>
-          <Text style={styles.trackingTitle}>Attendance tracking</Text>
+          <Text style={styles.trackingTitle}>Attendance tracking: {trackingOn ? 'On' : 'Off'}</Text>
           <Text style={styles.trackingSub}>
             {trackingOn
               ? 'On — attendance feeds payroll. Your helper can check in (optional); a missed day is just blank, never a penalty.'
-              : 'Off — no check-ins needed, and payroll uses the flat contract salary. Turn on only if you want day-by-day attendance to feed payroll.'}
+              : 'Turn on for payroll accuracy. While off, no check-ins are needed and payroll uses the flat contract salary.'}
           </Text>
         </View>
         <Switch

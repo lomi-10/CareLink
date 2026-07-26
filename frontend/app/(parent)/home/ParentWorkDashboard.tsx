@@ -395,6 +395,23 @@ export default function ParentWorkDashboard({ userName, profileImage, onSwitchTo
         </View>
       </LinearGradient>
 
+      <Text style={s.workModeExplainer}>
+        Manage pay, rest days, and day-to-day coordination for your helper. Attendance tracking is optional.
+      </Text>
+
+      {/* ── Payroll + Leave to review (priority #1–2, above the fold) ── */}
+      {isWide ? (
+        <View style={[s.section, { flexDirection: 'row', gap: 12 }]}>
+          <View style={{ flex: 1 }}>{payrollCard}</View>
+          <View style={{ flex: 1 }}>{attentionCard}</View>
+        </View>
+      ) : (
+        <View style={s.section}>
+          {payrollCard}
+          {attentionCard}
+        </View>
+      )}
+
       {/* ── My Active Helpers ──────────────────────────────────── */}
       <View style={s.section}>
         <View style={s.sectionHeader}>
@@ -425,19 +442,6 @@ export default function ParentWorkDashboard({ userName, profileImage, onSwitchTo
           </ScrollView>
         )}
       </View>
-
-      {/* ── Attention Needed + Payroll (side-by-side wide / stacked mobile) ── */}
-      {isWide ? (
-        <View style={[s.section, { flexDirection: 'row', gap: 12 }]}>
-          <View style={{ flex: 1 }}>{attentionCard}</View>
-          <View style={{ flex: 1 }}>{payrollCard}</View>
-        </View>
-      ) : (
-        <View style={s.section}>
-          {attentionCard}
-          {payrollCard}
-        </View>
-      )}
 
       {/* ── Quick Actions ──────────────────────────────────────── */}
       <View style={s.section}>
@@ -696,6 +700,7 @@ const s = StyleSheet.create({
 
   // ── Section ───────────────────────────────────────────────
   section: { marginHorizontal: 12, marginBottom: 16 },
+  workModeExplainer: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: MUTED, textAlign: 'center', marginHorizontal: 16, marginBottom: 14, lineHeight: 17 },
   sectionCard: { borderRadius: 16, padding: 14, borderWidth: 1, borderColor: DIVIDER },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
   sectionTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK },
