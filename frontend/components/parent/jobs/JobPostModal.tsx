@@ -441,8 +441,17 @@ export function JobPostModal({
         disabled={isDisabled || !formData.category_id}
       />
 
-      {/* Skills step removed — Category → Job is enough. A job role already implies
-          its skills, and the extra step was a hassle with no real matching benefit. */}
+      <SkillsSelector
+        selectedJobIds={formData.job_ids}
+        availableJobs={availableJobs}
+        availableSkills={availableSkills}
+        selectedSkills={formData.skill_ids}
+        customSkills={formData.custom_skills || ''}
+        onToggleSkill={handleToggleSkill}
+        onSetSkills={handleSetSkills}
+        onCustomSkillsChange={(val) => updateField('custom_skills', val)}
+        disabled={isDisabled || (availableJobs.length > 0 && formData.job_ids.length === 0)}
+      />
 
       <TrustBanner />
     </View>
