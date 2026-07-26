@@ -471,8 +471,8 @@ export default function PlacementAttendanceScreen() {
           <Text style={styles.trackingTitle}>Attendance tracking</Text>
           <Text style={styles.trackingSub}>
             {trackingOn
-              ? 'On — your helper can check in, but it’s optional. A missed day is just blank, never a penalty.'
-              : 'Off — no check-ins needed. Turn on if you’d like a shared attendance record.'}
+              ? 'On — attendance feeds payroll. Your helper can check in (optional); a missed day is just blank, never a penalty.'
+              : 'Off — no check-ins needed, and payroll uses the flat contract salary. Turn on only if you want day-by-day attendance to feed payroll.'}
           </Text>
         </View>
         <Switch

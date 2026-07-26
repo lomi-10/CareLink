@@ -18,6 +18,7 @@ export type PayrollSummary = {
   leave_used: number;
   estimated_earned: number;
   is_estimate: boolean;
+  attendance_tracking: boolean;
   next_payout: string;
 };
 

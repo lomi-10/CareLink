@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit();
 
 require_once __DIR__ . '/../../dbcon.php';
 require_once __DIR__ . '/../lib/hire_access.php';
+require_once __DIR__ . '/../../shared/placement_settings_table.php';
 
 function json_out($data, int $code = 200)
 {
@@ -122,20 +123,27 @@ try {
         }
     }
 
-    // ── Best-effort earnings estimate (clearly flagged) ─────────────────────
+    // ── Earnings ────────────────────────────────────────────────────────────
+    // When attendance tracking is OFF (the default), payroll is simply the flat
+    // agreed contract salary — no proration, no dependence on check-ins. Only when
+    // the employer has opted into attendance do we estimate from days worked.
+    $trackingOn = get_attendance_tracking($conn, $application_id);
     $period = strtolower($salaryPeriod);
-    $isEstimate = true;
-    if ($period === 'daily') {
-        $estimated = $salaryAmount * $daysWorked;
+    if (!$trackingOn) {
+        $estimated = round($salaryAmount, 2);
+        $isEstimate = false;
+    } elseif ($period === 'daily') {
+        $estimated = round($salaryAmount * $daysWorked, 2);
         $isEstimate = false;
     } elseif ($period === 'weekly') {
-        $estimated = $salaryAmount * ($daysWorked / 6.0);
+        $estimated = round($salaryAmount * ($daysWorked / 6.0), 2);
+        $isEstimate = true;
     } else { // Monthly (default)
-        $estimated = $daysScheduled > 0
+        $estimated = round($daysScheduled > 0
             ? $salaryAmount * ($daysWorked / $daysScheduled)
-            : $salaryAmount;
+            : $salaryAmount, 2);
+        $isEstimate = true;
     }
-    $estimated = round($estimated, 2);
 
     json_out([
         'success'          => true,
@@ -150,9 +158,10 @@ try {
         'days_worked'      => $daysWorked,
         'days_scheduled'   => $daysScheduled,
         'leave_used'       => $leaveUsed,
-        'estimated_earned' => $estimated,
-        'is_estimate'      => $isEstimate,
-        'next_payout'      => $paymentSchedule ?: 'End of the month',
+        'estimated_earned'    => $estimated,
+        'is_estimate'         => $isEstimate,
+        'attendance_tracking' => $trackingOn,
+        'next_payout'         => $paymentSchedule ?: 'End of the month',
     ]);
 
 } catch (Exception $e) {

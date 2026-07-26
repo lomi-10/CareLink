@@ -418,17 +418,18 @@ export function WorkModeDashboard({
 
               <Text style={styles.payrollAmount}>{formatPeso(payroll.estimated_earned)}</Text>
               <Text style={styles.payrollSub}>
-                {payroll.is_estimate ? 'Estimated earnings so far' : 'Earned so far'}
-                {payroll.salary_amount > 0
-                  ? ` · agreed ${formatPeso(payroll.salary_amount)}/${salaryPeriodAbbr(payroll.salary_period)}`
-                  : ''}
+                {payroll.attendance_tracking
+                  ? `${payroll.is_estimate ? 'Estimated earnings so far' : 'Earned so far'}${payroll.salary_amount > 0 ? ` · agreed ${formatPeso(payroll.salary_amount)}/${salaryPeriodAbbr(payroll.salary_period)}` : ''}`
+                  : `Your agreed salary${payroll.salary_period ? ` · per ${salaryPeriodAbbr(payroll.salary_period)}` : ''}`}
               </Text>
 
               <View style={styles.payrollStatsRow}>
-                <View style={styles.payrollStat}>
-                  <Text style={styles.payrollStatValue}>{payroll.days_worked}</Text>
-                  <Text style={styles.payrollStatLabel}>Days worked</Text>
-                </View>
+                {payroll.attendance_tracking ? (
+                  <View style={styles.payrollStat}>
+                    <Text style={styles.payrollStatValue}>{payroll.days_worked}</Text>
+                    <Text style={styles.payrollStatLabel}>Days worked</Text>
+                  </View>
+                ) : null}
                 <View style={styles.payrollStat}>
                   <Text style={styles.payrollStatValue}>{payroll.leave_used}</Text>
                   <Text style={styles.payrollStatLabel}>Leave used</Text>
@@ -440,7 +441,9 @@ export function WorkModeDashboard({
               </View>
 
               <Text style={styles.payrollNote}>
-                Final pay is set by your employer — this is a summary to help you keep track.
+                {payroll.attendance_tracking
+                  ? 'Final pay is set by your employer — this is a summary to help you keep track.'
+                  : 'Attendance isn’t tracked for this placement, so this is your flat agreed salary. Final pay is set by your employer.'}
               </Text>
             </View>
           ) : null}
