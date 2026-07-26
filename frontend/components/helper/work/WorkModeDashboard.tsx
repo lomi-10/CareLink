@@ -310,9 +310,11 @@ export function WorkModeDashboard({
     statusBg = SUCCESS_BG;
     statusColor = GREEN;
   } else {
-    statusLabel = 'Not Checked In Yet';
-    statusBg = DANGER_BG;
-    statusColor = DANGER;
+    // Not checked in is NOT an error — checking in is optional record-keeping,
+    // so this reads calm/neutral, never alarming red.
+    statusLabel = 'Not checked in';
+    statusBg = DIVIDER;
+    statusColor = MUTED;
   }
 
   const heroName = userFullName || userFirstName || 'Helper';
@@ -442,6 +444,40 @@ export function WorkModeDashboard({
             </View>
           ) : null}
 
+          {/* Leave — a praised feature, kept prominent right under payroll. */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="airplane-outline" size={18} color={ORANGE} />
+              <Text style={styles.cardHeaderTitle}>LEAVE</Text>
+            </View>
+            {upcomingLeave ? (
+              <View style={styles.upcomingRow}>
+                <View style={[styles.upcomingIconWrap, { backgroundColor: SUCCESS_BG }]}>
+                  <Ionicons name="checkmark-circle-outline" size={18} color={GREEN} />
+                </View>
+                <View style={styles.upcomingTextCol}>
+                  <Text style={styles.upcomingTitle} numberOfLines={1}>
+                    Approved — {labelForLeaveReasonCode(upcomingLeave.reason_code)}
+                  </Text>
+                  <Text style={styles.upcomingSub}>{formatLongDate(upcomingLeave.date)}</Text>
+                </View>
+                <View style={[styles.pill, { backgroundColor: SUCCESS_BG }]}>
+                  <Text style={[styles.pillText, { color: GREEN }]}>Approved</Text>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.emptyText}>No upcoming leave. Need a day off? Just ask.</Text>
+            )}
+            <TouchableOpacity
+              style={styles.leaveCta}
+              onPress={() => router.push('/(helper)/work?action=request-leave' as any)}
+              activeOpacity={0.9}
+            >
+              <Ionicons name="add-circle-outline" size={18} color="#fff" />
+              <Text style={styles.leaveCtaText}>Request Leave</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* B — Today's work */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -515,6 +551,14 @@ export function WorkModeDashboard({
 
             {isRestNoCheckIn ? (
               <Text style={styles.restHint}>Scheduled rest day — no check-in required.</Text>
+            ) : null}
+
+            {!beforeStart && !isRestNoCheckIn && !todayCheckedOut ? (
+              <Text style={styles.restHint}>
+                {todayCheckedIn
+                  ? "Check out when you're done — or don't; a missed check-out won't count against you."
+                  : 'Checking in is optional — it just records your day for your attendance and payroll.'}
+              </Text>
             ) : null}
           </View>
 
@@ -610,39 +654,18 @@ export function WorkModeDashboard({
               <Text style={styles.cardHeaderTitle}>UPCOMING</Text>
             </View>
 
-            {upcomingRestDayYmd || upcomingLeave ? (
-              <View style={{ gap: 10 }}>
-                {upcomingRestDayYmd ? (
-                  <View style={styles.upcomingRow}>
-                    <View style={[styles.upcomingIconWrap, { backgroundColor: ICON_BG }]}>
-                      <Ionicons name="bed-outline" size={18} color={ORANGE} />
-                    </View>
-                    <View style={styles.upcomingTextCol}>
-                      <Text style={styles.upcomingTitle}>Rest Day</Text>
-                      <Text style={styles.upcomingSub}>{formatLongDate(upcomingRestDayYmd)}</Text>
-                    </View>
-                    <View style={[styles.pill, { backgroundColor: DIVIDER }]}>
-                      <Text style={[styles.pillText, { color: MUTED }]}>Scheduled</Text>
-                    </View>
-                  </View>
-                ) : null}
-
-                {upcomingLeave ? (
-                  <View style={styles.upcomingRow}>
-                    <View style={[styles.upcomingIconWrap, { backgroundColor: SUCCESS_BG }]}>
-                      <Ionicons name="airplane-outline" size={18} color={GREEN} />
-                    </View>
-                    <View style={styles.upcomingTextCol}>
-                      <Text style={styles.upcomingTitle} numberOfLines={1}>
-                        Approved Leave — {labelForLeaveReasonCode(upcomingLeave.reason_code)}
-                      </Text>
-                      <Text style={styles.upcomingSub}>{formatLongDate(upcomingLeave.date)}</Text>
-                    </View>
-                    <View style={[styles.pill, { backgroundColor: SUCCESS_BG }]}>
-                      <Text style={[styles.pillText, { color: GREEN }]}>Approved</Text>
-                    </View>
-                  </View>
-                ) : null}
+            {upcomingRestDayYmd ? (
+              <View style={styles.upcomingRow}>
+                <View style={[styles.upcomingIconWrap, { backgroundColor: ICON_BG }]}>
+                  <Ionicons name="bed-outline" size={18} color={ORANGE} />
+                </View>
+                <View style={styles.upcomingTextCol}>
+                  <Text style={styles.upcomingTitle}>Rest Day</Text>
+                  <Text style={styles.upcomingSub}>{formatLongDate(upcomingRestDayYmd)}</Text>
+                </View>
+                <View style={[styles.pill, { backgroundColor: DIVIDER }]}>
+                  <Text style={[styles.pillText, { color: MUTED }]}>Scheduled</Text>
+                </View>
               </View>
             ) : (
               <Text style={styles.emptyText}>Nothing scheduled — enjoy your work!</Text>
@@ -899,6 +922,10 @@ function createWorkModeDashboardStyles() {
     payrollStatValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: DARK },
     payrollStatLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginTop: 1 },
     payrollNote: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, color: SUBTLE, marginTop: 12, lineHeight: 16 },
+
+    // ── Leave ──────────────────────────────────────────────────────────────
+    leaveCta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: ORANGE, borderRadius: 14, paddingVertical: 13, marginTop: 12 },
+    leaveCtaText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: '#fff' },
 
     // ── Today's work ───────────────────────────────────────────────────────
     todayInfoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },

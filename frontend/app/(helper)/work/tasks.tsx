@@ -24,7 +24,6 @@ const WARNING = '#D97706';
 // Brighter variants for icons sitting on the dark hero gradient.
 const AMBER_ON_DARK = '#FCD34D';
 const GREEN_ON_DARK = '#4ADE80';
-const RED_ON_DARK = '#F87171';
 
 import {
   fetchApplicationTasks,
@@ -41,7 +40,7 @@ type Section = { key: SectionKey; title: string; data: ApplicationTask[] };
 type Filter = 'all' | 'pending' | 'completed' | 'overdue';
 
 const SECTION_META: Record<SectionKey, { icon: React.ComponentProps<typeof Ionicons>['name']; bg: string; color: string }> = {
-  overdue: { icon: 'alert-circle', bg: DANGER_BG, color: DANGER },
+  overdue: { icon: 'hourglass-outline', bg: ICON_BG, color: WARNING },
   today: { icon: 'today', bg: ICON_BG, color: ORANGE },
   pending: { icon: 'time', bg: ICON_BG, color: ORANGE },
   completed: { icon: 'checkmark-done', bg: SUCCESS_BG, color: GREEN },
@@ -229,7 +228,7 @@ export default function WorkTasksScreen() {
   const sections = useMemo((): Section[] => {
     const out: Section[] = [];
     if (filter === 'all') {
-      if (overdueTasks.length) out.push({ key: 'overdue', title: 'Needs Attention', data: overdueTasks });
+      if (overdueTasks.length) out.push({ key: 'overdue', title: 'Earlier tasks', data: overdueTasks });
       if (todayTasks.length) out.push({ key: 'today', title: "Today's Tasks", data: todayTasks });
       if (completedTasks.length) out.push({ key: 'completed', title: 'Completed Today', data: completedTasks });
     } else if (filter === 'pending') {
@@ -238,7 +237,7 @@ export default function WorkTasksScreen() {
     } else if (filter === 'completed') {
       if (completedTasks.length) out.push({ key: 'completed', title: 'Completed Today', data: completedTasks });
     } else if (filter === 'overdue') {
-      if (overdueTasks.length) out.push({ key: 'overdue', title: 'Overdue Tasks', data: overdueTasks });
+      if (overdueTasks.length) out.push({ key: 'overdue', title: 'Earlier tasks', data: overdueTasks });
     }
     return out;
   }, [filter, overdueTasks, todayTasks, completedTasks]);
@@ -335,7 +334,7 @@ export default function WorkTasksScreen() {
     { key: 'all', label: 'All Tasks' },
     { key: 'pending', label: 'Pending' },
     { key: 'completed', label: 'Completed' },
-    { key: 'overdue', label: 'Overdue' },
+    { key: 'overdue', label: 'Past due' },
   ];
 
   const emptyState = EMPTY_STATES[filter];
@@ -351,14 +350,14 @@ export default function WorkTasksScreen() {
         {!isDesktop ? (
           <>
             <Text style={styles.heroTitle}>My Tasks</Text>
-            <Text style={styles.heroSubtitle}>Stay organized and complete your tasks on time</Text>
+            <Text style={styles.heroSubtitle}>A shared checklist with your employer — no rush, just tick them off as you go</Text>
           </>
         ) : null}
         <View style={styles.heroStatsRow}>
           <HeroStat styles={styles} icon="clipboard-outline" color={ORANGE} value={counts.total} label="Total" />
           <HeroStat styles={styles} icon="time-outline" color={AMBER_ON_DARK} value={counts.pending} label="Pending" />
           <HeroStat styles={styles} icon="checkmark-circle-outline" color={GREEN_ON_DARK} value={counts.completed} label="Completed" />
-          <HeroStat styles={styles} icon="alert-circle-outline" color={RED_ON_DARK} value={counts.overdue} label="Overdue" />
+          <HeroStat styles={styles} icon="hourglass-outline" color={AMBER_ON_DARK} value={counts.overdue} label="Past due" />
         </View>
       </LinearGradient>
 
