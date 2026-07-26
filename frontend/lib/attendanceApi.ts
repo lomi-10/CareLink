@@ -186,3 +186,38 @@ export function formatAttendanceTime(iso: string | null | undefined): string {
     return iso;
   }
 }
+
+// ── Attendance tracking opt-in/out (per placement) ───────────────────────────
+export async function fetchAttendanceTracking(
+  applicationId: number,
+  userId: number,
+  userType: 'parent' | 'helper',
+): Promise<boolean> {
+  try {
+    const r = await fetch(
+      `${API_URL}/v1/applications/attendance_settings.php?application_id=${applicationId}&user_id=${userId}&user_type=${userType}`,
+    );
+    const d = await r.json();
+    return d?.success ? d.attendance_tracking !== false : true;
+  } catch {
+    return true;
+  }
+}
+
+export async function setAttendanceTracking(
+  applicationId: number,
+  userId: number,
+  enabled: boolean,
+): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_URL}/v1/applications/attendance_settings.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ application_id: applicationId, user_id: userId, enabled }),
+    });
+    const d = await r.json();
+    return !!d?.success;
+  } catch {
+    return false;
+  }
+}

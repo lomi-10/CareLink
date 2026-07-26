@@ -244,8 +244,11 @@ export default function WorkTasksScreen() {
 
   const hasProofRequiredTasks = tasks.some((t) => t.requires_photo && t.status !== 'done');
 
+  // Only require a check-in before completing tasks when attendance tracking is
+  // actually on for this placement — otherwise it's needless friction.
+  const attendanceOn = activeHire?.attendance_tracking !== false;
   const mustCheckIn =
-    todayAtt && !todayAtt.is_rest_day && !todayAtt.checked_in;
+    attendanceOn && todayAtt && !todayAtt.is_rest_day && !todayAtt.checked_in;
 
   const pickImage = async (mode: 'camera' | 'library') => {
     const perm =

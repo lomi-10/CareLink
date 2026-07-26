@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 
 require_once __DIR__ . '/../dbcon.php';
+require_once __DIR__ . '/../shared/placement_settings_table.php';
 
 
 
@@ -284,6 +285,8 @@ try {
             'rest_days' => $restDays,
 
             'employment_start_date' => $employmentStartDate,
+
+            'attendance_tracking' => get_attendance_tracking($conn, (int) $row['application_id']),
 
         ],
 

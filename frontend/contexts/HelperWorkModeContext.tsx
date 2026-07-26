@@ -24,6 +24,8 @@ export type ActiveHire = {
   work_hours?: string | null;
   rest_days?: string[];
   employment_start_date?: string | null;
+  /** Whether the employer keeps attendance tracking on for this placement (default true). */
+  attendance_tracking?: boolean;
 };
 
 export type EmploymentEndedInfo = {

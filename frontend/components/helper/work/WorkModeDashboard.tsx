@@ -162,6 +162,7 @@ export function WorkModeDashboard({
   }, [load]);
 
   const todayYmd = ymdLocal();
+  const attendanceOn = activeHire.attendance_tracking !== false; // default on
   const beforeStart = !!activeHire.employment_start_date && todayYmd < activeHire.employment_start_date;
   const isRestNoCheckIn = !!todayDetail?.is_rest_day && !todayCheckedIn;
   const openTasks = tasks.filter((t) => t.status === 'pending' || t.status === 'skipped');
@@ -496,6 +497,8 @@ export function WorkModeDashboard({
               </View>
             </View>
 
+            {attendanceOn ? (
+            <>
             <View style={[styles.statusPill, { backgroundColor: statusBg, alignSelf: 'flex-start' }]}>
               <Text style={[styles.statusPillText, { color: statusColor }]}>{statusLabel}</Text>
             </View>
@@ -560,9 +563,14 @@ export function WorkModeDashboard({
                   : 'Checking in is optional — it just records your day for your attendance and payroll.'}
               </Text>
             ) : null}
+            </>
+            ) : (
+              <Text style={styles.restHint}>Attendance tracking is off for this placement — no check-ins needed. Your schedule is shown above.</Text>
+            )}
           </View>
 
-          {/* C — This week's attendance */}
+          {/* C — This week's attendance (only when tracking is on) */}
+          {attendanceOn && (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="calendar-outline" size={18} color={ORANGE} />
@@ -592,6 +600,7 @@ export function WorkModeDashboard({
               <LegendItem styles={styles} state="missed" label="Missed" />
             </View>
           </View>
+          )}
 
           {/* D — Today's tasks */}
           <View style={styles.card}>

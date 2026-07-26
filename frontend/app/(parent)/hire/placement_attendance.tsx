@@ -14,6 +14,7 @@ import {
   Platform,
   Pressable,
   KeyboardAvoidingView,
+  Switch,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,8 @@ import {
   fetchAttendanceMonth,
   postContractSpecialDays,
   formatAttendanceTime,
+  fetchAttendanceTracking,
+  setAttendanceTracking,
   type AttendanceDay,
   type AttendanceMonthSummary,
   type AttendanceSpecialDay,
@@ -77,6 +80,30 @@ export default function PlacementAttendanceScreen() {
 
   const [contractStart, setContractStart] = useState<string | null>(null);
   const [contractEnd, setContractEnd] = useState<string | null>(null);
+
+  // Attendance is a shared record-keeping aid, not surveillance — the employer
+  // can turn it off for this placement (default on).
+  const [trackingOn, setTrackingOn] = useState(true);
+  const [trackingSaving, setTrackingSaving] = useState(false);
+
+  useEffect(() => {
+    if (!applicationId || !parentId) return;
+    let alive = true;
+    (async () => {
+      const on = await fetchAttendanceTracking(applicationId, parentId, 'parent');
+      if (alive) setTrackingOn(on);
+    })();
+    return () => { alive = false; };
+  }, [applicationId, parentId]);
+
+  const toggleTracking = async (next: boolean) => {
+    setTrackingOn(next); // optimistic
+    setTrackingSaving(true);
+    const ok = await setAttendanceTracking(applicationId, parentId, next);
+    setTrackingSaving(false);
+    if (!ok) { setTrackingOn(!next); notify('Attendance', 'Could not update the setting. Please try again.', 'error'); }
+    else notify('Attendance', next ? 'Attendance tracking turned on.' : 'Attendance tracking turned off. Your helper won’t need to check in.', 'success');
+  };
 
   const loadWeek = useCallback(async () => {
     if (!applicationId || !parentId) return;
@@ -437,6 +464,26 @@ export default function PlacementAttendanceScreen() {
           onResponded={() => void load()}
         />
       ) : null}
+
+      {/* Attendance tracking opt-out — shared record-keeping, not surveillance. */}
+      <View style={styles.trackingCard}>
+        <View style={{ flex: 1, paddingRight: 12 }}>
+          <Text style={styles.trackingTitle}>Attendance tracking</Text>
+          <Text style={styles.trackingSub}>
+            {trackingOn
+              ? 'On — your helper can check in, but it’s optional. A missed day is just blank, never a penalty.'
+              : 'Off — no check-ins needed. Turn on if you’d like a shared attendance record.'}
+          </Text>
+        </View>
+        <Switch
+          value={trackingOn}
+          onValueChange={(v) => void toggleTracking(v)}
+          disabled={trackingSaving}
+          trackColor={{ true: theme.color.parent }}
+          thumbColor="#fff"
+        />
+      </View>
+
       {modeToggle}
       {viewMode === 'week' ? (
         <>
@@ -678,6 +725,13 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 22, fontWeight: '900', color: theme.color.ink },
   pageSub: { fontSize: 14, color: theme.color.muted, marginTop: 2 },
   scrollContent: { paddingBottom: 32 },
+  trackingCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: theme.color.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line,
+    paddingVertical: 14, paddingHorizontal: 16, marginHorizontal: 16, marginBottom: 12,
+  },
+  trackingTitle: { fontSize: 14.5, fontWeight: '800', color: theme.color.ink },
+  trackingSub: { fontSize: 12, color: theme.color.muted, marginTop: 3, lineHeight: 17 },
   toggleRow: {
     flexDirection: 'row',
     backgroundColor: theme.color.surfaceElevated,
