@@ -314,7 +314,9 @@ function TasksHub() {
           </View>
           <View style={t.betaBadge}><Text style={t.betaText}>BETA</Text></View>
         </View>
-        <Text style={t.aiSubtitle}>Describe what you need and let AI create tasks for you.</Text>
+        <Text style={t.aiSubtitle}>
+          The main duties are already agreed in your contract — tasks are just for day-to-day requests that come up. This is optional: describe something and AI can suggest a few to start from.
+        </Text>
         <View style={t.aiInputWrap}>
           <TextInput
             style={t.aiInput}
