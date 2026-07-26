@@ -304,12 +304,18 @@ export default function ParentHome() {
           onLogout={initiateLogout}
         />
         {isWorkMode ? (
-          <ParentWorkHomeWeb
-            userName={getFullName()}
-            avatar={profileImage}
-            verified={profileData?.profile?.verification_status === 'Verified'}
-            onSwitchMode={switchMode}
-          />
+          workModeUnlocked ? (
+            <ParentWorkHomeWeb
+              userName={getFullName()}
+              avatar={profileImage}
+              verified={profileData?.profile?.verification_status === 'Verified'}
+              onSwitchMode={switchMode}
+            />
+          ) : (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              {renderWorkModeLocked()}
+            </View>
+          )
         ) : (
           <ParentHomeWeb
             userName={getFullName()}
