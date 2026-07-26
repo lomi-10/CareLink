@@ -627,7 +627,10 @@ function SingleHelperTasks({ applicationId, helperName }: { applicationId: numbe
               <TextInput style={[t.input, t.inputMulti]} placeholder="Description (optional)" value={descIn} onChangeText={setDescIn} multiline placeholderTextColor={MUTED} />
               <TextInput style={t.input} placeholder="Due date YYYY-MM-DD (optional)" value={dueIn} onChangeText={setDueIn} placeholderTextColor={MUTED} />
               <View style={t.switchRow}>
-                <Text style={t.switchLabel}>Require photo proof</Text>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={t.switchLabel}>Ask for a photo when done</Text>
+                  <Text style={t.switchHint}>Optional — most tasks don't need one. Off by default.</Text>
+                </View>
                 <Switch value={addReqPhoto} onValueChange={setAddReqPhoto} trackColor={{ true: BROWN }} thumbColor="#fff" />
               </View>
               <View style={t.switchRow}>
@@ -954,6 +957,7 @@ const t = StyleSheet.create({
   inputMulti: { minHeight: 80, textAlignVertical: 'top' },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingVertical: 2 },
   switchLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: DARK, flex: 1, marginRight: 12 },
+  switchHint: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, color: MUTED, marginTop: 2 },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 8 },
   cancelBtn: { paddingVertical: 12, paddingHorizontal: 16 },
   cancelBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: MUTED },
