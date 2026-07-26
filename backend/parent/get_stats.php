@@ -61,8 +61,18 @@ try {
         $apps_stmt->close();
     }
 
-    // 3. Count Active Placements (Currently hired helpers)
-    $place_sql = "SELECT COUNT(*) as count FROM placements WHERE parent_id = ? AND status = 'Active'";
+    // 3. Count Active Placements (currently hired helpers).
+    //    Cross-check the application status — a placements row is only flipped off
+    //    'Active' by the terminations cron, so on its own it can linger 'Active'
+    //    after employment ends. Requiring the application to still be in a hired
+    //    state keeps this in sync with the Work Mode dashboard (and stops Work
+    //    Mode unlocking for a parent whose only placement has actually ended).
+    $place_sql = "SELECT COUNT(*) as count
+                  FROM placements pl
+                  JOIN job_applications ja ON ja.application_id = pl.application_id
+                  WHERE pl.parent_id = ?
+                    AND pl.status = 'Active'
+                    AND ja.status IN ('hired', 'Accepted', 'termination_pending')";
     $place_stmt = $conn->prepare($place_sql);
     if ($place_stmt) {
         $place_stmt->bind_param("i", $user_id);
