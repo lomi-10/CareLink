@@ -23,7 +23,7 @@ import {
   MobileMenu, RecommendationsSection, HelperTabBar,
   HelperStatsCard, HelperQuickActions,
 } from '@/components/helper/home';
-import { WorkModeDashboard, WorkModeTabBar } from '@/components/helper/work';
+import { WorkHome, WorkModeTabBar } from '@/components/helper/work';
 import { ProfileSetupGuide } from '@/components/helper/home/ProfileSetupGuide';
 import { AwaitingVerificationCard } from '@/components/shared/AwaitingVerificationCard';
 import { HelperHomeWeb } from '@/components/helper/web/HelperHomeWeb';
@@ -218,7 +218,7 @@ export default function HelperHome() {
                 <Text style={layoutStyles.desktopPageSub}>Your active placement</Text>
               </View>
             </View>
-            <WorkModeDashboard
+            <WorkHome
               helperId={helperIdNum}
               userFirstName={userData?.first_name ?? ''}
               userFullName={getFullName()}
@@ -313,7 +313,7 @@ export default function HelperHome() {
         }
       >
         {showWorkDash && userData ? (
-          <WorkModeDashboard
+          <WorkHome
             helperId={helperIdNum}
             userFirstName={userData.first_name}
             userFullName={getFullName()}
