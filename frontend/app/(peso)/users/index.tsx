@@ -18,10 +18,17 @@ import API_URL from "../../../constants/api";
 export interface VerificationUser {
   user_id: number; name: string; email: string; user_type: string;
   contact_number?: string; profile_image?: string; verification_status: string; created_at?: string;
+  ai_scanned?: boolean;
 }
 
 const FILTER_TABS = ["Pending", "Verified", "Rejected", "All"] as const;
 type FilterStatus = (typeof FILTER_TABS)[number];
+const SCAN_TABS = [
+  { key: "all", label: "Any scan" },
+  { key: "scanned", label: "AI-scanned" },
+  { key: "unscanned", label: "Not scanned" },
+] as const;
+type ScanFilter = (typeof SCAN_TABS)[number]["key"];
 const STATUS_TONE: Record<string, Tone> = { Pending: "warn", Verified: "ok", Rejected: "bad", Unverified: "neutral" };
 
 export default function UserVerification() {
@@ -36,6 +43,7 @@ export default function UserVerification() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("Pending");
+  const [scanFilter, setScanFilter] = useState<ScanFilter>("all");
   const [activeRole, setActiveRole] = useState<"helper" | "parent">("helper");
   const [selected, setSelected] = useState<VerificationUser | null>(null);
 
@@ -73,10 +81,12 @@ export default function UserVerification() {
     return users.filter((u) => {
       if (u.user_type !== activeRole) return false;
       if (filterStatus !== "All" && u.verification_status !== filterStatus) return false;
+      if (scanFilter === "scanned" && !u.ai_scanned) return false;
+      if (scanFilter === "unscanned" && u.ai_scanned) return false;
       if (!q) return true;
       return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.contact_number ?? "").includes(q);
     });
-  }, [users, activeRole, filterStatus, searchQuery]);
+  }, [users, activeRole, filterStatus, scanFilter, searchQuery]);
 
   const openUser = (item: VerificationUser) => {
     if (twoPane) setSelected(item);
@@ -170,6 +180,22 @@ export default function UserVerification() {
             );
           })}
         </ScrollView>
+        </AnimateIn>
+
+        {/* AI-scan filter */}
+        <AnimateIn delay={300}>
+        <View style={{ flexDirection: "row", gap: 8, marginTop: space.sm }}>
+          <Ionicons name="scan-outline" size={15} color={c.subtle} style={{ alignSelf: "center" }} />
+          {SCAN_TABS.map((t) => {
+            const active = scanFilter === t.key;
+            return (
+              <Pressable key={t.key} onPress={() => setScanFilter(t.key)}
+                style={({ hovered }: any) => [{ flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 7, paddingHorizontal: 12, borderRadius: radius.pill, transitionDuration: "140ms", backgroundColor: active ? c.accentSoft : hovered ? c.raise : c.surface, borderWidth: 1, borderColor: active ? c.accent : hovered ? c.accent : c.line } as any]}>
+                <Text style={{ fontFamily: font.semibold, fontSize: 12, color: active ? c.accentInk : c.muted }}>{t.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
         </AnimateIn>
       </View>
 

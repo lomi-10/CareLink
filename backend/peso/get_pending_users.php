@@ -63,7 +63,8 @@ try {
                     THEN 'Pending'
                     ELSE COALESCE(h.verification_status, p.verification_status, 'Unverified')
                 END as verification_status,
-                COALESCE(h.created_at, p.created_at, u.created_at) as created_at
+                COALESCE(h.created_at, p.created_at, u.created_at) as created_at,
+                EXISTS (SELECT 1 FROM user_documents ud WHERE ud.user_id = u.user_id AND ud.ai_checked_at IS NOT NULL) as ai_scanned
             FROM users u
             LEFT JOIN helper_profiles h ON u.user_id = h.user_id
             LEFT JOIN parent_profiles p ON u.user_id = p.user_id
@@ -153,7 +154,10 @@ try {
         if ($row['created_at']) {
             $row['created_at'] = date('Y-m-d H:i:s', strtotime($row['created_at']));
         }
-        
+
+        // Whether ANY of this user's documents has been AI-scanned yet.
+        $row['ai_scanned'] = !empty($row['ai_scanned']);
+
         $users[] = $row;
     }
     
