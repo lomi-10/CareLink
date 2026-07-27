@@ -18,7 +18,7 @@ import { useAuth, useResponsive, useNotice } from '@/hooks/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { WorkModeShell } from '@/components/helper/work';
 import { ORANGE, GREEN, MUTED, DANGER, INFO, ICON_BG, INFO_BG, SUCCESS_BG, DANGER_BG } from '@/components/helper/home/helperWarmTheme';
-import { ymdLocal } from '@/lib/helperWorkApi';
+import { ymdLocal, postAttendance } from '@/lib/helperWorkApi';
 
 const WARNING = '#D97706';
 // Brighter variants for icons sitting on the dark hero gradient.
@@ -30,7 +30,7 @@ import {
   completeApplicationTask,
   type ApplicationTask,
 } from '@/lib/applicationTasksApi';
-import { fetchAttendanceToday, type AttendanceToday } from '@/lib/attendanceApi';
+import { fetchAttendanceToday, formatAttendanceTime, type AttendanceToday } from '@/lib/attendanceApi';
 import { uploadImageToCloudinary } from '@/lib/cloudinaryUpload';
 
 import { createHelperWorkTasksStyles, type HelperWorkTasksStyles } from './work_tasks.styles';
@@ -181,6 +181,17 @@ export default function WorkTasksScreen() {
     const res = await fetchAttendanceToday(activeHire.application_id, helperId);
     if (res.success && res.data) setTodayAtt(res.data);
   }, [activeHire, helperId]);
+
+  const [checkinBusy, setCheckinBusy] = useState(false);
+  const doAttendance = useCallback(async (action: 'check_in' | 'check_out') => {
+    if (!activeHire || !helperId) return;
+    setCheckinBusy(true);
+    try {
+      const res = await postAttendance(helperId, activeHire.application_id, action);
+      if (res.success) { await loadAttendance(); notify(action === 'check_in' ? 'Checked in' : 'Checked out', action === 'check_in' ? 'Have a great day at work!' : 'Nice work today.'); }
+      else notify(action === 'check_in' ? 'Check in' : 'Check out', res.message || 'Something went wrong.', 'error');
+    } finally { setCheckinBusy(false); }
+  }, [activeHire, helperId, loadAttendance, notify]);
 
   const load = useCallback(async () => {
     if (!activeHire || !helperId) return;
@@ -352,8 +363,8 @@ export default function WorkTasksScreen() {
       >
         {!isDesktop ? (
           <>
-            <Text style={styles.heroTitle}>My Tasks</Text>
-            <Text style={styles.heroSubtitle}>A shared checklist with your employer — no rush, just tick them off as you go</Text>
+            <Text style={styles.heroTitle}>My Work</Text>
+            <Text style={styles.heroSubtitle}>Your status today and a shared checklist with your employer — no rush, just tick them off as you go</Text>
           </>
         ) : null}
         <View style={styles.heroStatsRow}>
@@ -364,6 +375,7 @@ export default function WorkTasksScreen() {
         </View>
       </LinearGradient>
 
+      {/* Today's status — a single soft card */}
       {beforeStart ? (
         <View style={styles.previewBanner}>
           <View style={styles.previewBannerIconWrap}>
@@ -373,28 +385,54 @@ export default function WorkTasksScreen() {
             Preview — your work starts on {formatLongDate(activeHire.employment_start_date)}.
           </Text>
         </View>
-      ) : mustCheckIn ? (
-        <View style={styles.checkInBanner}>
-          <View style={styles.checkInBannerIconWrap}>
-            <Ionicons name="alert-circle" size={20} color={DANGER} />
-          </View>
-          <Text style={styles.checkInBannerText}>
-            Check in for today before you can mark tasks as complete.
-          </Text>
-          <TouchableOpacity style={styles.checkInBannerCta} onPress={() => router.push('/(helper)/home')} activeOpacity={0.85}>
-            <Text style={styles.checkInBannerCtaText}>Check In</Text>
-          </TouchableOpacity>
-        </View>
       ) : todayAtt?.is_rest_day ? (
         <View style={styles.restDayBanner}>
           <View style={styles.restDayBannerIconWrap}>
             <Ionicons name="bed" size={20} color={GREEN} />
           </View>
           <Text style={styles.restDayBannerText}>
-            Today is a rest day — task completion isn't required, but you can still check things off.
+            Rest day today — nothing required. Enjoy your day off.
           </Text>
         </View>
-      ) : null}
+      ) : !attendanceOn ? (
+        <View style={styles.restDayBanner}>
+          <View style={[styles.restDayBannerIconWrap, { backgroundColor: ICON_BG }]}>
+            <Ionicons name="sunny-outline" size={20} color={ORANGE} />
+          </View>
+          <Text style={styles.restDayBannerText}>You're working today. Tick off tasks as you go.</Text>
+        </View>
+      ) : todayAtt?.checked_out ? (
+        <View style={styles.restDayBanner}>
+          <View style={styles.restDayBannerIconWrap}>
+            <Ionicons name="checkmark-done" size={20} color={GREEN} />
+          </View>
+          <Text style={styles.restDayBannerText}>Done for today — you've checked out.</Text>
+        </View>
+      ) : todayAtt?.checked_in ? (
+        <View style={styles.checkInBanner}>
+          <View style={[styles.checkInBannerIconWrap, { backgroundColor: ICON_BG }]}>
+            <Ionicons name="sunny" size={20} color={ORANGE} />
+          </View>
+          <Text style={styles.checkInBannerText}>
+            You're working today{todayAtt.checked_in_at ? ` · in at ${formatAttendanceTime(todayAtt.checked_in_at)}` : ''}.
+          </Text>
+          <TouchableOpacity style={styles.checkInBannerCta} onPress={() => void doAttendance('check_out')} disabled={checkinBusy} activeOpacity={0.85}>
+            {checkinBusy ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.checkInBannerCtaText}>Check out</Text>}
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.checkInBanner}>
+          <View style={[styles.checkInBannerIconWrap, { backgroundColor: ICON_BG }]}>
+            <Ionicons name="log-in-outline" size={20} color={ORANGE} />
+          </View>
+          <Text style={styles.checkInBannerText}>
+            Check in to record today — optional, and it lets you mark tasks done.
+          </Text>
+          <TouchableOpacity style={styles.checkInBannerCta} onPress={() => void doAttendance('check_in')} disabled={checkinBusy} activeOpacity={0.85}>
+            {checkinBusy ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.checkInBannerCtaText}>Check in</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.filterSegment}>
         {FILTERS.map((f) => {
