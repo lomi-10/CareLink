@@ -408,7 +408,7 @@ export default function DocumentDetailScreen() {
                   themeKey="helper"
                   side="front"
                   title={file_url_back || document_type === 'Valid ID' ? 'Front side' : undefined}
-                  autoStart={autoscan === '1' && autoscan_side !== 'back' && !frontInitial}
+                  autoStart={false}
                   initialResult={frontInitial}
                   onScanned={handleScanned}
                   onViewImage={(uri) => setZoomUri(uri)}
@@ -420,7 +420,7 @@ export default function DocumentDetailScreen() {
                     themeKey="helper"
                     side="back"
                     title="Back side"
-                    autoStart={autoscan === '1' && autoscan_side === 'back' && !backInitial}
+                    autoStart={false}
                     initialResult={backInitial}
                     onScanned={handleScanned}
                     onViewImage={(uri) => setZoomUri(uri)}

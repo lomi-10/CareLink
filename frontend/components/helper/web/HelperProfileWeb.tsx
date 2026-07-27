@@ -1137,7 +1137,7 @@ function SideScan({ doc, side, label, url, pendingScan, onScanned, onZoom }: {
       side={side}
       title={label}
       inlineResults
-      autoStart={isPending && !initial}
+      autoStart={false}
       initialResult={initial}
       onScanned={onScanned}
       onViewImage={(uri) => onZoom(uri, `${doc.document_type} — ${side === 'front' ? 'Front' : 'Back'}`)}
