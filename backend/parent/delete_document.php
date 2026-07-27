@@ -63,14 +63,18 @@ try {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
-    // Block while actively hiring — a helper is relying on what's on file.
-    $activeStmt = $conn->prepare("SELECT placement_id FROM placements WHERE parent_id = ? AND status = 'Active' LIMIT 1");
-    $activeStmt->bind_param("i", $user_id);
-    $activeStmt->execute();
-    $isActive = $activeStmt->get_result()->fetch_assoc();
-    $activeStmt->close();
-    if ($isActive) {
-        throw new Exception("You currently have an active helper placement, so your documents can't be removed. Please contact PESO if you need to update one.");
+    // Records & accountability: once a parent has hired a helper — ACTIVE or
+    // already ENDED — their identity documents are kept on file for good, so an
+    // employer can't hire, have an incident, end the placement, and then erase
+    // the record PESO would need for a dispute or complaint. Only PESO can update
+    // these afterwards.
+    $placedStmt = $conn->prepare("SELECT placement_id FROM placements WHERE parent_id = ? LIMIT 1");
+    $placedStmt->bind_param("i", $user_id);
+    $placedStmt->execute();
+    $hasPlacement = $placedStmt->get_result()->fetch_assoc();
+    $placedStmt->close();
+    if ($hasPlacement) {
+        throw new Exception("You've hired a helper through CareLink, so your documents are kept on file for records and accountability. Please contact PESO if you need to update one.");
     }
 
     // Confirm ownership and grab the file path before deleting
