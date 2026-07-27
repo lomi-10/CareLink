@@ -152,7 +152,9 @@ function carelink_gemini_scan_document(string $filePath, string $documentType, ?
         . ($twoSided ? "; use the lower of the two sides if one is much worse.\n" : ".\n")
         . "- overall: 'Approved' if it clearly looks like a genuine, readable {$documentType}; 'Review' if unsure or "
         . "partly unclear; 'Declined' if it is NOT a {$documentType} or shows clear signs of tampering.\n"
-        . "- tampering_signs: short notes for anything suspicious or mismatched (empty if none).\n"
+        . "- tampering_signs: short notes for anything suspicious or mismatched — INCLUDING if the image "
+        . "looks like a photo of a screen/monitor or a photocopy/scan of a copy rather than an original "
+        . "physical document, or shows edited/pasted text or mismatched fonts (empty if none).\n"
         . "- fields: an array of the printed details you can actually read from EITHER side, each as {label, value}. Use "
         . "clear English labels (e.g. 'Full Name', 'ID Number'). Do NOT invent values — only include fields you can read.\n";
 

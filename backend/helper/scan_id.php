@@ -28,6 +28,22 @@ function sendResponse($success, $message, $data = null) {
     exit();
 }
 
+/**
+ * Lenient identity check: returns true unless the two names share NO tokens at
+ * all. Deliberately forgiving of middle names / word order — it only flags a
+ * document whose name is a completely different person from the account holder.
+ */
+function carelink_names_overlap(string $a, string $b): bool {
+    $tok = function (string $s): array {
+        $s = strtolower($s);
+        $s = preg_replace('/[^a-z\s]/', ' ', $s);
+        return array_values(array_filter(array_unique(preg_split('/\s+/', trim($s))), fn($t) => strlen($t) >= 2));
+    };
+    $ta = $tok($a); $tb = $tok($b);
+    if (!$ta || !$tb) return true; // can't compare → don't flag
+    return count(array_intersect($ta, $tb)) > 0;
+}
+
 try {
     if (!$conn) { throw new Exception("Database connection failed"); }
 
@@ -70,6 +86,59 @@ try {
     $quality  = $result['quality_score'] ?? null;        // clarity 0-100
     $legit    = $result['legitimacy_score'];             // template/authenticity 0-100 or null
     $warnings = $result['warnings'] ?? [];
+
+    // ── Deterministic cross-checks on the extracted fields (assistive only) ──
+    // These append warnings that downgrade a "Passed" to "Flagged" for PESO
+    // review — they never hard-reject on their own, and PESO stays the decision.
+    $fields = $result['fields'] ?? [];
+    $findField = function (array $fs, array $keywords): ?string {
+        foreach ($fs as $f) {
+            $label = strtolower((string) ($f['label'] ?? ''));
+            foreach ($keywords as $kw) {
+                if ($kw !== '' && strpos($label, $kw) !== false) {
+                    $v = trim((string) ($f['value'] ?? ''));
+                    if ($v !== '') return $v;
+                }
+            }
+        }
+        return null;
+    };
+
+    // 1) Expiry — flag a document whose validity date is already in the past.
+    $expiryRaw = $findField($fields, ['valid until', 'valid thru', 'date of expiry', 'expiry', 'expiration', 'expires']);
+    if ($expiryRaw) {
+        $ets = strtotime($expiryRaw);
+        if ($ets !== false && $ets < strtotime('today')) {
+            $warnings[] = "Document appears EXPIRED (valid until {$expiryRaw}).";
+        }
+    }
+
+    // 2) Identity — flag if the name on the document is a different person.
+    $accStmt = $conn->prepare("SELECT CONCAT_WS(' ', first_name, last_name) AS full_name FROM users WHERE user_id = ? LIMIT 1");
+    $accStmt->bind_param("i", $user_id);
+    $accStmt->execute();
+    $accountName = (string) ($accStmt->get_result()->fetch_assoc()['full_name'] ?? '');
+    $accStmt->close();
+    $docName = $findField($fields, ['full name', 'name']);
+    if ($docName && $accountName !== '' && !carelink_names_overlap($accountName, $docName)) {
+        $warnings[] = "Name on the document (\"{$docName}\") does not match the account name (\"{$accountName}\").";
+    }
+
+    // 3) Duplicate ID — flag if this ID/reference number is already on another account.
+    $idNum = $findField($fields, ['id number', 'id no', 'pcn', 'clearance number', 'certificate number', 'control', 'reference']);
+    if ($idNum !== null) {
+        $compact = preg_replace('/[^0-9A-Za-z]/', '', $idNum);
+        if (strlen($compact) >= 6) {
+            $dupStmt = $conn->prepare("SELECT document_id FROM user_documents WHERE user_id <> ? AND ai_extracted_data LIKE CONCAT('%', ?, '%') LIMIT 1");
+            $dupStmt->bind_param("is", $user_id, $idNum);
+            $dupStmt->execute();
+            $dup = $dupStmt->get_result()->fetch_assoc();
+            $dupStmt->close();
+            if ($dup) {
+                $warnings[] = "This ID/reference number is already on file under another account.";
+            }
+        }
+    }
 
     // Decide the AI status from the LEGITIMACY score, not the raw verdict. Gemini
     // can return "Declined" on a genuine document with an unusual title (e.g. a
@@ -182,7 +251,7 @@ try {
         'doc_status'             => $effectiveStatus,
         'overall_status'         => $mapped,
         'fields'                 => $result['fields'] ?? [],
-        'warnings'               => $result['warnings'] ?? [],
+        'warnings'               => $warnings,
     ]);
 
 } catch (Exception $e) {
