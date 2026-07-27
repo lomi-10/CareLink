@@ -18,7 +18,7 @@ import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard } from '@/components/shared';
 import WelcomeGuideModal from '@/components/shared/WelcomeGuideModal';
 import {
-  Sidebar, MobileHeader, GreetingCard,
+  MobileHeader, GreetingCard,
   StatCard, SectionHeader,
   MobileMenu, RecommendationsSection, HelperTabBar,
   HelperStatsCard, HelperQuickActions,
@@ -27,6 +27,7 @@ import { WorkHome, WorkModeTabBar } from '@/components/helper/work';
 import { ProfileSetupGuide } from '@/components/helper/home/ProfileSetupGuide';
 import { AwaitingVerificationCard } from '@/components/shared/AwaitingVerificationCard';
 import { HelperHomeWeb } from '@/components/helper/web/HelperHomeWeb';
+import { HelperTopNav } from '@/components/helper/web/HelperTopNav';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { ymdLocal } from '@/lib/helperWorkApi';
 import type { PendingReview } from '@/lib/reviewsApi';
@@ -205,19 +206,20 @@ export default function HelperHome() {
     // Work Mode keeps the existing dashboard; the recruitment home uses the new web design.
     if (showWorkDash) {
       return (
-        <View style={[layoutStyles.container, { flexDirection: 'row' }]}>
-          <Sidebar onLogout={initiateLogout} />
+        <View style={{ flex: 1, backgroundColor: '#FBF5EC' }}>
+          <HelperTopNav
+            workMode
+            active="home"
+            userName={getFullName()}
+            avatar={profileImage}
+            verified={profileData?.profile?.verification_status === 'Verified'}
+            onLogout={initiateLogout}
+          />
           <ScrollView
-            style={layoutStyles.mainContent}
-            contentContainerStyle={[layoutStyles.scrollContent, { maxWidth: 900, alignSelf: 'center', width: '100%' }]}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingBottom: 40, maxWidth: 1040, alignSelf: 'center', width: '100%' }}
             refreshControl={<RefreshControl refreshing={false} onRefresh={() => { refresh(); void refreshWork(); bumpPlacementReviewBanner(); }} />}
           >
-            <View style={layoutStyles.desktopTopBar}>
-              <View>
-                <Text style={layoutStyles.desktopPageTitle}>Work dashboard</Text>
-                <Text style={layoutStyles.desktopPageSub}>Your active placement</Text>
-              </View>
-            </View>
             <WorkHome
               helperId={helperIdNum}
               userFirstName={userData?.first_name ?? ''}

@@ -24,7 +24,7 @@ import { ymdLocal } from '@/lib/helperWorkApi';
 import { nextRestDayYmd } from '@/lib/attendanceUi';
 import { fetchLeaveRequests, type LeaveRequestRow } from '@/lib/leaveRequestsApi';
 import { fetchPayrollSummary, formatPeso, salaryPeriodAbbr, type PayrollSummary } from '@/lib/payrollApi';
-import { useConversations, useNotice } from '@/hooks/shared';
+import { useConversations, useNotice, useResponsive } from '@/hooks/shared';
 import { EndEmploymentModal, SubmitComplaintModal } from '@/components/shared';
 
 type Props = {
@@ -51,6 +51,7 @@ export function WorkHome({
   const router = useRouter();
   const { notify, noticeHost } = useNotice();
   const { conversations } = useConversations();
+  const { isDesktop } = useResponsive();
 
   const [loading, setLoading] = useState(true);
   const [payroll, setPayroll] = useState<PayrollSummary | null>(null);
@@ -165,29 +166,30 @@ export function WorkHome({
             </TouchableOpacity>
           </View>
 
-          {/* ── This month ── */}
-          <View style={s.card}>
-            <Text style={s.cardTitle}>This month</Text>
-            <View style={s.monthRow}>
-              <MonthStat value={attOn && payroll ? String(payroll.days_worked) : '—'} label="Days worked" />
-              <View style={s.monthDivider} />
-              <MonthStat value={payroll ? String(payroll.leave_used) : '0'} label="Leave used" />
-              <View style={s.monthDivider} />
-              <MonthStat value={nextApprovedLeave ? (longDate(nextApprovedLeave.date) ?? '—') : '—'} label="Next leave" small />
+          {/* ── This month + Manage (side-by-side on desktop) ── */}
+          <View style={isDesktop ? s.twoCol : undefined}>
+            <View style={[s.card, isDesktop && s.colItem]}>
+              <Text style={s.cardTitle}>This month</Text>
+              <View style={s.monthRow}>
+                <MonthStat value={attOn && payroll ? String(payroll.days_worked) : '—'} label="Days worked" />
+                <View style={s.monthDivider} />
+                <MonthStat value={payroll ? String(payroll.leave_used) : '0'} label="Leave used" />
+                <View style={s.monthDivider} />
+                <MonthStat value={nextApprovedLeave ? (longDate(nextApprovedLeave.date) ?? '—') : '—'} label="Next leave" small />
+              </View>
+              {!attOn && (
+                <Text style={s.monthNote}>Attendance tracking is off, so pay is your flat agreed salary. Days worked shows when your employer turns tracking on.</Text>
+              )}
             </View>
-            {!attOn && (
-              <Text style={s.monthNote}>Attendance tracking is off, so pay is your flat agreed salary. Days worked shows when your employer turns tracking on.</Text>
-            )}
-          </View>
 
-          {/* ── Manage placement ── */}
-          <View style={s.card}>
-            <Text style={s.cardTitle}>Manage</Text>
-            <ManageRow icon="chatbubbles-outline" color={ORANGE} label="Message employer" badge={unreadMessages} onPress={openMessages} />
-            <ManageRow icon="calendar-outline" color={ORANGE} label="Request leave" onPress={requestLeave} />
-            <ManageRow icon="document-text-outline" color={BLUE} label="View contract" onPress={() => void openContract()} />
-            <ManageRow icon="alert-circle-outline" color={MUTED} label="Report a concern" onPress={() => setComplaintModal(true)} />
-            <ManageRow icon="exit-outline" color={DANGER} label="End employment" onPress={() => setEndModal(true)} last />
+            <View style={[s.card, isDesktop && s.colItem]}>
+              <Text style={s.cardTitle}>Manage</Text>
+              <ManageRow icon="chatbubbles-outline" color={ORANGE} label="Message employer" badge={unreadMessages} onPress={openMessages} />
+              <ManageRow icon="calendar-outline" color={ORANGE} label="Request leave" onPress={requestLeave} />
+              <ManageRow icon="document-text-outline" color={BLUE} label="View contract" onPress={() => void openContract()} />
+              <ManageRow icon="alert-circle-outline" color={MUTED} label="Report a concern" onPress={() => setComplaintModal(true)} />
+              <ManageRow icon="exit-outline" color={DANGER} label="End employment" onPress={() => setEndModal(true)} last />
+            </View>
           </View>
 
           <TouchableOpacity style={s.refreshBtn} onPress={() => { void onRefreshWorkContext(); void load(); }} activeOpacity={0.7}>
@@ -244,6 +246,8 @@ function ManageRow({ icon, color, label, onPress, badge, last }: {
 
 const s = StyleSheet.create({
   content: { padding: 16, paddingBottom: 40 },
+  twoCol: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
+  colItem: { flex: 1 },
 
   greetRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   greetHi: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED },

@@ -9,7 +9,7 @@ import { useNotifications } from '@/hooks/shared';
 import { useConversations } from '@/hooks/shared/useMessages';
 import { wt } from './webTheme';
 
-type NavKey = 'dashboard' | 'jobs' | 'applications' | 'messages';
+type NavKey = 'dashboard' | 'jobs' | 'applications' | 'messages' | 'home' | 'mywork' | 'schedule';
 
 const ITEMS: { key: NavKey; label: string; icon: keyof typeof Ionicons.glyphMap; path: string }[] = [
   { key: 'dashboard',    label: 'Dashboard',       icon: 'home-outline',        path: '/(helper)/home' },
@@ -18,20 +18,30 @@ const ITEMS: { key: NavKey; label: string; icon: keyof typeof Ionicons.glyphMap;
   { key: 'messages',     label: 'Messages',         icon: 'chatbubble-outline',  path: '/(helper)/messages' },
 ];
 
+// Work Mode nav (after a contract is signed) — mirrors the recruitment top nav.
+const WORK_ITEMS: { key: NavKey; label: string; icon: keyof typeof Ionicons.glyphMap; path: string }[] = [
+  { key: 'home',     label: 'Home',      icon: 'wallet-outline',   path: '/(helper)/home' },
+  { key: 'mywork',   label: 'My Work',   icon: 'today-outline',    path: '/(helper)/work/tasks' },
+  { key: 'schedule', label: 'Schedule',  icon: 'calendar-outline', path: '/(helper)/work' },
+  { key: 'messages', label: 'Messages',  icon: 'chatbubble-outline', path: '/(helper)/messages' },
+];
+
 export function HelperTopNav({
-  active, userName, avatar, verified, onLogout,
+  active, userName, avatar, verified, onLogout, workMode = false,
 }: {
   active: NavKey;
   userName: string;
   avatar: string | null;
   verified: boolean;
   onLogout: () => void;
+  workMode?: boolean;
 }) {
   const router = useRouter();
   const { unreadCount } = useNotifications('helper');
   const { conversations } = useConversations();
   const unreadMsgs = conversations.reduce((s, c) => s + (c.unread_count || 0), 0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const items = workMode ? WORK_ITEMS : ITEMS;
 
   const go = (path: string) => router.push(path as never);
 
@@ -41,12 +51,12 @@ export function HelperTopNav({
         <CareLinkLogoMark size={44} />
         <View>
           <Text style={s.logoName}>Care<Text style={{ color: wt.accent }}>Link</Text></Text>
-          <Text style={s.logoSub}>Helper Portal</Text>
+          <Text style={s.logoSub}>{workMode ? 'Work Mode' : 'Helper Portal'}</Text>
         </View>
       </Pressable>
 
       <View style={s.menu}>
-        {ITEMS.map((it) => {
+        {items.map((it) => {
           const on = active === it.key;
           const badge = it.key === 'messages' ? unreadMsgs : 0;
           return (
