@@ -109,37 +109,61 @@ export function WorkHome({
 
   return (
     <View style={s.content}>
-      {/* Greeting */}
-      <View style={s.greetRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.greetHi}>{greeting},</Text>
-          <Text style={s.greetName} numberOfLines={1}>{firstName} 👋</Text>
-        </View>
-        {profileImage ? (
-          <Image source={{ uri: profileImage }} style={s.meAvatar} contentFit="cover" />
-        ) : (
-          <View style={[s.meAvatar, s.meAvatarFb]}><Ionicons name="person" size={20} color={SUBTLE} /></View>
-        )}
-      </View>
-
       {loading && !payroll ? (
         <ActivityIndicator color={ORANGE} style={{ marginTop: 40 }} />
       ) : (
         <>
-          {/* ── Earnings hero — the one big number ── */}
-          <LinearGradient colors={['#3B1F10', '#241109']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
-            <View style={s.heroTopRow}>
-              <Text style={s.heroLabel}>{attOn ? 'ESTIMATED THIS PERIOD' : 'AGREED THIS PERIOD'}</Text>
-              <View style={s.periodChip}><Text style={s.periodChipTxt}>{payroll?.period_label ?? 'This month'}</Text></View>
+          {/* ── Unified hero: identity + earnings together, one full-width card ── */}
+          <LinearGradient colors={['#41220F', '#241109']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.hero, isDesktop && s.heroDesktop]}>
+            <View style={s.heroGlowA} pointerEvents="none" />
+            <View style={s.heroGlowB} pointerEvents="none" />
+
+            {/* Identity */}
+            <View style={[s.heroIdentity, isDesktop && s.heroIdentityDesktop]}>
+              <View style={s.heroAvatarWrap}>
+                {profileImage ? (
+                  <Image source={{ uri: profileImage }} style={s.heroAvatar} contentFit="cover" />
+                ) : (
+                  <View style={[s.heroAvatar, s.heroAvatarFb]}><Ionicons name="person" size={30} color="rgba(255,255,255,0.55)" /></View>
+                )}
+                {verified ? (
+                  <View style={s.heroAvatarBadge}><Ionicons name="checkmark" size={12} color="#fff" /></View>
+                ) : null}
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.heroGreetHi}>{greeting},</Text>
+                <Text style={s.heroGreetName} numberOfLines={1}>{firstName} 👋</Text>
+                <View style={s.heroMetaRow}>
+                  {activeHire.employer_name ? (
+                    <Text style={s.heroMetaTxt} numberOfLines={1}>with {activeHire.employer_name}</Text>
+                  ) : null}
+                  {verified ? (
+                    <View style={s.heroVerBadge}>
+                      <Ionicons name="shield-checkmark" size={11} color="#fff" />
+                      <Text style={s.heroVerText}>PESO Verified</Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
             </View>
-            <Text style={s.heroAmount}>{payroll ? formatPeso(payroll.estimated_earned) : '—'}</Text>
-            <Text style={s.heroSub}>
-              {payroll?.salary_amount ? `Agreed ${formatPeso(payroll.salary_amount)}/${salaryPeriodAbbr(payroll.salary_period)}` : ''}
-              {attOn && payroll ? ` · ${payroll.days_worked} day${payroll.days_worked === 1 ? '' : 's'} worked` : ''}
-            </Text>
-            <View style={s.heroFooter}>
-              <Ionicons name="shield-checkmark" size={13} color="rgba(255,255,255,0.7)" />
-              <Text style={s.heroFootTxt}>Final pay is set by your employer · payout {payroll?.next_payout ?? 'end of month'}</Text>
+
+            <View style={isDesktop ? s.heroDividerV : s.heroDividerH} />
+
+            {/* Earnings */}
+            <View style={[s.heroEarnings, isDesktop && s.heroEarningsDesktop]}>
+              <View style={s.heroTopRow}>
+                <Text style={s.heroLabel}>{attOn ? 'ESTIMATED THIS PERIOD' : 'AGREED THIS PERIOD'}</Text>
+                <View style={s.periodChip}><Text style={s.periodChipTxt}>{payroll?.period_label ?? 'This month'}</Text></View>
+              </View>
+              <Text style={s.heroAmount}>{payroll ? formatPeso(payroll.estimated_earned) : '—'}</Text>
+              <Text style={s.heroSub}>
+                {payroll?.salary_amount ? `Agreed ${formatPeso(payroll.salary_amount)}/${salaryPeriodAbbr(payroll.salary_period)}` : ''}
+                {attOn && payroll ? ` · ${payroll.days_worked} day${payroll.days_worked === 1 ? '' : 's'} worked` : ''}
+              </Text>
+              <View style={s.heroFooter}>
+                <Ionicons name="shield-checkmark" size={13} color="rgba(255,255,255,0.7)" />
+                <Text style={s.heroFootTxt}>Final pay is set by your employer · payout {payroll?.next_payout ?? 'end of month'}</Text>
+              </View>
             </View>
           </LinearGradient>
 
@@ -249,14 +273,30 @@ const s = StyleSheet.create({
   twoCol: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   colItem: { flex: 1 },
 
-  greetRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  greetHi: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED },
-  greetName: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 22, color: DARK, marginTop: 1 },
-  meAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#e5d8c8' },
-  meAvatarFb: { alignItems: 'center', justifyContent: 'center' },
+  // Unified hero — identity + earnings in ONE card (fills the width; no dead space)
+  hero: { borderRadius: 24, padding: 22, marginBottom: 16, overflow: 'hidden' },
+  heroDesktop: { flexDirection: 'row', alignItems: 'center', padding: 28, gap: 28 },
+  heroGlowA: { position: 'absolute', top: -60, right: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,154,77,0.14)' },
+  heroGlowB: { position: 'absolute', bottom: -70, left: -50, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255,154,77,0.08)' },
 
-  // Earnings hero
-  hero: { borderRadius: 22, padding: 20, marginBottom: 16 },
+  heroIdentity: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  heroIdentityDesktop: { flex: 1, minWidth: 0 },
+  heroAvatarWrap: { position: 'relative' },
+  heroAvatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.25)' },
+  heroAvatarFb: { alignItems: 'center', justifyContent: 'center' },
+  heroAvatarBadge: { position: 'absolute', bottom: -1, right: -1, width: 22, height: 22, borderRadius: 11, backgroundColor: GREEN, borderWidth: 2, borderColor: '#241109', alignItems: 'center', justifyContent: 'center' },
+  heroGreetHi: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: 'rgba(255,255,255,0.65)' },
+  heroGreetName: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 23, color: '#fff', marginTop: 1 },
+  heroMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' },
+  heroMetaTxt: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
+  heroVerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  heroVerText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5, color: '#fff' },
+
+  heroDividerH: { height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginVertical: 18 },
+  heroDividerV: { width: 1, alignSelf: 'stretch', backgroundColor: 'rgba(255,255,255,0.12)' },
+
+  heroEarnings: {},
+  heroEarningsDesktop: { flex: 1, minWidth: 0 },
   heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heroLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5, letterSpacing: 1, color: 'rgba(255,255,255,0.6)' },
   periodChip: { backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
