@@ -25,14 +25,14 @@ const RECRUITMENT_TABS: Item[] = [
   { key: 'applications', label: 'Applications',   icon: 'document-text-outline', path: '/(parent)/jobs?tab=applicants' },
   { key: 'messages',     label: 'Messages',       icon: 'chatbubble-outline',    path: '/(parent)/messages' },
 ];
-// Work mode: managing active helpers. Mirrors the mobile work-mode screens so
-// switching to web keeps everything as tabs instead of separate screens.
+// Work mode: managing active helpers. Mirrors the mobile Work Mode tab bar
+// (Home / Helpers / Tasks / Messages, Profile via the user menu) — attendance
+// and requests now live inside Helper Management / Work Home instead of
+// competing as their own persistent tabs.
 const WORK_TABS: Item[] = [
-  { key: 'home',       label: 'Dashboard',  icon: 'grid-outline',        path: '/(parent)/home' },
-  { key: 'helpers',    label: 'My Helpers', icon: 'people-outline',      path: '/(parent)/hire' },
+  { key: 'home',       label: 'Home',       icon: 'wallet-outline',      path: '/(parent)/home' },
+  { key: 'helpers',    label: 'Helpers',    icon: 'people-outline',      path: '/(parent)/hire' },
   { key: 'tasks',      label: 'Tasks',      icon: 'clipboard-outline',   path: '/(parent)/hire/placement_tasks' },
-  { key: 'attendance', label: 'Attendance', icon: 'calendar-outline',    path: '/(parent)/hire/placement_attendance' },
-  { key: 'requests',   label: 'Requests',   icon: 'file-tray-outline',   path: '/(parent)/hire/requests' },
   { key: 'messages',   label: 'Messages',   icon: 'chatbubble-outline',  path: '/(parent)/messages' },
 ];
 

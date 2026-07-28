@@ -1,6 +1,6 @@
 // components/parent/home/ParentWorkModeTabBar.tsx
 // Work Mode bottom tab bar for the parent portal.
-// Tabs: Dashboard · Helpers · Tasks · Messages · Profile
+// Tabs: Home · Helpers · Tasks · Messages · Profile
 import React from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
@@ -23,7 +23,7 @@ type TabDef = {
 };
 
 const TABS: TabDef[] = [
-  { path: '/(parent)/home',                 label: 'Dashboard', icon: 'home-outline',        iconActive: 'home' },
+  { path: '/(parent)/home',                 label: 'Home',      icon: 'wallet-outline',      iconActive: 'wallet' },
   { path: '/(parent)/hire',                 label: 'Helpers',   icon: 'people-outline',      iconActive: 'people' },
   { path: '/(parent)/hire/placement_tasks', label: 'Tasks',     icon: 'clipboard-outline',   iconActive: 'clipboard' },
   { path: '/(parent)/messages',             label: 'Messages',  icon: 'chatbubbles-outline', iconActive: 'chatbubbles' },
