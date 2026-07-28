@@ -261,7 +261,7 @@ function EmployerPanel({ conv, jobs, onViewProfile, onReport, onOpenJob }: {
 
 const shadowSm = { boxShadow: '0 3px 12px rgba(120,80,45,.07)' } as any;
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: wt.canvas },
+  root: { flex: 1, backgroundColor: 'transparent' },
   body: { flex: 1, flexDirection: 'row', maxWidth: 1600, width: '100%', alignSelf: 'center' },
 
   // Left panel

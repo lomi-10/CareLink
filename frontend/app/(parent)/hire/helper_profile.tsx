@@ -14,7 +14,7 @@ import Svg, { Circle, Text as SvgText } from 'react-native-svg';
 import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
 import {
-  BG, BROWN, CARAMEL, DARK, MUTED,
+  BG, BG_WEB, BROWN, CARAMEL, DARK, MUTED,
   DIVIDER, ICON_BG, GREEN, DANGER,
 } from '@/components/parent/home/parentWarmTheme';
 import { ParentWorkModeTabBar } from '@/components/parent/home';
@@ -1062,7 +1062,7 @@ export default function HelperProfileScreen() {
 
   if (isDesktop) {
     return (
-      <View style={{ flex: 1, backgroundColor: BG }}>
+      <View style={{ flex: 1, backgroundColor: BG_WEB }}>
         <ParentTopNav
           mode="work"
           active="helpers"

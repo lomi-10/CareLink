@@ -719,7 +719,7 @@ function DetailRow({ label, value, last = false }: { label: string; value: strin
 
 const shadowSm = { boxShadow: '0 3px 12px rgba(120,80,45,.07)' } as any;
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: pt.canvas },
+  root: { flex: 1, backgroundColor: 'transparent' },
   scroll: { paddingBottom: 10 },
   inner: { maxWidth: 1560, width: '100%', alignSelf: 'center', paddingHorizontal: 28, paddingTop: 22 },
 

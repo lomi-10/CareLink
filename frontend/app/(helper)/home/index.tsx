@@ -10,7 +10,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { createHelperHomeStyles } from './home.styles';
-import { useHelperWarm } from '@/components/helper/home/helperWarmTheme';
+import { useHelperWarm, PAGE_BG_WEB } from '@/components/helper/home/helperWarmTheme';
 
 import { useHelperStats, useHelperProfile } from '@/hooks/helper';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
@@ -206,7 +206,7 @@ export default function HelperHome() {
     // Work Mode keeps the existing dashboard; the recruitment home uses the new web design.
     if (showWorkDash) {
       return (
-        <View style={{ flex: 1, backgroundColor: '#FBF5EC' }}>
+        <View style={{ flex: 1, backgroundColor: PAGE_BG_WEB }}>
           <HelperTopNav
             workMode
             active="home"

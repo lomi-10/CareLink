@@ -166,7 +166,7 @@ function ConvRow({ conv, active, onPress }: { conv: Conversation; active: boolea
 
 const shadowSm = { boxShadow: '0 2px 10px rgba(139,90,43,.06)' } as any;
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: pt.canvas },
+  root: { flex: 1, backgroundColor: 'transparent' },
   body: { flex: 1, flexDirection: 'row', maxWidth: 1500, width: '100%', alignSelf: 'center' },
   convPanel: { width: 340, flexGrow: 0, flexShrink: 0, borderRightWidth: 1, borderRightColor: pt.line, backgroundColor: pt.surface },
   convHead: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 6 },

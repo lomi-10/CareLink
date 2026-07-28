@@ -153,7 +153,7 @@ export function ParentNotificationsWeb({ userName, avatar, verified, onLogout }:
 
 const shadowSm = { boxShadow: '0 3px 12px rgba(139,90,43,.07)' } as any;
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: pt.canvas },
+  root: { flex: 1, backgroundColor: 'transparent' },
   scroll: { paddingBottom: 20 },
   page: { width: '100%', maxWidth: 860, alignSelf: 'center', paddingHorizontal: 28, paddingTop: 26 },
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },

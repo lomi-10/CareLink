@@ -1259,7 +1259,7 @@ function DocDetailPanel({ slot, doc, pendingScan, uploadingKey, onUpload, onScan
 
 const shadowSm = { boxShadow: '0 3px 12px rgba(120,80,45,.07)' } as any;
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: wt.canvas },
+  root: { flex: 1, backgroundColor: 'transparent' },
   scroll: { paddingBottom: 20 },
   page: { flexDirection: 'row', gap: 20, maxWidth: 1480, width: '100%', alignSelf: 'center', paddingHorizontal: 28, paddingTop: 22 },
   sidebar: { width: 300, gap: 16 },

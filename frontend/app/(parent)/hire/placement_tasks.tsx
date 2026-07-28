@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontFamily } from '@/constants/GlobalStyles';
 import API_URL from '@/constants/api';
 import {
-  BROWN, DARK, MUTED, DIVIDER, ICON_BG, GREEN, DANGER,
+  BROWN, DARK, MUTED, DIVIDER, ICON_BG, GREEN, DANGER, BG_WEB,
 } from '@/components/parent/home/parentWarmTheme';
 import { ParentWorkModeTabBar, MobileMenu } from '@/components/parent/home';
 import { ParentTopNav } from '@/components/parent/web/ParentTopNav';
@@ -723,7 +723,7 @@ export default function PlacementTasksScreen() {
 // STYLES
 // ─────────────────────────────────────────────────────────────────────────────
 const t = StyleSheet.create({
-  desktopRoot: { flex: 1, backgroundColor: '#FDF8F2' },
+  desktopRoot: { flex: 1, backgroundColor: BG_WEB },
   desktopMain: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center' },
   desktopBar: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: DIVIDER },
   mobileRoot: { flex: 1, backgroundColor: '#FDF8F2' },

@@ -282,7 +282,9 @@ function QA({ icon, fill, color, label, onPress }: any) {
 const shadowSm = { boxShadow: '0 3px 12px rgba(120,80,45,.07)' } as any;
 const TRANS = { transitionDuration: '150ms', transitionProperty: 'all', transitionTimingFunction: 'ease' } as any;
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: wt.canvas },
+  // Transparent so RoleScreenBackground's web art shows through — this
+  // component only ever renders on web.
+  root: { flex: 1, backgroundColor: 'transparent' },
   scroll: { paddingBottom: 30 },
   banners: { maxWidth: 1440, width: '100%', alignSelf: 'center', paddingHorizontal: 34, paddingTop: 22, gap: 12 },
   grid: { flexDirection: 'row', gap: 20, maxWidth: 1440, width: '100%', alignSelf: 'center', paddingHorizontal: 34, paddingTop: 22 },

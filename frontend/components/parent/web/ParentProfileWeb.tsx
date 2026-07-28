@@ -1008,7 +1008,7 @@ function BigCard({ sec, statusLabel, statusOk, onEdit, children }: {
 
 const shadowSm = { boxShadow: '0 3px 12px rgba(120,80,45,.07)' } as any;
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: pt.canvas },
+  root: { flex: 1, backgroundColor: 'transparent' },
   scroll: { paddingBottom: 34 },
   page: { flexDirection: 'row', gap: 22, maxWidth: 1400, width: '100%', alignSelf: 'center', paddingHorizontal: 28, paddingTop: 24, alignItems: 'flex-start' },
   sidebar: { width: 330, flexGrow: 0, flexShrink: 0, gap: 16 },

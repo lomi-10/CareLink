@@ -7,7 +7,7 @@ import { WorkModeTabBar } from './WorkModeTabBar';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { useHelperProfile } from '@/hooks/helper';
-import { PAGE_BG } from '@/components/helper/home/helperWarmTheme';
+import { PAGE_BG, PAGE_BG_WEB } from '@/components/helper/home/helperWarmTheme';
 
 type Props = {
   children: React.ReactNode;
@@ -123,7 +123,7 @@ export function WorkModeShell({ children }: Props) {
 
 const styles = StyleSheet.create({
   // Column layout: full-width top nav, then centered content (no left sidebar).
-  desktopRoot: { flex: 1, backgroundColor: PAGE_BG },
+  desktopRoot: { flex: 1, backgroundColor: PAGE_BG_WEB },
   desktopMain: { flex: 1, width: '100%', maxWidth: 1100, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 16 },
   mobileRoot: { flex: 1, backgroundColor: PAGE_BG },
   mobileBody: { flex: 1 },

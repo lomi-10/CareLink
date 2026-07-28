@@ -140,7 +140,7 @@ export function ParentSettingsWeb({ userName, avatar, verified, onLogout }: { us
 
 const shadowSm = { boxShadow: '0 3px 12px rgba(120,80,45,.07)' } as any;
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: pt.canvas },
+  root: { flex: 1, backgroundColor: 'transparent' },
   scroll: { paddingBottom: 30 },
   inner: { maxWidth: 860, width: '100%', alignSelf: 'center', paddingHorizontal: 28, paddingTop: 24 },
   pageTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 26, color: pt.ink, letterSpacing: -0.5 },

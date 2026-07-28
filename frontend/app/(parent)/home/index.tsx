@@ -23,7 +23,7 @@ import {
   ParentTabBar, ParentStatTile, SafetyBanner, ParentWorkModeTabBar,
 } from '@/components/parent/home';
 import {
-  BROWN, CARAMEL, GOLD, DARK, MUTED, DIVIDER, ICON_BG, GREEN, SUCCESS_BG,
+  BROWN, CARAMEL, GOLD, DARK, MUTED, DIVIDER, ICON_BG, GREEN, SUCCESS_BG, BG_WEB,
 } from '@/components/parent/home/parentWarmTheme';
 import { MobileHeader, QuickAction, SectionHeader } from '@/components/helper/home';
 import ParentWorkDashboard from './ParentWorkDashboard';
@@ -294,7 +294,7 @@ export default function ParentHome() {
       </>
     );
     return (
-      <View style={{ flex: 1, backgroundColor: '#FFF9F2' }}>
+      <View style={{ flex: 1, backgroundColor: BG_WEB }}>
         <ParentTopNav
           active="home"
           mode={portalMode}

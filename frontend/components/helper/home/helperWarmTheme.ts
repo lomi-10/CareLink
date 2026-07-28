@@ -8,6 +8,7 @@
 // `makeHelperWarm(color)` — it returns the same token names, swapped to a warm
 // dark-brown set when the active canvas is dark. Light mode is unchanged.
 
+import { Platform } from 'react-native';
 import { luminance } from '@/constants/themeBrightnessAdapt';
 import type { ThemeColor } from '@/constants/theme';
 import { useHelperTheme } from '@/contexts/HelperThemeContext';
@@ -21,6 +22,9 @@ export const BLUE      = '#2563EB';
 export const DIVIDER   = '#EDE0D0';
 export const ICON_BG   = '#F5E6CC';
 export const PAGE_BG   = '#FBF5EC';
+/** Use ONLY for a screen's outermost web root wrapper — transparent on web so
+ * the shared RoleScreenBackground art shows through; solid PAGE_BG on native. */
+export const PAGE_BG_WEB = Platform.OS === 'web' ? 'transparent' : PAGE_BG;
 export const SURFACE   = '#FFFFFF';
 export const SUCCESS_BG = '#ECFDF5';
 export const WARNING_BG = '#FEF3C7';

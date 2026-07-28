@@ -4,7 +4,12 @@
 // guaranteed warm look without depending on the user's chosen appearance preset.
 // Mirrors the helper portal's `helperWarmTheme.ts` flat-constants pattern.
 
+import { Platform } from 'react-native';
+
 export const BG        = '#FFF9F2';
+/** Use ONLY for a screen's outermost web root wrapper — transparent on web so
+ * the shared RoleScreenBackground art shows through; solid BG on native. */
+export const BG_WEB     = Platform.OS === 'web' ? 'transparent' : BG;
 export const CARD_BG   = '#FFF4E6';
 export const CREAM     = '#FDF7EE';
 export const BROWN     = '#8B5A2B';

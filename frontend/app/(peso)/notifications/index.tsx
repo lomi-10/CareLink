@@ -1,15 +1,15 @@
 // app/(peso)/notifications/index.tsx — PESO notifications
 // Shared PESO design system: theme-aware (light/dark), animated, branded backdrop.
 // Unread items get the accent rail + soft tint (via ListRow selected) and a dot.
-import React from "react";
-import { View, Text, FlatList, RefreshControl, ActivityIndicator, Pressable } from "react-native";
+import React, { useMemo, useState } from "react";
+import { View, Text, FlatList, RefreshControl, ActivityIndicator, Pressable, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useNotifications } from "@/hooks/shared";
 import type { Notification } from "@/hooks/shared";
 import { getPesoNotificationRoute } from "@/utils/notification-routes";
 import {
-  usePesoTheme, ScreenHeader, ListRow, EmptyState, layout, font, space,
+  usePesoTheme, ScreenHeader, ListRow, EmptyState, layout, font, space, radius,
 } from "@/components/peso/ui";
 import { type PesoColors } from "@/contexts/PesoThemeContext";
 
@@ -26,6 +26,27 @@ function typeConfig(type: string, c: PesoColors): { icon: keyof typeof Ionicons.
   }
 }
 
+type FilterKey = "all" | "unread" | "users" | "jobs" | "contracts" | "messages";
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "unread", label: "Unread" },
+  { key: "users", label: "Users" },
+  { key: "jobs", label: "Jobs" },
+  { key: "contracts", label: "Contracts" },
+  { key: "messages", label: "Messages" },
+];
+const FILTER_TYPES: Partial<Record<FilterKey, string[]>> = {
+  users: ["peso_queue_user", "account_verified", "account_rejected"],
+  jobs: ["peso_queue_job"],
+  contracts: ["contract_signed", "contract_terminated"],
+  messages: ["new_message"],
+};
+function matchesFilter(item: Notification, filter: FilterKey): boolean {
+  if (filter === "all") return true;
+  if (filter === "unread") return !item.is_read;
+  return (FILTER_TYPES[filter] ?? []).includes(item.type);
+}
+
 function timeAgo(dateStr: string) {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (diff < 60) return "Just now";
@@ -39,6 +60,13 @@ export default function PesoNotificationsScreen() {
   const { c } = usePesoTheme();
   const router = useRouter();
   const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } = useNotifications("peso");
+  const [filter, setFilter] = useState<FilterKey>("all");
+
+  const filtered = useMemo(
+    () => notifications.filter((item) => matchesFilter(item, filter)),
+    [notifications, filter],
+  );
+  const countFor = (key: FilterKey) => notifications.filter((item) => matchesFilter(item, key)).length;
 
   const onItemPress = (item: Notification) => {
     if (!item.is_read) markOneRead(item.notification_id);
@@ -58,13 +86,35 @@ export default function PesoNotificationsScreen() {
           </Pressable>
         ) : undefined} />
 
+      {!loading && notifications.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          style={{ flexGrow: 0, marginTop: space.md }}
+          contentContainerStyle={{ paddingHorizontal: space.xl, gap: 8 }}>
+          {FILTERS.map((f) => {
+            const active = filter === f.key;
+            const count = countFor(f.key);
+            return (
+              <Pressable key={f.key} onPress={() => setFilter(f.key)}
+                style={({ hovered }: any) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.pill, transitionDuration: "140ms", backgroundColor: active ? c.accent : hovered ? c.accentSoft : c.surface, borderWidth: 1, borderColor: active ? c.accent : hovered ? c.accent : c.line } as any]}>
+                <Text style={{ fontFamily: font.semibold, fontSize: 12.5, color: active ? "#fff" : c.muted }}>{f.label}</Text>
+                <View style={{ minWidth: 18, paddingHorizontal: 5, borderRadius: 9, backgroundColor: active ? "rgba(255,255,255,0.25)" : c.sunken, alignItems: "center" }}>
+                  <Text style={{ fontSize: 11, fontFamily: font.semibold, color: active ? "#fff" : c.muted }}>{count}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
+
       {loading ? (
         <ActivityIndicator size="large" color={c.accent} style={{ marginTop: 50 }} />
       ) : notifications.length === 0 ? (
         <EmptyState icon="notifications-off-outline" title="All caught up!" sub="New accounts and job posts waiting for PESO verification will appear here." />
+      ) : filtered.length === 0 ? (
+        <EmptyState icon="funnel-outline" title="No notifications here" sub="Nothing matches this filter right now." />
       ) : (
         <FlatList
-          data={notifications}
+          data={filtered}
           keyExtractor={(item) => String(item.notification_id)}
           style={layout.flex1}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={c.accent} />}

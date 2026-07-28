@@ -530,7 +530,7 @@ function ApplicationTab({ app, docs, sharedIds, onSaved }: { app: Application; d
 
 const shadowSm = { boxShadow: '0 3px 12px rgba(120,80,45,.07)' } as any;
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: wt.canvas },
+  root: { flex: 1, backgroundColor: 'transparent' },
   body: { flex: 1, flexDirection: 'row', maxWidth: 1560, width: '100%', alignSelf: 'center' },
   feed: { paddingHorizontal: 28, paddingTop: 22, paddingBottom: 10 },
   pageTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 26, color: wt.ink, letterSpacing: -0.5 },

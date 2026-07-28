@@ -15,7 +15,7 @@ import { Image } from 'expo-image';
 
 import { FontFamily } from '@/constants/GlobalStyles';
 import {
-  BG, BROWN, DARK, MUTED, SUBTLE, DIVIDER, ICON_BG, GREEN, SURFACE,
+  BG, BG_WEB, BROWN, DARK, MUTED, SUBTLE, DIVIDER, ICON_BG, GREEN, SURFACE,
 } from '@/components/parent/home/parentWarmTheme';
 import { ParentWorkModeTabBar, MobileMenu } from '@/components/parent/home';
 import { ParentTopNav } from '@/components/parent/web/ParentTopNav';
@@ -165,7 +165,7 @@ export function WorkModeHelpersScreen() {
 
   if (isDesktop) {
     return (
-      <View style={{ flex: 1, backgroundColor: BG }}>
+      <View style={{ flex: 1, backgroundColor: BG_WEB }}>
         <ParentTopNav
           mode="work"
           active="helpers"
