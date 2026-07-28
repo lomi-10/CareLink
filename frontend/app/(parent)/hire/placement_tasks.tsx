@@ -18,11 +18,13 @@ import API_URL from '@/constants/api';
 import {
   BROWN, DARK, MUTED, DIVIDER, ICON_BG, GREEN, DANGER,
 } from '@/components/parent/home/parentWarmTheme';
-import { Sidebar, ParentWorkModeTabBar, MobileMenu } from '@/components/parent/home';
+import { ParentWorkModeTabBar, MobileMenu } from '@/components/parent/home';
+import { ParentTopNav } from '@/components/parent/web/ParentTopNav';
 import { MobileHeader } from '@/components/helper/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { useAuth, useResponsive, useNotifications, useNotice } from '@/hooks/shared';
 import { useParentPortalMode } from '@/hooks/parent/useParentPortalMode';
+import { useParentProfile } from '@/hooks/parent/useParentProfile';
 import { useParentWorkDashboard, type PlacementDashData } from '@/hooks/parent/useParentWorkDashboard';
 import { useParentActivePlacements } from '@/hooks/parent/useParentActivePlacements';
 import {
@@ -37,8 +39,6 @@ const CARD_GR   = ['#FFFDF9', '#FEF5E0'] as const;
 const NAVY      = '#1E2A4A';
 const AMBER     = '#D97706';
 const AMBER_BG  = '#FEF3C7';
-const PURPLE    = '#7C3AED';
-const PURPLE_BG = '#EDE9FE';
 
 // ─── Category icon mapping ────────────────────────────────────────────────────
 type DbCategory = { category_id: number; category_name: string };
@@ -168,6 +168,7 @@ function TasksHub() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [categories, setCategories] = useState<DbCategory[]>([]);
+  const [showCategories, setShowCategories] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/shared/get_categories.php`)
@@ -245,7 +246,11 @@ function TasksHub() {
         />
       </LinearGradient>
 
-      {/* ── TODAY'S SUMMARY ──────────────────────────────────── */}
+      <Text style={t.explainer}>
+        Main duties are set in the contract. Use tasks for day-to-day requests.
+      </Text>
+
+      {/* ── TODAY'S SUMMARY (trimmed — one row of quiet numbers) ── */}
       <View style={t.card}>
         <View style={t.cardHeaderRow}>
           <View style={t.cardHeaderLeft}>
@@ -257,7 +262,6 @@ function TasksHub() {
           <Text style={t.cardDate}>{today}</Text>
         </View>
 
-        {/* Stats row */}
         <View style={t.statsRow}>
           {[
             { value: totalAssigned,  label: 'Assigned',  color: DARK },
@@ -276,51 +280,15 @@ function TasksHub() {
         <Text style={t.basedOnText}>
           Based on your {perPlacement.length} active helper{perPlacement.length !== 1 ? 's' : ''}
         </Text>
-
-        {/* Active helpers row */}
-        {perPlacement.length > 0 && (
-          <View style={t.activeRow}>
-            <Text style={t.activeCount}>{stats.checkedInToday}</Text>
-            <Text style={t.activeLabel}> Helpers Active Today</Text>
-            <View style={t.avatarStack}>
-              {perPlacement.slice(0, 4).map((d, i) => (
-                d.placement.helper_photo ? (
-                  <Image
-                    key={d.placement.application_id}
-                    source={{ uri: d.placement.helper_photo }}
-                    style={[t.stackAvatar, { marginLeft: i === 0 ? 0 : -10, zIndex: 10 - i }]}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <View key={d.placement.application_id} style={[t.stackAvatarFallback, { marginLeft: i === 0 ? 0 : -10, zIndex: 10 - i }]}>
-                    <Text style={t.stackInitials}>{d.placement.helper_name[0]?.toUpperCase()}</Text>
-                  </View>
-                )
-              ))}
-            </View>
-            <TouchableOpacity onPress={() => router.push('/(parent)/hire' as never)} style={{ marginLeft: 'auto' }}>
-              <Text style={t.viewAllLink}>View all &gt;</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
 
-      {/* ── AI TASK ASSISTANT ────────────────────────────────── */}
+      {/* ── CREATE A TASK — simple input, AI + templates tucked behind Suggest ── */}
       <View style={t.card}>
-        <View style={t.aiHeaderRow}>
-          <View style={t.aiBadge}>
-            <Ionicons name="sparkles" size={11} color="#7C3AED" />
-            <Text style={t.aiLabel}>AI TASK ASSISTANT</Text>
-          </View>
-          <View style={t.betaBadge}><Text style={t.betaText}>BETA</Text></View>
-        </View>
-        <Text style={t.aiSubtitle}>
-          The main duties are already agreed in your contract — tasks are just for day-to-day requests that come up. This is optional: describe something and AI can suggest a few to start from.
-        </Text>
+        <Text style={t.cardLabel}>CREATE A TASK</Text>
         <View style={t.aiInputWrap}>
           <TextInput
             style={t.aiInput}
-            placeholder="e.g. Prepare the house for a family gathering this weekend"
+            placeholder="What do you need done? e.g. Prepare the house for guests this weekend"
             placeholderTextColor={MUTED}
             value={aiPrompt}
             onChangeText={setAiPrompt}
@@ -328,60 +296,62 @@ function TasksHub() {
             numberOfLines={2}
             textAlignVertical="top"
           />
-          <View style={t.aiInputIcon}>
-            <Ionicons name="sparkles-outline" size={16} color={PURPLE} />
-          </View>
         </View>
-        <TouchableOpacity
-          style={[t.aiBtn, !aiPrompt.trim() && { opacity: 0.55 }]}
-          onPress={handleGenerateTasks}
-          disabled={!aiPrompt.trim() || aiLoading}
-          activeOpacity={0.85}
-        >
-          {aiLoading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <>
-              <Ionicons name="sparkles" size={16} color="#fff" />
-              <Text style={t.aiBtnText}>Generate Tasks</Text>
-            </>
-          )}
+
+        <View style={t.createBtnRow}>
+          <TouchableOpacity
+            style={[t.aiBtn, { flex: 1 }, !aiPrompt.trim() && { opacity: 0.55 }]}
+            onPress={handleGenerateTasks}
+            disabled={!aiPrompt.trim() || aiLoading}
+            activeOpacity={0.85}
+          >
+            {aiLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Ionicons name="sparkles" size={16} color="#fff" />
+                <Text style={t.aiBtnText}>Suggest with AI</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={t.categoriesToggle} onPress={() => setShowCategories(v => !v)} activeOpacity={0.7}>
+          <Ionicons name={showCategories ? 'chevron-up' : 'chevron-down'} size={14} color={BROWN} />
+          <Text style={t.categoriesToggleText}>{showCategories ? 'Hide categories' : 'Or browse categories'}</Text>
         </TouchableOpacity>
+
+        {showCategories && (
+          categories.length === 0 ? (
+            <ActivityIndicator color={BROWN} style={{ marginVertical: 12 }} />
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={t.templateRowInline}>
+              {sortedCategories.map(({ cat, dim }) => (
+                <TouchableOpacity
+                  key={cat.category_id}
+                  style={[t.templateChip, dim && { opacity: 0.5 }]}
+                  onPress={() => handleCategory(cat)}
+                  onLongPress={() => handleCategoryLongPress(cat, dim)}
+                  activeOpacity={0.8}
+                >
+                  <View style={t.templateChipInner}>
+                    <View style={t.templateIconWrap}>
+                      <Ionicons name={categoryIcon(cat.category_name)} size={22} color={BROWN} />
+                    </View>
+                    <Text style={t.templateLabel} numberOfLines={2}>{cat.category_name}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )
+        )}
       </View>
 
-      {/* ── QUICK TEMPLATE ───────────────────────────────────── */}
+      {/* ── TASK BOARD (calm — quiet labels, not alarms) ──────── */}
       <View style={t.sectionHeaderRow}>
-        <Text style={t.sectionTitle}>QUICK TEMPLATE</Text>
-      </View>
-      <Text style={t.sectionSub}>Tap a category to jump-start your task list.</Text>
-      {categories.length === 0 ? (
-        <ActivityIndicator color={BROWN} style={{ marginVertical: 12, alignSelf: 'flex-start', marginLeft: 14 }} />
-      ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={t.templateRow}>
-          {sortedCategories.map(({ cat, dim }) => (
-            <TouchableOpacity
-              key={cat.category_id}
-              style={[t.templateChip, dim && { opacity: 0.5 }]}
-              onPress={() => handleCategory(cat)}
-              onLongPress={() => handleCategoryLongPress(cat, dim)}
-              activeOpacity={0.8}
-            >
-              <LinearGradient colors={CARD_GR} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={t.templateChipInner}>
-                <View style={t.templateIconWrap}>
-                  <Ionicons name={categoryIcon(cat.category_name)} size={22} color={BROWN} />
-                </View>
-                <Text style={t.templateLabel} numberOfLines={2}>{cat.category_name}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-
-      {/* ── TASK OVERVIEW BY HELPER ──────────────────────────── */}
-      <View style={t.sectionHeaderRow}>
-        <Text style={t.sectionTitle}>TASK OVERVIEW BY HELPER</Text>
+        <Text style={t.sectionTitle}>TASK BOARD</Text>
         <TouchableOpacity onPress={() => router.push('/(parent)/hire/task_board' as never)} activeOpacity={0.7}>
-          <Text style={t.viewAllLink}>View board &gt;</Text>
+          <Text style={t.viewAllLink}>Open board &gt;</Text>
         </TouchableOpacity>
       </View>
 
@@ -575,12 +545,12 @@ function SingleHelperTasks({ applicationId, helperName }: { applicationId: numbe
               onPress={() => openDetails(item)}
               activeOpacity={0.85}
             >
-              {/* Status icon */}
+              {/* Status icon — a quiet label, not an alarm */}
               <View style={t.taskStatusIcon}>
                 {isDone
                   ? <Ionicons name="checkmark-circle" size={20} color={GREEN} />
                   : isOverdue
-                  ? <Ionicons name="alert-circle-outline" size={20} color={DANGER} />
+                  ? <Ionicons name="hourglass-outline" size={20} color={AMBER} />
                   : <Ionicons name="ellipse-outline" size={20} color={MUTED} />}
               </View>
 
@@ -590,8 +560,8 @@ function SingleHelperTasks({ applicationId, helperName }: { applicationId: numbe
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 4, gap: 5 }}>
                   {item.due_date && (
                     <View style={t.metaChip}>
-                      <Ionicons name="calendar-outline" size={10} color={isOverdue ? DANGER : MUTED} />
-                      <Text style={[t.metaChipText, isOverdue && { color: DANGER }]}>Due {item.due_date}</Text>
+                      <Ionicons name="calendar-outline" size={10} color={isOverdue ? AMBER : MUTED} />
+                      <Text style={[t.metaChipText, isOverdue && { color: AMBER }]}>{isOverdue ? `Past due ${item.due_date}` : `Due ${item.due_date}`}</Text>
                     </View>
                   )}
                   {item.requires_photo && (
@@ -674,7 +644,8 @@ export default function PlacementTasksScreen() {
 
   const { isDesktop } = useResponsive();
   const isWorkMode = useParentPortalMode();
-  const { handleLogout } = useAuth();
+  const { handleLogout, getFullName } = useAuth();
+  const { profileData } = useParentProfile();
   const { unreadCount } = useNotifications('parent');
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -686,7 +657,14 @@ export default function PlacementTasksScreen() {
   if (isDesktop) {
     return (
       <View style={t.desktopRoot}>
-        <Sidebar onLogout={() => setConfirmLogout(true)} />
+        <ParentTopNav
+          mode="work"
+          active="tasks"
+          userName={getFullName()}
+          avatar={(profileData?.profile?.profile_image as string) ?? null}
+          verified={profileData?.profile?.verification_status === 'Verified'}
+          onLogout={() => setConfirmLogout(true)}
+        />
         <View style={t.desktopMain}>
           {!isHub && (
             <View style={t.desktopBar}>
@@ -745,8 +723,8 @@ export default function PlacementTasksScreen() {
 // STYLES
 // ─────────────────────────────────────────────────────────────────────────────
 const t = StyleSheet.create({
-  desktopRoot: { flex: 1, flexDirection: 'row', backgroundColor: '#FDF8F2' },
-  desktopMain: { flex: 1, overflow: 'hidden' },
+  desktopRoot: { flex: 1, backgroundColor: '#FDF8F2' },
+  desktopMain: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center' },
   desktopBar: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: DIVIDER },
   mobileRoot: { flex: 1, backgroundColor: '#FDF8F2' },
   mobileBar: {
@@ -802,38 +780,28 @@ const t = StyleSheet.create({
   statTile: { flex: 1, alignItems: 'center' },
   statValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 28, letterSpacing: -0.5 },
   statLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginTop: 1 },
-  basedOnText: { fontFamily: FontFamily.fredokaRegular, fontSize: 10, color: MUTED, textAlign: 'center', marginTop: -6, marginBottom: 10 },
+  basedOnText: { fontFamily: FontFamily.fredokaRegular, fontSize: 10, color: MUTED, textAlign: 'center', marginTop: -6 },
 
-  // ── Active helpers row ────────────────────────────────────
-  activeRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: DIVIDER },
-  activeCount: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK },
-  activeLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },
-  avatarStack: { flexDirection: 'row', marginLeft: 10 },
-  stackAvatar: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: '#fff' },
-  stackAvatarFallback: { width: 26, height: 26, borderRadius: 13, backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
-  stackInitials: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 9, color: BROWN },
   viewAllLink: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: BROWN },
 
-  // ── AI Assistant ──────────────────────────────────────────
-  aiHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  aiBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: PURPLE_BG, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
-  aiLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: PURPLE, letterSpacing: 0.5 },
-  betaBadge: { backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  betaText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 9, color: AMBER, letterSpacing: 0.5 },
-  aiSubtitle: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, marginBottom: 12 },
-  aiInputWrap: { position: 'relative', marginBottom: 12 },
+  explainer: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: MUTED, textAlign: 'center', marginHorizontal: 24, marginBottom: 14, lineHeight: 17 },
+
+  // ── Create a Task (AI + templates tucked behind one flow) ──
+  aiInputWrap: { position: 'relative', marginBottom: 10 },
   aiInput: {
     backgroundColor: '#F9F5EE', borderWidth: 1, borderColor: DIVIDER,
-    borderRadius: 14, paddingVertical: 12, paddingHorizontal: 14, paddingRight: 40,
+    borderRadius: 14, paddingVertical: 12, paddingHorizontal: 14,
     fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: DARK,
     minHeight: 56, textAlignVertical: 'top',
   },
-  aiInputIcon: { position: 'absolute', right: 14, top: 14 },
+  createBtnRow: { flexDirection: 'row', gap: 10 },
   aiBtn: {
     backgroundColor: NAVY, borderRadius: 14, paddingVertical: 14,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   aiBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#fff' },
+  categoriesToggle: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', marginTop: 12, paddingVertical: 4 },
+  categoriesToggleText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: BROWN },
 
   // ── Section headers ───────────────────────────────────────
   sectionHeaderRow: {
@@ -841,12 +809,11 @@ const t = StyleSheet.create({
     marginHorizontal: 14, marginTop: 4, marginBottom: 4,
   },
   sectionTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: MUTED, letterSpacing: 0.8 },
-  sectionSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginHorizontal: 14, marginBottom: 10 },
 
   // ── Templates ─────────────────────────────────────────────
-  templateRow: { paddingHorizontal: 14, paddingBottom: 8, gap: 10 },
+  templateRowInline: { paddingTop: 10, gap: 10 },
   templateChip: { alignItems: 'center' },
-  templateChipInner: { width: 70, alignItems: 'center', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: DIVIDER },
+  templateChipInner: { width: 70, alignItems: 'center', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: DIVIDER, backgroundColor: '#FFFDF9' },
   templateIconWrap: { width: 44, height: 44, borderRadius: 14, backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   templateLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: DARK, textAlign: 'center' },
 
