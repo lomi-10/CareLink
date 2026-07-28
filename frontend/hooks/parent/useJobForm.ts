@@ -33,6 +33,8 @@ export interface JobFormData {
   start_date: string;
   work_hours: string;
   contract_duration: string;
+  /** "Applications close on" date, YYYY-MM-DD. Empty = never expires. */
+  expires_at: string;
   benefits: string;
   provides_meals: boolean;
   provides_accommodation: boolean;
@@ -264,6 +266,7 @@ const initialFormData: JobFormData = {
   work_hours: '',
   days_off: [],
   contract_duration: 'Indefinite',
+  expires_at: '',
   benefits: '',
   provides_meals: false,
   provides_accommodation: false,
@@ -333,7 +336,15 @@ export function useJobForm() {
     if (!formData.municipality.trim()) {
       newErrors.municipality = 'Location is required — enter a municipality';
     }
-    
+
+    if (formData.expires_at) {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const deadline = new Date(formData.expires_at + 'T00:00:00');
+      if (deadline < today) {
+        newErrors.expires_at = 'Application deadline cannot be in the past';
+      }
+    }
+
     setErrors(newErrors);
     const errorList = Object.values(newErrors).filter(Boolean);
     return { isValid: errorList.length === 0, firstError: errorList[0] };
@@ -379,6 +390,7 @@ export function useJobForm() {
       start_date: data.start_date || '',
       work_hours: data.work_hours || '',
       contract_duration: data.contract_duration || 'Indefinite',
+      expires_at: data.expires_at ? String(data.expires_at).slice(0, 10) : '',
       benefits: data.benefits || '',
       provides_meals: !!data.provides_meals,
       provides_accommodation: !!data.provides_accommodation,
@@ -425,6 +437,7 @@ export function useJobForm() {
       start_date: formData.start_date || null,
       work_hours: formData.work_hours || null,
       contract_duration: formData.contract_duration || null,
+      expires_at: formData.expires_at || null,
       benefits: formData.benefits.trim() || null,
       provides_meals: formData.provides_meals ? 1 : 0,
       provides_accommodation: formData.provides_accommodation ? 1 : 0,

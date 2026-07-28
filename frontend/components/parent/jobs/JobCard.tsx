@@ -7,6 +7,7 @@ import { JobStatusBadge } from './JobStatusBadge';
 import type { JobPost } from '@/hooks/parent';
 import { theme, type ThemeColor } from '@/constants/theme';
 import { useParentTheme } from '@/contexts/ParentThemeContext';
+import { applyByLabel } from '@/lib/jobExpiry';
 
 function createJobCardStyles(t: ThemeColor) {
   return StyleSheet.create({
@@ -234,6 +235,15 @@ export function JobCard({
           <Ionicons name="time-outline" size={15} color={t.muted} />
           <Text style={styles.quickValue}>{getTimeAgo(job.posted_at)}</Text>
         </View>
+        {applyByLabel(job.expires_at) && (
+          <>
+            <View style={styles.dot} />
+            <View style={styles.quickItem}>
+              <Ionicons name="hourglass-outline" size={15} color={t.muted} />
+              <Text style={styles.quickValue}>{applyByLabel(job.expires_at)}</Text>
+            </View>
+          </>
+        )}
       </View>
 
       <Text style={styles.summary} numberOfLines={2}>

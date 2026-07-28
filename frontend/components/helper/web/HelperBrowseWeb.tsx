@@ -18,6 +18,7 @@ import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
 import { isShareableWithEmployer } from '@/constants/documents';
 import { pickCoverLetter, MAX_GENERATIONS, type HelperInfo } from '@/lib/coverLetterTemplates';
 import { applicationStatusLabel } from '@/lib/applicationStatusLabel';
+import { applyByLabel } from '@/lib/jobExpiry';
 import { AdvancedSearchModal } from '@/components/helper/jobs';
 import { groupJobsByParent } from '@/app/(helper)/browse/browseHelpers';
 import { HelperTopNav } from './HelperTopNav';
@@ -367,6 +368,7 @@ function JobPanel({ job, pp, onViewHousehold, onApply, onToggleSave }: { job: Jo
         <View style={s.jpTags}>
           {!!job.employment_type && <View style={s.jpTag}><Ionicons name="home-outline" size={13} color={wt.muted} /><Text style={s.jpTagText}>{job.employment_type}</Text></View>}
           {!!job.work_schedule && <View style={s.jpTag}><Ionicons name="time-outline" size={13} color={wt.muted} /><Text style={s.jpTagText}>{job.work_schedule}</Text></View>}
+          {!!applyByLabel(job.expires_at) && <View style={s.jpTag}><Ionicons name="hourglass-outline" size={13} color={wt.muted} /><Text style={s.jpTagText}>{applyByLabel(job.expires_at)}</Text></View>}
           {perks.map((p) => <View key={p.label} style={s.jpTag}><Ionicons name={p.icon} size={13} color={wt.muted} /><Text style={s.jpTagText}>{p.label}</Text></View>)}
         </View>
       </View>

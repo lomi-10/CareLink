@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { JobStatusBadge } from './JobStatusBadge';
 import { formatPayoutSchedule } from '@/lib/salary';
+import { applyByLabel } from '@/lib/jobExpiry';
 
 interface JobDetailsModalProps {
   visible: boolean;
@@ -189,6 +190,7 @@ export function JobDetailsModal({ visible, onClose, job }: JobDetailsModalProps)
               <DetailRow icon="time-outline"        label="Work Schedule"   value={job.work_schedule} />
               {job.work_hours && <DetailRow icon="alarm-outline" label="Working Hours" value={job.work_hours} />}
               {job.start_date && <DetailRow icon="calendar-outline" label="Start Date" value={job.start_date} />}
+              {applyByLabel(job.expires_at) && <DetailRow icon="hourglass-outline" label="Application Deadline" value={applyByLabel(job.expires_at)!} />}
               <DetailRow icon="cafe-outline" label="Days Off" value={parseDaysOff()} />
             </Section>
             <Section icon="document-text-outline" title="Job Description">

@@ -16,6 +16,7 @@ import { useUserVerification } from '@/hooks/peso';
 import { computeHelperJobMatch, applicationToMatchable } from '@/lib/parentHelperMatch';
 import { MatchBreakdown } from './MatchBreakdown';
 import { formatSalary, formatPayoutSchedule } from '@/lib/salary';
+import { applyByLabel } from '@/lib/jobExpiry';
 import { ConfirmationModal, InterviewModal, NotificationModal, LoadingSpinner } from '@/components/shared';
 import { JobPostModal } from '@/components/parent/jobs';
 import { PendingBanner } from '@/components/parent/verification/PendingBanner';
@@ -341,6 +342,9 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
                     <View style={s.midMetaItem}><Ionicons name="location-outline" size={13} color={pt.muted} /><Text style={s.midMetaText} numberOfLines={1}>{[selectedJob.municipality, selectedJob.province].filter(Boolean).join(', ') || 'Location not set'}</Text></View>
                     <View style={s.midMetaItem}><Ionicons name="cash-outline" size={13} color={pt.muted} /><Text style={s.midSalary}>{formatSalary(selectedJob.salary_offered)}</Text></View>
                     <View style={s.midMetaItem}><Ionicons name="calendar-outline" size={13} color={pt.muted} /><Text style={s.midMetaText}>{formatPayoutSchedule(selectedJob.salary_period)}</Text></View>
+                    {!!applyByLabel(selectedJob.expires_at) && (
+                      <View style={s.midMetaItem}><Ionicons name="hourglass-outline" size={13} color={pt.muted} /><Text style={s.midMetaText}>{applyByLabel(selectedJob.expires_at)}</Text></View>
+                    )}
                   </View>
 
                   <View style={s.miniGrid}>

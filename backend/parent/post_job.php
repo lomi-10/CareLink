@@ -131,6 +131,17 @@ try {
     $start_date = $data['start_date'] ?? null;
     $work_hours = $data['work_hours'] ?? null;
     $contract_duration = $data['contract_duration'] ?? null;
+
+    // Optional "applications close on" date. Stored as end-of-day so the
+    // deadline date itself still accepts applications (apply_job.php checks
+    // this against NOW()). Empty/omitted = never expires.
+    $expires_at = null;
+    if (!empty($data['expires_at'])) {
+        $expires_ts = strtotime($data['expires_at']);
+        if ($expires_ts === false) throw new Exception('Invalid application deadline date');
+        if ($expires_ts < strtotime('today')) throw new Exception('Application deadline cannot be in the past');
+        $expires_at = date('Y-m-d', $expires_ts) . ' 23:59:59';
+    }
     $provides_meals = !empty($data['provides_meals']) ? 1 : 0;
     $provides_accommodation = !empty($data['provides_accommodation']) ? 1 : 0;
     $provides_sss = !empty($data['provides_sss']) ? 1 : 0;
@@ -149,6 +160,7 @@ try {
             work_hours, days_off, contract_duration,
             provides_meals, provides_accommodation, provides_sss,
             provides_philhealth, provides_pagibig, vacation_days, sick_days,
+            expires_at,
             status, posted_at
         ) VALUES (
             ?, ?, ?, ?, ?,
@@ -159,13 +171,14 @@ try {
             ?, ?, ?,
             ?, ?, ?,
             ?, ?, ?, ?,
+            ?,
             'Pending', NOW()
         )
     ");
 
     if (!$stmt) throw new Exception('Database Error: ' . mysqli_error($conn));
 
-    $types = "iissssssdddsssssddsiiissiiissssiiiiiii";
+    $types = "iissssssdddsssssddsiiissiiissssiiiiiiis";
 
     mysqli_stmt_bind_param(
         $stmt, $types,
@@ -176,7 +189,8 @@ try {
         $skill_ids_json, $custom_skills, $min_age, $max_age, $min_experience_years, $start_date,
         $work_hours, $days_off_json, $contract_duration,
         $provides_meals, $provides_accommodation, $provides_sss,
-        $provides_philhealth, $provides_pagibig, $vacation_days, $sick_days
+        $provides_philhealth, $provides_pagibig, $vacation_days, $sick_days,
+        $expires_at
     );
 
     if (!mysqli_stmt_execute($stmt)) throw new Exception('Failed to post job: ' . mysqli_error($conn));

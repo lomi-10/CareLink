@@ -16,6 +16,7 @@ export { WorkArrangementCard } from './WorkArrangementCard';
 export { AgeRangeSelector } from './AgeRangeSelector';
 export { ExperienceSelector } from './ExperienceSelector';
 export { ContractDetailsCard } from './ContractDetailsCard';
+export { ApplicationDeadlineCard } from './ApplicationDeadlineCard';
 export { WorkScheduleCard } from './WorkScheduleCard';
 export { BenefitsCard } from './BenefitsCard';
 export { LocationSelector } from './LocationSelector';

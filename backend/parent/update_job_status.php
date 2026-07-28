@@ -71,7 +71,10 @@ try {
         $sql .= ", filled_at = NOW()";
     }
     if ($new_status === 'Open') {
-        $sql .= ", filled_at = NULL";
+        // Reopening implies "make this visible to helpers again" — a stale expiry
+        // date in the past would otherwise keep it hidden from browse_jobs.php
+        // even though status is now Open. A future expiry date is left alone.
+        $sql .= ", filled_at = NULL, expires_at = IF(expires_at IS NOT NULL AND expires_at < NOW(), NULL, expires_at)";
     }
     
     $sql .= " WHERE job_post_id = ?";

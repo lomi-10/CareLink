@@ -26,6 +26,7 @@ import { useUserVerification } from '@/hooks/peso';
 import { MobileMenu, Sidebar, ParentTabBar } from '@/components/parent/home'; // NEW: Added for consistent layout
 import {
   AgeRangeSelector,
+  ApplicationDeadlineCard,
   BenefitsCard,
   CategorySelector,
   ContractDetailsCard,
@@ -245,6 +246,7 @@ export default function PostJob() {
         <ExperienceSelector minExperience={formData.min_experience_years} onExperienceChange={(value) => updateField('min_experience_years', value)} disabled={isDisabled} />
         <WorkScheduleCard startDate={formData.start_date} workHours={formData.work_hours} daysOff={formData.days_off} onStartDateChange={(value) => updateField('start_date', value)} onWorkHoursChange={(value) => updateField('work_hours', value)} onDaysOffToggle={handleDaysOffToggle} disabled={isDisabled} />
         <ContractDetailsCard contractDuration={formData.contract_duration} onContractDurationChange={(value) => updateField('contract_duration', value)} disabled={isDisabled} />
+        <ApplicationDeadlineCard expiresAt={formData.expires_at} onExpiresAtChange={(value) => updateField('expires_at', value)} error={errors.expires_at} disabled={isDisabled} />
         <BenefitsCard providesMeals={formData.provides_meals} providesAccommodation={formData.provides_accommodation} providesSSS={formData.provides_sss} providesPhilHealth={formData.provides_philhealth} providesPagIbig={formData.provides_pagibig} onMealsToggle={() => updateField('provides_meals', !formData.provides_meals)} onAccommodationToggle={() => updateField('provides_accommodation', !formData.provides_accommodation)} onSSSToggle={() => updateField('provides_sss', !formData.provides_sss)} onPhilHealthToggle={() => updateField('provides_philhealth', !formData.provides_philhealth)} onPagIbigToggle={() => updateField('provides_pagibig', !formData.provides_pagibig)} disabled={isDisabled} />
         <PreferencesCard religions={religions} languages={languages} selectedReligion={formData.preferred_religion} selectedLanguageId={formData.preferred_language_id} requirePoliceClearance={formData.require_police_clearance} preferTesdaNc2={formData.prefer_tesda_nc2} onReligionChange={(religion: string) => updateField('preferred_religion', religion)} onLanguageChange={(langId: string) => updateField('preferred_language_id', langId)} onPoliceClearanceChange={(value: boolean) => updateField('require_police_clearance', value)} onTesdaNc2Change={(value: boolean) => updateField('prefer_tesda_nc2', value)} disabled={isDisabled} />
 

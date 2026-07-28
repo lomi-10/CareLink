@@ -8,6 +8,7 @@ import type { ThemeColor } from '@/constants/theme';
 import { theme } from '@/constants/theme';
 import { useHelperTheme } from '@/contexts/HelperThemeContext';
 import { applicationStatusLabel } from '@/lib/applicationStatusLabel';
+import { applyByLabel } from '@/lib/jobExpiry';
 
 function createJobCardStyles(c: ThemeColor) {
   return StyleSheet.create({
@@ -272,6 +273,7 @@ export function JobCard({ job, onPress, onApply, onToggleSave, onEmployerPress }
                 ? new Date(job.posted_at).toLocaleDateString('en-PH', { dateStyle: 'medium' })
                 : 'recently'}
               {job.distance ? `  ·  ~${job.distance} km` : ''}
+              {applyByLabel(job.expires_at) ? `  ·  ${applyByLabel(job.expires_at)}` : ''}
               {onEmployerPress ? '  ·  Tap for employer profile' : ''}
             </Text>
           </View>

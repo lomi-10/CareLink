@@ -4,6 +4,8 @@
 // Response contract:
 // - Returns one JSON object per job_posts row where status = 'Open'.
 // - Pending / Closed job_posts never appear here (parent "Pending" tab != helper-visible Open).
+// - A job with expires_at in the past is treated as auto-expired and excluded,
+//   same as if the parent had closed it (no cron needed — checked at query time).
 // - A job the helper already has a (non-Withdrawn) application for is still
 //   INCLUDED — the helper should be able to see it and check its status —
 //   but is annotated with `application_status` and `can_apply: false` so the
@@ -122,7 +124,7 @@ try {
         LEFT JOIN ref_categories rc ON jp.category_id = rc.category_id
         LEFT JOIN saved_jobs sj ON jp.job_post_id = sj.job_post_id AND sj.helper_id = ?
         LEFT JOIN job_applications myapp ON myapp.job_post_id = jp.job_post_id AND myapp.helper_id = ?
-        WHERE jp.status = 'Open'
+        WHERE jp.status = 'Open' AND (jp.expires_at IS NULL OR jp.expires_at >= NOW())
         ORDER BY jp.posted_at DESC
     ";
 

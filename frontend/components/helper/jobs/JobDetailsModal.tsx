@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { applicationStatusLabel } from '@/lib/applicationStatusLabel';
+import { applyByLabel } from '@/lib/jobExpiry';
 
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -213,6 +214,7 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
                   {job.start_date    ? <DetailItem icon="calendar-outline" label="Start Date"     value={job.start_date} /> : null}
                   {job.employment_type ? <DetailItem icon="briefcase-outline" label="Employment" value={job.employment_type} /> : null}
                   {job.work_hours    ? <DetailItem icon="alarm-outline"    label="Working Hours"  value={job.work_hours} /> : null}
+                  {applyByLabel(job.expires_at) ? <DetailItem icon="hourglass-outline" label="Deadline" value={applyByLabel(job.expires_at)!} /> : null}
                 </View>
               </View>
 

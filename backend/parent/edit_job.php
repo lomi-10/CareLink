@@ -108,6 +108,16 @@ try {
     $start_date = $data['start_date'] ?? null;
     $work_hours = $data['work_hours'] ?? null;
     $contract_duration = $data['contract_duration'] ?? null;
+
+    // Optional "applications close on" date — see post_job.php for the same logic.
+    // Sending an empty value clears a previously-set deadline.
+    $expires_at = null;
+    if (!empty($data['expires_at'])) {
+        $expires_ts = strtotime($data['expires_at']);
+        if ($expires_ts === false) throw new Exception('Invalid application deadline date');
+        if ($expires_ts < strtotime('today')) throw new Exception('Application deadline cannot be in the past');
+        $expires_at = date('Y-m-d', $expires_ts) . ' 23:59:59';
+    }
     $benefits = strval($data['benefits'] ?? '');
     $custom_skills = trim($data['custom_skills'] ?? '');
     $provides_meals = !empty($data['provides_meals']) ? 1 : 0;
@@ -133,13 +143,14 @@ try {
             provides_meals = ?, provides_accommodation = ?, provides_sss = ?, provides_philhealth = ?,
             provides_pagibig = ?, vacation_days = ?, sick_days = ?, preferred_religion = ?,
             preferred_language_id = ?, require_police_clearance = ?, prefer_tesda_nc2 = ?,
+            expires_at = ?,
             status = 'Pending', updated_at = NOW()
             WHERE job_post_id = ? AND parent_id = ?
     ");
 
     if (!$stmt) throw new Exception('Database Error: ' . mysqli_error($conn));
 
-    $types = "isssssssdddssssiiissssssiiiiiiisiiiii";
+    $types = "isssssssdddssssiiissssssiiiiiiisiiisii";
 
     mysqli_stmt_bind_param(
         $stmt, $types,
@@ -152,6 +163,7 @@ try {
         $provides_meals, $provides_accommodation, $provides_sss, $provides_philhealth,
         $provides_pagibig, $vacation_days, $sick_days, $preferred_religion,
         $preferred_language_id, $require_police_clearance, $prefer_tesda_nc2,
+        $expires_at,
         $job_post_id, $parent_id
     );
 
