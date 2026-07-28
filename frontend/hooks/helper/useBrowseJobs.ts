@@ -88,6 +88,13 @@ export interface JobPost {
   // Save status
   is_saved?: boolean;
   saved_at?: string;
+
+  // The helper's existing application to this job, if any. Withdrawn (or no
+  // application at all) means `application_status` is null and `can_apply`
+  // is true; anything else (Pending, Rejected, hired, ...) means the helper
+  // already has a relationship with this post and can't apply again.
+  application_status?: string | null;
+  can_apply?: boolean;
 }
 
 export interface JobFilters {

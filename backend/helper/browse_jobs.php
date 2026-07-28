@@ -3,8 +3,12 @@
 //
 // Response contract:
 // - Returns one JSON object per job_posts row where status = 'Open'.
-// - Excludes posts this helper has already applied to (job_applications row with status <> 'Withdrawn').
 // - Pending / Closed job_posts never appear here (parent "Pending" tab != helper-visible Open).
+// - A job the helper already has a (non-Withdrawn) application for is still
+//   INCLUDED — the helper should be able to see it and check its status —
+//   but is annotated with `application_status` and `can_apply: false` so the
+//   UI shows a status badge instead of an Apply button. Withdrawn (or no
+//   application at all) means `can_apply: true`.
 // If an employer shows fewer rows here than on the parent app, check status and applications for each job_post_id.
 
 header('Content-Type: application/json');
@@ -105,7 +109,8 @@ try {
             pp.bio as parent_bio,
             COALESCE(pr.rating, 0) as parent_rating,
             CASE WHEN sj.saved_id IS NOT NULL THEN 1 ELSE 0 END as is_saved,
-            sj.saved_at
+            sj.saved_at,
+            myapp.status as my_application_status
         FROM job_posts jp
         JOIN users u ON jp.parent_id = u.user_id
         LEFT JOIN parent_profiles pp ON jp.parent_id = pp.user_id
@@ -113,19 +118,14 @@ try {
             SELECT reviewee_id, AVG(rating) as rating
             FROM placement_reviews
             GROUP BY reviewee_id
-        ) pr ON jp.parent_id = pr.reviewee_id   
+        ) pr ON jp.parent_id = pr.reviewee_id
         LEFT JOIN ref_categories rc ON jp.category_id = rc.category_id
         LEFT JOIN saved_jobs sj ON jp.job_post_id = sj.job_post_id AND sj.helper_id = ?
+        LEFT JOIN job_applications myapp ON myapp.job_post_id = jp.job_post_id AND myapp.helper_id = ?
         WHERE jp.status = 'Open'
-        AND NOT EXISTS (
-            SELECT 1 FROM job_applications ja
-            WHERE ja.job_post_id = jp.job_post_id
-              AND ja.helper_id = ?
-              AND ja.status != 'Withdrawn'
-        )
         ORDER BY jp.posted_at DESC
     ";
-    
+
     $stmt = $conn->prepare($jobQuery);
     $stmt->bind_param("ii", $helper_id, $helper_id);
     $stmt->execute();
@@ -233,7 +233,16 @@ try {
             'is_new' => $m['is_new'],
             
             'is_saved' => (bool)$job['is_saved'],
-            'saved_at' => $job['saved_at']
+            'saved_at' => $job['saved_at'],
+
+            // Withdrawn (or no row at all) behaves as "never applied" — fully
+            // appliable. Any other status means the helper already has a
+            // relationship with this job post, so the UI should show that
+            // status instead of an Apply button.
+            'application_status' => ($job['my_application_status'] && $job['my_application_status'] !== 'Withdrawn')
+                ? $job['my_application_status']
+                : null,
+            'can_apply' => !$job['my_application_status'] || $job['my_application_status'] === 'Withdrawn',
         ];
     }
     

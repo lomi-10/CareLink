@@ -7,6 +7,7 @@ import type { JobPost } from '@/hooks/helper';
 import type { ThemeColor } from '@/constants/theme';
 import { theme } from '@/constants/theme';
 import { useHelperTheme } from '@/contexts/HelperThemeContext';
+import { applicationStatusLabel } from '@/lib/applicationStatusLabel';
 
 function createJobCardStyles(c: ThemeColor) {
   return StyleSheet.create({
@@ -131,6 +132,19 @@ function createJobCardStyles(c: ThemeColor) {
       borderRadius: 10,
     },
     applyBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+    appliedPill: {
+      flex: 1.3,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      backgroundColor: c.surface,
+      paddingVertical: 11,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: c.line,
+    },
+    appliedPillText: { color: c.muted, fontSize: 13, fontWeight: '700' },
   });
 }
 
@@ -151,6 +165,7 @@ export function JobCard({ job, onPress, onApply, onToggleSave, onEmployerPress }
   const jobNames: string[] = (job as any).job_names ?? (job as any).jobs ?? [];
 
   const hasGoodMatch = job.match_score && job.match_score >= 70;
+  const isRejected = job.application_status === 'Rejected' || job.application_status === 'auto_rejected';
 
   return (
     <View style={styles.container}>
@@ -274,10 +289,23 @@ export function JobCard({ job, onPress, onApply, onToggleSave, onEmployerPress }
         >
           <Text style={styles.detailsBtnText}>View Details</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.applyBtn} onPress={onApply} activeOpacity={0.85}>
-          <Ionicons name="paper-plane-outline" size={15} color="#fff" />
-          <Text style={styles.applyBtnText}>Apply Now</Text>
-        </TouchableOpacity>
+        {job.can_apply === false ? (
+          <View style={styles.appliedPill}>
+            <Ionicons
+              name={isRejected ? 'close-circle-outline' : 'checkmark-circle-outline'}
+              size={15}
+              color={c.muted}
+            />
+            <Text style={styles.appliedPillText} numberOfLines={1}>
+              {applicationStatusLabel(job.application_status ?? '')}
+            </Text>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.applyBtn} onPress={onApply} activeOpacity={0.85}>
+            <Ionicons name="paper-plane-outline" size={15} color="#fff" />
+            <Text style={styles.applyBtnText}>Apply Now</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

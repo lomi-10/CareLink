@@ -17,6 +17,7 @@ import { NotificationModal } from '@/components/shared';
 import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
 import { isShareableWithEmployer } from '@/constants/documents';
 import { pickCoverLetter, MAX_GENERATIONS, type HelperInfo } from '@/lib/coverLetterTemplates';
+import { applicationStatusLabel } from '@/lib/applicationStatusLabel';
 import { AdvancedSearchModal } from '@/components/helper/jobs';
 import { groupJobsByParent } from '@/app/(helper)/browse/browseHelpers';
 import { HelperTopNav } from './HelperTopNav';
@@ -407,11 +408,22 @@ function JobPanel({ job, pp, onViewHousehold, onApply, onToggleSave }: { job: Jo
 
       {/* Apply */}
       <View style={s.applyRow}>
-        <Pressable onPress={onApply} style={({ hovered, pressed }: any) => [{ flex: 1 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
-          <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.applyBtn}>
-            <Ionicons name="paper-plane" size={16} color="#fff" /><Text style={s.applyBtnText}>Apply for this Job</Text>
-          </LinearGradient>
-        </Pressable>
+        {job.can_apply === false ? (
+          <View style={[s.applyBtn, { flex: 1, backgroundColor: wt.lineSoft }]}>
+            <Ionicons
+              name={job.application_status === 'Rejected' || job.application_status === 'auto_rejected' ? 'close-circle-outline' : 'checkmark-circle'}
+              size={16}
+              color={wt.muted}
+            />
+            <Text style={[s.applyBtnText, { color: wt.muted }]}>{applicationStatusLabel(job.application_status ?? '')}</Text>
+          </View>
+        ) : (
+          <Pressable onPress={onApply} style={({ hovered, pressed }: any) => [{ flex: 1 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
+            <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.applyBtn}>
+              <Ionicons name="paper-plane" size={16} color="#fff" /><Text style={s.applyBtnText}>Apply for this Job</Text>
+            </LinearGradient>
+          </Pressable>
+        )}
         <Pressable onPress={() => { setSaved((v) => !v); onToggleSave(); }} style={({ hovered }: any) => [s.saveBtn, TRANS, hovered && { borderColor: wt.accent }]}><Ionicons name={saved ? 'heart' : 'heart-outline'} size={20} color={saved ? wt.red : wt.muted} /></Pressable>
       </View>
 

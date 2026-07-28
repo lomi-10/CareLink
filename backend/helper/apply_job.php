@@ -158,10 +158,13 @@ try {
         exit;
     }
 
-    // Check if already applied
+    // Check if already applied — SELECT status too (this used to only select
+    // application_id, so the Withdrawn check below always compared against a
+    // missing key and silently never triggered; ANY existing application,
+    // including 'hired', would fall through and get reset to 'Pending').
     $check_stmt = $conn->prepare("
-        SELECT application_id 
-        FROM job_applications 
+        SELECT application_id, status
+        FROM job_applications
         WHERE job_post_id = ? AND helper_id = ?
     ");
     $check_stmt->bind_param("ii", $job_post_id, $helper_id);
@@ -170,11 +173,20 @@ try {
 
     if ($check_result->num_rows > 0) {
         $existing_application = $check_result->fetch_assoc();
+        $existing_status = (string) $existing_application['status'];
 
-        if($existing_application['status'] === 'Withdrawn') {
+        // Withdrawn behaves like "never applied" — re-applying is always fine.
+        // Anything else means the helper already has a relationship with this
+        // job post (active, historical, or a past rejection) and re-applying
+        // isn't allowed; browse_jobs.php keeps the post visible with its
+        // status so the helper can see why, instead of it just vanishing.
+        if ($existing_status !== 'Withdrawn') {
+            $isRejected = in_array($existing_status, ['Rejected', 'auto_rejected'], true);
             echo json_encode([
                 'success' => false,
-                'message' => 'You have already applied to this job'
+                'message' => $isRejected
+                    ? 'This employer did not move forward with your application for this job, so you cannot re-apply to it.'
+                    : 'You already have an application for this job.',
             ]);
             exit;
         }

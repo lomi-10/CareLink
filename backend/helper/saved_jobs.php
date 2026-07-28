@@ -91,7 +91,8 @@ try {
             pp.latitude as parent_lat,
             pp.longitude as parent_lng,
             COALESCE(pr.rating, 0) as parent_rating,
-            sj.saved_at
+            sj.saved_at,
+            myapp.status as my_application_status
         FROM saved_jobs sj
         JOIN job_posts jp ON sj.job_post_id = jp.job_post_id
         JOIN users u ON jp.parent_id = u.user_id
@@ -101,12 +102,13 @@ try {
             FROM placement_reviews
             GROUP BY reviewee_id
         ) pr ON jp.parent_id = pr.reviewee_id
+        LEFT JOIN job_applications myapp ON myapp.job_post_id = jp.job_post_id AND myapp.helper_id = ?
         WHERE sj.helper_id = ?
         ORDER BY sj.saved_at DESC
     ";
-    
+
     $stmt = $conn->prepare($jobQuery);
-    $stmt->bind_param("i", $helper_id);
+    $stmt->bind_param("ii", $helper_id, $helper_id);
     $stmt->execute();
     $jobsResult = $stmt->get_result();
     
@@ -249,7 +251,13 @@ try {
             'match_reasons' => $matchReasons,
             
             'is_saved' => true,
-            'saved_at' => $job['saved_at']
+            'saved_at' => $job['saved_at'],
+
+            // Same contract as browse_jobs.php — see that file's header comment.
+            'application_status' => ($job['my_application_status'] && $job['my_application_status'] !== 'Withdrawn')
+                ? $job['my_application_status']
+                : null,
+            'can_apply' => !$job['my_application_status'] || $job['my_application_status'] === 'Withdrawn',
         ];
     }
     

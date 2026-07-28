@@ -7,6 +7,7 @@ import {
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { applicationStatusLabel } from '@/lib/applicationStatusLabel';
 
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -265,10 +266,21 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
 
             {/* ── Apply footer ── */}
             <SafeAreaView style={s.footer}>
-              <TouchableOpacity style={s.applyBtn} onPress={onApply} activeOpacity={0.85}>
-                <Ionicons name="paper-plane" size={18} color="#fff" />
-                <Text style={s.applyBtnText}>Apply Now</Text>
-              </TouchableOpacity>
+              {job.can_apply === false ? (
+                <View style={s.appliedPill}>
+                  <Ionicons
+                    name={job.application_status === 'Rejected' || job.application_status === 'auto_rejected' ? 'close-circle-outline' : 'checkmark-circle'}
+                    size={18}
+                    color={MUTED}
+                  />
+                  <Text style={s.appliedPillText}>{applicationStatusLabel(job.application_status ?? '')}</Text>
+                </View>
+              ) : (
+                <TouchableOpacity style={s.applyBtn} onPress={onApply} activeOpacity={0.85}>
+                  <Ionicons name="paper-plane" size={18} color="#fff" />
+                  <Text style={s.applyBtnText}>Apply Now</Text>
+                </TouchableOpacity>
+              )}
             </SafeAreaView>
           </View>
         </View>
@@ -361,6 +373,8 @@ const s = StyleSheet.create({
   footer:       { padding: 16, borderTopWidth: 1, borderTopColor: DIVIDER, backgroundColor: '#fff' },
   applyBtn:     { backgroundColor: DARK, paddingVertical: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   applyBtnText: { fontFamily: FontFamily.fredokaSemiBold, color: '#fff', fontSize: 16 },
+  appliedPill:     { backgroundColor: ICON_BG, paddingVertical: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  appliedPillText: { fontFamily: FontFamily.fredokaSemiBold, color: MUTED, fontSize: 15 },
 });
 
 // "Roles included" chips — the specifics behind a concise job title
