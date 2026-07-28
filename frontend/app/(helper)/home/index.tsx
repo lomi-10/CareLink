@@ -215,11 +215,7 @@ export default function HelperHome() {
             verified={profileData?.profile?.verification_status === 'Verified'}
             onLogout={initiateLogout}
           />
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: 40, maxWidth: 1040, alignSelf: 'center', width: '100%' }}
-            refreshControl={<RefreshControl refreshing={false} onRefresh={() => { refresh(); void refreshWork(); bumpPlacementReviewBanner(); }} />}
-          >
+          <View style={{ flex: 1, width: '100%', maxWidth: 1200, alignSelf: 'center' }}>
             <WorkHome
               helperId={helperIdNum}
               userFirstName={userData?.first_name ?? ''}
@@ -229,7 +225,7 @@ export default function HelperHome() {
               activeHire={activeHire}
               onRefreshWorkContext={refreshWork}
             />
-          </ScrollView>
+          </View>
           {renderModals()}
         </View>
       );

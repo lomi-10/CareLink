@@ -1,8 +1,17 @@
 import React from "react";
 import { View, StyleSheet, useWindowDimensions, Platform } from "react-native";
+import { Image } from "expo-image";
 import { theme } from "@/constants/theme";
 import { useHelperTheme } from "@/contexts/HelperThemeContext";
 import { useParentTheme } from "@/contexts/ParentThemeContext";
+
+// Abstract warm-brand background art for WEB only (mobile keeps the soft blob
+// look). Covers the full screen behind every helper/parent web screen — this
+// is the single place that wraps them all, so no per-screen wiring needed.
+const WEB_BG_IMAGE: Partial<Record<ScreenRole, any>> = {
+  helper: require("../../assets/background/helper-web-bg.png"),
+  parent: require("../../assets/background/parent-web-bg.png"),
+};
 
 export type ScreenRole = "helper" | "parent" | "peso" | "admin";
 
@@ -72,24 +81,38 @@ export function RoleScreenBackground({ role, children }: Props) {
     opacity: Platform.OS === "web" ? 0.38 : 0.32,
   };
 
+  // Web gets the uploaded abstract brand art (fills behind every helper/parent
+  // web screen, sized to cover so it stays full-bleed at any window size);
+  // mobile keeps the lighter blob treatment since the art is tuned for wide
+  // screens and would overpower a phone.
+  const bgImage = Platform.OS === "web" ? WEB_BG_IMAGE[role] : null;
+
   return (
     <View style={[styles.root, { backgroundColor: canvas }]}>
-      <View style={styles.blobs} pointerEvents="none">
-        <View
-          style={[
-            styles.blob,
-            topBlob,
-            { backgroundColor: b1 },
-          ]}
-        />
-        <View
-          style={[
-            styles.blob,
-            bottomBlob,
-            { backgroundColor: b2 },
-          ]}
-        />
-      </View>
+      {bgImage ? (
+        <View style={styles.blobs} pointerEvents="none">
+          <Image source={bgImage} style={styles.bgImage} contentFit="cover" />
+          {/* Cream wash so foreground cards keep full contrast over the art. */}
+          <View style={[styles.bgImage, { backgroundColor: "rgba(251,246,238,0.5)" }]} />
+        </View>
+      ) : (
+        <View style={styles.blobs} pointerEvents="none">
+          <View
+            style={[
+              styles.blob,
+              topBlob,
+              { backgroundColor: b1 },
+            ]}
+          />
+          <View
+            style={[
+              styles.blob,
+              bottomBlob,
+              { backgroundColor: b2 },
+            ]}
+          />
+        </View>
+      )}
       <View style={styles.foreground}>{children}</View>
     </View>
   );
@@ -106,6 +129,9 @@ const styles = StyleSheet.create({
   blob: {
     position: "absolute",
     borderRadius: 9999,
+  },
+  bgImage: {
+    ...StyleSheet.absoluteFillObject,
   },
   foreground: {
     flex: 1,

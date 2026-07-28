@@ -108,13 +108,13 @@ export function WorkHome({
   const attOn = payroll?.attendance_tracking ?? false;
 
   return (
-    <View style={s.content}>
+    <View style={[s.content, isDesktop && s.contentDesktop]}>
       {loading && !payroll ? (
         <ActivityIndicator color={ORANGE} style={{ marginTop: 40 }} />
       ) : (
         <>
           {/* ── Unified hero: identity + earnings together, one full-width card ── */}
-          <LinearGradient colors={['#41220F', '#241109']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.hero, isDesktop && s.heroDesktop]}>
+          <LinearGradient colors={['#41220F', '#241109']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.hero, isDesktop && s.heroDesktop, isDesktop && { marginBottom: 12 }]}>
             <View style={s.heroGlowA} pointerEvents="none" />
             <View style={s.heroGlowB} pointerEvents="none" />
 
@@ -155,12 +155,12 @@ export function WorkHome({
                 <Text style={s.heroLabel}>{attOn ? 'ESTIMATED THIS PERIOD' : 'AGREED THIS PERIOD'}</Text>
                 <View style={s.periodChip}><Text style={s.periodChipTxt}>{payroll?.period_label ?? 'This month'}</Text></View>
               </View>
-              <Text style={s.heroAmount}>{payroll ? formatPeso(payroll.estimated_earned) : '—'}</Text>
+              <Text style={[s.heroAmount, isDesktop && { fontSize: 34, marginTop: 6 }]}>{payroll ? formatPeso(payroll.estimated_earned) : '—'}</Text>
               <Text style={s.heroSub}>
                 {payroll?.salary_amount ? `Agreed ${formatPeso(payroll.salary_amount)}/${salaryPeriodAbbr(payroll.salary_period)}` : ''}
                 {attOn && payroll ? ` · ${payroll.days_worked} day${payroll.days_worked === 1 ? '' : 's'} worked` : ''}
               </Text>
-              <View style={s.heroFooter}>
+              <View style={[s.heroFooter, isDesktop && { marginTop: 10, paddingTop: 8 }]}>
                 <Ionicons name="shield-checkmark" size={13} color="rgba(255,255,255,0.7)" />
                 <Text style={s.heroFootTxt}>Final pay is set by your employer · payout {payroll?.next_payout ?? 'end of month'}</Text>
               </View>
@@ -168,20 +168,20 @@ export function WorkHome({
           </LinearGradient>
 
           {/* ── At a glance ── */}
-          <View style={s.glanceRow}>
-            <TouchableOpacity style={s.glanceCard} onPress={goSchedule} activeOpacity={0.85}>
+          <View style={[s.glanceRow, isDesktop && { marginBottom: 10 }]}>
+            <TouchableOpacity style={[s.glanceCard, isDesktop && s.glanceCardDesktop]} onPress={goSchedule} activeOpacity={0.85}>
               <View style={[s.glanceIcon, { backgroundColor: ICON_BG }]}><Ionicons name="bed-outline" size={17} color={ORANGE} /></View>
               <Text style={s.glanceValue} numberOfLines={1}>{restDayYmd ? longDate(restDayYmd) : 'None'}</Text>
               <Text style={s.glanceLabel}>Next rest day</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={s.glanceCard} onPress={goSchedule} activeOpacity={0.85}>
+            <TouchableOpacity style={[s.glanceCard, isDesktop && s.glanceCardDesktop]} onPress={goSchedule} activeOpacity={0.85}>
               <View style={[s.glanceIcon, { backgroundColor: SUCCESS_BG }]}><Ionicons name="airplane-outline" size={17} color={GREEN} /></View>
               <Text style={s.glanceValue}>{pendingLeaveCount > 0 ? `${pendingLeaveCount} pending` : nextApprovedLeave ? 'Approved' : 'None'}</Text>
               <Text style={s.glanceLabel}>Leave</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={s.glanceCard} onPress={openMessages} activeOpacity={0.85}>
+            <TouchableOpacity style={[s.glanceCard, isDesktop && s.glanceCardDesktop]} onPress={openMessages} activeOpacity={0.85}>
               <View style={[s.glanceIcon, { backgroundColor: INFO_BG, overflow: 'hidden' }]}>
                 {employerPhoto ? <Image source={{ uri: employerPhoto }} style={{ width: 34, height: 34 }} contentFit="cover" /> : <Ionicons name="person" size={17} color={BLUE} />}
               </View>
@@ -191,8 +191,8 @@ export function WorkHome({
           </View>
 
           {/* ── This month + Manage (side-by-side on desktop) ── */}
-          <View style={isDesktop ? s.twoCol : undefined}>
-            <View style={[s.card, isDesktop && s.colItem]}>
+          <View style={isDesktop ? [s.twoCol, { marginBottom: 10 }] : undefined}>
+            <View style={[s.card, isDesktop && s.colItem, isDesktop && s.cardDesktop]}>
               <Text style={s.cardTitle}>This month</Text>
               <View style={s.monthRow}>
                 <MonthStat value={attOn && payroll ? String(payroll.days_worked) : '—'} label="Days worked" />
@@ -206,7 +206,7 @@ export function WorkHome({
               )}
             </View>
 
-            <View style={[s.card, isDesktop && s.colItem]}>
+            <View style={[s.card, isDesktop && s.colItem, isDesktop && s.cardDesktop]}>
               <Text style={s.cardTitle}>Manage</Text>
               <ManageRow icon="chatbubbles-outline" color={ORANGE} label="Message employer" badge={unreadMessages} onPress={openMessages} />
               <ManageRow icon="calendar-outline" color={ORANGE} label="Request leave" onPress={requestLeave} />
@@ -216,8 +216,8 @@ export function WorkHome({
             </View>
           </View>
 
-          <TouchableOpacity style={s.refreshBtn} onPress={() => { void onRefreshWorkContext(); void load(); }} activeOpacity={0.7}>
-            <Ionicons name="refresh-outline" size={15} color={MUTED} />
+          <TouchableOpacity style={[s.refreshBtn, isDesktop && { paddingVertical: 4, marginTop: 0 }]} onPress={() => { void onRefreshWorkContext(); void load(); }} activeOpacity={0.7}>
+            <Ionicons name="refresh-outline" size={14} color={MUTED} />
             <Text style={s.refreshTxt}>Refresh</Text>
           </TouchableOpacity>
         </>
@@ -270,12 +270,14 @@ function ManageRow({ icon, color, label, onPress, badge, last }: {
 
 const s = StyleSheet.create({
   content: { padding: 16, paddingBottom: 40 },
+  // Desktop: no scroll wrapper, so keep this tight — no artificial bottom buffer.
+  contentDesktop: { padding: 20, paddingBottom: 8 },
   twoCol: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   colItem: { flex: 1 },
 
   // Unified hero — identity + earnings in ONE card (fills the width; no dead space)
   hero: { borderRadius: 24, padding: 22, marginBottom: 16, overflow: 'hidden' },
-  heroDesktop: { flexDirection: 'row', alignItems: 'center', padding: 28, gap: 28 },
+  heroDesktop: { flexDirection: 'row', alignItems: 'center', padding: 20, gap: 22 },
   heroGlowA: { position: 'absolute', top: -60, right: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,154,77,0.14)' },
   heroGlowB: { position: 'absolute', bottom: -70, left: -50, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255,154,77,0.08)' },
 
@@ -309,12 +311,14 @@ const s = StyleSheet.create({
   // At a glance
   glanceRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   glanceCard: { flex: 1, backgroundColor: SURFACE, borderRadius: 16, borderWidth: 1, borderColor: DIVIDER, padding: 12, alignItems: 'center', gap: 6 },
+  glanceCardDesktop: { paddingVertical: 10 },
   glanceIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   glanceValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, textAlign: 'center' },
   glanceLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 10.5, color: MUTED },
 
   // Cards
   card: { backgroundColor: SURFACE, borderRadius: 18, borderWidth: 1, borderColor: DIVIDER, padding: 16, marginBottom: 14 },
+  cardDesktop: { padding: 14, marginBottom: 0 },
   cardTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, marginBottom: 12 },
 
   monthRow: { flexDirection: 'row', alignItems: 'center' },
