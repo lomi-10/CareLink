@@ -18,7 +18,10 @@ import {
   DIVIDER, ICON_BG, GREEN, DANGER,
 } from '@/components/parent/home/parentWarmTheme';
 import { ParentWorkModeTabBar } from '@/components/parent/home';
-import { useAuth } from '@/hooks/shared';
+import { ParentTopNav } from '@/components/parent/web/ParentTopNav';
+import { ConfirmationModal, NotificationModal } from '@/components/shared';
+import { useParentProfile } from '@/hooks/parent/useParentProfile';
+import { useAuth, useResponsive } from '@/hooks/shared';
 import {
   fetchAttendanceToday, fetchAttendanceMonth,
   type AttendanceMonthSummary, type AttendanceToday, type AttendanceDay,
@@ -418,19 +421,6 @@ function InfoRow({ icon, label, value, action, valueColor }: {
   );
 }
 
-// ── Perf tile ──────────────────────────────────────────────────────────────
-function PerfTile({ label, value, sub, subColor }: {
-  label: string; value: string; sub: string; subColor: string;
-}) {
-  return (
-    <View style={s.perfTile}>
-      <Text style={s.perfValue}>{value}</Text>
-      <Text style={[s.perfSub, { color: subColor }]}>{sub}</Text>
-      <Text style={s.perfLabel}>{label}</Text>
-    </View>
-  );
-}
-
 // ── Leave usage bar ────────────────────────────────────────────────────────
 function LeaveBar({ used, total, color }: { used: number; total: number; color: string }) {
   const pct = total > 0 ? Math.min(1, used / total) : 0;
@@ -452,8 +442,10 @@ type Tab = 'overview' | 'attendance' | 'payroll';
 
 export default function HelperProfileScreen() {
   const router = useRouter();
-  const { userData } = useAuth();
+  const { userData, getFullName, handleLogout } = useAuth();
   const parentId = userData ? Number(userData.user_id) : 0;
+  const { isDesktop } = useResponsive();
+  const { profileData } = useParentProfile();
 
   const params = useLocalSearchParams<{
     application_id?: string; helper_id?: string; helper_name?: string;
@@ -474,6 +466,8 @@ export default function HelperProfileScreen() {
   const [activeTab,   setActiveTab]   = useState<Tab>('overview');
   const [loading,     setLoading]     = useState(true);
   const [attLoading,  setAttLoading]  = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [successLogout, setSuccessLogout] = useState(false);
 
   const [contractTerms, setContractTerms] = useState<ContractTerms | null>(null);
   const [todayAtt,      setTodayAtt]      = useState<AttendanceToday | null>(null);
@@ -665,36 +659,31 @@ export default function HelperProfileScreen() {
   // ── Overview tab ─────────────────────────────────────────────────────────
   const overviewContent = (
     <View style={s.tabContent}>
-      {/* Performance */}
+      {/* Performance — one primary stat, the rest as quiet secondary detail */}
       <LinearGradient colors={CARD_GR} style={s.card}>
         <View style={s.cardHead}>
           <Text style={s.cardTitle}>Performance</Text>
           <View style={s.monthPill}><Text style={s.monthPillText}>This Month</Text></View>
         </View>
-        <View style={s.perfGrid}>
-          <PerfTile
-            label="Attendance"
-            value={attendancePct !== null ? `${attendancePct}%` : '—'}
-            sub={attPerf.text} subColor={attPerf.color}
-          />
-          <PerfTile
-            label="Tasks"
-            value={tasksTotal > 0 ? `${tasksDone}/${tasksTotal}` : '—'}
-            sub={tasksTotal > 0 ? 'Done' : 'No tasks'}
-            subColor={tasksDone === tasksTotal && tasksTotal > 0 ? GREEN : MUTED}
-          />
-          <PerfTile
-            label="Late"
-            value={String(lateCount)}
-            sub={lateCount === 0 ? 'On time' : 'day(s)'}
-            subColor={lateCount === 0 ? GREEN : YELLOW}
-          />
-          <PerfTile
-            label="Absent"
-            value={String(displayAbsent)}
-            sub={absent === 0 ? 'Perfect' : 'day(s)'}
-            subColor={absent === 0 ? GREEN : DANGER}
-          />
+        <View style={s.perfPrimary}>
+          <Text style={s.perfPrimaryValue}>{attendancePct !== null ? `${attendancePct}%` : '—'}</Text>
+          <Text style={s.perfPrimaryLabel}>Attendance</Text>
+          <Text style={[s.perfPrimarySub, { color: attPerf.color }]}>{attPerf.text}</Text>
+        </View>
+        <View style={s.perfSecondaryRow}>
+          <Text style={s.perfSecondaryItem}>
+            <Text style={[s.perfSecondaryVal, { color: tasksDone === tasksTotal && tasksTotal > 0 ? GREEN : MUTED }]}>
+              {tasksTotal > 0 ? `${tasksDone}/${tasksTotal}` : '—'}
+            </Text> tasks
+          </Text>
+          <View style={s.perfSecondaryDiv} />
+          <Text style={s.perfSecondaryItem}>
+            <Text style={[s.perfSecondaryVal, { color: lateCount === 0 ? GREEN : YELLOW }]}>{lateCount}</Text> late
+          </Text>
+          <View style={s.perfSecondaryDiv} />
+          <Text style={s.perfSecondaryItem}>
+            <Text style={[s.perfSecondaryVal, { color: absent === 0 ? GREEN : DANGER }]}>{displayAbsent}</Text> absent
+          </Text>
         </View>
       </LinearGradient>
 
@@ -964,37 +953,14 @@ export default function HelperProfileScreen() {
         </LinearGradient>
       )}
 
-      {/* This month summary */}
-      <LinearGradient colors={CARD_GR} style={s.card}>
-        <View style={s.cardRowHead}>
-          <View style={[s.cardIconWrap, { backgroundColor: ICON_BG }]}>
-            <Ionicons name="stats-chart-outline" size={16} color={BROWN} />
-          </View>
-          <Text style={s.cardTitle}>This Month</Text>
-          <View style={[s.monthPill, { marginLeft: 'auto' }]}>
-            <Text style={s.monthPillText}>{monthLabel(attYear, attMonth)}</Text>
-          </View>
-        </View>
-        <View style={s.paySummaryRow}>
-          {[
-            { label: 'Present', value: String(present), color: GREEN },
-            { label: 'Late',    value: String(lateCount), color: YELLOW },
-            { label: 'Absent',  value: String(displayAbsent),  color: DANGER },
-            { label: 'Leave',   value: String(leave),   color: GRAY_DOT },
-          ].map(item => (
-            <View key={item.label} style={s.paySummaryTile}>
-              <Text style={[s.paySummaryVal, { color: item.color }]}>{item.value}</Text>
-              <Text style={s.paySummaryLbl}>{item.label}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={s.payEstRow}>
-          <Ionicons name="information-circle-outline" size={14} color={MUTED} />
-          <Text style={s.payEstText}>
-            Monthly est.: {monthlyEst} based on contract salary
-          </Text>
-        </View>
-      </LinearGradient>
+      {/* Monthly estimate note — the Present/Late/Absent/Leave breakdown already
+          lives on the Attendance tab; no need to repeat it here. */}
+      <View style={s.payEstRow}>
+        <Ionicons name="information-circle-outline" size={14} color={MUTED} />
+        <Text style={s.payEstText}>
+          Monthly est.: {monthlyEst} based on contract salary · see the Attendance tab for day-by-day detail.
+        </Text>
+      </View>
 
       {/* Benefits */}
       {contractTerms?.other_benefits ? (
@@ -1019,6 +985,106 @@ export default function HelperProfileScreen() {
   );
 
   // ── Render ────────────────────────────────────────────────────────────────
+  const bodyContent = (
+    <>
+      {/* Hero card */}
+      <LinearGradient colors={HERO_GR} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.heroCard}>
+        <View style={s.heroInner}>
+          <View style={s.photoWrap}>
+            {helperPhoto ? (
+              <Image source={{ uri: helperPhoto }} style={s.photo} contentFit="cover" />
+            ) : (
+              <View style={[s.photo, s.photoFb]}>
+                <Text style={s.photoFbText}>{initials}</Text>
+              </View>
+            )}
+            <View style={[s.onlineDot, { backgroundColor: todayStatus.color }]} />
+          </View>
+          <View style={s.heroInfo}>
+            <Text style={s.heroName}>{helperName}</Text>
+            <Text style={s.heroJob}>{jobTitle}</Text>
+            <View style={[s.statusPill, { backgroundColor: statusInfo.bg }]}>
+              <Text style={[s.statusPillText, { color: statusInfo.color }]}>{statusInfo.text}</Text>
+            </View>
+            {empStart ? (
+              <View style={s.heroDates}>
+                <Ionicons name="play-circle-outline" size={12} color="rgba(59,42,24,0.55)" />
+                <Text style={s.heroDateText}>{formatDateLong(empStart)}</Text>
+              </View>
+            ) : null}
+            {empEnd ? (
+              <View style={s.heroDates}>
+                <Ionicons name="stop-circle-outline" size={12} color={ORANGE} />
+                <Text style={[s.heroDateText, { color: ORANGE }]}>{formatDateLong(empEnd)}</Text>
+              </View>
+            ) : null}
+            {!empEnd && duration ? (
+              <Text style={s.heroDuration}>{duration} employed</Text>
+            ) : null}
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Tab bar */}
+      <View style={s.tabBar}>
+        {(['overview', 'attendance', 'payroll'] as Tab[]).map(tab => (
+          <TouchableOpacity key={tab} style={s.tabItem} onPress={() => setActiveTab(tab)} activeOpacity={0.8}>
+            <Text style={[s.tabLabel, activeTab === tab && s.tabLabelActive]}>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </Text>
+            {activeTab === tab && <View style={s.tabUnderline} />}
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {loading ? (
+        <ActivityIndicator color={BROWN} style={{ marginTop: 40 }} />
+      ) : activeTab === 'overview' ? overviewContent
+        : activeTab === 'attendance' ? attendanceContent
+        : payrollContent}
+    </>
+  );
+
+  const modals = (
+    <>
+      <ConfirmationModal
+        visible={confirmLogout} title="Log Out" message="Are you sure you want to log out?"
+        confirmText="Log Out" cancelText="Cancel" type="danger"
+        onConfirm={() => { setConfirmLogout(false); setSuccessLogout(true); }}
+        onCancel={() => setConfirmLogout(false)}
+      />
+      <NotificationModal
+        visible={successLogout} message="Logged out successfully" type="success" autoClose duration={1500}
+        onClose={() => { setSuccessLogout(false); handleLogout(); }}
+      />
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <View style={{ flex: 1, backgroundColor: BG }}>
+        <ParentTopNav
+          mode="work"
+          active="helpers"
+          userName={getFullName()}
+          avatar={(profileData?.profile?.profile_image as string) ?? null}
+          verified={profileData?.profile?.verification_status === 'Verified'}
+          onLogout={() => setConfirmLogout(true)}
+        />
+        <ScrollView contentContainerStyle={s.desktopScroll} showsVerticalScrollIndicator={false}>
+          <View style={s.desktopInner}>
+            <TouchableOpacity style={s.desktopBackBtn} onPress={() => router.back()} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={16} color={BROWN} />
+              <Text style={s.desktopBackText}>Back to Helper Management</Text>
+            </TouchableOpacity>
+            {bodyContent}
+          </View>
+        </ScrollView>
+        {modals}
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={s.root}>
       <View style={s.header}>
@@ -1030,64 +1096,11 @@ export default function HelperProfileScreen() {
       </View>
 
       <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Hero card */}
-        <LinearGradient colors={HERO_GR} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.heroCard}>
-          <View style={s.heroInner}>
-            <View style={s.photoWrap}>
-              {helperPhoto ? (
-                <Image source={{ uri: helperPhoto }} style={s.photo} contentFit="cover" />
-              ) : (
-                <View style={[s.photo, s.photoFb]}>
-                  <Text style={s.photoFbText}>{initials}</Text>
-                </View>
-              )}
-              <View style={[s.onlineDot, { backgroundColor: todayStatus.color }]} />
-            </View>
-            <View style={s.heroInfo}>
-              <Text style={s.heroName}>{helperName}</Text>
-              <Text style={s.heroJob}>{jobTitle}</Text>
-              <View style={[s.statusPill, { backgroundColor: statusInfo.bg }]}>
-                <Text style={[s.statusPillText, { color: statusInfo.color }]}>{statusInfo.text}</Text>
-              </View>
-              {empStart ? (
-                <View style={s.heroDates}>
-                  <Ionicons name="play-circle-outline" size={12} color="rgba(59,42,24,0.55)" />
-                  <Text style={s.heroDateText}>{formatDateLong(empStart)}</Text>
-                </View>
-              ) : null}
-              {empEnd ? (
-                <View style={s.heroDates}>
-                  <Ionicons name="stop-circle-outline" size={12} color={ORANGE} />
-                  <Text style={[s.heroDateText, { color: ORANGE }]}>{formatDateLong(empEnd)}</Text>
-                </View>
-              ) : null}
-              {!empEnd && duration ? (
-                <Text style={s.heroDuration}>{duration} employed</Text>
-              ) : null}
-            </View>
-          </View>
-        </LinearGradient>
-
-        {/* Tab bar */}
-        <View style={s.tabBar}>
-          {(['overview', 'attendance', 'payroll'] as Tab[]).map(tab => (
-            <TouchableOpacity key={tab} style={s.tabItem} onPress={() => setActiveTab(tab)} activeOpacity={0.8}>
-              <Text style={[s.tabLabel, activeTab === tab && s.tabLabelActive]}>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </Text>
-              {activeTab === tab && <View style={s.tabUnderline} />}
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {loading ? (
-          <ActivityIndicator color={BROWN} style={{ marginTop: 40 }} />
-        ) : activeTab === 'overview' ? overviewContent
-          : activeTab === 'attendance' ? attendanceContent
-          : payrollContent}
+        {bodyContent}
       </ScrollView>
 
       <ParentWorkModeTabBar />
+      {modals}
     </SafeAreaView>
   );
 }
@@ -1103,6 +1116,11 @@ const s = StyleSheet.create({
   root:          { flex: 1, backgroundColor: BG },
   scroll:        { flex: 1 },
   scrollContent: { paddingBottom: 100 },
+
+  desktopScroll: { paddingBottom: 60 },
+  desktopInner:  { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 20 },
+  desktopBackBtn:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
+  desktopBackText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: BROWN },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -1146,12 +1164,15 @@ const s = StyleSheet.create({
   monthPill:   { borderRadius: 20, paddingVertical: 4, paddingHorizontal: 10, backgroundColor: ICON_BG, borderWidth: 1, borderColor: DIVIDER },
   monthPillText: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: BROWN },
 
-  // Performance grid
-  perfGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  perfTile:  { width: '46%', paddingVertical: 6, paddingLeft: 4 },
-  perfValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 26, color: DARK, lineHeight: 32 },
-  perfSub:   { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, marginBottom: 2 },
-  perfLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },
+  // Performance — one primary stat + a quiet secondary row
+  perfPrimary: { alignItems: 'center', paddingVertical: 14 },
+  perfPrimaryValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 40, color: DARK, letterSpacing: -0.5 },
+  perfPrimaryLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: MUTED, marginTop: 2 },
+  perfPrimarySub:   { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, marginTop: 4 },
+  perfSecondaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: DIVIDER },
+  perfSecondaryItem: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: MUTED },
+  perfSecondaryVal: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13 },
+  perfSecondaryDiv: { width: 1, height: 14, backgroundColor: DIVIDER },
 
   // Today status
   actRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
@@ -1234,10 +1255,6 @@ const s = StyleSheet.create({
   leaveBarSub:    { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginTop: 5 },
 
   // Payroll summary
-  paySummaryRow:  { flexDirection: 'row', gap: 6, marginBottom: 12 },
-  paySummaryTile: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: DIVIDER },
-  paySummaryVal:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 20, lineHeight: 26 },
-  paySummaryLbl:  { fontFamily: FontFamily.fredokaRegular, fontSize: 10, color: MUTED, textAlign: 'center' },
   payEstRow:      { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 8, borderTopWidth: 1, borderTopColor: DIVIDER },
   payEstText:     { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, flex: 1 },
 
