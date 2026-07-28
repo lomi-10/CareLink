@@ -208,6 +208,7 @@ function HelperMessagesContent() {
         avatar={(profileData?.profile?.profile_image as string) ?? null}
         verified={profileData?.profile?.verification_status === 'Verified'}
         onLogout={initiateLogout}
+        workMode={isWorkMode && !!activeHire}
       />
       <ConfirmationModal
         visible={confirmLogoutVisible}

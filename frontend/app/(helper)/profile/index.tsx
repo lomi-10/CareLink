@@ -322,6 +322,7 @@ export default function HelperProfileMain() {
           userName={fullName}
           avatar={(profileData?.profile?.profile_image as string) ?? null}
           onLogout={initiateLogout}
+          workMode={isWorkMode && !!activeHire}
         />
         <ConfirmationModal
           visible={confirmLogout} title="Log Out"

@@ -33,7 +33,7 @@ function convTime(v?: string) {
   return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 }
 
-export function HelperMessagesWeb({ userName, avatar, verified, onLogout }: { userName: string; avatar: string | null; verified: boolean; onLogout: () => void }) {
+export function HelperMessagesWeb({ userName, avatar, verified, onLogout, workMode = false }: { userName: string; avatar: string | null; verified: boolean; onLogout: () => void; workMode?: boolean }) {
   const router = useRouter();
   const { open: openCareBot } = useCareBot();
   const { conversations, loading, refresh } = useConversations();
@@ -77,7 +77,7 @@ export function HelperMessagesWeb({ userName, avatar, verified, onLogout }: { us
 
   return (
     <View style={s.root}>
-      <HelperTopNav active="messages" userName={userName} avatar={avatar} verified={verified} onLogout={onLogout} />
+      <HelperTopNav active="messages" workMode={workMode} userName={userName} avatar={avatar} verified={verified} onLogout={onLogout} />
       <View style={s.body}>
         {/* ── LEFT: conversation list ── */}
         <View style={s.convPanel}>

@@ -53,7 +53,7 @@ function Ring({ pct, size = 84, stroke = 9, track = 'rgba(255,255,255,.14)', fil
   );
 }
 
-export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: string; avatar: string | null; onLogout: () => void }) {
+export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false }: { userName: string; avatar: string | null; onLogout: () => void; workMode?: boolean }) {
   const router = useRouter();
   const { open: openCareBot } = useCareBot();
   const { profileData, refresh } = useHelperProfile();
@@ -440,7 +440,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout }: { userName: str
 
   return (
     <View style={s.root}>
-      <HelperTopNav active={'profile' as any} userName={userName} avatar={avatar} verified={verified} onLogout={onLogout} />
+      <HelperTopNav active={'profile' as any} workMode={workMode} userName={userName} avatar={avatar} verified={verified} onLogout={onLogout} />
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.page}>
           {/* ── SIDEBAR ── */}
