@@ -71,6 +71,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
   const [customRoles, setCustomRoles] = useState<string[]>([]);
   const [customSkillList, setCustomSkillList] = useState<string[]>([]);
   const [skillStep, setSkillStep] = useState<'category' | 'roles' | 'skills' | 'languages'>('category');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   // documents editor
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
@@ -293,6 +294,62 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
     }
   };
 
+  // Profile photo. The avatar has always shown a camera badge, but it only ever
+  // opened the Personal Information form — which has no photo field — so on web
+  // there was no way to set a photo at all. Picks a file and posts it to the same
+  // update_profile.php `profile_image` field the mobile editor uses.
+  const uploadPhoto = async () => {
+    if (uploadingPhoto) return;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: ['image/*'], copyToCacheDirectory: true, multiple: false });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      let name = asset.name || 'photo.jpg';
+      if (!/\.[a-z0-9]+$/i.test(name)) name += '.jpg';
+
+      setUploadingPhoto(true);
+      const raw = await AsyncStorage.getItem('user_data');
+      const user = raw ? JSON.parse(raw) : {};
+      const userId = String(user.user_id ?? '');
+      if (!userId) throw new Error('Please sign in again.');
+
+      // update_profile.php overwrites every scalar column, so the photo has to
+      // ride along with the full profile or the rest of it gets wiped.
+      const fd = new FormData();
+      Object.entries({
+        user_id: userId, requester_id: userId,
+        first_name: U.first_name ?? '', middle_name: U.middle_name ?? '', last_name: U.last_name ?? '', username: U.username ?? '',
+        contact_number: p.contact_number ?? '', birth_date: (p.birth_date ?? p.date_of_birth ?? '') || '',
+        civil_status: p.civil_status ?? 'Single', religion: p.religion ?? '',
+        province: p.province ?? '', municipality: (p.municipality ?? p.city) ?? '', barangay: p.barangay ?? '',
+        address: p.address ?? '', landmark: p.landmark ?? '', bio: p.bio ?? '',
+        experience_years: String(p.years_experience ?? p.experience_years ?? 0),
+        employment_type: p.employment_type ?? 'Any', work_schedule: p.work_schedule ?? 'Full-time',
+        expected_salary: String(p.expected_salary ?? 6000), salary_period: p.salary_period ?? 'Monthly',
+      }).forEach(([k, v]) => fd.append(k, String(v ?? '')));
+      // gender / education_level are nullable enums — '' would truncate them.
+      if (p.gender) fd.append('gender', p.gender);
+      if (p.education_level) fd.append('education_level', p.education_level);
+
+      const blob = await (await fetch(asset.uri)).blob();
+      fd.append('profile_image', blob, name);
+
+      const res = await fetch(`${API_URL}/helper/update_profile.php`, { method: 'POST', body: fd });
+      const data = JSON.parse(await res.text());
+      if (!data.success) throw new Error(data.message || 'Could not update your photo.');
+
+      // Keep AsyncStorage in sync so the top nav avatar updates immediately too.
+      const newPhoto = data.data?.profile_image ?? null;
+      if (newPhoto && raw) {
+        try { await AsyncStorage.setItem('user_data', JSON.stringify({ ...user, profile_image: newPhoto })); } catch { /* best-effort */ }
+      }
+      setNotif({ visible: true, msg: 'Profile photo updated.', type: 'success' });
+      refresh();
+    } catch (e: any) {
+      setNotif({ visible: true, msg: e?.message || 'Could not update your photo.', type: 'error' });
+    } finally { setUploadingPhoto(false); }
+  };
+
   // Pick a file and upload it to a document slot (inline — no modal, no redirect).
   const uploadDoc = async (field: string, type: string) => {
     if (uploadingDoc) return;
@@ -359,9 +416,13 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
   const profileCard = (compact: boolean) => (
     <LinearGradient colors={FEATURE_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.pcard}>
       <View style={s.pcardTop}>
-        <Pressable onPress={() => startEdit('personal')} style={s.avaWrap}>
+        <Pressable onPress={uploadPhoto} disabled={uploadingPhoto} style={s.avaWrap} accessibilityLabel="Change profile photo">
           {avatar ? <Image source={{ uri: avatar }} style={s.ava} /> : <View style={[s.ava, s.avaFb]}><Ionicons name="person" size={40} color="rgba(255,255,255,.5)" /></View>}
-          <View style={s.avaCam}><Ionicons name="camera" size={13} color="#fff" /></View>
+          <View style={s.avaCam}>
+            {uploadingPhoto
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Ionicons name="camera" size={13} color="#fff" />}
+          </View>
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={s.pcardName}>{userName || 'Helper'}</Text>

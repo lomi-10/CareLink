@@ -106,6 +106,7 @@ export default function SkillsScreen() {
 
       <EditHelperProfileModal
         visible={editOpen}
+        initialSection="skills"
         onClose={() => setEditOpen(false)}
         onSaveSuccess={() => { setEditOpen(false); refresh(); }}
       />

@@ -60,6 +60,10 @@ interface Props {
   /** Called right after a photo upload succeeds, so the host screen can
    *  refresh its own profile data without closing this modal. */
   onProfileUpdated?: () => void;
+  /** Open straight into one section instead of the chooser. Used by the
+   *  detail screens (Experience, Skills) whose Edit button should land on
+   *  the matching section rather than making the helper pick it again. */
+  initialSection?:   SectionKey;
 }
 
 // ─── Section config ───────────────────────────────────────────────────────────
@@ -102,7 +106,7 @@ const MUTED  = '#7A5C3E';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess, onProfileUpdated }: Props) {
+export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess, onProfileUpdated, initialSection }: Props) {
 
   // ── Navigation state ────────────────────────────────────────────────────────
   const [view, setView] = useState<ModalView>({ type: 'chooser' });
@@ -199,8 +203,12 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (visible) { loadData(); setImageChanged(false); setView({ type: 'chooser' }); }
-  }, [visible]);
+    if (visible) {
+      loadData();
+      setImageChanged(false);
+      setView(initialSection ? { type: 'section', key: initialSection, step: 1 } : { type: 'chooser' });
+    }
+  }, [visible, initialSection]);
 
   const showNotif = (msg: string, type: 'success' | 'error') => {
     setNotifMessage(msg); setNotifType(type); setNotifVisible(true);
