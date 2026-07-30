@@ -1,5 +1,31 @@
 <?php
 /**
+ * Both required document types must be uploaded (Pending or Verified — a
+ * Rejected copy doesn't count) before an account is considered ready for
+ * PESO's queue. Shared by the profile-completed sync below AND the upload
+ * endpoints, so uploading a single document (e.g. just a Valid ID) can no
+ * longer flip verification_status to 'Pending' on its own.
+ */
+function carelink_has_required_documents(mysqli $conn, int $user_id): bool
+{
+    $stmt = $conn->prepare(
+        "SELECT COUNT(DISTINCT document_type) AS c
+         FROM user_documents
+         WHERE user_id = ?
+           AND document_type IN ('Barangay Clearance', 'Valid ID')
+           AND status IN ('Pending', 'Verified')"
+    );
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $count = (int) ($stmt->get_result()->fetch_assoc()['c'] ?? 0);
+    $stmt->close();
+    return $count >= 2; // both Barangay Clearance AND Valid ID
+}
+
+/**
  * Marks users.profile_completed based on minimum fields for PESO verification prep.
  * Called from helper/update_profile.php and parent/update_profile.php inside the same transaction.
  *
@@ -51,16 +77,9 @@ function carelink_sync_helper_profile_completed(mysqli $conn, int $user_id): boo
         $sk->close();
     }
 
-    $docCount = 0;
-    $dk = $conn->prepare("SELECT COUNT(*) AS c FROM user_documents WHERE user_id = ? AND status IN ('Pending','Verified')");
-    if ($dk) {
-        $dk->bind_param("i", $user_id);
-        $dk->execute();
-        $docCount = (int) ($dk->get_result()->fetch_assoc()['c'] ?? 0);
-        $dk->close();
-    }
+    $hasRequiredDocs = carelink_has_required_documents($conn, $user_id);
 
-    $complete = $baseOk && $skillCount > 0 && $docCount >= 1;
+    $complete = $baseOk && $skillCount > 0 && $hasRequiredDocs;
     carelink_set_profile_completed_flag($conn, $user_id, $complete);
 
     // If helper is now "complete", move verification into the PESO queue.
@@ -141,16 +160,9 @@ function carelink_sync_parent_profile_completed(mysqli $conn, int $user_id): boo
         $hq->close();
     }
 
-    $docCount = 0;
-    $dk = $conn->prepare("SELECT COUNT(*) AS c FROM user_documents WHERE user_id = ? AND status IN ('Pending','Verified')");
-    if ($dk) {
-        $dk->bind_param("i", $user_id);
-        $dk->execute();
-        $docCount = (int) ($dk->get_result()->fetch_assoc()['c'] ?? 0);
-        $dk->close();
-    }
+    $hasRequiredDocs = carelink_has_required_documents($conn, $user_id);
 
-    $complete = $baseOk && $hhOk && $docCount >= 1;
+    $complete = $baseOk && $hhOk && $hasRequiredDocs;
     carelink_set_profile_completed_flag($conn, $user_id, $complete);
 
     // If parent is now "complete", move verification into the PESO queue.

@@ -371,21 +371,26 @@ try {
             $savedCount++;
         }
 
-        // Return helper to PESO queue after uploads (first submission or replacing rejected docs)
-        $updateProfile = $conn->prepare(
-            "UPDATE helper_profiles 
-             SET verification_status = 'Pending', updated_at = NOW() 
-             WHERE user_id = ? 
-               AND (verification_status = 'Unverified' 
-                    OR verification_status IS NULL 
-                    OR verification_status = '' 
-                    OR verification_status = 'Rejected' 
-                    OR verification_status = 'Pending')"
-        );
-        if ($updateProfile) {
-            $updateProfile->bind_param("i", $user_id);
-            $updateProfile->execute();
-            $updateProfile->close();
+        // Return helper to PESO queue after uploads (first submission or replacing
+        // rejected docs) — but only once BOTH required documents are on file.
+        // Uploading a single document (e.g. just a Valid ID) must not by itself
+        // queue an incomplete submission for PESO review.
+        if (carelink_has_required_documents($conn, $user_id)) {
+            $updateProfile = $conn->prepare(
+                "UPDATE helper_profiles
+                 SET verification_status = 'Pending', updated_at = NOW()
+                 WHERE user_id = ?
+                   AND (verification_status = 'Unverified'
+                        OR verification_status IS NULL
+                        OR verification_status = ''
+                        OR verification_status = 'Rejected'
+                        OR verification_status = 'Pending')"
+            );
+            if ($updateProfile) {
+                $updateProfile->bind_param("i", $user_id);
+                $updateProfile->execute();
+                $updateProfile->close();
+            }
         }
 
         $profile_completed = carelink_sync_helper_profile_completed($conn, $user_id);

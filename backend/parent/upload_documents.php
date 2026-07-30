@@ -151,16 +151,21 @@ try {
             throw new Exception("No valid files were successfully processed.");
         }
 
-        // Return account to PESO queue after new uploads (first-time or replacing rejected docs)
-        $updateProfile = $conn->prepare(
-            "UPDATE parent_profiles 
-             SET verification_status = 'Pending', updated_at = NOW() 
-             WHERE user_id = ? 
-               AND verification_status IN ('Unverified', 'Pending', 'Rejected')"
-        );
-        $updateProfile->bind_param("i", $user_id);
-        $updateProfile->execute();
-        $updateProfile->close();
+        // Return account to PESO queue after new uploads (first-time or replacing
+        // rejected docs) — but only once BOTH required documents are on file.
+        // Uploading a single document must not by itself queue an incomplete
+        // submission for PESO review.
+        if (carelink_has_required_documents($conn, $user_id)) {
+            $updateProfile = $conn->prepare(
+                "UPDATE parent_profiles
+                 SET verification_status = 'Pending', updated_at = NOW()
+                 WHERE user_id = ?
+                   AND verification_status IN ('Unverified', 'Pending', 'Rejected')"
+            );
+            $updateProfile->bind_param("i", $user_id);
+            $updateProfile->execute();
+            $updateProfile->close();
+        }
 
         $profile_completed = carelink_sync_parent_profile_completed($conn, $user_id);
 

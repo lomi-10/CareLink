@@ -87,12 +87,12 @@ try {
                   AND COALESCE(h.barangay,'') <> ''
                   AND COALESCE(h.bio,'') <> '' AND CHAR_LENGTH(TRIM(h.bio)) >= 15
                   AND EXISTS (SELECT 1 FROM helper_skills hs WHERE hs.profile_id = h.profile_id)
-                  AND EXISTS (
-                    SELECT 1 FROM user_documents d
+                  AND (
+                    SELECT COUNT(DISTINCT d.document_type) FROM user_documents d
                     WHERE d.user_id = u.user_id
                       AND d.document_type IN ('Barangay Clearance','Valid ID')
                       AND d.status IN ('Pending','Verified')
-                  )
+                  ) >= 2
                 )
                 OR (
                   u.user_type = 'parent'
@@ -103,12 +103,12 @@ try {
                   AND COALESCE(p.barangay,'') <> ''
                   AND COALESCE(p.bio,'') <> '' AND CHAR_LENGTH(TRIM(p.bio)) >= 15
                   AND EXISTS (SELECT 1 FROM parent_household ph WHERE ph.profile_id = p.profile_id)
-                  AND EXISTS (
-                    SELECT 1 FROM user_documents d
+                  AND (
+                    SELECT COUNT(DISTINCT d.document_type) FROM user_documents d
                     WHERE d.user_id = u.user_id
                       AND d.document_type IN ('Valid ID','Barangay Clearance')
                       AND d.status IN ('Pending','Verified')
-                  )
+                  ) >= 2
                 )
               )
             ORDER BY 

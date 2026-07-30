@@ -452,6 +452,18 @@ export default function UserDetailPanel({
                     </View>
                   )}
 
+                  {Array.isArray(doc.ai_warnings) && doc.ai_warnings.length > 0 && (
+                    <View style={st.warnBox}>
+                      <View style={st.warnBoxHead}>
+                        <Ionicons name="warning" size={13} color={c.warn} />
+                        <Text style={st.warnBoxTitle}>Flagged by AI — review before approving</Text>
+                      </View>
+                      {doc.ai_warnings.map((w: string, i: number) => (
+                        <Text key={i} style={st.warnBoxText}>• {w}</Text>
+                      ))}
+                    </View>
+                  )}
+
                   <View style={st.docActions}>
                     <TouchableOpacity style={st.docViewBtn} onPress={() => { setViewBack(false); setViewingDocument(doc); }} activeOpacity={0.8}>
                       <Ionicons name="eye-outline" size={15} color={c.info} /><Text style={st.docViewText}>{doc.file_url_back ? 'Front' : 'View'}</Text>
@@ -792,6 +804,10 @@ const makeStyles = (c: PesoColors) => StyleSheet.create({
   exRow: { flexDirection: "row", justifyContent: "space-between", gap: 12, paddingVertical: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.line },
   exLabel: { fontSize: 12, color: c.muted, fontWeight: "600", flexShrink: 0, maxWidth: "45%" },
   exValue: { fontSize: 12.5, color: c.ink, fontWeight: "700", flex: 1, textAlign: "right" },
+  warnBox: { marginTop: 10, backgroundColor: c.warnSoft, borderRadius: 10, padding: 11, borderWidth: 1, borderColor: c.warn + "44" },
+  warnBoxHead: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
+  warnBoxTitle: { fontSize: 11, fontWeight: "800", color: c.warn, textTransform: "uppercase", letterSpacing: 0.3 },
+  warnBoxText: { fontSize: 12.5, color: c.ink, fontWeight: "600", lineHeight: 18, marginTop: 2 },
 
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 20 },
   viewerBox: { width: "100%", maxWidth: 560, backgroundColor: "#111", borderRadius: radius.lg, overflow: "hidden" },
