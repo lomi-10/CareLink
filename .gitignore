@@ -14,10 +14,20 @@ backend/uploads/
 backend/error.log
 backend/vendor/
 
-# Backend database dumps (contain real user data / password hashes — NEVER commit)
+# Backend database dumps (contain real user data / password hashes — NEVER commit).
+# This blanket rule is aimed at current.sql and backup_before_reset_*.sql.
 backend/database/*.sql
-# ...except the reference-data seed (categories/jobs/skills/languages — no PII, needed for deploys)
+# ...except these, which are pure DDL or fake data — no PII, and losing them
+# would mean losing the ability to stand the database up again.
+# (Keep each pattern on its own line — git has no trailing-comment syntax.)
+# Reference data: categories / jobs / skills / languages
 !backend/database/ref_seed.sql
+# Table structure only, zero INSERTs
+!backend/database/schema.sql
+# ALTER/CREATE only, zero INSERTs
+!backend/database/migration_*.sql
+# Fake @carelink-demo.test accounts for user testing
+!backend/database/demo_seed.sql
 
 # Internal working notes — NOT for the public repo (security posture / stale guides)
 /SECURITY_NOTES_*.md
