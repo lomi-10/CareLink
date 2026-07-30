@@ -1,6 +1,7 @@
 import { CareBotFab } from '@/components/shared/CareBotFab';
 import { createCareLinkNavigationTheme } from '@/constants/careNavigationTheme';
 import { CareBotProvider } from '@/contexts/CareBotContext';
+import { GuideProvider } from '@/contexts/GuideContext';
 import {
     ColorSchemePreferenceProvider,
     useColorSchemePreference,
@@ -89,11 +90,13 @@ export default function RootLayout() {
       <ActionSheetProvider>
         <ColorSchemePreferenceProvider>
           <CareBotProvider>
-            {fontsLoaded && <RootLayoutInner />}
-            {fontsLoaded && <CareBotFab />}
-            {!splashDone && (
-              <AnimatedSplash ready={fontsLoaded} onFinish={() => setSplashDone(true)} />
-            )}
+            <GuideProvider>
+              {fontsLoaded && <RootLayoutInner />}
+              {fontsLoaded && <CareBotFab />}
+              {!splashDone && (
+                <AnimatedSplash ready={fontsLoaded} onFinish={() => setSplashDone(true)} />
+              )}
+            </GuideProvider>
           </CareBotProvider>
         </ColorSchemePreferenceProvider>
       </ActionSheetProvider>

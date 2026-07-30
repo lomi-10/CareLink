@@ -20,7 +20,6 @@ import { WorkModeTabBar } from '@/components/helper/work';
 import { Sidebar, MobileMenu, HelperTabBar } from '@/components/helper/home';
 import { PARENT_THEME_OPTIONS, type ParentThemeId } from '@/constants/parentThemePalettes';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
-import WelcomeGuideModal from '@/components/shared/WelcomeGuideModal';
 import { useHelperWarm } from '@/components/helper/home/helperWarmTheme';
 
 import { createHelperSettingsStyles } from './settings.styles';
@@ -68,7 +67,6 @@ export default function HelperSettingsScreen() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [successLogout, setSuccessLogout] = useState(false);
-  const [guideVisible, setGuideVisible] = useState(false);
 
   const initiateLogout = () => {
     setIsMobileMenuOpen(false);
@@ -175,22 +173,11 @@ export default function HelperSettingsScreen() {
         <Ionicons name="chevron-forward" size={20} color={MUTED} />
       </TouchableOpacity>
 
-      <Text style={[styles.sectionLabel, { color: MUTED, marginTop: 28 }]}>Help</Text>
-      <TouchableOpacity
-        style={[styles.linkRow, { backgroundColor: navTheme.colors.card, borderColor: navTheme.colors.border }]}
-        onPress={() => setGuideVisible(true)}
-        activeOpacity={0.88}
-      >
-        <Ionicons name="help-buoy-outline" size={22} color={accent} />
-        <Text style={[styles.linkText, { color: navTheme.colors.text }]}>Guide — how CareLink works</Text>
-        <Ionicons name="chevron-forward" size={20} color={MUTED} />
-      </TouchableOpacity>
     </ScrollView>
   );
 
   const modals = (
     <>
-      <WelcomeGuideModal visible={guideVisible} onClose={() => setGuideVisible(false)} role="helper" accent={ORANGE} />
       <ConfirmationModal
         visible={confirmLogout}
         title="Log Out"

@@ -7,6 +7,7 @@ import { CareLinkLogoMark } from '@/components/branding/CareLinkLogoMark';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useNotifications } from '@/hooks/shared';
 import { useConversations } from '@/hooks/shared/useMessages';
+import { useGuide } from '@/contexts/GuideContext';
 import { wt } from './webTheme';
 
 type NavKey = 'dashboard' | 'jobs' | 'applications' | 'messages' | 'home' | 'mywork' | 'schedule';
@@ -41,6 +42,7 @@ export function HelperTopNav({
   const { conversations } = useConversations();
   const unreadMsgs = conversations.reduce((s, c) => s + (c.unread_count || 0), 0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { openGuide } = useGuide();
   const items = workMode ? WORK_ITEMS : ITEMS;
 
   const go = (path: string) => router.push(path as never);
@@ -101,6 +103,7 @@ export function HelperTopNav({
               <View style={s.menuCard}>
                 <MenuRow icon="person-outline" label="My Profile" onPress={() => { setMenuOpen(false); go('/(helper)/profile'); }} />
                 <MenuRow icon="settings-outline" label="Settings" onPress={() => { setMenuOpen(false); go('/(helper)/settings'); }} />
+                <MenuRow icon="help-buoy-outline" label="How CareLink works" onPress={() => { setMenuOpen(false); openGuide('helper'); }} />
                 <View style={s.menuDiv} />
                 <MenuRow icon="log-out-outline" label="Log Out" danger onPress={() => { setMenuOpen(false); onLogout(); }} />
               </View>

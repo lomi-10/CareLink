@@ -11,7 +11,6 @@ import { useParentPortalMode } from '@/hooks/parent';
 import { useColorSchemePreference, type ColorSchemePreference } from '@/contexts/ColorSchemePreferenceContext';
 import { PARENT_THEME_OPTIONS, type ParentThemeId } from '@/constants/parentThemePalettes';
 import { useParentTheme } from '@/contexts/ParentThemeContext';
-import WelcomeGuideModal from '@/components/shared/WelcomeGuideModal';
 import { ParentTopNav } from './ParentTopNav';
 import { pt } from './parentWebTheme';
 
@@ -29,7 +28,6 @@ export function ParentSettingsWeb({ userName, avatar, verified, onLogout }: { us
   const { themeId, setThemeId } = useParentTheme();
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [guideVisible, setGuideVisible] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -93,19 +91,6 @@ export function ParentSettingsWeb({ userName, avatar, verified, onLogout }: { us
             </View>
           </View>
 
-          {/* Help */}
-          <View style={s.section}>
-            <Text style={s.secTitle}>Help</Text>
-            <Pressable onPress={() => setGuideVisible(true)} style={({ hovered }: any) => [s.optRow, TRANS, hovered && { borderColor: pt.accent }]}>
-              <View style={s.optIc}><Ionicons name="help-buoy-outline" size={21} color={pt.accent} /></View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.optTitle}>Guide — how CareLink works</Text>
-                <Text style={s.optHint}>Replay the quick walkthrough for hiring helpers.</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={pt.subtle} />
-            </Pressable>
-          </View>
-
           {/* Activity log */}
           <View style={s.section}>
             <Text style={s.secTitle}>Activity Log</Text>
@@ -132,8 +117,6 @@ export function ParentSettingsWeb({ userName, avatar, verified, onLogout }: { us
           <View style={{ height: 20 }} />
         </View>
       </ScrollView>
-
-      <WelcomeGuideModal visible={guideVisible} onClose={() => setGuideVisible(false)} role="parent" accent={pt.accent} />
     </View>
   );
 }

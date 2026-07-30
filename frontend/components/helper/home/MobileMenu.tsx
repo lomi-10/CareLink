@@ -17,6 +17,7 @@ import { useRouter, usePathname } from 'expo-router';
 import { CareLinkLogoMark } from '@/components/branding/CareLinkLogoMark';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
+import { useGuide } from '@/contexts/GuideContext';
 import { useNotifications } from '@/hooks/shared';
 import {
   getHelperNonWorkMobileDrawerItems,
@@ -135,6 +136,7 @@ export function MobileMenu({
   const router = useRouter();
   const pathname = usePathname();
   const { isWorkMode, activeHire } = useHelperWorkMode();
+  const { openGuide } = useGuide();
   const { unreadCount: hookUnread } = useNotifications('helper');
   const notif = notificationUnread ?? hookUnread;
   const w = useHelperWarm();
@@ -220,6 +222,22 @@ export function MobileMenu({
                 </TouchableOpacity>
               );
             })}
+
+            <Text style={[styles.navLabel, { marginTop: 18 }]}>Help</Text>
+            <TouchableOpacity
+              style={styles.drawerItem}
+              onPress={() => {
+                onClose();
+                openGuide('helper');
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.drawerItemLeft}>
+                <Ionicons name="help-buoy-outline" size={22} color={w.MUTED} />
+                <Text style={styles.drawerItemText}>How CareLink works</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={w.SUBTLE} />
+            </TouchableOpacity>
 
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
               <Ionicons name="log-out-outline" size={22} color={w.DANGER} />

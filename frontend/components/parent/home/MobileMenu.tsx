@@ -19,6 +19,7 @@ import { CareLinkLogoMark } from '@/components/branding/CareLinkLogoMark';
 import type { ThemeColor } from '@/constants/theme';
 import { useParentTheme } from '@/contexts/ParentThemeContext';
 import { useCareBot } from '@/contexts/CareBotContext';
+import { useGuide } from '@/contexts/GuideContext';
 import { useNotifications } from '@/hooks/shared';
 import {
   getParentMobileDrawerNavRows,
@@ -148,6 +149,7 @@ export function MobileMenu({
   const { unreadCount: hookUnread } = useNotifications('parent');
   const unread = notificationUnread ?? hookUnread;
   const careBot = useCareBot();
+  const { openGuide } = useGuide();
   const navRows = useMemo(() => getParentMobileDrawerNavRows(), []);
   const slideAnim = useRef(new Animated.Value(-width)).current;
 
@@ -222,6 +224,22 @@ export function MobileMenu({
                 </TouchableOpacity>
               );
             })}
+
+            <Text style={[styles.navLabel, { marginTop: 18 }]}>HELP</Text>
+            <TouchableOpacity
+              style={styles.drawerItem}
+              onPress={() => {
+                onClose();
+                openGuide('parent');
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.drawerItemLeft}>
+                <Ionicons name="help-buoy-outline" size={22} color={c.muted} />
+                <Text style={styles.drawerItemText} numberOfLines={1}>How CareLink works</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={c.subtle} />
+            </TouchableOpacity>
 
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
               <Ionicons name="log-out-outline" size={22} color={c.danger} />

@@ -16,7 +16,7 @@ import { useHelperStats, useHelperProfile } from '@/hooks/helper';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 
 import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard } from '@/components/shared';
-import WelcomeGuideModal from '@/components/shared/WelcomeGuideModal';
+import { useGuide } from '@/contexts/GuideContext';
 import {
   MobileHeader, GreetingCard,
   StatCard, SectionHeader,
@@ -44,6 +44,7 @@ export default function HelperHome() {
   const layoutStyles = useMemo(() => createHelperHomeStyles(w), [w]);
 
   const { userData, loading: authLoading, handleLogout, getFullName } = useAuth();
+  const { syncStage } = useGuide();
   const { stats, loading: statsLoading, refresh } = useHelperStats();
   // Fetch profile to get the latest profile_image (userData in AsyncStorage may be stale)
   const { profileData, refresh: refreshProfile } = useHelperProfile();
@@ -80,22 +81,17 @@ export default function HelperHome() {
     jobTitle?: string;
   } | null>(null);
 
-  // First-login walkthrough: show the paged guide once, then remember it was seen.
-  // Re-openable anytime from Settings → Guide.
-  const [welcomeVisible, setWelcomeVisible] = useState(false);
+  // Staged guide: the chapter that matches where this helper actually is
+  // (setup → verified → applied) auto-opens once each time they reach a new one.
+  // Re-openable anytime from the menu. See contexts/GuideContext.tsx.
   useEffect(() => {
     if (!profileData) return; // wait for the profile so we know the status
-    // Only new/unverified accounts get the welcome walkthrough — once PESO has
-    // verified them there's nothing left to onboard, so it never pops again.
-    if (profileData?.profile?.verification_status === 'Verified') return;
-    AsyncStorage.getItem('helper_welcome_seen_v1').then((seen) => {
-      if (!seen) setWelcomeVisible(true);
+    syncStage({
+      role: 'helper',
+      verified: profileData?.profile?.verification_status === 'Verified',
+      hasActivity: (stats?.applications ?? 0) > 0,
     });
-  }, [profileData]);
-  const closeWelcome = () => {
-    setWelcomeVisible(false);
-    AsyncStorage.setItem('helper_welcome_seen_v1', '1').catch(() => {});
-  };
+  }, [profileData, stats?.applications, syncStage]);
 
   // One-time celebration when the profile first reaches 90%+ (verification-ready).
   const [celebrateVisible, setCelebrateVisible] = useState(false);
@@ -155,7 +151,6 @@ export default function HelperHome() {
 
   const renderModals = () => (
     <>
-      <WelcomeGuideModal visible={welcomeVisible} onClose={closeWelcome} role="helper" accent={ORANGE} />
       <NotificationModal
         visible={celebrateVisible}
         message="Profile complete! You're now awaiting PESO verification."

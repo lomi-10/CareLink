@@ -16,7 +16,7 @@ import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { FontFamily } from '@/constants/GlobalStyles';
 
 import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal } from '@/components/shared';
-import WelcomeGuideModal from '@/components/shared/WelcomeGuideModal';
+import { useGuide } from '@/contexts/GuideContext';
 import { AwaitingVerificationCard } from '@/components/shared/AwaitingVerificationCard';
 import {
   Sidebar, MobileMenu, GreetingCard, RecommendedHelpersSection, ParentSetupGuide,
@@ -43,6 +43,7 @@ export default function ParentHome() {
   const router = useRouter();
 
   const { handleLogout, getFullName, userData } = useAuth();
+  const { syncStage } = useGuide();
   const { profileData, refresh: refreshProfile } = useParentProfile();
   const profileImage = (profileData?.profile?.profile_image ?? userData?.profile_image ?? null) as string | null;
 
@@ -67,22 +68,17 @@ export default function ParentHome() {
     setPortalMode(mode);
   };
 
-  // First-login walkthrough: show the paged guide once, then remember it.
-  // Re-openable anytime from Settings → Guide.
-  const [welcomeVisible, setWelcomeVisible] = useState(false);
+  // Staged guide: the chapter matching where this employer actually is
+  // (setup → verified → posted a job) auto-opens once each time they reach a new
+  // one. Re-openable anytime from the menu. See contexts/GuideContext.tsx.
   useEffect(() => {
     if (!profileData) return; // wait for the profile so we know the status
-    // Only new/unverified accounts get the welcome walkthrough — once PESO has
-    // verified them there's nothing left to onboard, so it never pops again.
-    if (profileData?.profile?.verification_status === 'Verified') return;
-    AsyncStorage.getItem('parent_welcome_seen_v1').then((seen) => {
-      if (!seen) setWelcomeVisible(true);
+    syncStage({
+      role: 'parent',
+      verified: profileData?.profile?.verification_status === 'Verified',
+      hasActivity: (stats?.active_job_posts ?? 0) > 0,
     });
-  }, [profileData]);
-  const closeWelcome = () => {
-    setWelcomeVisible(false);
-    AsyncStorage.setItem('parent_welcome_seen_v1', '1').catch(() => {});
-  };
+  }, [profileData, stats?.active_job_posts, syncStage]);
 
   // One-time celebration when the profile first reaches 90%+ (verification-ready).
   const [celebrateVisible, setCelebrateVisible] = useState(false);
@@ -148,7 +144,6 @@ export default function ParentHome() {
 
   const renderModals = () => (
     <>
-      <WelcomeGuideModal visible={welcomeVisible} onClose={closeWelcome} role="parent" accent={BROWN} />
       <NotificationModal
         visible={celebrateVisible}
         message="Profile complete! You're now awaiting PESO verification."
