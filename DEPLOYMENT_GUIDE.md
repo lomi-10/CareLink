@@ -4,174 +4,167 @@
 
 | Part | Where | Status |
 |---|---|---|
-| Backend (PHP API) | Railway | ✅ Deployed |
-| Database (MySQL) | Railway | ✅ Deployed |
-| Frontend (Expo web) | — | 👉 This guide |
-| Mobile apps (Android/iOS) | EAS | Later (see [Part 6](#part-6--later-custom-domain--mobile-apps)) |
-
-This guide deploys the **web version** of the Expo frontend for **free**,
-pointed at the Railway backend you already have running. No domain
-purchase required — your hosting provider gives you a free `*.vercel.app`
-(or `*.pages.dev`) URL.
+| Backend (PHP API) | Hostinger | ✅ Deployed |
+| Database (MySQL) | Hostinger | ✅ Deployed |
+| Domain | Hostinger | ✅ Configured |
+| Frontend (Expo web) | Vercel | ✅ Deployed |
+| Images (uploads) | Cloudinary | ✅ Wired (direct client-side upload) |
+| Mobile apps (Android/iOS) | EAS | Later (see [Part 5](#part-5--later-mobile-apps)) |
 
 ```
 CareLink/
-├── frontend/   Expo Router app (web + mobile) ← deploy this
-└── backend/    PHP API + MySQL              ← already on Railway
+├── frontend/   Expo Router app (web + mobile) ← deployed to Vercel
+└── backend/    PHP API + MySQL              ← deployed to Hostinger
 ```
 
 ---
 
-## Part 1 — Get your Railway backend URL
+## Part 1 — Backend config on Hostinger (`config.local.php`)
 
-1. Open your Railway project → click the **backend** service.
-2. Go to **Settings → Networking**. If there's no public domain yet, click
-   **Generate Domain**. You'll get something like:
-   ```
-   https://carelink-api-production.up.railway.app
-   ```
-3. **Test it** by visiting `https://<your-railway-domain>/test_db.php` in
-   your browser. You should see your DB env vars listed as "SET" and a list
-   of tables. If you get an error, fix the Railway DB connection before
-   continuing — the frontend deploy won't help until this works.
-4. **Important**: because Railway's **Root Directory** is set to `backend`,
-   your backend's root URL already points at the PHP files directly —
-   there's **no** `/carelink_api` prefix in production (that prefix only
-   exists in your local Laragon setup). So an endpoint that's
-   `backend/helper/get_work_context.php` locally is reachable at:
-   ```
-   https://<your-railway-domain>/helper/get_work_context.php
-   ```
+Hostinger shared hosting has no environment-variable dashboard, so the
+backend reads secrets from `backend/config.local.php` instead — a file
+that is **gitignored on purpose** (it holds real passwords) and therefore
+**never arrives on the server via git**. It has to exist on Hostinger
+itself, created by hand.
 
-Copy your Railway domain — you'll paste it into the frontend host's
-environment variables in Part 3.
+1. In hPanel → **File Manager** (or an FTP client), go to wherever
+   `backend/` was uploaded on Hostinger.
+2. Copy `backend/config.local.php.example` to `backend/config.local.php`
+   right there on the server.
+3. Fill in real values:
+   - **DB_HOST / DB_USERNAME / DB_PASSWORD / DB_DATABASE** — from
+     hPanel → **Databases → MySQL Databases**. Host is almost always
+     `localhost` on Hostinger shared hosting.
+   - **MAIL_HOST / MAIL_PORT / MAIL_USERNAME / MAIL_PASSWORD / MAIL_FROM**
+     — see [Part 3](#part-3--email-signup-codes--password-reset) below,
+     this is the part that's currently broken.
+   - **GEMINI_API_KEY** — same key the chatbot already uses locally.
+4. `load_config.php` prefers a real environment variable over this file
+   when one exists (`getenv()`), so if Hostinger's plan ever gives you an
+   env-var panel, you can migrate later without touching code.
+
+Since the whole app works except email, DB_* is almost certainly already
+set correctly on the server — it's specifically the `MAIL_*` keys worth
+re-checking (see Part 3).
 
 ---
 
-## Part 2 — Frontend is already wired for production
+## Part 2 — Frontend on Vercel
 
-`frontend/constants/api.ts` now reads an `EXPO_PUBLIC_API_URL` environment
-variable if it's set:
+`frontend/constants/api.ts` reads `EXPO_PUBLIC_API_URL` at build time:
 
 ```ts
-// PRODUCTION: when deploying the web build (Vercel/Cloudflare Pages/etc.),
-// set EXPO_PUBLIC_API_URL to your Railway backend URL, e.g.
-// https://carelink-api-production.up.railway.app
 const PRODUCTION_API_URL = process.env.EXPO_PUBLIC_API_URL;
-
 const API_URL = PRODUCTION_API_URL || (Platform.OS === 'web' ? webApiUrl : mobileApiUrl);
 ```
 
-- **Local dev (Laragon)**: leave this unset — nothing changes, you keep
-  using `http://localhost/carelink_api`.
-- **Deployed web build**: your hosting provider sets
-  `EXPO_PUBLIC_API_URL=https://<your-railway-domain>` (no trailing slash,
-  no `/carelink_api`). Expo bakes this into the static build at build time.
+- **Local dev (Laragon)**: leave unset — keeps using
+  `http://localhost/carelink_api`.
+- **Vercel**: Project Settings → Environment Variables →
+  `EXPO_PUBLIC_API_URL` = your Hostinger backend URL (e.g.
+  `https://yourdomain.com` or `https://api.yourdomain.com`, whichever
+  path serves the PHP files — **no trailing slash**).
+- Build settings: **Root Directory** = `frontend`, **Build Command** =
+  `npx expo export -p web`, **Output Directory** = `dist`.
+- Every `git push` to `main` auto-triggers a new Vercel build. Changing
+  the env var itself requires a manual **Redeploy** (env vars are baked
+  in at build time, not read at runtime).
 
 ---
 
-## Part 3 — Deploy the web frontend to Vercel (free)
+## Part 3 — Email (signup codes / password reset)
 
-1. **Push your latest commits to GitHub** (`origin` is already
-   `lomi-10/CareLink`):
-   ```bash
-   git push
+`backend/shared/mailer.php` sends through SMTP via PHPMailer, configured
+entirely from `MAIL_*` keys in `config.local.php` (see Part 1). If those
+keys are missing or empty, `carelink_mail_configured()` returns false and
+the backend **already degrades gracefully** — it still creates the
+account / issues the code, but responds with `email_sent: false` and a
+message like *"we couldn't send the verification email"* instead of
+silently pretending it worked. If a tester is stuck on the verify-code
+screen with no email arriving, this is almost always one of:
+
+1. **`config.local.php` on Hostinger has empty/placeholder `MAIL_*`
+   values.** This is the most likely cause if it's never worked in
+   production — copying the `.example` file only fills in
+   `youraddress@gmail.com` / `abcdefghijklmnop`, not real credentials.
+   Fix: fill in a real Gmail address + a 16-character **App Password**
+   (regular Gmail passwords don't work with SMTP — see the comments in
+   `config.local.php.example` for the 2-Step-Verification → App
+   Passwords steps).
+
+2. **Hostinger blocks outbound SMTP to third-party hosts.** Some
+   Hostinger shared/business plans restrict outbound connections to
+   external mail servers (like `smtp.gmail.com`) as an anti-spam
+   measure, even with correct credentials — PHPMailer would then time
+   out or get "Connection refused". If Gmail SMTP was never blocked
+   for you before, this may not apply, but it's worth ruling out.
+   **Fix**: switch to Hostinger's own mail relay, using an email
+   account created on your domain (hPanel → Emails):
+   ```php
+   'MAIL_HOST'     => 'smtp.hostinger.com',
+   'MAIL_PORT'     => '465',
+   'MAIL_USERNAME' => 'noreply@yourdomain.com',
+   'MAIL_PASSWORD' => 'that mailbox\'s password',
+   'MAIL_FROM'     => 'noreply@yourdomain.com',
    ```
-2. Go to **https://vercel.com** and sign up/log in with your GitHub account.
-3. Click **Add New → Project**, then **Import** the `CareLink` repo.
-4. On the configuration screen:
-   - **Root Directory**: click "Edit" → select `frontend`
-   - **Framework Preset**: `Other`
-   - **Build Command**: `npx expo export -p web`
-   - **Output Directory**: `dist`
-   - **Install Command**: `npm install`
-5. Expand **Environment Variables** and add:
-   | Name | Value |
-   |---|---|
-   | `EXPO_PUBLIC_API_URL` | `https://<your-railway-domain>` |
-6. Click **Deploy**. The first build takes a few minutes.
-7. Once done, Vercel gives you a free URL like
-   `https://carelink-<random>.vercel.app` — open it and test.
+   This is also better for deliverability than Gmail long-term (SPF/DKIM
+   on your own domain).
 
-### Re-deploying after future changes
-Every `git push` to `main` automatically triggers a new Vercel build — no
-manual steps needed.
+3. **Check the actual error.** `mailer.php` logs the precise reason on
+   every failure:
+   - `"MAIL_USERNAME/MAIL_PASSWORD not configured"` → case 1 above.
+   - `"CareLink mail FAILED to ... : <SMTP error>"` → the real PHPMailer
+     error (auth failure, connection timeout, etc.) — case 2, or a typo
+     in the App Password.
+   Hostinger → hPanel → **Advanced → PHP Error Log** (or wherever
+   `error_log` is routed for your plan) will show which one it is. That
+   single line tells you exactly what to fix next — worth checking
+   before guessing further.
 
----
-
-## Part 4 — Alternative: Cloudflare Pages (free, no bandwidth limit)
-
-If you'd rather use Cloudflare Pages (useful if Vercel's free bandwidth
-ever becomes a concern):
-
-1. Go to the Cloudflare dashboard → **Workers & Pages → Create → Pages →
-   Connect to Git** → select the `CareLink` repo.
-2. Build settings:
-   - **Root directory**: `frontend`
-   - **Build command**: `npx expo export -p web`
-   - **Build output directory**: `dist`
-3. Under **Environment variables**, add:
-   | Name | Value |
-   |---|---|
-   | `EXPO_PUBLIC_API_URL` | `https://<your-railway-domain>` |
-4. Save and deploy. You'll get a free `https://carelink-<random>.pages.dev`
-   URL.
+Codes themselves (expiry, hashing, attempt limits) live in
+`backend/shared/auth_codes.php` and are timezone-safe already — see
+`backend/dbcon.php`, which pins both PHP's and MySQL's clocks to
+`+08:00` specifically because Hostinger's MySQL runs in UTC by default.
+That part isn't the issue here.
 
 ---
 
-## Part 5 — Verify everything works
+## Part 4 — Images (Cloudinary)
 
-1. Open your deployed URL on desktop and on your phone's browser.
-2. Try logging in / signing up — open browser dev tools (Network tab) and
-   confirm requests go to `https://<your-railway-domain>/...` and return
-   JSON (not HTML errors).
-3. Click through a few screens (browse jobs, messages, etc.) to confirm
-   data loads.
-
-### Troubleshooting
-
-- **"Network request failed" / requests go to `localhost`**: the
-  `EXPO_PUBLIC_API_URL` env var wasn't set (or has a typo/trailing slash)
-  before the build ran. Fix it in the host's project settings, then
-  redeploy (env var changes require a new build — "Redeploy" in
-  Vercel/Cloudflare).
-- **CORS error in console**: the backend already sends
-  `Access-Control-Allow-Origin: *`, so this shouldn't happen. If it does,
-  double-check the Railway domain is `https://` (not `http://`) — browsers
-  block "mixed content" (https page calling http API).
-- **Blank page after deploy**: check the build logs for errors. Most often
-  this means the Build/Output settings in Part 3 step 4 weren't saved
-  correctly — re-check **Output Directory = `dist`**.
+Uploads that go through `frontend/lib/cloudinaryUpload.ts` (e.g. task
+photo proof) upload **directly from the device to Cloudinary** — the PHP
+backend only ever receives and stores the resulting HTTPS URL, it never
+proxies image bytes. Nothing to configure server-side for that path.
+(Other uploads — documents, profile photos — currently still go through
+the backend's own `uploads/` folder on Hostinger; that's unrelated to
+the Cloudinary path and unaffected by this guide.)
 
 ---
 
-## Part 6 — Later: custom domain & mobile apps
+## Part 5 — Later: mobile apps
 
 Not needed now, but for when you're ready:
 
-- **Custom domain**: both Vercel and Cloudflare Pages let you attach a
-  domain you own for free under **Project Settings → Domains**. Once you
-  have one, tighten the backend's CORS header
-  (`Access-Control-Allow-Origin: *` in the PHP files) to your real domain
-  instead of `*`.
-- **Mobile apps (Android/iOS)**: use EAS Build, separate from this web
-  deploy:
-  ```bash
-  cd frontend
-  npm install -g eas-cli
-  eas build --platform android
-  eas build --platform ios
-  ```
-  Mobile builds also need `EXPO_PUBLIC_API_URL` (or your existing
-  `mobileApiUrl`/Railway domain) configured via `eas.json` build profiles.
+```bash
+cd frontend
+npm install -g eas-cli
+eas build --platform android
+eas build --platform ios
+```
+
+Mobile builds need `EXPO_PUBLIC_API_URL` (or your existing
+`mobileApiUrl`) pointed at the Hostinger backend URL, configured via
+`eas.json` build profiles.
 
 ---
 
 ## Security reminders
 
-- `backend/test_db.php` exposes whether your DB env vars are set and lists
-  table names. It's useful for debugging Railway now, but **remove it (or
-  password-protect it)** once your deployment is stable.
-- Never commit `.env` / `.env.local` files (already in `.gitignore`).
-- Keep using prepared statements for all SQL (already the case throughout
-  `backend/`).
+- Never commit `.env` / `.env.local` / `backend/config.local.php`
+  (already gitignored).
+- Keep using prepared statements for all SQL (already the case
+  throughout `backend/`).
+- Any one-off debug script you create directly on Hostinger to test
+  DB/mail connectivity should be deleted (or password-protected) once
+  you're done with it — don't leave debug endpoints reachable in
+  production.

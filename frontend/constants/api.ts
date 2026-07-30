@@ -12,9 +12,8 @@ const webApiUrl = 'http://localhost/carelink_api';
 // This is the URL for the mobile app (running on your phone)
 const mobileApiUrl = `http://${COMPUTER_IP}/carelink_api`;
 
-// PRODUCTION: when deploying the web build (Vercel/Cloudflare Pages/etc.),
-// set EXPO_PUBLIC_API_URL to your Railway backend URL, e.g.
-// https://carelink-api-production.up.railway.app
+// PRODUCTION: when deploying the web build (Vercel), set EXPO_PUBLIC_API_URL
+// to your Hostinger backend URL, e.g. https://yourdomain.com
 // (no trailing slash, no "/carelink_api" suffix). See DEPLOYMENT_GUIDE.md.
 const PRODUCTION_API_URL = process.env.EXPO_PUBLIC_API_URL;
 

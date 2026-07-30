@@ -1,161 +1,184 @@
-# CareLink — Document Verification (AI Scan) · Q&A + Code Review Notes
+# CareLink — Document Verification (AI Scan) · Q&A
 
-A study/reference sheet for the document‑scanning feature. Covers what it does, how
-it decides, its honest limits, the recent enhancements, and where the code lives.
-Written so it can be pasted into Notion and defended in a review.
+How the AI pre-check works, and its honest limits. Notion-ready.
 
----
-
-## 1. The one‑paragraph summary
-
-When a helper or parent uploads a verification document, CareLink can run an
-**AI pre‑check** (Google Gemini vision) that reads the document, judges whether it
-looks like a genuine document of the claimed type, rates image clarity, extracts the
-printed fields, and flags anything suspicious. It then runs a few **deterministic
-cross‑checks** (expiry, name‑vs‑account, duplicate ID). The AI **never makes the
-final call** — it pre‑screens and flags; a **PESO officer manually reviews and
-approves** every document. That human step is the real verification gate.
+**In one line:** Gemini vision reads an uploaded document, scores legitimacy and
+clarity, extracts fields, and flags problems — then **a PESO officer manually
+approves every document.** That human step is the real gate.
 
 ---
 
-## 2. Q&A
+**Q: Is the scanning "legit"? What's it based on?**
 
-**Q: Is the scanning "legit"? What is it based on?**
-A: It's Google **Gemini 2.5 Flash** (vision), reusing the same API key as the
-chatbot. It's an **assistive model judgment**, not a check against a government
-database. There is no PhilSys / PNP / TESDA API integration, so it cannot *prove*
-authenticity — it raises or lowers confidence and catches obvious problems.
+Google **Gemini 2.5 Flash** (vision), same API key as the chatbot. It's an
+**assistive model judgment, not a government-database check** — no PhilSys / PNP /
+TESDA integration. It raises or lowers confidence; it can't *prove* authenticity.
 
-**Q: What accuracy is it based on?**
-A: There is **no fixed accuracy percentage**, because it is a model reasoning over an
-image, not a database lookup. Quoting "99% accurate" would be dishonest. It is a
-**first‑pass filter**; the authoritative decision is PESO's manual review.
+**Q: What's its accuracy?**
 
-**Q: What exactly does the AI check? (per document type)**
-1. **Type match** (`is_expected_document`) — is this really the claimed document?
-2. **Template/legitimacy score 0–100** (`template_match`) — how well the layout,
-   seals, and official elements match a genuine document. The prompt encodes the real
-   PhilSys National ID layout plus Barangay / Police / TESDA templates.
-3. **Clarity score 0–100** — readability (focus, glare, cropping).
-4. **Tampering signs + field extraction** — notes anything suspicious (now including
-   *photo‑of‑a‑screen*, *photocopy*, *edited/mismatched fonts*) and pulls the printed
-   fields (name, ID number, dates). It is told **not to invent values**.
+**There's no fixed percentage**, because it's a model reasoning over an image, not
+a lookup. Quoting "99% accurate" would be dishonest.
+
+**Q: What does it check?**
+
+1. **Type match** — is this really the claimed document?
+2. **Legitimacy 0–100** — layout, seals, official elements vs. the real template
+   (prompt encodes PhilSys National ID + Barangay / Police / TESDA layouts).
+3. **Clarity 0–100** — focus, glare, cropping.
+4. **Tampering + field extraction** — incl. photo-of-a-screen, photocopy,
+   edited fonts. Told explicitly **not to invent values**.
 
 **Q: How does a scan become Passed / Flagged / Failed?**
-A: From the legitimacy score:
-- **≥ 70 → Passed** (but downgraded to **Flagged** if there are any warnings)
-- **45–69 → Flagged** (uncertain → PESO reviews)
-- **< 45 → Failed** (clear fake / wrong / random image)
-Only a **Failed** auto‑rejects the document, so garbage can't sit in PESO's queue.
-Everything else is stored and left for PESO.
+
+From the legitimacy score, not the raw verdict (Gemini can say "Declined" on a
+genuine doc with an odd title while still scoring it 90):
+
+```php
+// backend/helper/scan_id.php
+if     ($legit >= 70) $sideMapped = empty($warnings) ? 'Passed' : 'Flagged';
+elseif ($legit >= 45) $sideMapped = 'Flagged';
+else                  $sideMapped = 'Failed';
+```
+
+Only **Failed** auto-rejects, so garbage can't sit in PESO's queue. Everything
+else is stored for PESO. Valid IDs scan **front and back independently**, and the
+overall status is the worst of the sides.
 
 **Q: Will a forged document be noticed?**
-A: **Obvious/lazy fakes yes** (wrong layout, random image, visible tampering,
-screen/photocopy). A **high‑quality forgery that matches the template can pass the
-AI** — Gemini is not a forensic tool and can't confirm with the issuing office.
-**PESO's manual review is the safeguard for that.**
 
-**Q: Will an outdated / expired document be noticed?**
-A: **Yes, now.** After the AI extracts a "Valid Until" date, a deterministic check
-compares it to today; if it's past, the scan adds *"Document appears EXPIRED"* and
-downgrades to **Flagged** for PESO. (Before, the date was only extracted, never
-checked — that was the tester's valid catch.)
+**Obvious fakes yes** (wrong layout, random image, visible tampering,
+screen/photocopy). A **high-quality forgery matching the template can pass** —
+Gemini isn't forensic and can't call the issuing office. **PESO's review is the
+safeguard.**
+
+**Q: Are expired documents caught?**
+
+**Yes** — a deterministic check after extraction:
+
+```php
+$ets = strtotime($expiryRaw);
+if ($ets !== false && $ets < strtotime('today')) {
+    $warnings[] = "Document appears EXPIRED (valid until {$expiryRaw}).";
+}
+```
 
 **Q: Does it check the name matches the account holder?**
-A: **Yes.** The name on the document is compared to the account's name. It's
-**lenient** (token overlap — tolerant of middle names and word order) and only flags
-when they share **no words at all** (i.e., someone else's ID). Flag → Flagged for PESO.
+
+**Yes**, leniently — token overlap, tolerant of middle names and word order. Only
+flags when the names share **no words at all** (i.e. someone else's ID):
+
+```php
+function carelink_names_overlap(string $a, string $b): bool {
+    // ...tokenize both, drop tokens < 2 chars
+    return count(array_intersect($ta, $tb)) > 0;   // no overlap → flag
+}
+```
 
 **Q: Can the same ID be reused across accounts?**
-A: It's **flagged**. If the extracted ID/reference number already appears on another
-account, the scan warns *"already on file under another account."* → Flagged for PESO.
+
+It's **flagged** — if the extracted ID number already appears on another account,
+the scan warns *"already on file under another account."*
+
+**Q: Do those flags actually reach PESO admin?**
+
+**Yes, now.** The backend always computed `ai_warnings`, but the admin panel never
+rendered them — so an identity mismatch was invisible to the reviewer. Fixed:
+
+```tsx
+// frontend/components/peso/UserDetailPanel.tsx
+{Array.isArray(doc.ai_warnings) && doc.ai_warnings.length > 0 && (
+  <View style={st.warnBox}>
+    <Text style={st.warnBoxTitle}>Flagged by AI — review before approving</Text>
+    {doc.ai_warnings.map((w: string, i: number) => <Text key={i}>• {w}</Text>)}
+  </View>
+)}
+```
 
 **Q: Is scanning automatic?**
-A: **No.** Upload and scan are separate. A document can be uploaded and viewed in PESO
-admin **without** a scan; the user taps **"Start AI Scan"** to run it. (Good for
-presentations and lets PESO see un‑scanned documents.)
 
-**Q: Does this apply to both roles and both platforms?**
-A: **Yes** — helper and parent, web and mobile, through the shared `DocumentAIScan`
-component and the same backend.
+**No.** Upload and scan are separate — the user taps **"Start AI Scan"**
+(`autoStart={false}`). Documents can be uploaded and reviewed in PESO admin
+without ever being scanned.
 
-**Q: Can PESO tell who's been scanned vs not?**
-A: **Yes.** The PESO user‑verification list has an **Any scan / AI‑scanned / Not
-scanned** filter (backed by a per‑user `ai_scanned` flag).
+**Q: Both roles, both platforms?**
 
-**Q: If a hired helper does something wrong and leaves, can she erase her records?**
-A: **No.** There is no account‑deletion feature, so the account and all
-placement/contract/complaint records persist. And once a user has **any** placement
-(active or ended), their **documents can no longer be deleted** — only PESO can update
-them. This keeps the identity evidence PESO would need for a dispute.
+**Yes** — helper and parent, web and mobile, via the shared `DocumentAIScan`
+component and one backend endpoint.
 
-**Q: What's the only way to get true authenticity certainty?**
-A: Integrating with the **issuing registries** (PhilSys eVerify, PNP, TESDA‑TWSP).
-That needs official credentials and adviser sign‑off — a scope decision, not just code.
+**Q: Can PESO tell who's been scanned?**
 
----
+**Yes** — the user-verification list has an **Any scan / AI-scanned / Not
+scanned** filter backed by a per-user `ai_scanned` flag.
 
-## 3. The honest boundary (say this in a review)
+**Q: Can a helper erase her records after leaving?**
 
-> "It's an AI assistant that reads the document, checks it against the known layout of
-> that ID/certificate, rates image quality, flags anything that looks fake, expired,
-> not the account holder, or reused — and clearly fake/wrong images are auto‑rejected.
-> It is **not** a government‑database check and **not** forgery‑proof; it's a first
-> pass. **A PESO officer manually verifies and approves every document** — that's the
-> actual gate. True forgery/authenticity certainty would require connecting to the
-> issuing agency's records."
+**No.** There's no account deletion, and once a user has **any** placement
+(active or ended) their documents can't be deleted — only PESO can update them.
+Identity evidence survives for disputes.
+
+**Q: What would give true authenticity certainty?**
+
+Integrating the **issuing registries** (PhilSys eVerify, PNP, TESDA-TWSP). Needs
+official credentials and adviser sign-off — a scope decision, not just code.
 
 ---
 
-## 4. Decision flow (per side scanned)
+## Say this in a review
+
+> "It's an AI assistant that reads the document, checks it against the known
+> layout of that ID, rates image quality, and flags anything fake, expired, not
+> the account holder, or reused — and clearly fake images are auto-rejected. It is
+> **not** a government-database check and **not** forgery-proof. **A PESO officer
+> manually verifies and approves every document** — that's the actual gate."
+
+---
+
+## Decision flow
 
 ```
-Upload  →  (user taps) Start AI Scan  →  Gemini vision
-                                          ├─ type match, template 0–100, clarity 0–100
-                                          ├─ tampering signs (incl. screen/photocopy)
-                                          └─ extracted fields
-                                        │
-        deterministic checks on fields ─┤ expiry past today?      → warning
-                                         │ name ≠ account?         → warning
-                                         └ duplicate ID number?    → warning
-                                        │
-        template ≥70 & no warnings → Passed
-        template ≥70 & warnings    → Flagged
-        template 45–69             → Flagged
-        template <45               → Failed  → auto‑reject (only case)
-                                        │
-                          PESO manual review = FINAL decision
+Upload → (user taps) Start AI Scan → Gemini vision
+                                     ├─ type match, legitimacy 0–100, clarity 0–100
+                                     ├─ tampering signs (incl. screen/photocopy)
+                                     └─ extracted fields
+                                            │
+       deterministic checks ────────────────┤ expiry past today?    → warning
+                                            │ name ≠ account?       → warning
+                                            └ duplicate ID number?  → warning
+                                            │
+       legitimacy ≥70 + no warnings → Passed
+       legitimacy ≥70 + warnings    → Flagged
+       legitimacy 45–69             → Flagged
+       legitimacy <45               → Failed → auto-reject (only case)
+                                            │
+                        PESO manual review = FINAL decision
 ```
 
 ---
 
-## 5. Where the code lives
+## Where the code lives
 
 | Concern | File |
 |---|---|
-| Gemini prompt, schema, per‑type guidance, scoring | `backend/shared/gemini_id.php` |
-| Scan endpoint + Passed/Flagged/Failed gate + deterministic checks (expiry, name, duplicate) | `backend/helper/scan_id.php` |
-| Per‑user `ai_scanned` flag for PESO list | `backend/peso/get_pending_users.php` |
-| Record retention (block doc deletion after any placement) | `backend/helper/delete_document.php`, `backend/parent/delete_document.php` |
-| Scan UI (idle → scanning → results), manual `autoStart={false}` | `frontend/components/shared/DocumentAIScan.tsx` and its call sites in `app/(helper)/profile/document-detail.tsx`, `app/(parent)/profile/document-detail.tsx`, `components/helper/web/HelperProfileWeb.tsx`, `components/parent/web/ParentProfileWeb.tsx` |
-| PESO AI‑scan filter | `frontend/app/(peso)/users/index.tsx` |
-| Which docs are shareable with employers (Valid ID + Barangay are PESO‑only) | `frontend/constants/documents.ts` |
+| Gemini prompt, schema, per-type guidance | `backend/shared/gemini_id.php` |
+| Scan endpoint, Passed/Flagged/Failed gate, deterministic checks | `backend/helper/scan_id.php` |
+| Warnings + extracted fields sent to admin | `backend/peso/get_user_details.php` |
+| Warnings rendered for the reviewer | `frontend/components/peso/UserDetailPanel.tsx` |
+| Per-user `ai_scanned` flag | `backend/peso/get_pending_users.php` |
+| Doc-deletion block after a placement | `backend/helper/delete_document.php`, `backend/parent/delete_document.php` |
+| Scan UI (idle → scanning → results) | `frontend/components/shared/DocumentAIScan.tsx` |
+| PESO AI-scan filter | `frontend/app/(peso)/users/index.tsx` |
+| Which docs are shareable with employers | `frontend/constants/documents.ts` |
+
+**Supported types:** Valid ID (PhilSys / Passport / Driver's License / UMID / PRC /
+Postal / Voter's / SSS / GSIS), Barangay Clearance (+ Certificate / Certification /
+Residency / Indigency), Police Clearance, TESDA NC II.
 
 ---
 
-## 6. Supported document types
+## Known limits
 
-Valid ID (PhilSys/Passport/Driver's License/UMID/PRC/Postal/Voter's/SSS/GSIS),
-Barangay Clearance (and Certificate/Certification/Residency/Indigency),
-Police Clearance, TESDA NC II. Valid ID scans **front and back independently**.
-
----
-
-## 7. Known limits / future work (be upfront)
-
-- Cannot guarantee catching a **high‑quality forgery** (needs issuing‑agency check).
-- Duplicate‑ID check is a substring match on stored extracted data — good signal, not
-  a guaranteed unique index (could be hardened with a dedicated indexed column).
-- Name match is intentionally lenient to avoid false positives; a deliberate
-  same‑surname impersonation may not flag — PESO still reviews.
-- No liveness/anti‑spoof beyond the screen/photocopy prompt hint.
+- Can't guarantee catching a **high-quality forgery** (needs issuing-agency check).
+- Duplicate-ID check is a substring match on stored JSON — good signal, not a
+  unique index.
+- Name match is lenient by design; a same-surname impersonation may not flag.
+- No liveness/anti-spoof beyond the screen/photocopy prompt hint.

@@ -58,6 +58,10 @@ backend/config.local.php
 # Local email debug tool — must never reach the server
 backend/test_email.php
 
+# Temporary Hostinger SMTP diagnostic — upload manually, delete after use
+backend/test_mail_config.php
+backend/test_resend_debug.php
+
 # Claude Code local permission allowlist — machine-specific paths, not shareable
 .claude/settings.json
 

@@ -1,6 +1,6 @@
 <?php
 // carelink_api/dbcon.php
-// Database connection - works for both Laragon (local) and production (Railway)
+// Database connection - works for both Laragon (local) and production (Hostinger)
 
 // Error handling setup
 ini_set('display_errors', 0);
@@ -11,7 +11,7 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 // Start output buffering
 ob_start();
 
-// Portable config: real env vars (Railway/VPS) first, else backend/config.local.php.
+// Portable config: real env vars (VPS) first, else backend/config.local.php (Hostinger).
 require_once __DIR__ . '/load_config.php';
 
 $host = carelink_cfg('DB_HOST', 'localhost');
