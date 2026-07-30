@@ -8,13 +8,16 @@
 //   setup   — account just created, nothing filled in yet → granular profile steps
 //   started — PESO has verified them → browsing, the match score, posting/applying
 //   next    — they've applied (helper) / posted (parent) → what happens from here
+//   work    — a contract is signed and Work Mode is live → running the placement
 //
-// Stage progression is derived from real data (verification status + activity),
-// not from a counter, so it can't drift out of sync. See contexts/GuideContext.tsx.
+// Stage progression is derived from real data (verification status, activity, an
+// active placement), not from a counter, so it can't drift out of sync. Each
+// chapter auto-opens exactly once, the first time its stage is reached — never
+// again on later logins. See contexts/GuideContext.tsx.
 
 import { Ionicons } from '@expo/vector-icons';
 
-export type GuideStage = 'setup' | 'started' | 'next';
+export type GuideStage = 'setup' | 'started' | 'next' | 'work';
 export type GuideRole = 'helper' | 'parent';
 
 export type GuidePage = {
@@ -187,6 +190,55 @@ const HELPER_NEXT: GuideChapter = {
   ],
 };
 
+const HELPER_WORK: GuideChapter = {
+  stage: 'work',
+  label: 'Working with Work Mode',
+  blurb: 'Tasks, check-in, leave, and your salary.',
+  icon: 'briefcase-outline',
+  pages: [
+    {
+      icon: 'briefcase',
+      title: 'Work Mode is on',
+      body: 'Your contract is signed, so the app has switched to helping you WORK instead of helping you job-hunt. Your tabs are now Home, My Work, Schedule and Messages.',
+    },
+    {
+      icon: 'checkbox-outline',
+      title: 'Your daily tasks',
+      body: 'My Work shows what your employer has asked for. Tick each one off as you finish it. If something isn’t clear, message them — it’s better to ask than to guess.',
+    },
+    {
+      icon: 'camera-outline',
+      title: 'Photo proof (only sometimes)',
+      body: 'Some tasks ask for a photo when you finish. It’s only on tasks where your employer turned it on — it’s not spying, it just saves you having to explain what was done.',
+    },
+    {
+      icon: 'time-outline',
+      title: 'Check in and check out',
+      body: 'Tap to check in when you start and out when you finish. Forgetting once is not a problem and won’t get you in trouble — it’s a record for both of you, not a punch clock.',
+    },
+    {
+      icon: 'calendar-outline',
+      title: 'Your schedule',
+      body: 'Schedule shows your working days and your rest days as agreed in the contract. Your rest day is yours — you don’t need to check in on it.',
+    },
+    {
+      icon: 'airplane-outline',
+      title: 'Asking for leave',
+      body: 'Need a day off? Send a leave request instead of just messaging, so there’s a clear record. Your employer sees it on their home screen and approves or declines it there.',
+    },
+    {
+      icon: 'wallet-outline',
+      title: 'Your salary summary',
+      body: 'Home shows what you’ve earned based on your agreed salary. Important: this is a RECORD, not a wallet. CareLink never holds or sends money — your employer pays you directly, the same as always.',
+    },
+    {
+      icon: 'exit-outline',
+      title: 'If the job ends',
+      body: 'Either side can end the placement. When it’s finished you go back to job-hunting mode with your history kept, and you can leave each other a review.',
+    },
+  ],
+};
+
 // ─── Parent / employer ────────────────────────────────────────────────────────
 
 const PARENT_SETUP: GuideChapter = {
@@ -346,11 +398,60 @@ const PARENT_NEXT: GuideChapter = {
   ],
 };
 
+const PARENT_WORK: GuideChapter = {
+  stage: 'work',
+  label: 'Managing with Work Mode',
+  blurb: 'Tasks, attendance, leave, and payroll.',
+  icon: 'briefcase-outline',
+  pages: [
+    {
+      icon: 'briefcase',
+      title: 'Work Mode is on',
+      body: 'The contract is signed, so the app has switched from hiring to managing. You can toggle back to Recruitment mode anytime from the top of your screen if you need to hire again.',
+    },
+    {
+      icon: 'grid-outline',
+      title: 'Your Work Home',
+      body: 'One screen with what matters: your total monthly payroll, anything waiting on you (leave requests, helper requests), and a card per helper. If nothing needs you, nothing shouts.',
+    },
+    {
+      icon: 'add-circle-outline',
+      title: 'Asking for something: tasks',
+      body: 'Use Tasks for day-to-day requests. Type it in plain words, or tap Suggest for ready-made ones. Don’t reopen the contract just to ask for something extra this week — that’s what tasks are for.',
+    },
+    {
+      icon: 'document-lock-outline',
+      title: 'Contract vs tasks',
+      body: 'The contract holds the main duties and the pay — the things you both agreed to and shouldn’t change casually. Tasks are the everyday layer on top. Keeping them separate protects you both.',
+    },
+    {
+      icon: 'toggle-outline',
+      title: 'Attendance is your choice',
+      body: 'Attendance tracking is OFF by default and you decide whether to switch it on per helper. Plenty of households never turn it on — a trusted long-term helper usually doesn’t need it.',
+    },
+    {
+      icon: 'airplane-outline',
+      title: 'Leave requests',
+      body: 'When your helper asks for a day off it appears on your Work Home to approve or decline. Handling it here keeps a clear record instead of it being lost in chat.',
+    },
+    {
+      icon: 'wallet-outline',
+      title: 'Payroll is a summary, not a payment',
+      body: 'Payroll shows what’s owed from the agreed salary, days worked and leave taken — so nobody has to argue from memory. CareLink NEVER moves money; you still pay your helper directly.',
+    },
+    {
+      icon: 'star-outline',
+      title: 'Ending a placement',
+      body: 'Either side can end it. Give proper notice as agreed in the contract, and leave an honest review afterwards — reviews are what future households rely on, and what a good helper earns.',
+    },
+  ],
+};
+
 // ─── Lookup ───────────────────────────────────────────────────────────────────
 
 export const GUIDE_CHAPTERS: Record<GuideRole, GuideChapter[]> = {
-  helper: [HELPER_SETUP, HELPER_STARTED, HELPER_NEXT],
-  parent: [PARENT_SETUP, PARENT_STARTED, PARENT_NEXT],
+  helper: [HELPER_SETUP, HELPER_STARTED, HELPER_NEXT, HELPER_WORK],
+  parent: [PARENT_SETUP, PARENT_STARTED, PARENT_NEXT, PARENT_WORK],
 };
 
 export function getChapter(role: GuideRole, stage: GuideStage): GuideChapter {
@@ -358,20 +459,25 @@ export function getChapter(role: GuideRole, stage: GuideStage): GuideChapter {
   return list.find((c) => c.stage === stage) ?? list[0];
 }
 
+/** Order chapters unlock in — also the order shown in the chapter list. */
+export const STAGE_ORDER: GuideStage[] = ['setup', 'started', 'next', 'work'];
+
 /**
- * Which chapter fits where the user is right now.
- *   not verified          → setup
- *   verified, no activity → started
- *   verified + applied/posted → next
+ * Which chapter fits where the user is right now. Checked most-advanced first,
+ * because a hired helper has necessarily also applied.
+ *   working (contract signed)  → work
+ *   verified + applied/posted  → next
+ *   verified                   → started
+ *   otherwise                  → setup
  */
-export function stageFor(verified: boolean, hasActivity: boolean): GuideStage {
+export function stageFor(verified: boolean, hasActivity: boolean, working = false): GuideStage {
+  if (working) return 'work';
   if (!verified) return 'setup';
   return hasActivity ? 'next' : 'started';
 }
 
 /** Chapters the user has reached — later ones stay locked until they get there. */
 export function unlockedStages(stage: GuideStage): GuideStage[] {
-  if (stage === 'setup') return ['setup'];
-  if (stage === 'started') return ['setup', 'started'];
-  return ['setup', 'started', 'next'];
+  const upTo = STAGE_ORDER.indexOf(stage);
+  return STAGE_ORDER.slice(0, upTo + 1);
 }

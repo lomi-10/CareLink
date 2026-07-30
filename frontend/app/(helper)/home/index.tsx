@@ -82,16 +82,18 @@ export default function HelperHome() {
   } | null>(null);
 
   // Staged guide: the chapter that matches where this helper actually is
-  // (setup → verified → applied) auto-opens once each time they reach a new one.
-  // Re-openable anytime from the menu. See contexts/GuideContext.tsx.
+  // (setup → verified → applied → working) auto-opens once each time they reach
+  // a new one, and never again. Re-openable anytime from the menu.
+  // See contexts/GuideContext.tsx.
   useEffect(() => {
-    if (!profileData) return; // wait for the profile so we know the status
+    if (!profileData || !workReady) return; // wait until status + work mode are known
     syncStage({
       role: 'helper',
       verified: profileData?.profile?.verification_status === 'Verified',
       hasActivity: (stats?.applications ?? 0) > 0,
+      working: isWorkMode && !!activeHire,
     });
-  }, [profileData, stats?.applications, syncStage]);
+  }, [profileData, stats?.applications, workReady, isWorkMode, activeHire, syncStage]);
 
   // One-time celebration when the profile first reaches 90%+ (verification-ready).
   const [celebrateVisible, setCelebrateVisible] = useState(false);

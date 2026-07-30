@@ -69,16 +69,22 @@ export default function ParentHome() {
   };
 
   // Staged guide: the chapter matching where this employer actually is
-  // (setup → verified → posted a job) auto-opens once each time they reach a new
-  // one. Re-openable anytime from the menu. See contexts/GuideContext.tsx.
+  // (setup → verified → posted a job → managing a placement) auto-opens once
+  // each time they reach a new one, and never again. Re-openable anytime from
+  // the menu. See contexts/GuideContext.tsx.
+  //
+  // Reads portalMode/stats directly rather than the workModeUnlocked const
+  // below — that's declared after this effect, so naming it in the dependency
+  // array would be a TDZ error during render.
   useEffect(() => {
-    if (!profileData) return; // wait for the profile so we know the status
+    if (!profileData || !modeReady) return; // wait until status + mode are known
     syncStage({
       role: 'parent',
       verified: profileData?.profile?.verification_status === 'Verified',
       hasActivity: (stats?.active_job_posts ?? 0) > 0,
+      working: portalMode === 'work' && (stats?.active_placements ?? 0) > 0,
     });
-  }, [profileData, stats?.active_job_posts, syncStage]);
+  }, [profileData, stats?.active_job_posts, stats?.active_placements, portalMode, modeReady, syncStage]);
 
   // One-time celebration when the profile first reaches 90%+ (verification-ready).
   const [celebrateVisible, setCelebrateVisible] = useState(false);

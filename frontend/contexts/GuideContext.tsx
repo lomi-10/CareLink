@@ -23,7 +23,13 @@ type GuideContextValue = {
    * Tell the guide where the user is. Auto-shows that chapter the first time
    * they reach it, then never again. Safe to call on every render.
    */
-  syncStage: (opts: { role: GuideRole; verified: boolean; hasActivity: boolean }) => void;
+  syncStage: (opts: {
+    role: GuideRole;
+    verified: boolean;
+    hasActivity: boolean;
+    /** A contract is signed and Work Mode is live. */
+    working?: boolean;
+  }) => void;
 };
 
 const GuideContext = createContext<GuideContextValue>({
@@ -44,10 +50,10 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
   // syncStage calls from a re-rendering Home screen don't re-hit AsyncStorage.
   const checked = useRef<Set<string>>(new Set());
 
-  const syncStage = useCallback(({ role: r, verified, hasActivity }: {
-    role: GuideRole; verified: boolean; hasActivity: boolean;
+  const syncStage = useCallback(({ role: r, verified, hasActivity, working = false }: {
+    role: GuideRole; verified: boolean; hasActivity: boolean; working?: boolean;
   }) => {
-    const next = stageFor(verified, hasActivity);
+    const next = stageFor(verified, hasActivity, working);
     setRole(r);
     setStage(next);
 

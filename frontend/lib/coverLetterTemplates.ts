@@ -9,9 +9,11 @@
 // UNIQUENESS: on top of the per-category variety, each generated letter is
 // PERSONALISED with the helper's own details — their name, years of experience,
 // top skills and location — woven into a middle paragraph whose phrasing is
-// chosen from several variants by a per-(helper, job, generation) seed. Two
-// different helpers therefore almost never produce the same letter, while the
-// helper is still assisted with a ready first draft they can edit.
+// chosen from several variants by a per-(helper, job, generation) seed. WHICH
+// template a helper starts from is also seeded per helper (see pickCoverLetter),
+// so two helpers applying to the same job don't open with the same skeleton.
+// Two different helpers therefore almost never produce the same letter, while
+// the helper is still assisted with a ready first draft they can edit.
 //
 // Placeholders filled at pick time: {employer}, {job}, {category}, {name}.
 
@@ -173,7 +175,15 @@ function personalParagraph(helper: HelperInfo | undefined, seed: number): string
 export function pickCoverLetter(job: JobLike, n: number, helper?: HelperInfo): string {
   const key = resolveCategory(job);
   const bucket = TEMPLATES[key];
-  const tmpl = bucket[((n % bucket.length) + bucket.length) % bucket.length];
+
+  // Which of the category's templates to start from is chosen by the HELPER, not
+  // by n. Using n alone meant every helper's first press (n=0) returned
+  // bucket[0] — so every Yaya applicant sent the same skeleton, with only the
+  // personalised middle paragraph differing. Offsetting by a per-helper seed
+  // spreads first drafts across the whole bucket, while +n still means pressing
+  // Generate again gives a different letter.
+  const offset = seedFrom(`${helper?.name ?? ''}|${job.title ?? ''}|${key}`);
+  const tmpl = bucket[(offset + Math.max(0, n)) % bucket.length];
 
   const seed = seedFrom(`${helper?.name ?? ''}|${job.title ?? ''}|${key}|${n}`);
   const personal = personalParagraph(helper, seed);

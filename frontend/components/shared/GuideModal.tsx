@@ -23,6 +23,11 @@ function lockReason(role: GuideRole, stage: GuideStage): string {
       ? 'Opens once PESO verifies you'
       : 'Opens once PESO verifies your household';
   }
+  if (stage === 'work') {
+    return role === 'helper'
+      ? 'Opens once you’re hired and the contract is signed'
+      : 'Opens once you’ve hired someone and the contract is signed';
+  }
   return role === 'helper'
     ? 'Opens after you apply to your first job'
     : 'Opens after you post your first job';
