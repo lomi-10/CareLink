@@ -286,6 +286,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   // 5 PESO categories (1–5) AND auto-selects every job role under them.
   const GENERAL_ID = 1;
   const OTHERS_ID  = 6;
+  /** All-around is on — the other category cards are shown locked, not ticked. */
+  const generalOn = selectedCategoryIds.includes(GENERAL_ID);
   const jobIdsIn = (catIds: number[]) => availableJobs.filter(j => catIds.includes(j.category_id)).map(j => j.job_id);
 
   const toggleCategory = (id: number) => {
@@ -710,17 +712,28 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
     // ── Step 1: Category icon cards (2-column grid) ───────────────────────────
     if (step === 1) return (
       <>
-        <Text style={s.stepDesc}>Select nature of work. You can select more than one.</Text>
+        <Text style={s.stepDesc}>
+          {generalOn
+            ? 'General Househelp already covers every area, so the rest are switched off. Untick it to pick specific areas instead.'
+            : 'Select nature of work. You can select more than one.'}
+        </Text>
         <View style={s.catGrid}>
           {availableCategories.map(c => {
-            const sel = selectedCategoryIds.includes(c.category_id);
+            // "General Househelp" means all-around, so showing five more ticked
+            // boxes underneath it was just noise. It now reads as the single
+            // choice it is, and the others are locked until it's turned off.
+            const isGeneral = c.category_id === GENERAL_ID;
+            const sel = generalOn ? isGeneral : selectedCategoryIds.includes(c.category_id);
+            const locked = generalOn && !isGeneral;
             const { icon, color, bg } = getCategoryIcon(c.category_name);
             return (
               <TouchableOpacity
                 key={c.category_id}
-                style={[s.catCard, sel && s.catCardActive]}
+                style={[s.catCard, sel && s.catCardActive, locked && { opacity: 0.4 }]}
                 onPress={() => toggleCategory(c.category_id)}
-                activeOpacity={0.82}
+                activeOpacity={locked ? 1 : 0.82}
+                disabled={locked}
+                accessibilityState={{ selected: sel, disabled: locked }}
               >
                 {/* Icon circle */}
                 <View style={[s.catIconWrap, { backgroundColor: sel ? 'rgba(255,255,255,0.22)' : bg }]}>

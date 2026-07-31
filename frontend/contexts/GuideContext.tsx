@@ -46,8 +46,8 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
   /** undefined → open the chapter list; set → jump into that chapter. */
   const [startStage, setStartStage] = useState<GuideStage | undefined>(undefined);
 
-  // Which storage keys we've already looked up this session, so the repeated
-  // syncStage calls from a re-rendering Home screen don't re-hit AsyncStorage.
+  // Stages already handled in THIS app session, so the repeated syncStage calls
+  // from a re-rendering Home screen don't reopen the modal or re-hit storage.
   const checked = useRef<Set<string>>(new Set());
 
   const syncStage = useCallback(({ role: r, verified, hasActivity, working = false }: {
@@ -57,20 +57,39 @@ export function GuideProvider({ children }: { children: React.ReactNode }) {
     setRole(r);
     setStage(next);
 
-    const key = `guide_seen_${r}_${next}_v1`;
-    if (checked.current.has(key)) return;
-    checked.current.add(key);
+    void (async () => {
+      // The "seen" flag MUST be per account. Without the user id it was
+      // device-wide, so the second helper created on a test phone never got the
+      // setup guide — the first account had already consumed the flag.
+      let uid = '';
+      try {
+        const raw = await AsyncStorage.getItem('user_data');
+        uid = String((raw ? JSON.parse(raw) : {})?.user_id ?? '');
+      } catch { /* fall through — an empty uid still scopes per session below */ }
 
-    AsyncStorage.getItem(key)
-      .then((seen) => {
-        if (seen) return;
+      const sessionKey = `${r}_${uid}_${next}`;
+      if (checked.current.has(sessionKey)) return;
+      checked.current.add(sessionKey);
+
+      // Setup repeats: an unverified helper has unfinished business, so the
+      // steps are worth re-offering on every sign-in. Once per session, not per
+      // render. Every later chapter stays strictly once-ever.
+      if (next === 'setup') {
+        setStartStage(next);
+        setVisible(true);
+        return;
+      }
+
+      const key = `guide_seen_${r}_${uid}_${next}_v1`;
+      try {
+        if (await AsyncStorage.getItem(key)) return;
         setStartStage(next);
         setVisible(true);
         // Marked seen on open, not on close: if the app is killed mid-guide we
         // still don't want to ambush them with the same chapter next launch.
-        AsyncStorage.setItem(key, '1').catch(() => {});
-      })
-      .catch(() => {});
+        await AsyncStorage.setItem(key, '1');
+      } catch { /* best-effort */ }
+    })();
   }, []);
 
   const openGuide = useCallback((r?: GuideRole) => {
