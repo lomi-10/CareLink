@@ -43,6 +43,14 @@ export const NAV_GROUPS: NavGroup[] = [
       { icon: 'bar-chart', label: 'Reports & Analytics', path: '/(peso)/reports' },
     ],
   },
+  {
+    // Only useful while running user-test sessions. Remove this group (and
+    // app/(peso)/demo/) once testing is finished.
+    label: 'USER TESTING',
+    items: [
+      { icon: 'flask', label: 'Demo Control Panel', path: '/(peso)/demo' },
+    ],
+  },
 ];
 
 /** Flat list — used by the mobile drawer, which doesn't render group headers as separately. */
