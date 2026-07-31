@@ -13,7 +13,8 @@ import { createHelperHomeStyles } from './home.styles';
 import { useHelperWarm, PAGE_BG_WEB } from '@/components/helper/home/helperWarmTheme';
 
 import { useHelperStats, useHelperProfile } from '@/hooks/helper';
-import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
+import { useAuth, useResponsive, useNotifications, useDemoSession } from '@/hooks/shared';
+import FeedbackModal from '@/components/shared/FeedbackModal';
 
 import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard } from '@/components/shared';
 import { useGuide } from '@/contexts/GuideContext';
@@ -45,6 +46,9 @@ export default function HelperHome() {
 
   const { userData, loading: authLoading, handleLogout, getFullName } = useAuth();
   const { syncStage } = useGuide();
+  const { isDemoParticipant } = useDemoSession();
+  // { open, demoEnd } — demoEnd also clears seeded-employer activity and signs out.
+  const [feedback, setFeedback] = useState<{ open: boolean; demoEnd: boolean }>({ open: false, demoEnd: false });
   const { stats, loading: statsLoading, refresh } = useHelperStats();
   // Fetch profile to get the latest profile_image (userData in AsyncStorage may be stale)
   const { profileData, refresh: refreshProfile } = useHelperProfile();
@@ -153,6 +157,14 @@ export default function HelperHome() {
 
   const renderModals = () => (
     <>
+      <FeedbackModal
+        visible={feedback.open}
+        onClose={() => setFeedback({ open: false, demoEnd: false })}
+        role="helper"
+        accent={ORANGE}
+        context={feedback.demoEnd ? 'demo_end' : 'general'}
+        clearDemoDataOnSubmit={feedback.demoEnd}
+      />
       <NotificationModal
         visible={celebrateVisible}
         message="Profile complete! You're now awaiting PESO verification."
@@ -413,7 +425,14 @@ export default function HelperHome() {
 
       {showWorkDash ? <WorkModeTabBar /> : <HelperTabBar />}
 
-      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} stats={stats} handleLogout={initiateLogout} />
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        stats={stats}
+        handleLogout={initiateLogout}
+        onOpenFeedback={() => setFeedback({ open: true, demoEnd: false })}
+        onFinishDemo={isDemoParticipant ? () => setFeedback({ open: true, demoEnd: true }) : undefined}
+      />
       {renderModals()}
     </SafeAreaView>
   );

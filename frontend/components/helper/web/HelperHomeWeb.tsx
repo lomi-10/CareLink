@@ -1,5 +1,5 @@
 // components/helper/web/HelperHomeWeb.tsx — desktop dashboard for the helper Home.
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Pressable, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,6 +7,8 @@ import { useRouter } from 'expo-router';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useRecommendations, useMyApplications } from '@/hooks/helper';
 import { useCareBot } from '@/contexts/CareBotContext';
+import { useDemoSession } from '@/hooks/shared';
+import FeedbackModal from '@/components/shared/FeedbackModal';
 import { HelperTopNav } from './HelperTopNav';
 import { wt, FEATURE_GRADIENT, ACCENT_GRADIENT } from './webTheme';
 
@@ -60,12 +62,30 @@ export function HelperHomeWeb({
   const first = (userName || 'Helper').split(' ')[0];
   const recent = useMemo(() => applications.slice(0, 3), [applications]);
   const recs = useMemo(() => recommendations.slice(0, 4), [recommendations]);
+  const { isDemoParticipant } = useDemoSession();
+  const [feedback, setFeedback] = useState<{ open: boolean; demoEnd: boolean }>({ open: false, demoEnd: false });
 
   const go = (p: string) => router.push(p as never);
 
   return (
     <View style={s.root}>
-      <HelperTopNav active="dashboard" userName={userName} avatar={avatar} verified={verified} onLogout={onLogout} />
+      <HelperTopNav
+        active="dashboard"
+        userName={userName}
+        avatar={avatar}
+        verified={verified}
+        onLogout={onLogout}
+        onOpenFeedback={() => setFeedback({ open: true, demoEnd: false })}
+        onFinishDemo={isDemoParticipant ? () => setFeedback({ open: true, demoEnd: true }) : undefined}
+      />
+      <FeedbackModal
+        visible={feedback.open}
+        onClose={() => setFeedback({ open: false, demoEnd: false })}
+        role="helper"
+        accent={wt.accent}
+        context={feedback.demoEnd ? 'demo_end' : 'general'}
+        clearDemoDataOnSubmit={feedback.demoEnd}
+      />
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {banners ? <View style={s.banners}>{banners}</View> : null}
         <View style={s.grid}>

@@ -29,6 +29,7 @@ const WORK_ITEMS: { key: NavKey; label: string; icon: keyof typeof Ionicons.glyp
 
 export function HelperTopNav({
   active, userName, avatar, verified, onLogout, workMode = false,
+  onOpenFeedback, onFinishDemo,
 }: {
   active: NavKey;
   userName: string;
@@ -36,6 +37,9 @@ export function HelperTopNav({
   verified: boolean;
   onLogout: () => void;
   workMode?: boolean;
+  onOpenFeedback?: () => void;
+  /** Only passed while the user has activity with the seeded demo employers. */
+  onFinishDemo?: () => void;
 }) {
   const router = useRouter();
   const { unreadCount } = useNotifications('helper');
@@ -104,6 +108,12 @@ export function HelperTopNav({
                 <MenuRow icon="person-outline" label="My Profile" onPress={() => { setMenuOpen(false); go('/(helper)/profile'); }} />
                 <MenuRow icon="settings-outline" label="Settings" onPress={() => { setMenuOpen(false); go('/(helper)/settings'); }} />
                 <MenuRow icon="help-buoy-outline" label="How CareLink works" onPress={() => { setMenuOpen(false); openGuide('helper'); }} />
+                {!!onOpenFeedback && (
+                  <MenuRow icon="chatbox-ellipses-outline" label="Send feedback" onPress={() => { setMenuOpen(false); onOpenFeedback(); }} />
+                )}
+                {!!onFinishDemo && (
+                  <MenuRow icon="flag-outline" label="Finish demo session" onPress={() => { setMenuOpen(false); onFinishDemo(); }} />
+                )}
                 <View style={s.menuDiv} />
                 <MenuRow icon="log-out-outline" label="Log Out" danger onPress={() => { setMenuOpen(false); onLogout(); }} />
               </View>

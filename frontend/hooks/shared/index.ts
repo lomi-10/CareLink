@@ -11,3 +11,4 @@ export {
   type ColorSchemePreference,
 } from '@/contexts/ColorSchemePreferenceContext';
 export * from './useNotice';
+export * from './useDemoSession';

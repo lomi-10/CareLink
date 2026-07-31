@@ -126,12 +126,18 @@ export function MobileMenu({
   stats,
   handleLogout,
   notificationUnread = 0,
+  onOpenFeedback,
+  onFinishDemo,
 }: {
   isOpen: boolean;
   onClose: () => void;
   stats?: { applications?: number };
   handleLogout: () => void;
   notificationUnread?: number;
+  /** Opens the feedback sheet on the host screen (the modal lives there). */
+  onOpenFeedback?: () => void;
+  /** Only passed while the user has activity with the seeded demo employers. */
+  onFinishDemo?: () => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -238,6 +244,38 @@ export function MobileMenu({
               </View>
               <Ionicons name="chevron-forward" size={18} color={w.SUBTLE} />
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.drawerItem}
+              onPress={() => {
+                onClose();
+                onOpenFeedback?.();
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.drawerItemLeft}>
+                <Ionicons name="chatbox-ellipses-outline" size={22} color={w.MUTED} />
+                <Text style={styles.drawerItemText}>Send feedback</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={w.SUBTLE} />
+            </TouchableOpacity>
+
+            {!!onFinishDemo && (
+              <TouchableOpacity
+                style={styles.drawerItem}
+                onPress={() => {
+                  onClose();
+                  onFinishDemo();
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={styles.drawerItemLeft}>
+                  <Ionicons name="flag-outline" size={22} color={w.ORANGE} />
+                  <Text style={[styles.drawerItemText, styles.drawerItemTextActive]}>Finish demo session</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={w.SUBTLE} />
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
               <Ionicons name="log-out-outline" size={22} color={w.DANGER} />
