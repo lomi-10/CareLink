@@ -37,12 +37,19 @@ const LandingPage = () => {
   return (
     <View style={styles.root}>
       {/* Base dark-brown gradient + glow (unchanged) */}
-      <LinearGradient style={StyleSheet.absoluteFill} colors={["#7a5b37", "#140a07"]} locations={[0, 1]} />
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LinearGradient 
+        style={StyleSheet.absoluteFillObject} 
+        colors={["#7a5b37", "#140a07"]} 
+        locations={[0, 1]} 
+      />
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
         <RadialGradient
-          style={{ opacity: 0.5 }}
+          style={styles.radialStretch}
           colors={["rgba(217, 138, 58, 0.5)", "rgba(217, 138, 58, 0)"]}
-          cx="50%" cy="0%" rx="50%" ry="50%"
+          cx="50%" 
+          cy="0%" 
+          rx="50%" 
+          ry="50%"
         />
       </View>
 
@@ -143,6 +150,11 @@ const MUTED = "#8A6A47";
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#140a07" },
   scroll: { flexGrow: 1, paddingHorizontal: 16 },
+  radialStretch: {
+    width: '100%',  // Forces the radial shape to stretch horizontally
+    height: '100%', // Forces the radial shape to stretch vertically
+    opacity: 0.5,
+  },
 
   // header
   header: {
