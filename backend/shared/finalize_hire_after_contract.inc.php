@@ -75,7 +75,21 @@ function carelink_finalize_hire_after_contract(
             $jobDetails['salary_period']
         );
         $stmt3->execute();
+        $new_placement_id = (int) $conn->insert_id;
         $stmt3->close();
+
+        // Stream 3: record the employer's placement success fee as pending.
+        // Deliberately non-fatal — a hire is a legal event and must never fail
+        // because of a billing row. The helper is never charged and never sees
+        // this. See shared/placement_fee.php.
+        if ($new_placement_id > 0) {
+            try {
+                require_once __DIR__ . '/placement_fee.php';
+                carelink_create_placement_fee($conn, $new_placement_id, (int) $parent_id);
+            } catch (Throwable $feeErr) {
+                error_log('placement fee not created for placement ' . $new_placement_id . ': ' . $feeErr->getMessage());
+            }
+        }
     }
 
     $sql4 = "UPDATE job_applications SET status = 'Rejected', parent_notes = 'Position has been filled', updated_at = NOW()

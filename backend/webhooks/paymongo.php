@@ -107,6 +107,54 @@ try {
             }
         }
 
+        // ── Stream 2: CareLink Plus ──
+        // One month is sold at a time, so a payment either starts a
+        // subscription or extends the existing period by a month. Extending
+        // from current_period_end (not NOW) means a renewal paid early never
+        // costs the employer the days they already bought.
+        if ($kind === 'subscription') {
+            $parentId = (int) ($meta['parent_id'] ?? 0);
+            if ($parentId > 0) {
+                $st = $conn->prepare(
+                    "INSERT INTO subscriptions
+                        (user_id, plan_type, status, started_at, current_period_end,
+                         featured_credits_remaining, featured_credits_reset_at)
+                     VALUES (?, 'carelink_plus', 'active', NOW(),
+                             DATE_ADD(NOW(), INTERVAL 1 MONTH), 3, DATE_ADD(NOW(), INTERVAL 1 MONTH))"
+                );
+                $existing = $conn->prepare(
+                    "SELECT subscription_id, current_period_end FROM subscriptions
+                      WHERE user_id = ? ORDER BY subscription_id DESC LIMIT 1"
+                );
+                $existing->bind_param('i', $parentId);
+                $existing->execute();
+                $row = $existing->get_result()->fetch_assoc();
+                $existing->close();
+
+                if ($row && strtotime((string) $row['current_period_end']) > time()) {
+                    $ext = $conn->prepare(
+                        "UPDATE subscriptions
+                            SET status = 'active', cancelled_at = NULL,
+                                current_period_end = DATE_ADD(current_period_end, INTERVAL 1 MONTH)
+                          WHERE subscription_id = ?"
+                    );
+                    $ext->bind_param('i', $row['subscription_id']);
+                    $ext->execute();
+                    $ext->close();
+                } else {
+                    $st->bind_param('i', $parentId);
+                    $st->execute();
+                }
+                $st->close();
+
+                createNotification(
+                    $conn, $parentId, 'payment', 'CareLink Plus active',
+                    'Your CareLink Plus subscription is active. You have 3 featured post credits this month.',
+                    null, null
+                );
+            }
+        }
+
         // ── Stream 3: placement success fee ──
         if ($kind === 'placement_fee') {
             $placementId = (int) ($meta['placement_id'] ?? 0);

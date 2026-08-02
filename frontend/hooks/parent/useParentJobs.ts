@@ -24,6 +24,9 @@ export interface JobPost {
   status: 'Open' | 'Filled' | 'Closed' | 'Expired' | 'Pending' | 'Rejected';
   posted_at: string;
   expires_at: string;
+  /** Featured-placement expiry. Set by the PayMongo webhook; null = never boosted. */
+  featured_until?: string | null;
+  featured_boost_paid_at?: string | null;
   /** From API when present */
   start_date?: string | null;
   filled_at?: string;

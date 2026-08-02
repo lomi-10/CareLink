@@ -31,7 +31,8 @@ import { useUserVerification } from '@/hooks/peso';
 import { ConfirmationModal, InterviewModal, LoadingSpinner, NotificationModal } from '@/components/shared';
 import { MobileMenu, Sidebar, ParentTabBar } from '@/components/parent/home';
 import { ParentJobsWeb } from '@/components/parent/web/ParentJobsWeb';
-import { JobPostModal } from '@/components/parent/jobs';
+import { JobPostModal, BoostJobModal } from '@/components/parent/jobs';
+import { isJobBoosted } from '@/lib/boost';
 import { JobDetailsModal } from '@/components/parent/jobs/JobDetailsModal';
 import { PendingBanner } from '@/components/parent/verification/PendingBanner';
 import API_URL from '@/constants/api';
@@ -201,6 +202,7 @@ export default function WorkManagement() {
   const [editingJob, setEditingJob]               = useState<JobPost | null>(null);
   const [isPostModalVisible, setIsPostModalVisible] = useState(false);
   const [viewingJob, setViewingJob]               = useState<JobPost | null>(null);
+  const [boostJob, setBoostJob]                   = useState<JobPost | null>(null);
   const [deleteModal, setDeleteModal]             = useState({ visible: false, jobId: '', jobTitle: '' });
   const [notification, setNotification]          = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
   const [confirmLogoutVisible, setConfirmLogout] = useState(false);
@@ -492,6 +494,16 @@ export default function WorkManagement() {
           <Ionicons name="document-text-outline" size={14} color={BROWN} />
           <Text style={w.viewDetailsLinkText}>View Job Details</Text>
         </TouchableOpacity>
+
+        {/* Boost — live posts only, so paying can never jump PESO review. */}
+        {selectedJob.status === 'Open' && (
+          <TouchableOpacity style={w.viewDetailsLink} onPress={() => setBoostJob(selectedJob)} activeOpacity={0.7}>
+            <Ionicons name="megaphone-outline" size={14} color={BROWN} />
+            <Text style={w.viewDetailsLinkText}>
+              {isJobBoosted(selectedJob) ? 'Boost active' : 'Boost this post'}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         <View style={w.sectionDivider} />
 
@@ -1166,6 +1178,13 @@ export default function WorkManagement() {
       <ConfirmationModal visible={deleteModal.visible} title="Delete Job?" message={`Delete "${deleteModal.jobTitle}"? This cannot be undone.`} confirmText="Delete" cancelText="Cancel" type="danger" onConfirm={confirmDelete} onCancel={() => setDeleteModal(p => ({ ...p, visible: false }))} />
       <JobPostModal visible={isPostModalVisible} onClose={() => setIsPostModalVisible(false)} existingJobData={editingJob} onSaveSuccess={refreshJobs} />
       <JobDetailsModal visible={!!viewingJob} job={viewingJob} onClose={() => setViewingJob(null)} />
+      <BoostJobModal
+        visible={!!boostJob}
+        jobPostId={boostJob?.job_post_id ?? null}
+        jobTitle={boostJob?.title}
+        onClose={() => setBoostJob(null)}
+        onBoosted={refreshJobs}
+      />
       {interviewTarget && (
         <InterviewModal
           visible={!!interviewTarget}
