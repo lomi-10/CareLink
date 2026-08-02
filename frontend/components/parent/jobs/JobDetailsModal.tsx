@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
 import {
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -35,8 +36,35 @@ function createPerkTagStyles(t: ThemeColor) {
 
 function createDetailsStyles(t: ThemeColor) {
   return StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: t.overlay, justifyContent: 'center', alignItems: 'center', padding: 16 },
-    card:    { width: '100%', maxWidth: 660, maxHeight: '92%', backgroundColor: t.surfaceElevated, borderRadius: 24, overflow: 'hidden', ...theme.shadow.card },
+    // Mobile is a bottom sheet: anchored to the bottom edge, full-bleed, and
+    // about half the screen. Web keeps the centred dialog, where a sheet pinned
+    // to the bottom of a wide window would just look lost.
+    overlay: {
+      flex: 1,
+      backgroundColor: t.overlay,
+      alignItems: 'center',
+      ...Platform.select({
+        web: { justifyContent: 'center', padding: 16 },
+        default: { justifyContent: 'flex-end', padding: 0 },
+      }),
+    },
+    card: {
+      width: '100%',
+      backgroundColor: t.surfaceElevated,
+      overflow: 'hidden',
+      ...theme.shadow.card,
+      ...Platform.select({
+        web: { maxWidth: 660, maxHeight: '92%', borderRadius: 24 },
+        default: {
+          // Half the screen, growing only as far as the content needs. The body
+          // already scrolls, so nothing is unreachable at this height.
+          height: '50%',
+          maxHeight: '92%',
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+        },
+      }),
+    },
     header:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 22, borderBottomWidth: 1, borderBottomColor: t.line },
     title:   { fontSize: 22, fontWeight: '800', color: t.ink, marginBottom: 10, letterSpacing: -0.4 },
     badgeRow:{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
@@ -144,8 +172,15 @@ export function JobDetailsModal({ visible, onClose, job }: JobDetailsModalProps)
     </View>
   );
 
+  // Slide on mobile so it reads as a sheet rising from the bottom edge; fade on
+  // web, where a centred dialog shouldn't travel across the screen.
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType={Platform.OS === 'web' ? 'fade' : 'slide'}
+      transparent
+      onRequestClose={onClose}
+    >
       <View style={s.overlay}>
         <View style={s.card}>
           <View style={s.header}>
