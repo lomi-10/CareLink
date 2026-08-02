@@ -17,12 +17,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CareLinkLogoMark } from '@/components/branding/CareLinkLogoMark';
 import { useAdminTheme } from '@/contexts/AdminThemeContext';
 
-export type AdminNavKey = 'dashboard' | 'users' | 'accounts' | 'logs' | 'complaints';
+export type AdminNavKey = 'dashboard' | 'users' | 'accounts' | 'logs' | 'complaints' | 'messages' | 'feedback';
 
 const NAV: { key: AdminNavKey; icon: keyof typeof Ionicons.glyphMap; label: string; route: string; group: string }[] = [
   { key: 'dashboard', icon: 'grid', label: 'Dashboard', route: '/admin/dashboard', group: 'OVERVIEW' },
   { key: 'users', icon: 'people', label: 'User Verification', route: '/admin/user_management', group: 'USER & ADMIN' },
   { key: 'accounts', icon: 'person-add', label: 'Admin & PESO Accounts', route: '/admin/create_admin_user', group: 'USER & ADMIN' },
+  { key: 'messages', icon: 'chatbubbles', label: 'Messages', route: '/admin/messages', group: 'COMMUNICATION' },
+  { key: 'feedback', icon: 'star', label: 'User Feedback', route: '/admin/feedback', group: 'COMMUNICATION' },
   { key: 'logs', icon: 'list', label: 'Audit Trail', route: '/admin/logs', group: 'SYSTEM' },
   { key: 'complaints', icon: 'warning', label: 'Complaints', route: '/admin/complaints', group: 'SYSTEM' },
 ];

@@ -39,6 +39,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'COMMUNICATION & SUPPORT',
     items: [
+      { icon: 'chatbubbles', label: 'Messages', path: '/(peso)/messages' },
       { icon: 'alert-circle', label: 'Complaints', path: '/(peso)/complaints', badgeKey: 'complaints' },
       { icon: 'bar-chart', label: 'Reports & Analytics', path: '/(peso)/reports' },
     ],
