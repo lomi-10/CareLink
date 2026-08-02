@@ -62,6 +62,14 @@ try {
             throw new Exception("Please enter a valid Philippine mobile number, like 0917 123 4567.");
         }
         $contact_number = $normalized_contact;
+
+        // One number, one account — see shared/phone_identity.php. Without this
+        // the same mobile could register both a helper and an employer account.
+        require_once __DIR__ . '/../shared/phone_identity.php';
+        $claim = carelink_claim_phone($conn, $user_id, $contact_number);
+        if (!$claim['ok']) {
+            throw new Exception($claim['message']);
+        }
     }
     $province = isset($_POST['province']) ? trim($_POST['province']) : '';
     $municipality = isset($_POST['municipality']) ? trim($_POST['municipality']) : '';

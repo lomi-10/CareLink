@@ -82,6 +82,15 @@ try {
             throw new Exception("Please enter a valid Philippine mobile number, like 0917 123 4567.");
         }
         $contact_number = $normalized_contact;
+
+        // One number, one account. The profile is where numbers are really
+        // entered, so this is where the claim has to happen — signup's check
+        // never fires because that field is optional and usually skipped.
+        require_once __DIR__ . '/../shared/phone_identity.php';
+        $claim = carelink_claim_phone($conn, $user_id, $contact_number);
+        if (!$claim['ok']) {
+            throw new Exception($claim['message']);
+        }
     }
     $birth_date = isset($_POST['birth_date']) && trim($_POST['birth_date']) !== '' ? trim($_POST['birth_date']) : null;
     $gender = isset($_POST['gender']) ? $_POST['gender'] : 'Female';

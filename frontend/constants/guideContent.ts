@@ -91,7 +91,7 @@ const HELPER_SETUP: GuideChapter = {
     },
     {
       icon: 'sparkles-outline',
-      title: 'Step 8 — Run the AI scan (optional)',
+      title: 'Step 8 — Run the AI scan',
       body: 'On each uploaded document you can tap “Start AI Scan”. It checks the photo is clear and readable and tells you right away if something’s wrong — better to find out now than after waiting for review.',
     },
     {

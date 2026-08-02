@@ -476,7 +476,10 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         return null;
       case 'experience':
         // Bio is optional — only validate length if the helper actually typed one.
-        if (bio.trim() && bio.trim().length < 15) return 'If you add a bio, please make it at least 15 characters';
+        // Bio is genuinely optional: any length, including empty, is accepted.
+        // A minimum here used to reject short-but-real intros, and it also had a
+        // hidden cost — the PESO readiness gate required 15+ characters, so a
+        // short bio silently kept the account out of the queue.
         return null;
     }
   };

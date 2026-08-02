@@ -65,8 +65,10 @@ function carelink_sync_helper_profile_completed(mysqli $conn, int $user_id): boo
         && trim((string) $row['contact_number']) !== ''
         && trim((string) $row['province']) !== ''
         && trim((string) $row['municipality']) !== ''
-        && trim((string) $row['barangay']) !== ''
-        && strlen($bio) >= 15;
+        && trim((string) $row['barangay']) !== '';
+    // Bio is deliberately NOT part of this. It's an optional field, and
+    // requiring 15+ characters here silently kept accounts with a short intro
+    // out of PESO's queue with nothing in the UI explaining why.
 
     $skillCount = 0;
     $sk = $conn->prepare("SELECT COUNT(*) AS c FROM helper_skills WHERE profile_id = ?");
@@ -143,8 +145,8 @@ function carelink_sync_parent_profile_completed(mysqli $conn, int $user_id): boo
     $baseOk = trim((string) $row['contact_number']) !== ''
         && trim((string) $row['province']) !== ''
         && trim((string) $row['municipality']) !== ''
-        && trim((string) $row['barangay']) !== ''
-        && strlen($bio) >= 15;
+        && trim((string) $row['barangay']) !== '';
+    // Bio deliberately excluded — see the helper function above.
 
     $hhOk = false;
     $hq = $conn->prepare("SELECT household_type FROM parent_household WHERE profile_id = ? LIMIT 1");
