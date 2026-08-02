@@ -31,11 +31,13 @@ if (!function_exists('carelink_revenue_gates_enabled')) {
         return in_array($v, ['1', 'true', 'yes', 'on'], true);
     }
 
+    // define(), not const: `const` is a compile-time declaration and is a parse
+    // error inside this conditional block.
     /** Open job posts a free account may hold. Unlimited for Plus. */
-    const FREE_TIER_MAX_OPEN_JOBS = 3;
+    define('FREE_TIER_MAX_OPEN_JOBS', 3);
 
     /** Months of placement history a free account can see. */
-    const FREE_TIER_HISTORY_MONTHS = 6;
+    define('FREE_TIER_HISTORY_MONTHS', 6);
 
     /**
      * May this employer open another job post?
