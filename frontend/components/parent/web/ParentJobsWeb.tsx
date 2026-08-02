@@ -18,7 +18,7 @@ import { MatchBreakdown } from './MatchBreakdown';
 import { formatSalary, formatPayoutSchedule } from '@/lib/salary';
 import { applyByLabel } from '@/lib/jobExpiry';
 import { ConfirmationModal, InterviewModal, NotificationModal, LoadingSpinner } from '@/components/shared';
-import { JobPostModal } from '@/components/parent/jobs';
+import { JobPostModal, BoostJobModal } from '@/components/parent/jobs';
 import { PendingBanner } from '@/components/parent/verification/PendingBanner';
 import { ParentTopNav } from './ParentTopNav';
 import { pt, ACCENT_GRADIENT } from './parentWebTheme';
@@ -133,6 +133,7 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
   useEffect(() => { if (appsError) setNotif({ visible: true, msg: appsError, type: 'error' }); }, [appsError]);
 
   const selectedJob = useMemo(() => jobs.find((j) => j.job_post_id === selectedJobId) ?? null, [jobs, selectedJobId]);
+  const [boostJob, setBoostJob] = useState<JobPost | null>(null);
   const jobApplications = useMemo(() => allApplications.filter((a) => String(a.job_post_id) === String(selectedJobId)), [allApplications, selectedJobId]);
 
   const matchForApp = (app: JobApplication) => computeHelperJobMatch(applicationToMatchable(app), jobs.find((x) => String(x.job_post_id) === String(app.job_post_id)) ?? null);
@@ -356,6 +357,11 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
 
                   <View style={s.jobActions}>
                     <ActBtn icon="pencil-outline" label="Edit" onPress={() => handleEditJob(selectedJob)} />
+                    {/* Live posts only — a pending post must clear PESO review
+                        first, so paying can never jump the verification queue. */}
+                    {selectedJob.status === 'Open' && (
+                      <ActBtn icon="megaphone-outline" label="Boost" onPress={() => setBoostJob(selectedJob)} />
+                    )}
                     <ActBtn icon="copy-outline" label="Duplicate" onPress={() => handleDuplicateJob(selectedJob)} />
                     <ActBtn icon="archive-outline" label={selectedJob.status === 'Closed' ? 'Reopen' : 'Archive'} onPress={() => setArchiveModal(selectedJob)} />
                     <ActBtn icon="trash-outline" label="Delete" tone={pt.red} onPress={() => setDeleteModal({ visible: true, jobId: selectedJob.job_post_id, jobTitle: selectedJob.title })} />
@@ -439,6 +445,13 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
         onConfirm={confirmArchive} onCancel={() => setArchiveModal(null)}
       />
       <JobPostModal visible={postOpen} onClose={() => { setPostOpen(false); setDuplicating(false); }} existingJobData={editingJob} duplicate={duplicating} onSaveSuccess={refreshJobs} />
+      <BoostJobModal
+        visible={!!boostJob}
+        jobPostId={boostJob?.job_post_id ?? null}
+        jobTitle={boostJob?.title}
+        onClose={() => setBoostJob(null)}
+        onBoosted={refreshJobs}
+      />
       {interviewTarget && (
         <InterviewModal visible={!!interviewTarget} onClose={() => setInterviewTarget(null)} applicationId={interviewTarget.appId} helperName={interviewTarget.helperName} jobTitle={interviewTarget.jobTitle} scheduledBy={Number(userData?.user_id ?? 0)}
           onScheduled={() => { setInterviewTarget(null); refreshApps(); setNotif({ visible: true, msg: 'Interview invite sent!', type: 'success' }); }} />

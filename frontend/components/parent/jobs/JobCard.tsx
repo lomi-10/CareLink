@@ -115,6 +115,16 @@ function createJobCardStyles(t: ThemeColor) {
     paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8,
   },
   editBtnText: { fontSize: 13, fontWeight: '700', color: t.parent },
+  boostBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: t.warningSoft,
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8,
+  },
+  boostBtnText: { fontSize: 13, fontWeight: '700', color: t.warning },
+  boostedTag: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: t.warningSoft,
+    paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6,
+  },
+  boostedTagText: { fontSize: 11, fontWeight: '700', color: t.warning },
   closeBtn: { paddingHorizontal: 12, paddingVertical: 7 },
   closeBtnText: { fontSize: 13, fontWeight: '600', color: t.muted },
   reopenBtn: {
@@ -136,6 +146,8 @@ interface JobCardProps {
   onViewDetails: () => void;
   onViewApplications: () => void;
   onEdit: () => void;
+  /** Omit to hide the boost action (e.g. where payments aren't offered). */
+  onBoost?: () => void;
   onDelete: () => void;
   onUpdateStatus: (status: string) => void;
 }
@@ -145,6 +157,7 @@ export function JobCard({
   onViewDetails,
   onViewApplications,
   onEdit,
+  onBoost,
   onDelete,
   onUpdateStatus,
 }: JobCardProps) {
@@ -164,6 +177,8 @@ export function JobCard({
   const displayCategory = job.custom_category || job.category_name;
   const isPending  = job.status === 'Pending';
   const isRejected = job.status === 'Rejected';
+  const featuredUntil = (job as any).featured_until as string | null | undefined;
+  const isBoosted = !!featuredUntil && new Date(String(featuredUntil).replace(' ', 'T')).getTime() > Date.now();
   const jobNames: string[] = (job as any).job_names ?? [];
 
   return (
@@ -195,6 +210,14 @@ export function JobCard({
               </View>
             )}
             <JobStatusBadge status={job.status} />
+            {isBoosted && (
+              <View style={styles.boostedTag}>
+                <Ionicons name="megaphone" size={11} color={t.warning} />
+                <Text style={styles.boostedTagText}>
+                  Boosted until {new Date(String(featuredUntil).replace(' ', 'T')).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -295,6 +318,18 @@ export function JobCard({
                 <Ionicons name="create-outline" size={15} color={t.parent} />
                 <Text style={styles.editBtnText}>Edit</Text>
               </TouchableOpacity>
+              {/* Only live posts can be boosted — a pending post must clear PESO
+                  review first, so paying can never jump the queue. */}
+              {job.status === 'Open' && !!onBoost && !isBoosted && (
+                <TouchableOpacity
+                  style={styles.boostBtn}
+                  onPress={(e) => { e.stopPropagation(); onBoost(); }}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="megaphone-outline" size={15} color={t.warning} />
+                  <Text style={styles.boostBtnText}>Boost</Text>
+                </TouchableOpacity>
+              )}
               {job.status === 'Open' && (
                 <TouchableOpacity
                   style={styles.closeBtn}

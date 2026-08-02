@@ -63,6 +63,20 @@ function createJobCardStyles(c: ThemeColor) {
     },
     matchText: { fontSize: 11, fontWeight: '700', color: c.warning },
 
+    // Deliberately quiet: disclosure, not an advertisement.
+    boostPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: c.surface,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: c.line,
+    },
+    boostText: { fontSize: 11, fontWeight: '600', color: c.muted },
+
     saveBtn: { padding: 2 },
 
     quickBar: {
@@ -191,6 +205,14 @@ export function JobCard({ job, onPress, onApply, onToggleSave, onEmployerPress }
                 <View style={styles.matchPill}>
                   <Ionicons name="flash" size={11} color={c.warning} />
                   <Text style={styles.matchText}>{job.match_score}% Match</Text>
+                </View>
+              )}
+
+              {/* Paid placement — always disclosed, never disguised as organic. */}
+              {job.boosted && (
+                <View style={styles.boostPill}>
+                  <Ionicons name="megaphone" size={11} color={c.muted} />
+                  <Text style={styles.boostText}>Boosted</Text>
                 </View>
               )}
             </View>

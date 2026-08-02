@@ -95,6 +95,12 @@ export interface JobPost {
   // already has a relationship with this post and can't apply again.
   application_status?: string | null;
   can_apply?: boolean;
+  /**
+   * Employer paid to feature this post for 7 days. Affects sort position only —
+   * the match score is unchanged. Must always be shown to the helper: a paid
+   * placement is never presented as an organic result.
+   */
+  boosted?: boolean;
 }
 
 export interface JobFilters {

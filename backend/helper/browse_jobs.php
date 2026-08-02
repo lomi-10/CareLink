@@ -245,10 +245,20 @@ try {
                 ? $job['my_application_status']
                 : null,
             'can_apply' => !$job['my_application_status'] || $job['my_application_status'] === 'Withdrawn',
+
+            // Paid placement. Surfaced so the UI can label it — a boosted post
+            // is never presented as an organic top result.
+            'boosted' => !empty($job['featured_until']) && strtotime($job['featured_until']) > time(),
         ];
     }
-    
+
+    // Ranking happens here, not in SQL, because match_score is computed in PHP.
+    // A paid boost buys position ONLY: match_score is untouched, and within each
+    // group jobs still rank by how well they actually fit this helper.
     usort($processedJobs, function($a, $b) {
+        if ($a['boosted'] !== $b['boosted']) {
+            return $a['boosted'] ? -1 : 1;
+        }
         return $b['match_score'] - $a['match_score'];
     });
     

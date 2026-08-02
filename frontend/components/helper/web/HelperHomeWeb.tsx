@@ -168,7 +168,12 @@ export function HelperHomeWeb({
                             <Text style={[s.jobTitle, hovered && { color: wt.accent }]} numberOfLines={1}>{job.title || job.category_name || 'Job'}</Text>
                             <View style={s.jobEmp}>
                               <Text style={s.jobEmpText} numberOfLines={1}>{job.parent_name || 'Employer'}</Text>
-                              {job.parent_verified ? <View style={s.jobPv}><Ionicons name="shield-checkmark" size={11} color={wt.green} /><Text style={s.jobPvText}>PESO Verified</Text></View> : null}
+                              {job.parent_verified ? 
+                                <View style={s.jobPv}>
+                                  <Text style={s.jobPvText}>PESO Verified</Text>
+                                  <Ionicons name="shield-checkmark" size={11} color={wt.green} />
+                                </View> : null
+                              }
                             </View>
                             <View style={s.jobLoc}><Ionicons name="location-outline" size={12} color={wt.muted} /><Text style={s.jobLocText} numberOfLines={1}>{[job.municipality, job.province].filter(Boolean).join(', ') || '—'}</Text></View>
                             <Text style={s.jobPay}>₱{Number(job.salary_offered).toLocaleString()} <Text style={s.jobPayPer}>/ {job.salary_period || 'month'}</Text></Text>
