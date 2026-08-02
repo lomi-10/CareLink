@@ -744,7 +744,10 @@ export function JobPostModal({
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <SafeAreaView style={[styles.modalContainer, isDesktop && styles.modalContainerDesktop]}>
+        {/* Plain View, not SafeAreaView: a bottom sheet has to sit flush against
+            the bottom and side edges, and the safe-area inset was what left a
+            visible gap there. */}
+        <View style={[styles.modalContainer, isDesktop && styles.modalContainerDesktop]}>
 
           <LoadingSpinner visible={submitting || referencesLoading} message="Processing..." />
           <NotificationModal
@@ -825,7 +828,7 @@ export function JobPostModal({
               </View>
             </View>
           </ScrollView>
-        </SafeAreaView>
+        </View>
       </View>
     </Modal>
   );
@@ -841,7 +844,9 @@ const styles = StyleSheet.create({
       default: { justifyContent: 'flex-end' },
     }),
   },
-  modalContainer: { backgroundColor: SURFACE, borderTopLeftRadius: 30, borderTopRightRadius: 30, width: '100%', height: '95%', overflow: 'hidden' },
+  // Mobile: a half-height sheet flush to the bottom and both side edges. The
+  // body scrolls, so the four steps stay reachable at this height.
+  modalContainer: { backgroundColor: SURFACE, borderTopLeftRadius: 30, borderTopRightRadius: 30, width: '100%', height: '50%', overflow: 'hidden' },
   modalContainerDesktop: { width: '85%', maxWidth: 900, height: '90%', borderRadius: 24, marginBottom: 20 },
   header: {
     flexDirection: 'row',

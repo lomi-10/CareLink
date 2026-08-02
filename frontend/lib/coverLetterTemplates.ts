@@ -112,7 +112,12 @@ function seedFrom(s: string): number {
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
   return h;
 }
-const pick = <T,>(arr: T[], seed: number): T => arr[seed % arr.length];
+// Math.abs is load-bearing — see the same fix in hooks/parent/useJobForm.ts.
+// personalParagraph() derives variants with `seed >> 2` / `>> 3` / `>> 5`, and
+// `>>` is a SIGNED shift, so any seed above 2^31 came back negative and
+// `arr[negative % len]` was undefined. Helpers were getting the literal word
+// "undefined" inside their cover letters.
+const pick = <T,>(arr: T[], seed: number): T => arr[Math.abs(seed) % arr.length];
 
 /** Join a short list naturally: "a, b and c" (caps at 3 items). */
 function humanList(items: string[]): string {

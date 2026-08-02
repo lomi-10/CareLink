@@ -3,7 +3,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { BROWN, CARAMEL, ICON_BG, DARK, MUTED, DIVIDER } from '../home/parentWarmTheme';
 
 const MAX_DESCRIPTION_LENGTH = 1000;
@@ -14,9 +14,17 @@ interface DescriptionInputProps {
   onGenerateDescription: () => void;
   error?: string;
   disabled?: boolean;
+  /** Presses left on the capped Generate allowance. */
+  generationsLeft?: number;
 }
 
-export function DescriptionInput({ value, onChange, onGenerateDescription, error, disabled }: DescriptionInputProps) {
+export function DescriptionInput({
+  value, onChange, onGenerateDescription, error, disabled, generationsLeft,
+}: DescriptionInputProps) {
+  const [fullView, setFullView] = React.useState(false);
+  const capped = typeof generationsLeft === 'number';
+  const outOfGenerations = capped && generationsLeft <= 0;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -28,15 +36,55 @@ export function DescriptionInput({ value, onChange, onGenerateDescription, error
         Describe the job responsibilities, requirements, and expectations
       </Text>
 
-      <TouchableOpacity
-        style={[styles.generateButton, disabled && { opacity: 0.5 }]}
-        onPress={onGenerateDescription}
-        disabled={disabled}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="sparkles-outline" size={18} color={BROWN} />
-        <Text style={styles.generateButtonText}>Generate Description</Text>
-      </TouchableOpacity>
+      <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={[styles.generateButton, (disabled || outOfGenerations) && { opacity: 0.5 }]}
+          onPress={onGenerateDescription}
+          disabled={disabled || outOfGenerations}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="sparkles-outline" size={18} color={BROWN} />
+          <Text style={styles.generateButtonText}>
+            {outOfGenerations ? 'No generations left' : 'Generate Description'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Reading a long draft through a small scrolling box is painful, so the
+            same full-screen reader the helper side uses for cover letters. */}
+        {!!value.trim() && (
+          <TouchableOpacity style={styles.viewButton} onPress={() => setFullView(true)} activeOpacity={0.7}>
+            <Ionicons name="expand-outline" size={17} color={BROWN} />
+            <Text style={styles.viewButtonText}>Full view</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {capped && (
+        <Text style={styles.genCount}>
+          {outOfGenerations
+            ? 'You have used all 3 drafts for this post. You can still edit the text yourself.'
+            : `${generationsLeft} of 3 drafts left. Each one is written differently.`}
+        </Text>
+      )}
+
+      <Modal visible={fullView} animationType="slide" transparent onRequestClose={() => setFullView(false)}>
+        <View style={styles.fvOverlay}>
+          <View style={styles.fvCard}>
+            <View style={styles.fvHeader}>
+              <Text style={styles.fvTitle}>Job Description</Text>
+              <TouchableOpacity onPress={() => setFullView(false)} hitSlop={10}>
+                <Ionicons name="close" size={24} color={MUTED} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.fvBody} showsVerticalScrollIndicator={false}>
+              <Text style={styles.fvText}>{value}</Text>
+            </ScrollView>
+            <TouchableOpacity style={styles.fvDone} onPress={() => setFullView(false)} activeOpacity={0.85}>
+              <Text style={styles.fvDoneText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <TextInput
         style={styles.input}
@@ -111,6 +159,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: BROWN,
   },
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  viewButton: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 10, borderWidth: 1, borderColor: DIVIDER, backgroundColor: '#fff',
+  },
+  viewButtonText: { fontSize: 14, fontWeight: '600', color: BROWN },
+  genCount: { fontSize: 12, color: MUTED, marginTop: 8, lineHeight: 17 },
+
+  fvOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  fvCard: {
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    height: '85%', overflow: 'hidden',
+  },
+  fvHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 16,
+    borderBottomWidth: 1, borderBottomColor: DIVIDER,
+  },
+  fvTitle: { fontSize: 17, fontWeight: '800', color: DARK },
+  fvBody: { paddingHorizontal: 20, paddingTop: 16 },
+  fvText: { fontSize: 15, color: DARK, lineHeight: 23 },
+  fvDone: {
+    margin: 20, backgroundColor: BROWN, paddingVertical: 15,
+    borderRadius: 14, alignItems: 'center',
+  },
+  fvDoneText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,

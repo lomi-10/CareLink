@@ -79,7 +79,12 @@ const descSeed = (s: string): number => {
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
   return h;
 };
-const descPick = <T,>(arr: T[], seed: number): T => arr[seed % arr.length];
+// Math.abs is load-bearing. descSeed returns an unsigned 32-bit value, but the
+// callers derive variants with `seed >> 3` / `>> 5`, and `>>` is a SIGNED shift —
+// any seed above 2^31 comes back negative, making `seed % len` negative and
+// `arr[-n]` undefined. That put the literal string "undefined" into roughly half
+// of all generated descriptions.
+const descPick = <T,>(arr: T[], seed: number): T => arr[Math.abs(seed) % arr.length];
 
 // Per-category tone + the "Responsibilities / Requirements" body.
 const CATEGORY_COPY: Record<string, { adj: string; verb: string; body: string }> = {
@@ -196,7 +201,16 @@ const buildDetailLines = (ctx: DescriptionContext): string[] => {
   return lines;
 };
 
-const generateDescription = (category: Category | null, jobs: Job[], ctx: DescriptionContext = {}): string => {
+/** Max times a parent may press Generate for one job post. */
+export const MAX_DESCRIPTION_GENERATIONS = 3;
+
+const generateDescription = (
+  category: Category | null,
+  jobs: Job[],
+  ctx: DescriptionContext = {},
+  /** Identity of THIS employer + press count — see the seed note below. */
+  variant = '',
+): string => {
   const jobTitles = jobs.map(j => j.job_title).join(', ') || 'helper';
   const categoryName = category?.name || 'general household';
   const catId = category?.category_id?.toString() ?? '';
@@ -216,23 +230,54 @@ Requirements:
   };
 
   // Deterministic-but-varied phrasing: same job is stable, different jobs differ.
-  const seed = descSeed(`${jobTitles}|${catId}|${ctx.municipality ?? ''}|${ctx.salaryMin ?? ''}|${ctx.employmentType ?? ''}`);
+  // `variant` carries the employer's own identity and how many times they've
+  // pressed Generate. Without it the seed was only category + city + salary, so
+  // two families hiring the same role in the same town produced word-for-word
+  // identical posts — the same flaw the cover letters had.
+  const seed = descSeed(
+    `${variant}|${jobTitles}|${catId}|${ctx.municipality ?? ''}|${ctx.barangay ?? ''}|${ctx.salaryMin ?? ''}|${ctx.employmentType ?? ''}`,
+  );
 
+  // Each part is picked with a differently-shifted seed, so the openings,
+  // closings and headers vary independently rather than moving in lockstep.
+  // 10 x 10 x 6 = 600 shells per category before the household's own details
+  // (location, pay, rest days, benefits) are woven in.
   const intro = descPick([
     `We are looking for a ${copy.adj} ${jobTitles} ${copy.verb}.`,
     `Our family is searching for a ${copy.adj} ${jobTitles} ${copy.verb}.`,
     `We'd love to welcome a ${copy.adj} ${jobTitles} into our home ${copy.verb}.`,
+    `Our household needs a ${copy.adj} ${jobTitles} ${copy.verb}.`,
+    `We're hoping to find a ${copy.adj} ${jobTitles} ${copy.verb}.`,
+    `Join our family as a ${copy.adj} ${jobTitles} — we need someone ${copy.verb}.`,
+    `We have an opening for a ${copy.adj} ${jobTitles} ${copy.verb}.`,
+    `Looking to hire a ${copy.adj} ${jobTitles} ${copy.verb}.`,
+    `A ${copy.adj} ${jobTitles} is exactly who our home needs ${copy.verb}.`,
+    `We are a family in need of a ${copy.adj} ${jobTitles} ${copy.verb}.`,
   ], seed);
 
   const closing = descPick([
     `We offer a friendly, respectful home and fair, on-time pay. We look forward to welcoming you to our family!`,
     `You'll be part of a warm, respectful household that values your work. We can't wait to hear from you!`,
     `We treat our helpers with fairness and respect. If this sounds like you, we'd be glad to meet you!`,
+    `We believe in treating household help like family. Salary is always paid on time, and your rest days are yours.`,
+    `Ours is a calm, orderly home and we're easy to work with. We'd be happy to talk if this feels like a fit.`,
+    `If you're honest, dependable and take pride in your work, we'd love to hear from you.`,
+    `We value long-term working relationships and treat our helpers well. Please reach out if you're interested.`,
+    `You'd be joining a household that respects your time and pays fairly. We hope to hear from you soon.`,
+    `We're looking for someone we can trust and keep for the long term. Message us if that sounds like you.`,
+    `Kind, fair employers looking for the same in a helper. We'd be glad to meet you.`,
   ], seed >> 3);
 
   const detailLines = buildDetailLines(ctx);
   const detailBlock = detailLines.length
-    ? `\n\n${descPick(['About this role:', 'A few details about this role:', 'Here are the details:'], seed >> 5)}\n${detailLines.join('\n')}`
+    ? `\n\n${descPick([
+        'About this role:',
+        'A few details about this role:',
+        'Here are the details:',
+        'What we are offering:',
+        'The arrangement:',
+        'Details of the position:',
+      ], seed >> 5)}\n${detailLines.join('\n')}`
     : '';
 
   return `${intro}\n\n${copy.body}${detailBlock}\n\n${closing}`;
@@ -287,6 +332,8 @@ const initialFormData: JobFormData = {
 export function useJobForm() {
   const [formData, setFormData] = useState<JobFormData>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  /** Generate presses used on this post — capped, so it can't be spammed. */
+  const [descGenCount, setDescGenCount] = useState(0);
 
   const updateField = (field: keyof JobFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -352,6 +399,7 @@ export function useJobForm() {
 
   const reset = () => {
     setFormData(initialFormData);
+    setDescGenCount(0); // a new post gets a fresh allowance
     setErrors({});
   };
 
@@ -455,7 +503,11 @@ export function useJobForm() {
 
   // Personalise the generated description with THIS post's actual details, so two
   // parents posting the same category get specific, non-identical descriptions.
-  const generateDescriptionWithContext = (category: Category | null, jobs: Job[]) =>
+  // `employerKey` is the household's own identity (set by the screen from the
+  // signed-in account) and `descGenCount` is how many times Generate has been
+  // pressed — together they make one employer's drafts unlike anyone else's, and
+  // unlike their own previous press.
+  const generateDescriptionWithContext = (category: Category | null, jobs: Job[], employerKey = '') =>
     generateDescription(category, jobs, {
       municipality: formData.municipality,
       barangay: formData.barangay,
@@ -475,7 +527,14 @@ export function useJobForm() {
       providesPagibig: formData.provides_pagibig,
       benefits: formData.benefits,
       customSkills: formData.custom_skills,
-    });
+    }, `${employerKey}|${descGenCount}`);
 
-  return { formData, errors, updateField, updateFields, validate, reset, getSubmissionData, populateForm, generateDescription: generateDescriptionWithContext };
+  return {
+    formData, errors, updateField, updateFields, validate, reset,
+    getSubmissionData, populateForm,
+    generateDescription: generateDescriptionWithContext,
+    descGenCount,
+    setDescGenCount,
+    descGenerationsLeft: Math.max(0, MAX_DESCRIPTION_GENERATIONS - descGenCount),
+  };
 }

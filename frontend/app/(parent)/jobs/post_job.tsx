@@ -49,7 +49,7 @@ export default function PostJob() {
   const router = useRouter();
   const { edit_id } = useLocalSearchParams();
   const { isDesktop } = useResponsive();
-  const { handleLogout } = useAuth(); // NEW: Added for consistent logout
+  const { handleLogout, userData } = useAuth(); // userData seeds the description generator
 
   // Verification status
   const { verification, loading: verificationLoading } = useUserVerification();
@@ -57,7 +57,7 @@ export default function PostJob() {
   const isDisabled = !verification.canPostJobs;
 
   // Custom hooks
-  const { formData, errors, updateField, updateFields, validate, reset, getSubmissionData, populateForm, generateDescription } = useJobForm();
+  const { formData, errors, updateField, updateFields, validate, reset, getSubmissionData, populateForm, generateDescription, descGenerationsLeft, setDescGenCount } = useJobForm();
   const {
     categories, jobs, skills, languages, religions,
     loading: referencesLoading, getJobsByCategories, getSkillsByJobs,
@@ -150,7 +150,11 @@ export default function PostJob() {
     if (isDisabled) return;
     const category = categories.find((c) => c.category_id.toString() === formData.category_id) || null;
     const selectedJobs = availableJobs.filter((j) => formData.job_ids.includes(j.job_id.toString()));
-    updateField('description', generateDescription(category, selectedJobs));
+    if (descGenerationsLeft <= 0) return;
+    // Seeded with this employer's own account id, so two households posting the
+    // same role in the same town never get word-for-word identical text.
+    updateField('description', generateDescription(category, selectedJobs, String(userData?.user_id ?? '')));
+    setDescGenCount((n) => n + 1);
   };
 
   // Logout Handlers (Matches jobs.tsx exactly)
@@ -238,7 +242,7 @@ export default function PostJob() {
         <CategorySelector categories={categories} selectedCategoryIds={formData.category_id ? [formData.category_id] : []} customCategory={formData.custom_category} onToggleCategory={handleSelectCategory} onCustomCategoryChange={(value: string) => updateField('custom_category', value)} error={errors.category} disabled={isDisabled} />
         <JobTitleInput categoryIds={formData.category_id ? [formData.category_id] : []} availableJobs={availableJobs} selectedJobIds={formData.job_ids} customJobTitle={formData.custom_job_title} title={formData.title} onToggleJob={handleToggleJob} onCustomJobChange={(value: string) => updateField('custom_job_title', value)} onTitleChange={(value: string) => updateField('title', value)} error={errors.title} disabled={isDisabled} />
         <SkillsSelector selectedJobIds={formData.job_ids} availableSkills={availableSkills} selectedSkills={formData.skill_ids} customSkills={formData.custom_skills} onToggleSkill={handleToggleSkill} onCustomSkillsChange={(value: string) => updateField('custom_skills', value)} disabled={isDisabled} />
-        <DescriptionInput value={formData.description} onChange={(value) => updateField('description', value)} onGenerateDescription={handleGenerateDescription} error={errors.description} disabled={isDisabled} />
+        <DescriptionInput value={formData.description} onChange={(value) => updateField("description", value)} onGenerateDescription={handleGenerateDescription} error={errors.description} disabled={isDisabled} generationsLeft={descGenerationsLeft} />
         <LocationSelector province={formData.province} municipality={formData.municipality} barangay={formData.barangay} onProvinceChange={(value) => updateField('province', value)} onMunicipalityChange={(value) => updateField('municipality', value)} onBarangayChange={(value) => updateField('barangay', value)} disabled={isDisabled} />
         <WorkArrangementCard employmentType={formData.employment_type} workSchedule={formData.work_schedule} onEmploymentTypeChange={(type: string) => updateField('employment_type', type)} onWorkScheduleChange={(schedule: string) => updateField('work_schedule', schedule)} disabled={isDisabled} />
         <SalaryInputCard salaryMin={formData.salary_min} salaryMax={formData.salary_max} salaryPeriod={formData.salary_period} onSalaryMinChange={(value: string) => updateField('salary_min', value)} onSalaryMaxChange={(value: string) => updateField('salary_max', value)} onPeriodChange={(period) => updateField('salary_period', period)} categoryIds={formData.category_id ? [formData.category_id] : []} error={errors.salary} errorMax={errors.salary_max} disabled={isDisabled} />
