@@ -225,6 +225,22 @@ export function MobileMenu({
               );
             })}
 
+            <Text style={[styles.navLabel, { marginTop: 18 }]}>PLAN</Text>
+            <TouchableOpacity
+              style={styles.drawerItem}
+              onPress={() => {
+                onClose();
+                router.push('/(parent)/settings/subscription' as never);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.drawerItemLeft}>
+                <Ionicons name="star-outline" size={22} color={c.parent} />
+                <Text style={styles.drawerItemText} numberOfLines={1}>CareLink Plus</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={c.subtle} />
+            </TouchableOpacity>
+
             <Text style={[styles.navLabel, { marginTop: 18 }]}>HELP</Text>
             <TouchableOpacity
               style={styles.drawerItem}

@@ -40,6 +40,7 @@ export default function SubscriptionScreen() {
   const [plus, setPlus] = useState<PlusStatus | null>(null);
   const [price, setPrice] = useState('149.00');
   const [benefits, setBenefits] = useState<string[]>([]);
+  const [testMode, setTestMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -59,6 +60,7 @@ export default function SubscriptionScreen() {
         setPlus(data.plus);
         setPrice(data.price_php ?? '149.00');
         setBenefits(data.benefits ?? []);
+        setTestMode(!!data.test_mode);
       }
     } catch { /* the screen still renders its static content */ }
     finally { setLoading(false); }
@@ -134,6 +136,17 @@ export default function SubscriptionScreen() {
             showsVerticalScrollIndicator={false}
             refreshControl={<RefreshControl refreshing={false} onRefresh={load} />}
           >
+            {/* Only shown while the server is on PayMongo sandbox keys, so a
+                tester is never left wondering whether they were really charged. */}
+            {testMode && (
+              <View style={s.testBanner}>
+                <Ionicons name="flask-outline" size={16} color="#C97A0E" />
+                <Text style={s.testBannerText}>
+                  Test mode — payments are simulated and no real money is charged.
+                </Text>
+              </View>
+            )}
+
             {/* Status / price */}
             <View style={[s.hero, isPlus && s.heroActive]}>
               <View style={s.heroIcon}>
@@ -162,6 +175,42 @@ export default function SubscriptionScreen() {
                   <Text style={s.heroSub}>Cancel anytime. You keep access until the month you paid for ends.</Text>
                 </>
               )}
+            </View>
+
+            {/* Your plan — what you actually hold right now, and what it cost.
+                Without this the screen was only a sales pitch; a subscriber
+                could not tell what they were entitled to or when it renews. */}
+            <Text style={s.sectionLabel}>Your plan</Text>
+            <View style={s.card}>
+              <View style={[s.row, s.rowLine]}>
+                <Ionicons name="pricetag-outline" size={18} color={MUTED} />
+                <Text style={s.rowText}>Current plan</Text>
+                <Text style={[s.rowValue, isPlus && { color: BROWN }]}>
+                  {isPlus ? 'CareLink Plus' : 'Free'}
+                </Text>
+              </View>
+              <View style={[s.row, s.rowLine]}>
+                <Ionicons name="cash-outline" size={18} color={MUTED} />
+                <Text style={s.rowText}>You pay</Text>
+                <Text style={s.rowValue}>{isPlus ? `₱${price} / month` : '₱0'}</Text>
+              </View>
+              <View style={[s.row, s.rowLine]}>
+                <Ionicons name="calendar-outline" size={18} color={MUTED} />
+                <Text style={s.rowText}>
+                  {plus?.status === 'cancelled' ? 'Access ends' : isPlus ? 'Renews on' : 'Renewal'}
+                </Text>
+                <Text style={s.rowValue}>{renews ?? '—'}</Text>
+              </View>
+              <View style={[s.row, s.rowLine]}>
+                <Ionicons name="megaphone-outline" size={18} color={MUTED} />
+                <Text style={s.rowText}>Boost credits left</Text>
+                <Text style={s.rowValue}>{isPlus ? `${plus?.featured_credits ?? 0} of 3` : '0'}</Text>
+              </View>
+              <View style={s.row}>
+                <Ionicons name="briefcase-outline" size={18} color={MUTED} />
+                <Text style={s.rowText}>Open job posts</Text>
+                <Text style={s.rowValue}>{isPlus ? 'Unlimited' : 'Up to 3'}</Text>
+              </View>
             </View>
 
             {/* What you get */}
@@ -269,6 +318,11 @@ const s = StyleSheet.create({
   barBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   barTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '800', color: DARK },
   scroll: { padding: 16, paddingBottom: 60 },
+  testBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FBEFD3', borderRadius: 12, padding: 12, marginBottom: 16,
+  },
+  testBannerText: { flex: 1, fontSize: 12.5, color: '#8A5A0E', fontWeight: '600', lineHeight: 18 },
 
   hero: {
     backgroundColor: CARD, borderRadius: 20, padding: 22, alignItems: 'center',
@@ -300,6 +354,7 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 13 },
   rowLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: LINE },
   rowText: { flex: 1, fontSize: 14, color: DARK, lineHeight: 20 },
+  rowValue: { fontSize: 14, fontWeight: '800', color: DARK },
 
   freeCard: { paddingVertical: 16 },
   freeIntro: { fontSize: 13, color: MUTED, lineHeight: 19, marginBottom: 12 },

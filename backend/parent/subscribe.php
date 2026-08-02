@@ -58,9 +58,13 @@ try {
 
         $status = carelink_plus_status($conn, $parent_id);
         sub_out(true, 'ok', [
-            'plus'         => $status,
-            'price_php'    => carelink_centavos_to_pesos(PRICE_PLUS_MONTHLY),
-            'benefits'     => sub_benefits(),
+            'plus'      => $status,
+            'price_php' => carelink_centavos_to_pesos(PRICE_PLUS_MONTHLY),
+            'benefits'  => sub_benefits(),
+            // Drives the sandbox banner: a tester should never be left guessing
+            // whether they were really charged.
+            'test_mode'  => str_starts_with((string) carelink_cfg('PAYMONGO_SECRET_KEY', ''), 'sk_test'),
+            'configured' => carelink_paymongo_configured(),
         ]);
     }
 
