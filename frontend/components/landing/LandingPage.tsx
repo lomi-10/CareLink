@@ -22,6 +22,8 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const HERO_BG = require("@/assets/images/landing-bg-mobile.png");
+/** Matches the dark end of the hero gradient, so overscroll never shows white. */
+const PAGE_BG = "#140a07";
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
@@ -53,13 +55,19 @@ const LandingPage = () => {
         />
       </View>
 
+      {/* Scrolling fast past the end used to flash a white bar: the scroll view
+          has no background of its own, so overscrolling exposed the window
+          behind it. Painting it the same dark colour as the page and disabling
+          the bounce/stretch removes it on both platforms. */}
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: PAGE_BG }}
         contentContainerStyle={[
           styles.scroll,
           { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 6 },
         ]}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
       >
         {/* Header */}
         <View style={styles.header}>

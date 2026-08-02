@@ -71,6 +71,9 @@ try {
             throw new Exception($claim['message']);
         }
     }
+    // Optional — employers state this so both sides can judge household fit
+    // (practices, dietary rules, rest days around worship) before committing.
+    $religion = isset($_POST['religion']) ? trim($_POST['religion']) : '';
     $province = isset($_POST['province']) ? trim($_POST['province']) : '';
     $municipality = isset($_POST['municipality']) ? trim($_POST['municipality']) : '';
     $barangay = isset($_POST['barangay']) ? trim($_POST['barangay']) : '';
@@ -184,9 +187,9 @@ try {
 
         // 2. CREATE OR UPDATE PROFILE
         if ($profileExists) {
-            $updateFields = array("contact_number = ?", "province = ?", "municipality = ?", "barangay = ?", "bio = ?", "address = ?", "landmark = ?", "updated_at = NOW()");
-            $types = "sssssss";
-            $params = array($contact_number, $province, $municipality, $barangay, $bio, $address, $landmark);
+            $updateFields = array("contact_number = ?", "province = ?", "municipality = ?", "barangay = ?", "bio = ?", "address = ?", "landmark = ?", "religion = ?", "updated_at = NOW()");
+            $types = "ssssssss";
+            $params = array($contact_number, $province, $municipality, $barangay, $bio, $address, $landmark, $religion);
 
             if ($latitude !== null) {
                 $updateFields[] = "latitude = ?";
@@ -219,9 +222,9 @@ try {
             $updateStmt->execute();
             $updateStmt->close();
         } else {
-            $insertSql = "INSERT INTO parent_profiles (user_id, contact_number, province, municipality, barangay, address, bio, landmark, profile_image, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $insertSql = "INSERT INTO parent_profiles (user_id, contact_number, province, municipality, barangay, address, bio, landmark, religion, profile_image, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $insertStmt = $conn->prepare($insertSql);
-            $insertStmt->bind_param("issssssss", $user_id, $contact_number, $province, $municipality, $barangay, $address, $bio, $landmark, $profile_image_url);
+            $insertStmt->bind_param("isssssssss", $user_id, $contact_number, $province, $municipality, $barangay, $address, $bio, $landmark, $religion, $profile_image_url);
             $insertStmt->execute();
             $profile_id = $conn->insert_id;
             $insertStmt->close();

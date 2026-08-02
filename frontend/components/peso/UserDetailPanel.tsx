@@ -332,13 +332,20 @@ export default function UserDetailPanel({
             )}
 
             <Section title="Personal Information" icon="person-circle-outline">
+              {/* Date of birth, gender and civil status are only shown for
+                  helpers. PESO verifies a helper as an individual worker, but an
+                  employer is verified as a household — those personal details
+                  aren't part of that check, so showing them would be collecting
+                  and displaying more than the review needs. */}
               <InfoGrid items={[
                 { label: "Full Name", value: fullName },
                 { label: "Email Address", value: user.email || "—" },
                 { label: "Phone Number", value: profile?.contact_number || "—" },
-                { label: "Date of Birth", value: profile?.birth_date || "—" },
-                { label: "Gender", value: profile?.gender || "—" },
-                { label: "Civil Status", value: profile?.civil_status || "—" },
+                ...(isHelper ? [
+                  { label: "Date of Birth", value: profile?.birth_date || "—" },
+                  { label: "Gender", value: profile?.gender || "—" },
+                  { label: "Civil Status", value: profile?.civil_status || "—" },
+                ] : []),
                 { label: "Religion", value: profile?.religion || "—" },
               ]} />
               <View style={st.addressRow}>
