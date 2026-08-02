@@ -14,15 +14,34 @@
 -- 1 ── STREAM 1: FEATURED JOB POSTS ──────────────────────────────────────────
 -- A boost only affects SORT ORDER in browse. It never changes match_score and
 -- never bypasses PESO review (a post must already be status='Open' to surface).
-ALTER TABLE job_posts
-  ADD COLUMN featured_until DATETIME NULL DEFAULT NULL
-      COMMENT 'Boost expiry; NULL = never boosted' AFTER expires_at,
-  ADD COLUMN featured_boost_paid_at DATETIME NULL DEFAULT NULL
-      COMMENT 'When the boost payment settled' AFTER featured_until;
+--
+-- SAFE TO RE-RUN. MySQL 8 has no "ADD COLUMN IF NOT EXISTS", so each change is
+-- guarded by an information_schema check and only executed when missing.
+-- Re-running this file is a no-op rather than a "Duplicate column name" error.
+
+SET @db := DATABASE();
+
+SET @needs_col := (SELECT COUNT(*) = 0 FROM information_schema.columns
+  WHERE table_schema = @db AND table_name = 'job_posts' AND column_name = 'featured_until');
+SET @sql := IF(@needs_col,
+  "ALTER TABLE job_posts ADD COLUMN featured_until DATETIME NULL DEFAULT NULL COMMENT 'Boost expiry; NULL = never boosted' AFTER expires_at",
+  'DO 0');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @needs_col := (SELECT COUNT(*) = 0 FROM information_schema.columns
+  WHERE table_schema = @db AND table_name = 'job_posts' AND column_name = 'featured_boost_paid_at');
+SET @sql := IF(@needs_col,
+  "ALTER TABLE job_posts ADD COLUMN featured_boost_paid_at DATETIME NULL DEFAULT NULL COMMENT 'When the boost payment settled' AFTER featured_until",
+  'DO 0');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
 
 -- Browse filters on status and reads featured_until on every row.
-ALTER TABLE job_posts
-  ADD INDEX idx_featured (status, featured_until);
+SET @needs_idx := (SELECT COUNT(*) = 0 FROM information_schema.statistics
+  WHERE table_schema = @db AND table_name = 'job_posts' AND index_name = 'idx_featured');
+SET @sql := IF(@needs_idx,
+  'ALTER TABLE job_posts ADD INDEX idx_featured (status, featured_until)',
+  'DO 0');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
 
 
 -- 2 ── STREAM 2: CARELINK PLUS SUBSCRIPTIONS ─────────────────────────────────

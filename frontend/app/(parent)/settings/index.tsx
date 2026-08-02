@@ -151,6 +151,21 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* ── Subscription ── */}
+      <View style={ss.section}>
+        <Text style={ss.sectionTitle}>Subscription</Text>
+        <TouchableOpacity style={ss.optionRow} onPress={() => router.push('/(parent)/settings/subscription')} activeOpacity={0.85}>
+          <View style={ss.optionIcon}>
+            <Ionicons name="star-outline" size={22} color={BROWN} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={ss.optionTitle}>CareLink Plus</Text>
+            <Text style={ss.optionHint}>Boost credits, unlimited posts and priority review.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={MUTED} />
+        </TouchableOpacity>
+      </View>
+
       {/* ── Activity log ── */}
       <View style={ss.section}>
         <Text style={ss.sectionTitle}>Activity log</Text>
