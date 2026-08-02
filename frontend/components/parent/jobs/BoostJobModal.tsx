@@ -29,6 +29,25 @@ export function BoostJobModal({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Boosts are bundled into CareLink Plus, so a subscriber must not be shown a
+  // price they won't be charged. Load their credit balance before offering one.
+  const [credits, setCredits] = useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (!visible) return;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem('user_data');
+        const id = String((raw ? JSON.parse(raw) : {})?.user_id ?? '');
+        if (!id) return;
+        const res = await fetch(`${API_URL}/parent/subscribe.php?parent_id=${id}&requester_id=${id}`);
+        const data = await res.json();
+        setCredits(data?.plus?.is_plus ? Number(data.plus.featured_credits ?? 0) : null);
+      } catch { setCredits(null); }
+    })();
+  }, [visible]);
+
+  const usesCredit = credits !== null && credits > 0;
 
   const close = () => { setError(null); setBusy(false); onClose(); };
 
@@ -86,10 +105,19 @@ export function BoostJobModal({
           <Text style={s.title}>Feature this job post</Text>
           {!!jobTitle && <Text style={s.sub} numberOfLines={2}>{jobTitle}</Text>}
 
-          <View style={s.priceRow}>
-            <Text style={s.price}>₱99</Text>
-            <Text style={s.priceNote}>one-time · 7 days</Text>
-          </View>
+          {usesCredit ? (
+            <View style={s.includedPill}>
+              <Ionicons name="star" size={14} color="#8A5A0E" />
+              <Text style={s.includedText}>
+                Included in CareLink Plus · {credits} boost{credits === 1 ? '' : 's'} left this month
+              </Text>
+            </View>
+          ) : (
+            <View style={s.priceRow}>
+              <Text style={s.price}>₱99</Text>
+              <Text style={s.priceNote}>one-time · 7 days</Text>
+            </View>
+          )}
 
           <View style={s.list}>
             <Row icon="arrow-up-circle-outline" text="Your post appears at the top of helper search results for 7 days." />
@@ -103,8 +131,10 @@ export function BoostJobModal({
           <TouchableOpacity style={[s.primary, busy && { opacity: 0.6 }]} onPress={start} disabled={busy} activeOpacity={0.88}>
             {busy ? <ActivityIndicator color="#fff" /> : (
               <>
-                <Ionicons name="card-outline" size={18} color="#fff" />
-                <Text style={s.primaryText}>Continue to payment</Text>
+                <Ionicons name={usesCredit ? 'star' : 'card-outline'} size={18} color="#fff" />
+                <Text style={s.primaryText}>
+                  {usesCredit ? 'Use 1 Plus boost' : 'Continue to payment'}
+                </Text>
               </>
             )}
           </TouchableOpacity>
@@ -139,6 +169,12 @@ const s = StyleSheet.create({
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 14, marginBottom: 16 },
   price: { fontSize: 32, fontWeight: '800', color: DARK },
   priceNote: { fontSize: 13, color: MUTED },
+  includedPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    backgroundColor: '#FBEFD3', borderRadius: 999,
+    paddingHorizontal: 14, paddingVertical: 9, marginTop: 14, marginBottom: 16,
+  },
+  includedText: { fontSize: 12.5, fontWeight: '700', color: '#8A5A0E' },
   list: { alignSelf: 'stretch', gap: 10, marginBottom: 18 },
   row: { flexDirection: 'row', gap: 9, alignItems: 'flex-start' },
   rowText: { flex: 1, fontSize: 13, color: MUTED, lineHeight: 19 },
