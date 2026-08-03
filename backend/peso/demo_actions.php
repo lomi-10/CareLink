@@ -3,10 +3,17 @@
  * peso/demo_actions.php — drives the MOCK EMPLOYER side of a user-test session
  * from inside the PESO portal, so the researcher only ever wears one hat.
  *
- * GET  ?staff_user_id=&helper_id=      -> that tester's current demo state
- * POST ?staff_user_id=  {action, ...}  -> perform one mock-employer action
+ * GET  ?staff_user_id=&helper_id=      -> a HELPER tester's current demo state
+ * GET  ?staff_user_id=&parent_id=      -> an EMPLOYER tester's current demo state
+ * POST ?staff_user_id=  {action, ...}  -> perform one mock action
  *
- * Actions: invite · shortlist · interview
+ * Both sides of the marketplace can be driven, because either role can be the
+ * tester:
+ *   helper tester  -> the panel plays the mock EMPLOYER (invite, shortlist,
+ *                     interview, contract)
+ *   employer tester -> the panel plays mock HELPERS (apply to their job posts)
+ *
+ * Actions: invite · shortlist · interview · apply
  * (The contract step is the real parent/hire_helper.php, called by the panel —
  *  it owns ~300 lines of contract generation that must not be duplicated here.)
  *
@@ -94,7 +101,80 @@ try {
     // ── GET: the tester's current state, so the panel can offer the right step ──
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $helper_id = isset($_GET['helper_id']) ? (int) $_GET['helper_id'] : 0;
+        $parent_id = isset($_GET['parent_id']) ? (int) $_GET['parent_id'] : 0;
         $pattern   = DEMO_EMAIL;
+
+        // ── EMPLOYER TESTER: their own job posts, and which demo helpers have
+        //    already applied to each, so the panel can offer the next applicant.
+        if ($parent_id > 0) {
+            $posts = [];
+            $st = $conn->prepare(
+                "SELECT jp.job_post_id, jp.title, jp.status, rc.category_name,
+                        (SELECT COUNT(*) FROM job_applications ja WHERE ja.job_post_id = jp.job_post_id) AS applicants
+                   FROM job_posts jp
+                   LEFT JOIN ref_categories rc ON rc.category_id = jp.category_id
+                  WHERE jp.parent_id = ?
+                  ORDER BY jp.posted_at DESC"
+            );
+            $st->bind_param('i', $parent_id);
+            $st->execute();
+            $r = $st->get_result();
+            while ($row = $r->fetch_assoc()) {
+                $row['job_post_id'] = (int) $row['job_post_id'];
+                $row['applicants']  = (int) $row['applicants'];
+                $posts[] = $row;
+            }
+            $st->close();
+
+            // The demo helpers available to apply on the panel's behalf.
+            $helpers = [];
+            $st = $conn->prepare(
+                "SELECT u.user_id, CONCAT(u.first_name,' ',u.last_name) AS name,
+                        hp.experience_years, hp.expected_salary, hp.employment_type,
+                        GROUP_CONCAT(DISTINCT rc.category_name ORDER BY rc.category_name SEPARATOR ', ') AS categories
+                   FROM users u
+                   JOIN helper_profiles hp ON hp.user_id = u.user_id
+                   LEFT JOIN helper_jobs hj ON hj.profile_id = hp.profile_id
+                   LEFT JOIN ref_jobs rj    ON rj.job_id = hj.job_id
+                   LEFT JOIN ref_categories rc ON rc.category_id = rj.category_id
+                  WHERE u.email LIKE ? AND u.user_type = 'helper'
+                  GROUP BY u.user_id
+                  ORDER BY hp.experience_years DESC"
+            );
+            $st->bind_param('s', $pattern);
+            $st->execute();
+            $r = $st->get_result();
+            while ($row = $r->fetch_assoc()) {
+                $row['user_id']           = (int) $row['user_id'];
+                $row['experience_years']  = (int) $row['experience_years'];
+                $helpers[] = $row;
+            }
+            $st->close();
+
+            // Which demo helpers have already applied to which of this
+            // employer's posts, so the panel doesn't offer a duplicate.
+            $applied = [];
+            $st = $conn->prepare(
+                "SELECT ja.job_post_id, ja.helper_id, ja.status
+                   FROM job_applications ja
+                   JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+                   JOIN users u      ON u.user_id = ja.helper_id
+                  WHERE jp.parent_id = ? AND u.email LIKE ?"
+            );
+            $st->bind_param('is', $parent_id, $pattern);
+            $st->execute();
+            $r = $st->get_result();
+            while ($row = $r->fetch_assoc()) {
+                $applied[] = [
+                    'job_post_id' => (int) $row['job_post_id'],
+                    'helper_id'   => (int) $row['helper_id'],
+                    'status'      => $row['status'],
+                ];
+            }
+            $st->close();
+
+            da_out(true, 'ok', ['posts' => $posts, 'demo_helpers' => $helpers, 'applied' => $applied]);
+        }
 
         $jobs = [];
         $st = $conn->prepare(
@@ -210,6 +290,67 @@ try {
         );
 
         da_out(true, "Invitation sent from {$job['parent_name']}.");
+    }
+
+    // EMPLOYER TESTER: a mock helper applies to one of their posts, so they have
+    // someone real to review. Mirrors helper/apply_job.php's insert — the same
+    // row shape, so every downstream screen and the matcher treat it normally.
+    if ($action === 'apply') {
+        $helper_id   = (int) ($input['helper_id'] ?? 0);
+        $job_post_id = (int) ($input['job_post_id'] ?? 0);
+        if ($helper_id <= 0 || $job_post_id <= 0) {
+            da_out(false, 'helper_id and job_post_id are required.');
+        }
+
+        // The APPLICANT must be a demo helper — this endpoint may never make a
+        // real person appear to have applied to something.
+        $pattern = DEMO_EMAIL;
+        $chk = $conn->prepare("SELECT user_id, CONCAT(first_name,' ',last_name) AS name FROM users WHERE user_id = ? AND user_type = 'helper' AND email LIKE ? LIMIT 1");
+        $chk->bind_param('is', $helper_id, $pattern);
+        $chk->execute();
+        $helper = $chk->get_result()->fetch_assoc();
+        $chk->close();
+        if (!$helper) {
+            da_out(false, 'That helper is not one of the demo accounts.');
+        }
+
+        $jobStmt = $conn->prepare("SELECT job_post_id, title, status, parent_id FROM job_posts WHERE job_post_id = ? LIMIT 1");
+        $jobStmt->bind_param('i', $job_post_id);
+        $jobStmt->execute();
+        $job = $jobStmt->get_result()->fetch_assoc();
+        $jobStmt->close();
+        if (!$job) da_out(false, 'Job post not found.');
+        if ($job['status'] !== 'Open') {
+            da_out(false, 'That post is not Open yet — approve it in Job Verification first.');
+        }
+
+        $dupe = $conn->prepare("SELECT application_id FROM job_applications WHERE job_post_id = ? AND helper_id = ? LIMIT 1");
+        $dupe->bind_param('ii', $job_post_id, $helper_id);
+        $dupe->execute();
+        $already = $dupe->get_result()->fetch_assoc();
+        $dupe->close();
+        if ($already) da_out(false, 'That helper has already applied to this job.');
+
+        $letter = "Good day! I am very interested in your \"{$job['title']}\" posting. "
+                . "I believe my experience fits what you are looking for, and I would be grateful "
+                . "for the chance to discuss it with you. Thank you for considering my application.";
+
+        $st = $conn->prepare(
+            "INSERT INTO job_applications (job_post_id, helper_id, cover_letter, status, applied_at)
+             VALUES (?, ?, ?, 'Pending', NOW())"
+        );
+        $st->bind_param('iis', $job_post_id, $helper_id, $letter);
+        $st->execute();
+        $application_id = (int) $conn->insert_id;
+        $st->close();
+
+        createNotification(
+            $conn, (int) $job['parent_id'], 'application_received', 'New Application Received',
+            $helper['name'] . ' applied for your job: ' . $job['title'],
+            'application', $application_id
+        );
+
+        da_out(true, $helper['name'] . ' applied to "' . $job['title'] . '".');
     }
 
     if ($action === 'shortlist') {

@@ -1,10 +1,15 @@
 -- =============================================================================
 -- CareLink — DEMO SEED for user testing
 --
--- Creates 6 PESO-verified employer households in Ormoc City and 15 approved,
--- Open job posts spanning every category, so a brand-new tester who fills in
--- their skills immediately sees real recommendations with real match scores —
--- computed by the actual algorithm, not faked.
+-- Creates BOTH sides of the marketplace so either role can be tested:
+--   • 6 PESO-verified employer households + 15 approved job posts
+--     -> a helper tester immediately sees real jobs with real match scores
+--   • 8 PESO-verified helpers with roles, skills, languages and documents
+--     -> an employer tester immediately sees real candidates to browse and invite
+--
+-- Scores are computed by the actual algorithm, not faked. The helpers are spread
+-- across every category and a range of experience and expected salary, so the
+-- match percentages a tester sees actually vary and mean something.
 --
 -- RUN: phpMyAdmin -> your DB -> SQL tab -> paste -> Go.
 -- Requires migration_2026_07_17.sql and migration_2026_07_19_verified_field_change.sql
@@ -15,7 +20,7 @@
 --
 -- TO REMOVE AFTERWARDS: run just the DELETE block at the top, on its own.
 --
--- Demo login (all 6 employers): password  CareLinkDemo2026!
+-- Demo login (all demo accounts): password  CareLinkDemo2026!
 -- ^ DELETE THESE ACCOUNTS AFTER TESTING. Do not leave shared-password accounts
 --   on a live site.
 -- =============================================================================
@@ -164,14 +169,125 @@ JOIN (
 ) v ON v.email = u.email;
 
 
--- ── 5. Check your work ───────────────────────────────────────────────────────
--- Expect: 6 employers, 6 households, 15 Open job posts.
+-- ── 5. Helper accounts ───────────────────────────────────────────────────────
+-- PESO-verified so an employer tester can find them straight away. Spread across
+-- experience, expected salary and arrangement so match percentages actually vary
+-- instead of every candidate scoring the same.
+INSERT INTO users (email, username, password, first_name, last_name, user_type, status, profile_completed, email_verified_at, created_at) VALUES
+('rosa@carelink-demo.test',    'demo_rosa',    '$2y$10$9yQqmtZ8vx.sedJ2C2OAp.v4MBks7CX0apSR9BiOlnf5n29qLVZOK', 'Rosa',    'Manalo',   'helper', 'approved', 1, NOW(), NOW() - INTERVAL 60 DAY),
+('nena@carelink-demo.test',    'demo_nena',    '$2y$10$9yQqmtZ8vx.sedJ2C2OAp.v4MBks7CX0apSR9BiOlnf5n29qLVZOK', 'Nena',    'Bacala',   'helper', 'approved', 1, NOW(), NOW() - INTERVAL 55 DAY),
+('luzviminda@carelink-demo.test','demo_luz',   '$2y$10$9yQqmtZ8vx.sedJ2C2OAp.v4MBks7CX0apSR9BiOlnf5n29qLVZOK', 'Luzviminda','Ocampo', 'helper', 'approved', 1, NOW(), NOW() - INTERVAL 50 DAY),
+('carmen@carelink-demo.test',  'demo_carmen',  '$2y$10$9yQqmtZ8vx.sedJ2C2OAp.v4MBks7CX0apSR9BiOlnf5n29qLVZOK', 'Carmen',  'Duran',    'helper', 'approved', 1, NOW(), NOW() - INTERVAL 44 DAY),
+('teresita@carelink-demo.test','demo_teresita','$2y$10$9yQqmtZ8vx.sedJ2C2OAp.v4MBks7CX0apSR9BiOlnf5n29qLVZOK', 'Teresita','Rabaya',   'helper', 'approved', 1, NOW(), NOW() - INTERVAL 38 DAY),
+('jomar@carelink-demo.test',   'demo_jomar',   '$2y$10$9yQqmtZ8vx.sedJ2C2OAp.v4MBks7CX0apSR9BiOlnf5n29qLVZOK', 'Jomar',   'Pelayo',   'helper', 'approved', 1, NOW(), NOW() - INTERVAL 30 DAY),
+('elena@carelink-demo.test',   'demo_elena',   '$2y$10$9yQqmtZ8vx.sedJ2C2OAp.v4MBks7CX0apSR9BiOlnf5n29qLVZOK', 'Elena',   'Sarmiento','helper', 'approved', 1, NOW(), NOW() - INTERVAL 22 DAY),
+('marilou@carelink-demo.test', 'demo_marilou', '$2y$10$9yQqmtZ8vx.sedJ2C2OAp.v4MBks7CX0apSR9BiOlnf5n29qLVZOK', 'Marilou', 'Genson',   'helper', 'approved', 1, NOW(), NOW() - INTERVAL 12 DAY);
+
+INSERT INTO helper_profiles
+  (user_id, contact_number, birth_date, gender, civil_status, religion,
+   province, municipality, barangay, latitude, longitude, address, bio,
+   education_level, experience_years, employment_type, work_schedule,
+   expected_salary, salary_period, verification_status, verified_at)
+SELECT u.user_id, v.contact, v.bday, v.sex, v.civil, v.religion,
+       'Leyte', 'Ormoc City', v.brgy, v.lat, v.lng,
+       CONCAT(v.brgy, ', Ormoc City, Leyte'), v.bio,
+       v.educ, v.years, v.etype, v.sched, v.salary, 'Monthly', 'Verified', NOW()
+FROM users u
+JOIN (
+  SELECT 'rosa@carelink-demo.test' AS email, '09181000001' AS contact, DATE '1985-03-14' AS bday, 'Female' AS sex, 'Married' AS civil, 'Roman Catholic' AS religion,
+         'Cogon' AS brgy, 11.0071 AS lat, 124.6081 AS lng, 'High School Grad' AS educ, 12 AS years, 'Stay-in' AS etype, 'Full-time' AS sched, 10000 AS salary,
+         'I have worked as an all-around kasambahay for twelve years, mostly with families who have young children. I am used to running a household on my own and I take pride in a clean, orderly home.' AS bio UNION ALL
+  SELECT 'nena@carelink-demo.test',       '09181000002', DATE '1992-07-02', 'Female', 'Single',  'Roman Catholic',
+         'Linao',      11.0192, 124.5993, 'College Undergrad', 6,  'Stay-out', 'Full-time', 9000,
+         'Six years caring for babies and toddlers. I am patient and I enjoy teaching little ones through play. I completed a short first-aid course last year.' UNION ALL
+  SELECT 'luzviminda@carelink-demo.test', '09181000003', DATE '1978-11-20', 'Female', 'Widowed', 'Iglesia ni Cristo',
+         'Can-adieng', 11.0128, 124.6137, 'High School Grad',  20, 'Stay-out', 'Full-time', 11000,
+         'Twenty years of cooking for households, including families needing low-salt and diabetic meals. I plan menus, do the marketing and keep the kitchen spotless.' UNION ALL
+  SELECT 'carmen@carelink-demo.test',     '09181000004', DATE '1995-01-09', 'Female', 'Single',  'Roman Catholic',
+         'Punta',      11.0248, 124.6019, 'Vocational',        3,  'Stay-out', 'Part-time', 7500,
+         'I specialise in laundry and ironing and I am careful with delicate fabrics and uniforms. Available mornings.' UNION ALL
+  SELECT 'teresita@carelink-demo.test',   '09181000005', DATE '1968-05-30', 'Female', 'Married', 'Roman Catholic',
+         'Bantigue',   11.0094, 124.6272, 'Elementary',        25, 'Stay-in',  'Full-time', 12000,
+         'I have cared for elderly lolos and lolas for most of my working life. I am gentle, I keep to medicine schedules, and I am good company for someone who is often alone.' UNION ALL
+  SELECT 'jomar@carelink-demo.test',      '09181000006', DATE '1990-09-17', 'Male',   'Married', 'Roman Catholic',
+         'Alegria',    10.9941, 124.6188, 'High School Grad',  8,  'Stay-out', 'Full-time', 9500,
+         'Gardener and all-around outdoor helper. I handle lawns, fruit trees and vegetable plots, and I can do small repairs and errands around the property.' UNION ALL
+  SELECT 'elena@carelink-demo.test',      '09181000007', DATE '1999-04-25', 'Female', 'Single',  'Born Again Christian',
+         'Cogon',      11.0065, 124.6077, 'College Undergrad', 1,  'Stay-out', 'Part-time', 7000,
+         'I am still building experience but I learn quickly and I am honest and hardworking. I can help with cleaning, laundry and after-school childcare.' UNION ALL
+  SELECT 'marilou@carelink-demo.test',    '09181000008', DATE '1983-12-11', 'Female', 'Separated','Roman Catholic',
+         'Linao',      11.0186, 124.5988, 'High School Grad',  15, 'Stay-in',  'Full-time', 10500,
+         'All-around househelp with fifteen years of experience. Cleaning, laundry, cooking and childcare — I can take on a whole household and I stay long term.'
+) v ON v.email = u.email;
+
+-- Job roles. These drive the 25-point category weight AND the roles weight, so a
+-- demo helper with none would score near zero and look broken to a tester.
+INSERT INTO helper_jobs (profile_id, job_id)
+SELECT hp.profile_id, v.job_id
+FROM helper_profiles hp
+JOIN users u ON u.user_id = hp.user_id
+JOIN (
+  SELECT 'rosa@carelink-demo.test' AS email, 1 AS job_id UNION ALL SELECT 'rosa@carelink-demo.test', 16 UNION ALL SELECT 'rosa@carelink-demo.test', 17 UNION ALL SELECT 'rosa@carelink-demo.test', 3
+  UNION ALL SELECT 'nena@carelink-demo.test', 3 UNION ALL SELECT 'nena@carelink-demo.test', 4 UNION ALL SELECT 'nena@carelink-demo.test', 21 UNION ALL SELECT 'nena@carelink-demo.test', 23
+  UNION ALL SELECT 'luzviminda@carelink-demo.test', 6 UNION ALL SELECT 'luzviminda@carelink-demo.test', 7 UNION ALL SELECT 'luzviminda@carelink-demo.test', 28 UNION ALL SELECT 'luzviminda@carelink-demo.test', 25
+  UNION ALL SELECT 'carmen@carelink-demo.test', 10 UNION ALL SELECT 'carmen@carelink-demo.test', 11
+  UNION ALL SELECT 'teresita@carelink-demo.test', 12 UNION ALL SELECT 'teresita@carelink-demo.test', 1
+  UNION ALL SELECT 'jomar@carelink-demo.test', 8 UNION ALL SELECT 'jomar@carelink-demo.test', 9 UNION ALL SELECT 'jomar@carelink-demo.test', 31 UNION ALL SELECT 'jomar@carelink-demo.test', 14
+  UNION ALL SELECT 'elena@carelink-demo.test', 17 UNION ALL SELECT 'elena@carelink-demo.test', 23 UNION ALL SELECT 'elena@carelink-demo.test', 10
+  UNION ALL SELECT 'marilou@carelink-demo.test', 1 UNION ALL SELECT 'marilou@carelink-demo.test', 16 UNION ALL SELECT 'marilou@carelink-demo.test', 6 UNION ALL SELECT 'marilou@carelink-demo.test', 10
+) v ON v.email = u.email;
+
+-- Skills: every skill belonging to the roles each helper picked. Real ref_skills
+-- ids, so the skills weight scores against actual job requirements.
+INSERT INTO helper_skills (profile_id, skill_id, proficiency_level, years_experience)
+SELECT hp.profile_id, rs.skill_id, 'Advanced', hp.experience_years
+FROM helper_profiles hp
+JOIN users u  ON u.user_id = hp.user_id
+JOIN helper_jobs hj ON hj.profile_id = hp.profile_id
+JOIN ref_skills rs  ON rs.job_id = hj.job_id
+WHERE u.email LIKE '%@carelink-demo.test'
+GROUP BY hp.profile_id, rs.skill_id, hp.experience_years;
+
+-- Languages: whatever the reference table actually holds, capped at three.
+INSERT INTO helper_languages (profile_id, language_id)
+SELECT hp.profile_id, rl.language_id
+FROM helper_profiles hp
+JOIN users u ON u.user_id = hp.user_id
+JOIN (SELECT language_id FROM ref_languages ORDER BY language_id LIMIT 3) rl
+WHERE u.email LIKE '%@carelink-demo.test';
+
+-- Verified documents, so these helpers look genuinely PESO-cleared to an
+-- employer. file_path is a placeholder — nothing renders it in browse.
+INSERT INTO user_documents (user_id, document_type, file_path, status, uploaded_at, verified_at)
+SELECT u.user_id, d.doc_type, CONCAT('demo-', u.user_id, '-', d.slug, '.jpg'), 'Verified', NOW() - INTERVAL 20 DAY, NOW() - INTERVAL 18 DAY
+FROM users u
+JOIN (
+  SELECT 'Valid ID' AS doc_type, 'id' AS slug UNION ALL
+  SELECT 'Barangay Clearance', 'brgy'
+) d
+WHERE u.email LIKE '%@carelink-demo.test' AND u.user_type = 'helper';
+
+
+-- ── 6. Check your work ───────────────────────────────────────────────────────
+-- Expect: 6 employers, 6 households, 15 Open job posts, 8 verified helpers,
+-- and every helper holding roles + skills.
 SELECT
-  (SELECT COUNT(*) FROM users WHERE email LIKE '%@carelink-demo.test')                       AS demo_employers,
+  (SELECT COUNT(*) FROM users WHERE email LIKE '%@carelink-demo.test' AND user_type = 'parent') AS demo_employers,
   (SELECT COUNT(*) FROM parent_household ph
      JOIN parent_profiles pp ON pp.profile_id = ph.profile_id
      JOIN users u ON u.user_id = pp.user_id
-    WHERE u.email LIKE '%@carelink-demo.test')                                               AS demo_households,
+    WHERE u.email LIKE '%@carelink-demo.test')                                                  AS demo_households,
   (SELECT COUNT(*) FROM job_posts jp
      JOIN users u ON u.user_id = jp.parent_id
-    WHERE u.email LIKE '%@carelink-demo.test' AND jp.status = 'Open')                        AS open_demo_jobs;
+    WHERE u.email LIKE '%@carelink-demo.test' AND jp.status = 'Open')                           AS open_demo_jobs,
+  (SELECT COUNT(*) FROM helper_profiles hp
+     JOIN users u ON u.user_id = hp.user_id
+    WHERE u.email LIKE '%@carelink-demo.test' AND hp.verification_status = 'Verified')          AS verified_helpers,
+  (SELECT COUNT(*) FROM helper_jobs hj
+     JOIN helper_profiles hp ON hp.profile_id = hj.profile_id
+     JOIN users u ON u.user_id = hp.user_id
+    WHERE u.email LIKE '%@carelink-demo.test')                                                  AS helper_role_rows,
+  (SELECT COUNT(*) FROM helper_skills hs
+     JOIN helper_profiles hp ON hp.profile_id = hs.profile_id
+     JOIN users u ON u.user_id = hp.user_id
+    WHERE u.email LIKE '%@carelink-demo.test')                                                  AS helper_skill_rows;

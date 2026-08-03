@@ -1,14 +1,20 @@
 // app/(peso)/demo/index.tsx
-// User-testing control panel. Lets the researcher drive the MOCK EMPLOYER side
-// of a test session without leaving the PESO portal — one login, one role.
+// User-testing control panel. Lets the researcher play whichever side of the
+// marketplace the tester is not, without leaving the PESO portal — one login,
+// one role.
 //
-// Every button calls the real endpoint the real employer would call, so the
+//   Testing a HELPER   -> the panel is the mock employer: invite, shortlist,
+//                         schedule an interview, send a contract.
+//   Testing an EMPLOYER -> the panel is the mock helpers: seeded, verified
+//                         candidates apply to their job posts.
+//
+// Every button calls the real endpoint the real counterpart would call, so the
 // tester experiences the actual system rather than a simulation. Backend:
-// peso/demo_actions.php (invite / shortlist / interview) and the real
+// peso/demo_actions.php (invite / shortlist / interview / apply) and the real
 // parent/hire_helper.php for the contract step.
 //
-// The screen only lists helpers who have reached PESO verification, since
-// that's the point in the journey where the mock employer becomes relevant.
+// Demo accounts are excluded from the tester list — they are what the panel
+// PLAYS, so offering them would let you drive both sides of one conversation.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, ActivityIndicator } from 'react-native';
@@ -25,7 +31,16 @@ type DemoApp = {
   application_id: number; status: string; job_post_id: number; title: string;
   parent_id: number; parent_name: string; interview_count: number;
 };
-type Helper = { user_id: number; name: string; email: string; verification_status?: string };
+type Tester = { user_id: number; name: string; email: string; user_type: 'helper' | 'parent'; verification_status?: string };
+type EmployerPost = { job_post_id: number; title: string; status: string; category_name?: string; applicants: number };
+type DemoHelper = {
+  user_id: number; name: string; experience_years: number;
+  expected_salary: string; employment_type: string; categories?: string | null;
+};
+type AppliedRow = { job_post_id: number; helper_id: number; status: string };
+
+/** Which side of the marketplace the panel is standing in for. */
+type Mode = 'helper' | 'parent';
 
 /** The one action that makes sense next, given where the application is. */
 function nextStep(status: string): { action: 'shortlist' | 'interview' | 'contract' | null; label: string; hint: string } {
@@ -51,11 +66,18 @@ export default function DemoPanelScreen() {
   const { c } = usePesoTheme();
 
   const [staffId, setStaffId] = useState<string>('');
-  const [helpers, setHelpers] = useState<Helper[]>([]);
-  const [selected, setSelected] = useState<Helper | null>(null);
+  // Which role the TESTER is. The panel plays whichever side they are not.
+  const [mode, setMode] = useState<Mode>('helper');
+  const [testers, setTesters] = useState<Tester[]>([]);
+  const [selected, setSelected] = useState<Tester | null>(null);
   const [jobs, setJobs] = useState<DemoJob[]>([]);
   const [apps, setApps] = useState<DemoApp[]>([]);
   const [invites, setInvites] = useState<any[]>([]);
+  // Employer-tester side
+  const [posts, setPosts] = useState<EmployerPost[]>([]);
+  const [demoHelpers, setDemoHelpers] = useState<DemoHelper[]>([]);
+  const [applied, setApplied] = useState<AppliedRow[]>([]);
+  const [targetPost, setTargetPost] = useState<number | null>(null);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -68,33 +90,46 @@ export default function DemoPanelScreen() {
     });
   }, []);
 
-  const loadHelpers = useCallback(async () => {
+  // Real testers of the currently selected role. Demo accounts are filtered out
+  // — they're the ones the panel PLAYS, so offering them as testers would let
+  // you drive both sides of the same conversation by accident.
+  const loadTesters = useCallback(async () => {
     if (!staffId) return;
     try {
       const res = await fetch(`${API_URL}/peso/get_pending_users.php`);
       const data = await res.json();
-      const list: Helper[] = (data?.data ?? [])
-        .filter((u: any) => u.user_type === 'helper')
+      const list: Tester[] = (data?.data ?? [])
+        .filter((u: any) => u.user_type === mode)
+        .filter((u: any) => !String(u.email ?? '').endsWith('@carelink-demo.test'))
         .map((u: any) => ({
           user_id: Number(u.user_id),
           name: String(u.name ?? '').replace(/\s+/g, ' ').trim(),
           email: u.email,
+          user_type: u.user_type,
           verification_status: u.verification_status,
         }));
-      setHelpers(list);
+      setTesters(list);
     } catch { /* the empty state covers this */ }
-  }, [staffId]);
+  }, [staffId, mode]);
 
-  const loadState = useCallback(async (helperId: number) => {
+  const loadState = useCallback(async (tester: Tester) => {
     if (!staffId) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/peso/demo_actions.php?staff_user_id=${staffId}&helper_id=${helperId}`);
+      const key = tester.user_type === 'parent' ? 'parent_id' : 'helper_id';
+      const res = await fetch(`${API_URL}/peso/demo_actions.php?staff_user_id=${staffId}&${key}=${tester.user_id}`);
       const data = await res.json();
       if (data.success) {
-        setJobs(data.jobs ?? []);
-        setApps(data.applications ?? []);
-        setInvites(data.invites ?? []);
+        if (tester.user_type === 'parent') {
+          setPosts(data.posts ?? []);
+          setDemoHelpers(data.demo_helpers ?? []);
+          setApplied(data.applied ?? []);
+          setTargetPost((prev) => prev ?? (data.posts ?? []).find((p: EmployerPost) => p.status === 'Open')?.job_post_id ?? null);
+        } else {
+          setJobs(data.jobs ?? []);
+          setApps(data.applications ?? []);
+          setInvites(data.invites ?? []);
+        }
       } else {
         setNote({ msg: data.message || 'Could not load demo state.', ok: false });
       }
@@ -105,8 +140,11 @@ export default function DemoPanelScreen() {
     }
   }, [staffId]);
 
-  useEffect(() => { void loadHelpers(); }, [loadHelpers]);
-  useEffect(() => { if (selected) void loadState(selected.user_id); }, [selected, loadState]);
+  useEffect(() => { void loadTesters(); }, [loadTesters]);
+  useEffect(() => { if (selected) void loadState(selected); }, [selected, loadState]);
+  // Switching role clears the selection — a helper tester is meaningless in
+  // employer mode and would leave stale panels on screen.
+  useEffect(() => { setSelected(null); setTargetPost(null); setNote(null); }, [mode]);
 
   const post = async (body: Record<string, unknown>, key: string) => {
     setBusy(key);
@@ -119,7 +157,7 @@ export default function DemoPanelScreen() {
       });
       const data = await res.json();
       setNote({ msg: data.message, ok: !!data.success });
-      if (selected) await loadState(selected.user_id);
+      if (selected) await loadState(selected);
     } catch {
       setNote({ msg: 'Could not reach the server.', ok: false });
     } finally {
@@ -156,7 +194,7 @@ export default function DemoPanelScreen() {
       });
       const data = await res.json();
       setNote({ msg: data.message || (data.success ? 'Contract sent.' : 'Could not send the contract.'), ok: !!data.success });
-      if (selected) await loadState(selected.user_id);
+      if (selected) await loadState(selected);
     } catch {
       setNote({ msg: 'Could not reach the server.', ok: false });
     } finally {
@@ -166,9 +204,9 @@ export default function DemoPanelScreen() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return helpers;
-    return helpers.filter((h) => h.name.toLowerCase().includes(q) || (h.email ?? '').toLowerCase().includes(q));
-  }, [helpers, query]);
+    if (!q) return testers;
+    return testers.filter((h) => h.name.toLowerCase().includes(q) || (h.email ?? '').toLowerCase().includes(q));
+  }, [testers, query]);
 
   const invitedJobIds = useMemo(() => new Set(invites.map((i) => Number(i.job_post_id))), [invites]);
   const appliedJobIds = useMemo(() => new Set(apps.map((a) => a.job_post_id)), [apps]);
@@ -178,18 +216,39 @@ export default function DemoPanelScreen() {
       <ScreenHeader
         eyebrow="USER TESTING"
         title="Demo Control Panel"
-        subtitle="Act as the mock employer without leaving the PESO portal"
+        subtitle="Play the other side of the marketplace without leaving the PESO portal"
       />
 
       <ScrollView contentContainerStyle={{ padding: space.xl, gap: space.lg }}>
-        {jobs.length === 0 && !loading && (
+        {/* ── Whose session is this? ── */}
+        <Card>
+          <SectionHeader eyebrow="MODE" title="Who are you testing with?" />
+          <View style={{ flexDirection: 'row', gap: space.sm }}>
+            {([
+              { key: 'helper' as const, label: 'A helper', sub: 'You play the employer' },
+              { key: 'parent' as const, label: 'An employer', sub: 'You play the helpers' },
+            ]).map((m) => {
+              const on = mode === m.key;
+              return (
+                <PButton
+                  key={m.key}
+                  label={`${m.label} · ${m.sub}`}
+                  variant={on ? 'primary' : 'ghost'}
+                  onPress={() => setMode(m.key)}
+                />
+              );
+            })}
+          </View>
+        </Card>
+
+        {((mode === 'helper' && jobs.length === 0) || (mode === 'parent' && demoHelpers.length === 0 && !!selected)) && !loading && (
           <Card>
             <Text style={{ fontSize: 15, fontWeight: '800', color: c.ink, marginBottom: 6 }}>
-              No demo employers found
+              Demo data not found
             </Text>
             <Text style={{ fontSize: 13.5, color: c.muted, lineHeight: 19 }}>
               Run <Text style={{ fontWeight: '800' }}>backend/database/demo_seed.sql</Text> on this database first.
-              It creates the six mock households and their job posts.
+              It creates six mock households with job posts, and eight verified mock helpers.
             </Text>
           </Card>
         )}
@@ -209,7 +268,7 @@ export default function DemoPanelScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search helpers by name or email…"
+            placeholder={mode === "parent" ? "Search employers by name or email…" : "Search helpers by name or email…"}
             placeholderTextColor={c.subtle}
             style={{
               backgroundColor: c.surface, borderWidth: 1, borderColor: c.line,
@@ -235,7 +294,83 @@ export default function DemoPanelScreen() {
           )}
         </Card>
 
-        {selected && (
+        {/* ── EMPLOYER TESTER: send them applicants ── */}
+        {selected && mode === 'parent' && (
+          <Card>
+            <SectionHeader
+              eyebrow="STEP 2"
+              title="Send applicants to their job post"
+              right={loading ? <ActivityIndicator size="small" color={c.accent} /> : undefined}
+            />
+            {posts.length === 0 ? (
+              <EmptyState
+                icon="briefcase-outline"
+                title="No job posts yet"
+                sub="Ask the tester to post a job, then approve it in Job Verification."
+              />
+            ) : (
+              <>
+                <Text style={{ fontSize: 12, color: c.muted, marginBottom: space.sm, lineHeight: 18 }}>
+                  Pick which of their posts the applicants should apply to.
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: space.md }}>
+                  {posts.map((p) => {
+                    const on = targetPost === p.job_post_id;
+                    const open = p.status === 'Open';
+                    return (
+                      <PButton
+                        key={p.job_post_id}
+                        label={`${p.title}${open ? '' : ` (${p.status})`}`}
+                        size="sm"
+                        variant={on ? 'primary' : 'ghost'}
+                        disabled={!open}
+                        onPress={() => setTargetPost(p.job_post_id)}
+                      />
+                    );
+                  })}
+                </View>
+
+                {demoHelpers.map((h) => {
+                  const already = applied.some(
+                    (a) => a.helper_id === h.user_id && a.job_post_id === targetPost,
+                  );
+                  return (
+                    <ListRow key={h.user_id}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ fontSize: 13.5, fontWeight: '800', color: c.ink }}>{h.name}</Text>
+                        <Text style={{ fontSize: 12, color: c.muted, marginTop: 2 }}>
+                          {h.experience_years} yr{h.experience_years === 1 ? '' : 's'} · ₱{Number(h.expected_salary).toLocaleString()} · {h.employment_type}
+                          {h.categories ? ` · ${h.categories}` : ''}
+                        </Text>
+                      </View>
+                      {already ? (
+                        <Pill label="Applied" tone="ok" />
+                      ) : (
+                        <PButton
+                          label="Apply"
+                          size="sm"
+                          disabled={!targetPost}
+                          loading={busy === `apply-${h.user_id}`}
+                          onPress={() => post(
+                            { action: 'apply', helper_id: h.user_id, job_post_id: targetPost },
+                            `apply-${h.user_id}`,
+                          )}
+                        />
+                      )}
+                    </ListRow>
+                  );
+                })}
+
+                <Text style={{ fontSize: 12, color: c.muted, marginTop: space.md, lineHeight: 18 }}>
+                  The tester now reviews, shortlists, interviews and hires from their own account —
+                  every step after this is theirs to drive.
+                </Text>
+              </>
+            )}
+          </Card>
+        )}
+
+        {selected && mode === 'helper' && (
           <>
             {/* ── 2. Invite ── */}
             <Card>
