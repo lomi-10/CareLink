@@ -1,47 +1,36 @@
 -- =============================================================================
 -- CareLink — revenue model (2026-08-02)
--- Run ONCE in phpMyAdmin -> your DB -> SQL tab. BACK UP FIRST.
 --
--- Purely additive: adds two columns and two tables. Touches no existing data,
--- no matching logic, no contract logic, no verification logic.
+-- Adds two columns and four tables. Touches no existing data, no matching
+-- logic, no contract logic, no verification logic.
 --
 -- All money is charged to EMPLOYER (parent) accounts only. Nothing here
--- references helper_id as a payer — helpers are never charged, per RA 8042 /
+-- references a helper as a payer — helpers are never charged, per RA 8042 and
 -- RA 10364.
+--
+-- HOW TO RUN: phpMyAdmin -> your database -> SQL tab -> paste ALL of it -> Go.
+-- BACK UP FIRST: Export -> Go. Takes ten seconds.
+--
+-- IF YOU SEE "Duplicate column name" or "Table already exists":
+--   That part is ALREADY applied. Nothing is broken. Delete the statements that
+--   already ran and run the rest, or just run it again after removing section 1.
+--   MySQL has no reliable "only if missing" for columns, and the usual
+--   workaround reads information_schema, which Hostinger's database user is not
+--   permitted to access.
 -- =============================================================================
 
 
 -- 1 ── STREAM 1: FEATURED JOB POSTS ──────────────────────────────────────────
--- A boost only affects SORT ORDER in browse. It never changes match_score and
--- never bypasses PESO review (a post must already be status='Open' to surface).
---
--- SAFE TO RE-RUN. MySQL 8 has no "ADD COLUMN IF NOT EXISTS", so each change is
--- guarded by an information_schema check and only executed when missing.
--- Re-running this file is a no-op rather than a "Duplicate column name" error.
+-- A boost affects SORT ORDER only. It never changes match_score, and it never
+-- bypasses PESO review — a post must already be 'Open' to be boosted at all.
+ALTER TABLE job_posts
+  ADD COLUMN featured_until DATETIME NULL DEFAULT NULL
+      COMMENT 'Boost expiry; NULL = never boosted' AFTER expires_at,
+  ADD COLUMN featured_boost_paid_at DATETIME NULL DEFAULT NULL
+      COMMENT 'When the boost payment settled' AFTER featured_until;
 
-SET @db := DATABASE();
-
-SET @needs_col := (SELECT COUNT(*) = 0 FROM information_schema.columns
-  WHERE table_schema = @db AND table_name = 'job_posts' AND column_name = 'featured_until');
-SET @sql := IF(@needs_col,
-  "ALTER TABLE job_posts ADD COLUMN featured_until DATETIME NULL DEFAULT NULL COMMENT 'Boost expiry; NULL = never boosted' AFTER expires_at",
-  'DO 0');
-PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
-
-SET @needs_col := (SELECT COUNT(*) = 0 FROM information_schema.columns
-  WHERE table_schema = @db AND table_name = 'job_posts' AND column_name = 'featured_boost_paid_at');
-SET @sql := IF(@needs_col,
-  "ALTER TABLE job_posts ADD COLUMN featured_boost_paid_at DATETIME NULL DEFAULT NULL COMMENT 'When the boost payment settled' AFTER featured_until",
-  'DO 0');
-PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
-
--- Browse filters on status and reads featured_until on every row.
-SET @needs_idx := (SELECT COUNT(*) = 0 FROM information_schema.statistics
-  WHERE table_schema = @db AND table_name = 'job_posts' AND index_name = 'idx_featured');
-SET @sql := IF(@needs_idx,
-  'ALTER TABLE job_posts ADD INDEX idx_featured (status, featured_until)',
-  'DO 0');
-PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+ALTER TABLE job_posts
+  ADD INDEX idx_featured (status, featured_until);
 
 
 -- 2 ── STREAM 2: CARELINK PLUS SUBSCRIPTIONS ─────────────────────────────────
@@ -57,8 +46,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   featured_credits_remaining INT NOT NULL DEFAULT 3,
   featured_credits_reset_at DATETIME NULL DEFAULT NULL,
   created_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  -- A cancelled subscriber keeps access until current_period_end, so lookups
-  -- are always "status + period end", never status alone.
+  -- A cancelled subscriber keeps access until current_period_end, so every
+  -- lookup is "status + period end", never status alone.
   INDEX idx_user_status (user_id, status, current_period_end),
   CONSTRAINT fk_subs_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -79,8 +68,8 @@ CREATE TABLE IF NOT EXISTS placement_fees (
   paid_at               DATETIME NULL DEFAULT NULL,
   refunded_at           DATETIME NULL DEFAULT NULL,
   created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  -- One fee per placement: the trigger fires on contract completion, which can
-  -- be retried, and a duplicate charge would be a real-money bug.
+  -- One fee per placement. The contract flow can retry, and a duplicate row
+  -- here would mean charging someone twice for the same hire.
   UNIQUE KEY uniq_placement_fee (placement_id),
   INDEX idx_parent_status (parent_id, status),
   CONSTRAINT fk_fees_placement FOREIGN KEY (placement_id) REFERENCES placements(placement_id) ON DELETE CASCADE,
@@ -89,8 +78,8 @@ CREATE TABLE IF NOT EXISTS placement_fees (
 
 
 -- 4 ── PAYMENT EVENT LOG ─────────────────────────────────────────────────────
--- Webhooks arrive more than once by design, so every handler is idempotent and
--- records what it saw here. Never stores card data — PayMongo ids only.
+-- PayMongo retries webhooks by design, so every handler is idempotent and
+-- records what it saw here. Stores PayMongo ids only — never card data.
 CREATE TABLE IF NOT EXISTS payment_events (
   event_id          INT AUTO_INCREMENT PRIMARY KEY,
   paymongo_event_id VARCHAR(255) NOT NULL,
@@ -105,10 +94,10 @@ CREATE TABLE IF NOT EXISTS payment_events (
 
 
 -- ── CHECK YOUR WORK ─────────────────────────────────────────────────────────
-SELECT
-  (SELECT COUNT(*) FROM information_schema.columns
-    WHERE table_schema = DATABASE() AND table_name = 'job_posts'
-      AND column_name IN ('featured_until','featured_boost_paid_at'))       AS job_post_cols_expect_2,
-  (SELECT COUNT(*) FROM information_schema.tables
-    WHERE table_schema = DATABASE()
-      AND table_name IN ('subscriptions','placement_fees','payment_events')) AS new_tables_expect_3;
+-- Expect two rows (featured_until, featured_boost_paid_at).
+SHOW COLUMNS FROM job_posts LIKE 'featured%';
+
+-- Expect three rows.
+SHOW TABLES LIKE 'subscriptions';
+SHOW TABLES LIKE 'placement_fees';
+SHOW TABLES LIKE 'payment_events';
