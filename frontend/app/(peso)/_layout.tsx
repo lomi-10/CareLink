@@ -36,6 +36,7 @@ function PesoLayoutInner() {
   const [userName, setUserName] = useState("PESO Officer");
   const [pesoUserId, setPesoUserId] = useState<number | null>(null);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [loggedOutVisible, setLoggedOutVisible] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openComplaints, setOpenComplaints] = useState(0);
@@ -59,7 +60,15 @@ function PesoLayoutInner() {
     fetchPesoComplaints(pesoUserId).then((res) => setOpenComplaints(res.complaints?.length ?? 0)).catch(() => {});
   }, [pesoUserId]);
 
-  const confirmLogout = async () => { await AsyncStorage.clear(); setLogoutModalVisible(false); router.replace("/"); };
+  // Confirm the sign-out landed before navigating. Clearing and redirecting in
+  // one step gave no feedback, so on a slow device it looked like nothing had
+  // happened and the button got tapped again.
+  const confirmLogout = async () => {
+    await AsyncStorage.clear();
+    setLogoutModalVisible(false);
+    setLoggedOutVisible(true);
+    setTimeout(() => router.replace("/"), 1200);
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.canvas }}>
@@ -108,6 +117,21 @@ function PesoLayoutInner() {
                 <Text style={{ fontFamily: font.semibold, color: "#fff" }}>Log Out</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Sign-out confirmation. Brief, then it navigates away on its own. */}
+      <Modal animationType="fade" transparent visible={loggedOutVisible}>
+        <View style={{ flex: 1, backgroundColor: c.overlay, alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <View style={{ width: "100%", maxWidth: 340, backgroundColor: c.surface, borderRadius: radius.xl, padding: 26, alignItems: "center", borderWidth: 1, borderColor: c.line }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: c.okSoft, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="checkmark-circle" size={30} color={c.ok} />
+            </View>
+            <Text style={{ fontFamily: font.display, fontSize: 17, color: c.ink, marginTop: 12 }}>Signed out</Text>
+            <Text style={{ fontFamily: font.regular, fontSize: 13.5, color: c.muted, marginTop: 6, textAlign: "center" }}>
+              You have been logged out safely.
+            </Text>
           </View>
         </View>
       </Modal>

@@ -208,8 +208,59 @@ export function getPesoNotificationRoute(n: Notification): string | null {
     case 'account_rejected':
       return '/(peso)/users';
 
+    // PESO has its own Messages screen now, so a message notification has
+    // somewhere to go instead of being a dead tap.
     case 'new_message':
+      return '/(peso)/messages';
+
+    case 'complaint_filed':
+    case 'complaint_forwarded':
+    case 'complaint_resolved':
+      return '/(peso)/complaints';
+
+    case 'interview_scheduled':
+    case 'interview_cancelled':
+      return '/(peso)/interviews';
+
+    case 'placement_started':
+    case 'placement_ended':
+      return '/(peso)/placements';
+
+    case 'application_received':
+    case 'status_changed':
+      return '/(peso)/applications';
+
+    // Falling through to the notifications list is still better than a tap that
+    // does nothing — the user at least lands somewhere related.
+    default:
       return null;
+  }
+}
+
+/**
+ * Super admin. Their notifications are mostly system-level: complaints raised
+ * to them, staff messages, and account events they need to action.
+ */
+export function getAdminNotificationRoute(n: Notification): string | null {
+  switch (n.type) {
+    case 'complaint_filed':
+    case 'complaint_forwarded':
+    case 'complaint_resolved':
+      return '/admin/complaints';
+
+    case 'new_message':
+      return '/admin/messages';
+
+    case 'peso_queue_user':
+    case 'account_verified':
+    case 'account_rejected':
+      return '/admin/user_management';
+
+    case 'peso_account_created':
+      return '/admin/create_admin_user';
+
+    case 'system_feedback':
+      return '/admin/feedback';
 
     default:
       return null;

@@ -53,10 +53,19 @@ export function AdminShell({
   const { width } = useWindowDimensions();
   const wide = width > 900;
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggedOut, setLoggedOut] = useState(false);
   const [navOpen, setNavOpen] = useState(false); // mobile drawer
 
   const go = (route: string) => { setNavOpen(false); router.push(route as any); };
-  const confirmLogout = async () => { await AsyncStorage.clear(); setLogoutOpen(false); router.replace('/welcome'); };
+  // Confirm the sign-out landed before leaving. Clearing storage and navigating
+  // in one step gave no feedback at all, so on a slow device it looked like the
+  // button hadn't worked and people tapped it again.
+  const confirmLogout = async () => {
+    await AsyncStorage.clear();
+    setLogoutOpen(false);
+    setLoggedOut(true);
+    setTimeout(() => router.replace('/welcome'), 1200);
+  };
 
   const NavItem = ({ item }: { item: (typeof NAV)[number] }) => {
     const on = item.key === active;
@@ -189,6 +198,19 @@ export function AdminShell({
                 <Text style={{ color: '#fff', fontWeight: '800' }}>Log Out</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Sign-out confirmation. Brief, then it navigates away on its own. */}
+      <Modal visible={loggedOut} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 22 }}>
+          <View style={{ backgroundColor: c.panel, borderWidth: 1, borderColor: c.border, borderRadius: 18, padding: 26, width: '100%', maxWidth: 340, alignItems: 'center' }}>
+            <Ionicons name="checkmark-circle" size={44} color={c.accent} />
+            <Text style={{ fontSize: 16.5, fontWeight: '800', color: c.text, marginTop: 10 }}>Signed out</Text>
+            <Text style={{ fontSize: 13.5, color: c.muted, marginTop: 6, textAlign: 'center' }}>
+              You have been logged out safely.
+            </Text>
           </View>
         </View>
       </Modal>
