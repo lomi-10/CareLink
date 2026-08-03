@@ -3,7 +3,7 @@ name: Deploy Backend to Hostinger
 on:
   push:
     branches:
-      - main  # Runs automatically every time you push to main
+      - main  # Adjust to 'master' if your main branch is named master
 
 jobs:
   deploy:
@@ -18,5 +18,8 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./backend/                     # Takes ONLY files inside your backend folder
-          server-dir: public_html/api/carelink_api/ # Drops them directly into this folder
+          local-dir: ./backend/
+          server-dir: public_html/api/carelink_api/
+          port: 21            # Explicitly sets standard FTP port
+          protocol: ftp       # Prevents FTPS handshake timeouts
+          timeout: 180000     # Extends connection timeout to 3 minutes
