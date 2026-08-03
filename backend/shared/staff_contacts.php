@@ -9,12 +9,12 @@
  * and employers discover each other through jobs and applications.
  *
  * Who may message whom:
- *   PESO staff  -> helpers and employers (the people they verify)
- *   Admin       -> helpers, employers AND PESO staff (they support all of them)
+ *   PESO staff  -> helpers, employers, and admins (to escalate)
+ *   Admin       -> helpers, employers, and PESO staff
  *
- * Admins are never listed as contacts: staff-to-staff escalation goes through
- * the admin, not the other way round, and exposing admin accounts to a PESO
- * search box is a wider surface than this feature needs.
+ * Staff can reach each other in both directions. An officer who hits something
+ * they can't resolve needs a way to raise it, and a one-way channel would have
+ * meant falling back to chat outside the system — exactly what this replaces.
  */
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -52,7 +52,9 @@ try {
         exit();
     }
 
-    $allowed = $role === 'admin' ? ['helper', 'parent', 'peso'] : ['helper', 'parent'];
+    $allowed = $role === 'admin'
+        ? ['helper', 'parent', 'peso']
+        : ['helper', 'parent', 'admin'];
     if ($type !== '' && in_array($type, $allowed, true)) {
         $allowed = [$type];
     }

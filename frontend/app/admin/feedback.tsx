@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { toCsv, downloadCsv } from '@/lib/exportCsv';
 
 type Item = {
   feedback_id: number; name: string; email: string | null;
@@ -54,6 +55,7 @@ export default function AdminFeedbackScreen() {
   const [byRole, setByRole] = useState<{ user_type: string; count: number; average: number }[]>([]);
   const [role, setRole] = useState<'' | 'helper' | 'parent' | 'peso'>('');
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -78,6 +80,40 @@ export default function AdminFeedbackScreen() {
   }, [role]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // One row per response, with the free-text answers intact — the same shape a
+  // Google Form export gives you, so it drops straight into Sheets or Excel for
+  // charting and quoting in the written evaluation.
+  const exportCsv = async () => {
+    if (items.length === 0) return;
+    setExporting(true);
+    const headers = [
+      'Response #', 'Date', 'Respondent', 'Email', 'Role', 'Session',
+      'Overall (1-5)', 'Easy to use (1-5)', 'Felt safe (1-5)', 'Would use (1-5)',
+      'What they liked most', 'What was confusing or hard',
+    ];
+    const rows = items.map((f, i) => [
+      i + 1,
+      new Date(String(f.created_at).replace(' ', 'T')).toLocaleString('en-PH'),
+      f.name,
+      f.email ?? '',
+      ROLE_LABEL[f.user_type] ?? f.user_type,
+      f.context === 'demo_end' ? 'Test session' : 'General',
+      f.overall_rating,
+      f.ease_of_use ?? '',
+      f.trust ?? '',
+      f.would_use ?? '',
+      f.liked_most ?? '',
+      f.confusing_part ?? '',
+    ]);
+    const stamp = new Date().toISOString().slice(0, 10);
+    const ok = await downloadCsv(
+      `carelink-feedback-${role || 'all'}-${stamp}.csv`,
+      toCsv(headers, rows),
+    );
+    if (!ok) setError('Could not create the file on this device.');
+    setExporting(false);
+  };
 
   const filters: { key: '' | 'helper' | 'parent' | 'peso'; label: string }[] = [
     { key: '', label: 'Everyone' },
@@ -129,17 +165,33 @@ export default function AdminFeedbackScreen() {
             </View>
           )}
 
-          <View style={s.filterRow}>
-            {filters.map((f) => (
-              <TouchableOpacity
-                key={f.key || 'all'}
-                style={[s.chip, role === f.key && { backgroundColor: c.accent, borderColor: c.accent }]}
-                onPress={() => setRole(f.key)}
-                activeOpacity={0.85}
-              >
-                <Text style={[s.chipText, role === f.key && { color: '#fff' }]}>{f.label}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={s.toolbar}>
+            <View style={s.filterRow}>
+              {filters.map((f) => (
+                <TouchableOpacity
+                  key={f.key || 'all'}
+                  style={[s.chip, role === f.key && { backgroundColor: c.accent, borderColor: c.accent }]}
+                  onPress={() => setRole(f.key)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[s.chipText, role === f.key && { color: '#fff' }]}>{f.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={[s.exportBtn, (items.length === 0 || exporting) && { opacity: 0.5 }]}
+              onPress={exportCsv}
+              disabled={items.length === 0 || exporting}
+              activeOpacity={0.85}
+            >
+              {exporting
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Ionicons name="download-outline" size={16} color="#fff" />}
+              <Text style={s.exportText}>
+                Export {items.length > 0 ? `${items.length} ` : ''}to Excel
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {items.length === 0 ? (
@@ -254,7 +306,13 @@ const makeStyles = (c: any) => StyleSheet.create({
   roleCount: { fontSize: 12, color: c.muted },
   roleAvg: { fontSize: 14, fontWeight: '800', color: c.accent, minWidth: 44, textAlign: 'right' },
 
-  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  toolbar: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, flexShrink: 1 },
+  exportBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    backgroundColor: c.accent, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10,
+  },
+  exportText: { fontSize: 12.5, fontWeight: '800', color: '#fff' },
   chip: { paddingHorizontal: 13, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: c.border },
   chipText: { fontSize: 12.5, fontWeight: '700', color: c.muted },
 

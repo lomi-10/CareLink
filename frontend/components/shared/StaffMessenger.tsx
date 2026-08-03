@@ -27,7 +27,7 @@ export type StaffPalette = {
 
 type Contact = {
   user_id: number; name: string; email: string;
-  user_type: 'helper' | 'parent' | 'peso';
+  user_type: 'helper' | 'parent' | 'peso' | 'admin';
   status?: string; photo?: string | null;
   last_at?: string | null; unread: number;
 };
@@ -37,7 +37,9 @@ type Msg = {
   message_text: string; message_type?: string; sent_at: string;
 };
 
-const TYPE_LABEL: Record<string, string> = { helper: 'Helper', parent: 'Employer', peso: 'PESO staff' };
+const TYPE_LABEL: Record<string, string> = {
+  helper: 'Helper', parent: 'Employer', peso: 'PESO staff', admin: 'CareLink admin',
+};
 
 export function StaffMessenger({
   staffId, role, palette: p,
@@ -53,7 +55,7 @@ export function StaffMessenger({
   const [active, setActive] = useState<Contact | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<'' | 'helper' | 'parent' | 'peso'>('');
+  const [filter, setFilter] = useState<'' | 'helper' | 'parent' | 'peso' | 'admin'>('');
   const [loadingContacts, setLoadingContacts] = useState(true);
   const [loadingThread, setLoadingThread] = useState(false);
   const [draft, setDraft] = useState('');
@@ -153,11 +155,15 @@ export function StaffMessenger({
     }
   };
 
-  const filters: { key: '' | 'helper' | 'parent' | 'peso'; label: string }[] = [
+  // Staff reach each other in both directions: an admin can pick out PESO
+  // officers, and an officer can pick out admins to escalate to.
+  const filters: { key: '' | 'helper' | 'parent' | 'peso' | 'admin'; label: string }[] = [
     { key: '', label: 'All' },
     { key: 'helper', label: 'Helpers' },
     { key: 'parent', label: 'Employers' },
-    ...(role === 'admin' ? [{ key: 'peso' as const, label: 'PESO staff' }] : []),
+    role === 'admin'
+      ? { key: 'peso' as const, label: 'PESO staff' }
+      : { key: 'admin' as const, label: 'CareLink admins' },
   ];
 
   const list = (
