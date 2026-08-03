@@ -9,6 +9,8 @@ Companion documents:
 - `document-scanning-qa.md`, `job-applications-rejection-qa.md`,
   `peso-verification-queue-qa.md`, `generated-text-qa.md` — defensible answers
   to the questions panels actually ask
+- `open-issues-qa.md` — the current bug/feature queue from testing (Part 6
+  below is the short version; that document is the working list)
 
 ---
 
