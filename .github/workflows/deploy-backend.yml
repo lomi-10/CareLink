@@ -1,9 +1,22 @@
 name: Deploy Backend to Hostinger
 
+# Pushes backend/ to the live API on every push to main.
+#
+# WHY server-dir LOOKS ODD: Hostinger drops FTP users at /home/uXXXXXXXX/, and
+# the site is served from domains/<domain>/public_html — NOT from a public_html
+# at that home root. Using "public_html/api/carelink_api/" uploaded 500 files
+# successfully into a folder nothing serves, while the real one sat empty.
+#
+# The path below is the one proven by a PHP error trace from the live server:
+#   /home/u709359174/domains/carelink-ph.com/public_html/api/carelink_api/shared/auth_codes.php
+# Everything after /home/u709359174/ is what belongs here.
+
 on:
   push:
     branches:
-      - main  # Adjust to 'master' if your main branch is named master
+      - main
+  # Lets you re-run a deploy from the Actions tab without making an empty commit.
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -19,7 +32,18 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./backend/
-          server-dir: public_html/api/carelink_api/
-          port: 21            # Explicitly sets standard FTP port
-          protocol: ftp       # Prevents FTPS handshake timeouts
-          timeout: 180000     # Extends connection timeout to 3 minutes
+          server-dir: domains/carelink-ph.com/public_html/api/carelink_api/
+          port: 21
+          protocol: ftp
+          timeout: 180000
+          # Never touch these on the server. config.local.php holds the DB, mail
+          # and PayMongo credentials and is gitignored, so it exists ONLY on the
+          # server — losing it takes the whole API down. uploads/ is
+          # user-submitted documents and photos, which exist nowhere else.
+          # test_*.php are throwaway diagnostics that must never ship.
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/config.local.php
+            **/uploads/**
+            **/test_*.php
