@@ -91,7 +91,11 @@ export function AdminShell({
         </View>
       </View>
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        {['OVERVIEW', 'USER & ADMIN', 'SYSTEM'].map((group) => (
+        {/* Groups are derived from NAV, in the order they first appear there.
+            This used to be a hardcoded list, so adding a nav item in a new group
+            silently rendered nothing — the item was filtered out and there was
+            no error to notice. Adding to NAV is now enough. */}
+        {NAV.reduce<string[]>((groups, n) => groups.includes(n.group) ? groups : [...groups, n.group], []).map((group) => (
           <View key={group}>
             <Text style={{ fontSize: 10.5, fontWeight: '800', color: c.subtle, letterSpacing: 1, marginTop: 18, marginBottom: 8, marginLeft: 6 }}>{group}</Text>
             {NAV.filter((n) => n.group === group).map((item) => <NavItem key={item.key} item={item} />)}
