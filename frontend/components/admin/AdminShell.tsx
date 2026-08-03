@@ -189,7 +189,7 @@ export function AdminShell({
           <View style={{ backgroundColor: c.panel, borderWidth: 1, borderColor: c.border, borderRadius: 18, padding: 22, width: '100%', maxWidth: 360, alignItems: 'center' }}>
             <Ionicons name="log-out-outline" size={34} color={c.red} />
             <Text style={{ fontSize: 17, fontWeight: '800', color: c.text, marginTop: 10 }}>Log Out?</Text>
-            <Text style={{ fontSize: 13.5, color: c.muted, marginTop: 6, textAlign: 'center' }}>You'll need to sign in again to access the portal.</Text>
+            <Text style={{ fontSize: 13.5, color: c.muted, marginTop: 6, textAlign: 'center' }}>You&rsquo;ll need to sign in again to access the portal.</Text>
             <View style={{ flexDirection: 'row', gap: 10, alignSelf: 'stretch', marginTop: 18 }}>
               <TouchableOpacity onPress={() => setLogoutOpen(false)} style={{ flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: c.border, alignItems: 'center' }}>
                 <Text style={{ color: c.text, fontWeight: '700' }}>Cancel</Text>
