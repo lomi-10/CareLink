@@ -56,16 +56,8 @@ export function AddressSection({
       <View style={isWeb ? styles.webRow : undefined}>
         <View style={isWeb ? { flex: 1, paddingRight: 12 } : undefined}>
           <LabeledInput label="Province" required value={province} onChangeText={v => { setProvince(v); setLatitude?.(null); setLongitude?.(null); }} placeholder="Leyte" />
-        </View>
-        <View style={isWeb ? { flex: 2 } : undefined}>
-          <View style={styles.inputGrid}>
-            <View style={styles.inputHalf}>
-              <LabeledInput label="Municipality" required value={municipality} onChangeText={v => { setMunicipality(v); setLatitude?.(null); setLongitude?.(null); }} placeholder="Isabel" />
-            </View>
-            <View style={styles.inputHalf}>
-              <LabeledInput label="Barangay" required value={barangay} onChangeText={v => { setBarangay(v); setLatitude?.(null); setLongitude?.(null); }} placeholder="San Jose" />
-            </View>
-          </View>
+          <LabeledInput label="Municipality" required value={municipality} onChangeText={v => { setMunicipality(v); setLatitude?.(null); setLongitude?.(null); }} placeholder="Isabel" />
+          <LabeledInput label="Barangay" required value={barangay} onChangeText={v => { setBarangay(v); setLatitude?.(null); setLongitude?.(null); }} placeholder="San Jose" />
         </View>
       </View>
 
