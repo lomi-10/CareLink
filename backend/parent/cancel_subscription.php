@@ -20,9 +20,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit();
 require_once __DIR__ . '/../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
 require_once __DIR__ . '/../shared/is_plus_subscriber.php';
+require_once __DIR__ . '/../shared/subscriptions_table.php';
 
 try {
     if (!$conn) throw new Exception('Database connection failed');
+    ensure_subscriptions_table($conn);
 
     $input        = json_decode(file_get_contents('php://input'), true) ?? [];
     $parent_id    = isset($input['parent_id']) ? (int) $input['parent_id'] : 0;

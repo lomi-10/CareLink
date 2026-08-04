@@ -198,14 +198,15 @@ const HELPER_TOPICS: Topic[] = [
 ];
 
 export type CareBotChatPanelProps = {
-  sessionKey: number;
+  /** Bumped only on logout — restarts the conversation for the next session. */
+  resetNonce: number;
   showChrome?: boolean;
   onRequestClose?: () => void;
   accentRole?: CareBotAccent;
 };
 
 export function CareBotChatPanel({
-  sessionKey,
+  resetNonce,
   showChrome,
   onRequestClose,
   accentRole: accentProp,
@@ -251,6 +252,10 @@ export function CareBotChatPanel({
 
   useEffect(() => { if (accentProp) setAccent(accentProp); }, [accentProp]);
 
+  // Seeds the welcome message once per session — NOT on every open, so the
+  // conversation survives closing and reopening the panel (this effect's
+  // deps don't change on open/close). Only a logout (resetNonce bumping)
+  // restarts it.
   useEffect(() => {
     if (booting || userId < 1) return;
     setLines([
@@ -262,7 +267,7 @@ export function CareBotChatPanel({
       },
     ]);
     setDraft('');
-  }, [booting, userId, sessionKey]);
+  }, [booting, userId, resetNonce]);
 
   const router = useRouter();
   const accentColor = accent === 'helper' ? HELPER_ACCENT : PARENT_ACCENT;

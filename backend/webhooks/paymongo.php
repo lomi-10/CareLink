@@ -15,6 +15,9 @@
 require_once __DIR__ . '/../dbcon.php';
 require_once __DIR__ . '/../shared/paymongo.php';
 require_once __DIR__ . '/../shared/create_notification.php';
+require_once __DIR__ . '/../shared/subscriptions_table.php';
+
+if ($conn) { ensure_subscriptions_table($conn); }
 
 header('Content-Type: application/json; charset=UTF-8');
 

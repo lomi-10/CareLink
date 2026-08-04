@@ -12,3 +12,4 @@ export {
 } from '@/contexts/ColorSchemePreferenceContext';
 export * from './useNotice';
 export * from './useDemoSession';
+export * from './useFeedback';

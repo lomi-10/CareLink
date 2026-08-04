@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { useCareBotOptional } from '@/contexts/CareBotContext';
 
 export interface UserData {
   user_id: string;
@@ -20,6 +21,7 @@ export interface UserData {
 
 export function useAuth() {
   const router = useRouter();
+  const careBot = useCareBotOptional();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -48,6 +50,9 @@ export function useAuth() {
   const handleLogout = async () => {
     try {
       await AsyncStorage.multiRemove(['user_data', 'user_token']);
+      // CareBot's chat panel stays mounted for the whole app session, so its
+      // conversation would otherwise carry over to whoever signs in next.
+      careBot?.resetChat();
       router.replace('/');
     } catch (error) {
       console.error('Error during logout:', error);

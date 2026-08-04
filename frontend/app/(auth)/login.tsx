@@ -248,9 +248,12 @@ export default function LoginScreen() {
           keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
         >
           <ScrollView
+            style={{ flex: 1, backgroundColor: m.page.backgroundColor }}
             contentContainerStyle={m.scroll}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            bounces={false}
+            overScrollMode="never"
           >
             {/* Brand — the one logo */}
             <View style={m.brandRow}>

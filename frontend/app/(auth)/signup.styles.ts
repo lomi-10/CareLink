@@ -181,16 +181,120 @@ export const s = StyleSheet.create({
   mobileScroll:   { flexGrow: 1, paddingBottom: 32 },
   mobileCardWrap: { paddingHorizontal: 16 },
 
-  // ── Desktop shell ────────────────────────────────────────────────────────────
-  webScroll: {
+});
+
+// ─── Desktop / Web ───────────────────────────────────────────────────────────
+// Split layout over the same full-bleed photo login.tsx uses (login-bg-web.png):
+//   left  = brand + hero copy (the ONE logo, same as login)
+//   right = a wide, two-column form card — pairing fields (name/name,
+//           email/mobile, password/confirm) turns a long single-column
+//           mobile form into something that reads as a real web form
+//           instead of a phone screen stretched wide.
+// Card/input colours still come from the role theme (authThemes.ts) inline —
+// only structure lives here, so parent/helper keep their identity.
+
+const ICON_CIRCLE_LIGHT = 'rgba(255,255,255,0.14)';
+
+export const d = StyleSheet.create({
+  page: { flex: 1, backgroundColor: '#1A0D04' },
+  bgImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+
+  scroll: {
     flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
     paddingVertical: 40,
-    paddingHorizontal: 24,
+    paddingHorizontal: 40,
   },
-  webContainer: {
+
+  shell: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 56,
     width: '100%',
-    maxWidth: 480,
+    maxWidth: 1180,
+    alignSelf: 'center',
   },
+
+  leftPanel: { flex: 1, minWidth: 0, maxWidth: 460, paddingTop: 28 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 48 },
+  brandName: { fontSize: 32, letterSpacing: -0.5 },
+  brandCare: { fontFamily: FontFamily.fredokaSemiBold, color: '#FFFFFF' },
+  brandLink: { fontFamily: FontFamily.fredokaSemiBold, color: '#E86019' },
+  brandTag: {
+    fontFamily: FontFamily.fredokaRegular, fontSize: 13.5,
+    color: 'rgba(255,255,255,0.62)', marginTop: 2, lineHeight: 19, maxWidth: 200,
+  },
+
+  heroTitle: {
+    fontFamily: FontFamily.fredokaSemiBold, fontSize: 40, lineHeight: 49,
+    color: '#FFFFFF', letterSpacing: -1,
+  },
+  heroAccent: { color: '#E86019' },
+  heroBody: {
+    fontFamily: FontFamily.fredokaRegular, fontSize: 15, lineHeight: 24,
+    color: 'rgba(255,255,255,0.66)', marginTop: 18, maxWidth: 400,
+  },
+
+  backRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 32, alignSelf: 'flex-start' },
+  backText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: 'rgba(255,255,255,0.72)' },
+
+  // ── Right: form card ──
+  card: {
+    width: 620,
+    flexGrow: 0,
+    flexShrink: 0,
+    borderRadius: 26,
+    padding: 36,
+    ...Platform.select({ default: { boxShadow: '0 24px 70px rgba(0,0,0,0.45)' } as any }),
+  },
+
+  title: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 26, marginBottom: 4, letterSpacing: -0.4 },
+  subtitle: { fontFamily: FontFamily.fredokaRegular, fontSize: 13.5, lineHeight: 20, marginBottom: 20 },
+
+  pill: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
+    borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 22,
+  },
+  pillText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13 },
+
+  // Two-column field grid — each row is either one 2-col pair or one full row.
+  gridRow: { flexDirection: 'row', gap: 14 },
+  col: { flex: 1, minWidth: 0 },
+
+  fieldLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, marginBottom: 7 },
+  input: {
+    fontFamily: FontFamily.fredokaRegular, borderWidth: 1, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 14.5,
+    outlineStyle: 'none' as any,
+  },
+  pwRow: {
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, gap: 8,
+  },
+  pwInput: { fontFamily: FontFamily.fredokaRegular, flex: 1, fontSize: 14.5, padding: 0, outlineStyle: 'none' as any },
+  hint: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, marginTop: -10, marginBottom: 14 },
+
+  // Compact inline password-requirement chips (replaces the tall mobile block).
+  pwReqsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16, marginTop: -4 },
+  pwReqChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5,
+  },
+  pwReqChipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11 },
+
+  consentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 20, marginTop: 4 },
+  consentText: { flex: 1, fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, lineHeight: 18 },
+
+  submitBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    borderRadius: 14, paddingVertical: 16, marginBottom: 16,
+  },
+  submitText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16 },
+
+  footerRow: { flexDirection: 'row', justifyContent: 'center' },
+  footerText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13.5 },
+  footerLink: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5 },
+
+  iconCircleLight: { width: 30, height: 30, borderRadius: 15, backgroundColor: ICON_CIRCLE_LIGHT, alignItems: 'center', justifyContent: 'center' },
 });

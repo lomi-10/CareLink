@@ -28,6 +28,7 @@ require_once __DIR__ . '/../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
 require_once __DIR__ . '/../shared/paymongo.php';
 require_once __DIR__ . '/../shared/is_plus_subscriber.php';
+require_once __DIR__ . '/../shared/subscriptions_table.php';
 
 function sub_out(bool $ok, string $msg, array $extra = []): void
 {
@@ -50,6 +51,7 @@ function sub_benefits(): array
 
 try {
     if (!$conn) throw new Exception('Database connection failed');
+    ensure_subscriptions_table($conn);
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $parent_id    = isset($_GET['parent_id']) ? (int) $_GET['parent_id'] : 0;
@@ -93,6 +95,17 @@ try {
     }
 
     if (!carelink_paymongo_configured()) sub_out(false, 'Payments are not set up on this server yet.');
+
+    // Cooldown independent of the webhook: `already_plus` above only engages
+    // once a payment has actually settled, which takes a moment (and fails
+    // silently if the webhook can't reach this server). Without this, a user
+    // whose first payment hasn't settled yet could open a new checkout every
+    // tap — this caps it to one attempt per 3 minutes per account instead.
+    $cooldownFile = sys_get_temp_dir() . '/carelink_sub_attempt_' . $parent_id . '.txt';
+    if (is_file($cooldownFile) && (time() - (int) @filemtime($cooldownFile)) < 180) {
+        sub_out(false, 'A CareLink Plus payment was just started for this account. Check your email for the PayMongo receipt, or wait a few minutes and try again.');
+    }
+    @file_put_contents($cooldownFile, (string) time());
 
     $base   = carelink_url_scheme() . ($_SERVER['HTTP_HOST'] ?? 'localhost');
     $return = trim((string) ($input['return_url'] ?? '')) ?: $base;

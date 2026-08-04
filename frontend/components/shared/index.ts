@@ -1,5 +1,6 @@
 export { NotificationModal } from './NotificationModal';
 export { NotificationDetailModal } from './NotificationDetailModal';
+export { FeedbackScreen } from './FeedbackScreen';
 export { LoadingSpinner } from './LoadingSpinner';
 export { ConfirmationModal } from './ConfirmationModal';
 export { EndEmploymentModal } from './EndEmploymentModal';

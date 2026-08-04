@@ -108,9 +108,7 @@ export function HelperTopNav({
                 <MenuRow icon="person-outline" label="My Profile" onPress={() => { setMenuOpen(false); go('/(helper)/profile'); }} />
                 <MenuRow icon="settings-outline" label="Settings" onPress={() => { setMenuOpen(false); go('/(helper)/settings'); }} />
                 <MenuRow icon="help-buoy-outline" label="How CareLink works" onPress={() => { setMenuOpen(false); openGuide('helper'); }} />
-                {!!onOpenFeedback && (
-                  <MenuRow icon="chatbox-ellipses-outline" label="Send feedback" onPress={() => { setMenuOpen(false); onOpenFeedback(); }} />
-                )}
+                <MenuRow icon="chatbox-ellipses-outline" label="Send feedback" onPress={() => { setMenuOpen(false); go('/(helper)/feedback'); }} />
                 {!!onFinishDemo && (
                   <MenuRow icon="flag-outline" label="Finish demo session" onPress={() => { setMenuOpen(false); onFinishDemo(); }} />
                 )}

@@ -305,7 +305,16 @@ export default function RoleSelectionScreen() {
       </View>
 
       <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Scrolling fast past either end flashed a white bar — the scroll view
+            had no background of its own, so overscroll exposed the window
+            behind it (same root cause as the landing page). Painting it the
+            gradient's darkest stop and disabling bounce/overscroll removes it. */}
+        <ScrollView
+          style={{ flex: 1, backgroundColor: '#1A0D04' }}
+          contentContainerStyle={styles.scrollContent}
+          bounces={false}
+          overScrollMode="never"
+        >
           <View style={styles.header}>
             <View style={styles.backButtonContainer}>
               <Pressable onPress={() => router.back()} style={styles.backButton}>

@@ -249,7 +249,7 @@ export function MobileMenu({
               style={styles.drawerItem}
               onPress={() => {
                 onClose();
-                onOpenFeedback?.();
+                router.push('/(helper)/feedback' as never);
               }}
               activeOpacity={0.8}
             >

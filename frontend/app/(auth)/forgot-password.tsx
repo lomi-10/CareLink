@@ -116,7 +116,13 @@ export default function ForgotPasswordScreen() {
   return (
     <View style={v.page}>
       <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={[v.scroll, isDesktop && v.scrollDesktop]} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          style={{ flex: 1, backgroundColor: v.page.backgroundColor }}
+          contentContainerStyle={[v.scroll, isDesktop && v.scrollDesktop]}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+          overScrollMode="never"
+        >
           <View style={[v.card, isDesktop && v.cardDesktop]}>
             <View style={v.logoWrap}>
               <AnimatedLogo size={64} rings={false} glow float beat boxScale={1.3} entrance />

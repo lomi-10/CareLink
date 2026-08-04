@@ -11,12 +11,14 @@
  */
 
 require_once __DIR__ . '/../load_config.php';
+require_once __DIR__ . '/subscriptions_table.php';
 
 if (!function_exists('carelink_is_plus_subscriber')) {
 
     function carelink_is_plus_subscriber(mysqli $conn, int $user_id): bool
     {
         if ($user_id <= 0) return false;
+        ensure_subscriptions_table($conn);
 
         $st = $conn->prepare(
             "SELECT subscription_id
@@ -90,6 +92,7 @@ if (!function_exists('carelink_is_plus_subscriber')) {
             'featured_credits'   => 0,
         ];
         if ($user_id <= 0) return $out;
+        ensure_subscriptions_table($conn);
 
         $st = $conn->prepare(
             "SELECT status, current_period_end, featured_credits_remaining

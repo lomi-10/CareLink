@@ -47,7 +47,7 @@ export function CareBotFab() {
   const pathname = usePathname() ?? '';
   const segments = useSegments();
   const insets = useSafeAreaInsets();
-  const { isOpen, sessionKey, open, close } = useCareBot();
+  const { isOpen, resetNonce, open, close } = useCareBot();
   const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
@@ -196,7 +196,7 @@ export function CareBotFab() {
                   : [styles.card, { width: modalW, height: cardHeight, maxHeight: modalMaxH }]
               }
             >
-              <CareBotChatPanel sessionKey={sessionKey} showChrome onRequestClose={requestClose} />
+              <CareBotChatPanel resetNonce={resetNonce} showChrome onRequestClose={requestClose} />
             </MotiView>
           </View>
         </View>

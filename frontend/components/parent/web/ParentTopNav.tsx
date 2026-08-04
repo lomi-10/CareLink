@@ -118,6 +118,7 @@ export function ParentTopNav({
                 <MenuRow icon="settings-outline" label="Settings" onPress={() => { setMenuOpen(false); go('/(parent)/settings'); }} />
                 <MenuRow icon={isPlus ? 'star' : 'star-outline'} label={isPlus ? 'CareLink Plus · Receipt' : 'CareLink Plus'} onPress={() => { setMenuOpen(false); go('/(parent)/settings/subscription'); }} />
                 <MenuRow icon="help-buoy-outline" label="How CareLink works" onPress={() => { setMenuOpen(false); openGuide('parent'); }} />
+                <MenuRow icon="chatbox-ellipses-outline" label="Send Feedback" onPress={() => { setMenuOpen(false); go('/(parent)/feedback'); }} />
                 <View style={s.menuDiv} />
                 <MenuRow icon="log-out-outline" label="Log Out" danger onPress={() => { setMenuOpen(false); onLogout(); }} />
               </View>

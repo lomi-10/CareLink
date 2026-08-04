@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -23,11 +24,15 @@ import { Picker } from "@react-native-picker/picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 
+import { AnimatedLogo } from "@/components/branding/AnimatedLogo";
 import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import { NotificationModal } from "@/components/shared/NotificationModal";
 import { useSignupForm } from "@/hooks/auth/useSignupForm";
 import { PARENT_T, HELPER_T } from "@/constants/authThemes";
-import { s } from "./signup.styles";
+import { s, d } from "./signup.styles";
+
+const WEB_BG = require("../../assets/images/login-bg-web.png");
+const TRANS = { transitionDuration: "160ms", transitionProperty: "all", transitionTimingFunction: "ease" } as any;
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
@@ -307,26 +312,224 @@ export default function SignUpScreen() {
   );
 
   // ── Desktop layout ────────────────────────────────────────────────────────
+  // Split panel over the same photo login.tsx uses — brand + hero on the
+  // left, a wide two-column form on the right. The old desktop view was just
+  // the mobile card centered on a gradient; this gives it the same weight as
+  // login instead of feeling like an afterthought.
   if (isDesktop) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#2A1608' }}>
+      <View style={d.page}>
+        <Image source={WEB_BG} style={d.bgImage} resizeMode="cover" />
         <LinearGradient
-          colors={['#422919', '#2A1608', '#1A0D04']}
+          colors={["rgba(20,10,4,0.72)", "rgba(20,10,4,0.30)", "rgba(20,10,4,0.55)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
           style={StyleSheet.absoluteFill}
+          pointerEvents="none"
         />
+
         <SafeAreaView style={{ flex: 1 }}>
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
             <ScrollView
-              contentContainerStyle={s.webScroll}
+              contentContainerStyle={d.scroll}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <View style={s.webContainer}>
-                {pageHeader}
-                {formCard}
+              <View style={d.shell}>
+
+                {/* ── LEFT: brand + hero ── */}
+                <View style={d.leftPanel}>
+                  <View style={d.brandRow}>
+                    <AnimatedLogo size={54} rings={false} glow float beat boxScale={1.3} entrance />
+                    <View>
+                      <Text style={d.brandName}>
+                        <Text style={d.brandCare}>Care</Text>
+                        <Text style={d.brandLink}>Link</Text>
+                      </Text>
+                      <Text style={d.brandTag}>Connecting homes with trusted help.</Text>
+                    </View>
+                  </View>
+
+                  <Text style={d.heroTitle}>
+                    {role === 'helper' ? (
+                      <>Find work you{"\n"}can <Text style={d.heroAccent}>trust.</Text></>
+                    ) : (
+                      <>Hire help you{"\n"}can <Text style={d.heroAccent}>trust.</Text></>
+                    )}
+                  </Text>
+                  <Text style={d.heroBody}>
+                    {role === 'helper'
+                      ? 'Every account is verified by your local PESO office, every contract follows DOLE Kasambahay Law, and you are never charged a peso to join.'
+                      : 'Every helper is PESO-verified, every hire gets a DOLE-compliant contract with digital signing, and CareLink never holds your money.'}
+                  </Text>
+
+                  <Pressable
+                    onPress={goBack}
+                    style={({ hovered }: any) => [d.backRow, TRANS, hovered && { opacity: 0.7 }]}
+                  >
+                    <Ionicons name="arrow-back" size={16} color="rgba(255,255,255,0.72)" />
+                    <Text style={d.backText}>Back</Text>
+                  </Pressable>
+                </View>
+
+                {/* ── RIGHT: wide two-column form ── */}
+                <View style={[d.card, { backgroundColor: t.cardBg }]}>
+                  <Text style={[d.title, { color: t.label }]}>{title}</Text>
+                  <Text style={[d.subtitle, { color: t.footerText }]}>Create your account to get started.</Text>
+
+                  {role ? (
+                    <View style={[d.pill, { backgroundColor: t.pillBg, borderColor: t.pillBorder }]}>
+                      <Ionicons name={role === 'parent' ? 'people' : 'briefcase'} size={16} color={t.pillIcon} />
+                      <Text style={[d.pillText, { color: t.pillText }]}>
+                        Registering as a {role === 'parent' ? 'Parent' : 'Helper'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={[s.pickerWrap, { backgroundColor: t.inputBg, borderColor: t.inputBorder, marginBottom: 18 }]}>
+                      <Picker selectedValue={form.user_type} onValueChange={(v) => handleChange('user_type', v)} style={{ color: t.label }}>
+                        <Picker.Item label="Select your role" value="" />
+                        <Picker.Item label="Parent — hiring help" value="parent" />
+                        <Picker.Item label="Helper — looking for work" value="helper" />
+                      </Picker>
+                    </View>
+                  )}
+
+                  <View style={d.gridRow}>
+                    <View style={d.col}>
+                      <Text style={[d.fieldLabel, { color: t.label }]}>First name <Text style={{ color: t.required }}>*</Text></Text>
+                      <TextInput
+                        style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
+                        placeholder="Juan" placeholderTextColor={t.placeholder}
+                        value={form.first_name} onChangeText={(v) => handleChange('first_name', v)}
+                      />
+                    </View>
+                    <View style={d.col}>
+                      <Text style={[d.fieldLabel, { color: t.label }]}>Last name <Text style={{ color: t.required }}>*</Text></Text>
+                      <TextInput
+                        style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
+                        placeholder="Dela Cruz" placeholderTextColor={t.placeholder}
+                        value={form.last_name} onChangeText={(v) => handleChange('last_name', v)}
+                      />
+                    </View>
+                  </View>
+
+                  <Text style={[d.fieldLabel, { color: t.label, marginTop: 14 }]}>Middle name <Text style={{ color: t.optional }}>(optional)</Text></Text>
+                  <TextInput
+                    style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText, marginBottom: 16 }]}
+                    placeholder="Optional" placeholderTextColor={t.placeholder}
+                    value={form.middle_name} onChangeText={(v) => handleChange('middle_name', v)}
+                  />
+
+                  <View style={d.gridRow}>
+                    <View style={d.col}>
+                      <Text style={[d.fieldLabel, { color: t.label }]}>Email <Text style={{ color: t.required }}>*</Text></Text>
+                      <TextInput
+                        style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
+                        placeholder="you@email.com" placeholderTextColor={t.placeholder}
+                        keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
+                        value={form.email} onChangeText={(v) => handleChange('email', v)}
+                      />
+                    </View>
+                    <View style={d.col}>
+                      <Text style={[d.fieldLabel, { color: t.label }]}>Mobile <Text style={{ color: t.optional }}>(optional)</Text></Text>
+                      <TextInput
+                        style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
+                        placeholder="0917 123 4567" placeholderTextColor={t.placeholder}
+                        keyboardType="phone-pad" autoCapitalize="none" autoCorrect={false} maxLength={16}
+                        value={form.phone} onChangeText={(v) => handleChange('phone', v)}
+                      />
+                    </View>
+                  </View>
+                  <Text style={[d.hint, { color: t.placeholder }]}>You can sign in with either your email or mobile number.</Text>
+
+                  <View style={d.gridRow}>
+                    <View style={d.col}>
+                      <Text style={[d.fieldLabel, { color: t.label }]}>Password <Text style={{ color: t.required }}>*</Text></Text>
+                      <View style={[d.pwRow, { backgroundColor: t.inputBg, borderColor: t.inputBorder }]}>
+                        <TextInput
+                          style={[d.pwInput, { color: t.inputText }]}
+                          placeholder="Create a password" placeholderTextColor={t.placeholder}
+                          secureTextEntry={!showPassword}
+                          value={form.password} onChangeText={(v) => handleChange('password', v)}
+                        />
+                        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                          <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={18} color={t.eye} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <View style={d.col}>
+                      <Text style={[d.fieldLabel, { color: t.label }]}>Confirm <Text style={{ color: t.required }}>*</Text></Text>
+                      <View style={[d.pwRow, { backgroundColor: t.inputBg, borderColor: t.inputBorder }]}>
+                        <TextInput
+                          style={[d.pwInput, { color: t.inputText }]}
+                          placeholder="Repeat password" placeholderTextColor={t.placeholder}
+                          secureTextEntry={!showConfirmPassword}
+                          value={form.confirmpass} onChangeText={(v) => handleChange('confirmpass', v)}
+                        />
+                        <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} hitSlop={8}>
+                          <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={18} color={t.eye} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Compact chips instead of the tall mobile checklist block —
+                      the wide card has room to lay these out in one or two rows. */}
+                  <View style={d.pwReqsRow}>
+                    {pwChecks.map((c) => (
+                      <View
+                        key={c.label}
+                        style={[d.pwReqChip, { backgroundColor: t.reqBg, borderWidth: 1, borderColor: c.ok ? '#10B981' : t.reqBorder }]}
+                      >
+                        <Ionicons name={c.ok ? 'checkmark-circle' : 'ellipse-outline'} size={12} color={c.ok ? '#10B981' : t.reqText} />
+                        <Text style={[d.pwReqChipText, { color: c.ok ? '#10B981' : t.reqText }]}>{c.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <TouchableOpacity style={d.consentRow} activeOpacity={0.8} onPress={() => setPrivacyConsent(!privacyConsent)}>
+                    <Ionicons name={privacyConsent ? 'checkbox' : 'square-outline'} size={19} color={privacyConsent ? t.btn : t.footerText} />
+                    <Text style={[d.consentText, { color: t.footerText }]}>
+                      I agree that CareLink may collect and process my personal information for recruitment and
+                      employment matching purposes in accordance with{' '}
+                      <Text style={{ textDecorationLine: 'underline' }} onPress={() => router.push('/privacy-policy' as any)}>
+                        RA 10173 and NPC Circular 16-01
+                      </Text>.
+                    </Text>
+                  </TouchableOpacity>
+
+                  <Pressable
+                    onPress={handleSignUpScreen}
+                    disabled={!privacyConsent || loading}
+                    style={({ hovered, pressed }: any) => [
+                      d.submitBtn,
+                      { backgroundColor: t.btn },
+                      TRANS,
+                      (!privacyConsent || loading) && { opacity: 0.5 },
+                      hovered && privacyConsent && !loading && { transform: [{ translateY: -2 }], boxShadow: '0 10px 24px rgba(0,0,0,0.35)' },
+                      pressed && { opacity: 0.9 },
+                    ]}
+                  >
+                    {loading ? (
+                      <>
+                        <ActivityIndicator color={t.btnText} size="small" />
+                        <Text style={[d.submitText, { color: t.btnText }]}>Creating your account…</Text>
+                      </>
+                    ) : (
+                      <Text style={[d.submitText, { color: t.btnText }]}>Create account</Text>
+                    )}
+                  </Pressable>
+
+                  <View style={d.footerRow}>
+                    <Text style={[d.footerText, { color: t.footerText }]}>Already have an account? </Text>
+                    <Pressable onPress={() => router.push('/login')} style={({ hovered }: any) => [TRANS, hovered && { opacity: 0.7 }]}>
+                      <Text style={[d.footerLink, { color: t.footerLink }]}>Log in</Text>
+                    </Pressable>
+                  </View>
+                </View>
               </View>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -358,10 +561,13 @@ export default function SignUpScreen() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
           <ScrollView
+            style={{ flex: 1, backgroundColor: '#1A0D04' }}
             contentContainerStyle={s.mobileScroll}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
+            bounces={false}
+            overScrollMode="never"
           >
             {pageHeader}
             <View style={s.mobileCardWrap}>
