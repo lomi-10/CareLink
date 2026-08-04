@@ -12,6 +12,7 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import { useNotifications } from '@/hooks/shared';
 import { useConversations } from '@/hooks/shared/useMessages';
 import { useGuide } from '@/contexts/GuideContext';
+import { usePlusStatus } from '@/hooks/parent';
 import { pt } from './parentWebTheme';
 
 export type ParentNavKey = 'home' | 'browse' | 'jobs' | 'applications' | 'messages' | 'helpers' | 'tasks' | 'attendance' | 'requests';
@@ -53,6 +54,7 @@ export function ParentTopNav({
   const unreadMsgs = conversations.reduce((s, c) => s + (c.unread_count || 0), 0);
   const [menuOpen, setMenuOpen] = useState(false);
   const { openGuide } = useGuide();
+  const { isPlus } = usePlusStatus();
 
   const go = (path: string) => router.push(path as never);
   const tabs = mode === 'work' ? WORK_TABS : RECRUITMENT_TABS;
@@ -114,7 +116,7 @@ export function ParentTopNav({
               <View style={s.menuCard}>
                 <MenuRow icon="person-outline" label="My Profile" onPress={() => { setMenuOpen(false); go('/(parent)/profile'); }} />
                 <MenuRow icon="settings-outline" label="Settings" onPress={() => { setMenuOpen(false); go('/(parent)/settings'); }} />
-                <MenuRow icon="star-outline" label="CareLink Plus" onPress={() => { setMenuOpen(false); go('/(parent)/settings/subscription'); }} />
+                <MenuRow icon={isPlus ? 'star' : 'star-outline'} label={isPlus ? 'CareLink Plus · Receipt' : 'CareLink Plus'} onPress={() => { setMenuOpen(false); go('/(parent)/settings/subscription'); }} />
                 <MenuRow icon="help-buoy-outline" label="How CareLink works" onPress={() => { setMenuOpen(false); openGuide('parent'); }} />
                 <View style={s.menuDiv} />
                 <MenuRow icon="log-out-outline" label="Log Out" danger onPress={() => { setMenuOpen(false); onLogout(); }} />

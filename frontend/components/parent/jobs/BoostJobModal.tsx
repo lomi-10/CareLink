@@ -9,6 +9,7 @@
 import React, { useState } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ExpoLinking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
 
@@ -68,7 +69,10 @@ export function BoostJobModal({
           job_post_id: jobPostId,
           parent_id: userId,
           requester_id: userId,
-          return_url: Platform.OS === 'web' ? window.location.href : undefined,
+          // Native has no browser tab to return to — without a deep link back
+          // into the app, PayMongo redirects to the bare API host and the
+          // user is stranded outside CareLink after paying.
+          return_url: Platform.OS === 'web' ? window.location.href : ExpoLinking.createURL('/(parent)/jobs'),
         }),
       });
       const data = await res.json();

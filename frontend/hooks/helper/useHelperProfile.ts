@@ -1,9 +1,9 @@
 // hooks/useHelperProfile.ts
 // Custom hook for fetching, managing, and mapping helper profile data
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import API_URL from '../../constants/api';
 import { theme } from '@/constants/theme';
 
@@ -88,9 +88,9 @@ export function useHelperProfile() {
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
-  const loadProfile = async () => {
+  const loadProfile = async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true);
+      if (!opts?.silent) setLoading(true);
       setError(null);
 
       const userData = await AsyncStorage.getItem('user_data');
@@ -198,7 +198,7 @@ export function useHelperProfile() {
       console.error('Error loading profile:', err);
       setError(err.message || 'Unable to load profile');
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   };
 
@@ -255,9 +255,22 @@ export function useHelperProfile() {
     };
   };
 
+  const didInitialLoad = useRef(false);
   useEffect(() => {
-    loadProfile();
+    loadProfile().finally(() => { didInitialLoad.current = true; });
   }, []);
+
+  // Verification status, document status, etc. change from PESO's side while
+  // the helper is elsewhere in the app — this used to only refresh on the
+  // very first load, so a badge like "Pending" stayed stale until the helper
+  // logged out and back in. A silent (no spinner) refetch on every return to
+  // a screen using this hook keeps it current without the flicker of the
+  // full loading state.
+  useFocusEffect(
+    useCallback(() => {
+      if (didInitialLoad.current) void loadProfile({ silent: true });
+    }, []),
+  );
 
   return {
     profileData,

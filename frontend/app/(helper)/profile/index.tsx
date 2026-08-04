@@ -72,6 +72,7 @@ export default function HelperProfileMain() {
   const [viewers,         setViewers]         = useState<ProfileViewer[]>([]);
   const [viewersLoading,  setViewersLoading]  = useState(false);
   const [viewersModalOpen, setViewersModalOpen] = useState(false);
+  const [strengthCelebration, setStrengthCelebration] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,6 +91,26 @@ export default function HelperProfileMain() {
 
   const initiateLogout = () => { setMenuOpen(false); setConfirmLogout(true); };
   const executeLogout  = () => { setConfirmLogout(false); setSuccessLogout(true); };
+
+  // Celebrate reaching 100% once ever per account — not once per screen visit,
+  // so it doesn't refire every time this screen is opened at full strength.
+  useEffect(() => {
+    const strengthNow = profileData?.profile_completeness ?? 0;
+    if (loading || strengthNow < 100) return;
+    let cancelled = false;
+    (async () => {
+      const raw = await AsyncStorage.getItem('user_data');
+      const uid = raw ? JSON.parse(raw)?.user_id : null;
+      if (!uid) return;
+      const key = `profile_100_celebrated_${uid}`;
+      const seen = await AsyncStorage.getItem(key);
+      if (!seen && !cancelled) {
+        await AsyncStorage.setItem(key, '1');
+        setStrengthCelebration(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [profileData?.profile_completeness, loading]);
 
   if (loading) {
     return (
@@ -335,6 +356,13 @@ export default function HelperProfileMain() {
           autoClose duration={1500}
           onClose={() => { setSuccessLogout(false); handleLogout(); }}
         />
+        <NotificationModal
+          visible={strengthCelebration}
+          title="Profile Complete! 🎉"
+          message="Your profile is 100% complete. Complete profiles get noticed first by families looking to hire."
+          type="success"
+          onClose={() => setStrengthCelebration(false)}
+        />
       </View>
     );
   }
@@ -387,6 +415,13 @@ export default function HelperProfileMain() {
         visible={successLogout} message="Logged Out Successfully!" type="success"
         autoClose duration={1500}
         onClose={() => { setSuccessLogout(false); handleLogout(); }}
+      />
+      <NotificationModal
+        visible={strengthCelebration}
+        title="Profile Complete! 🎉"
+        message="Your profile is 100% complete. Complete profiles get noticed first by families looking to hire."
+        type="success"
+        onClose={() => setStrengthCelebration(false)}
       />
     </View>
   );

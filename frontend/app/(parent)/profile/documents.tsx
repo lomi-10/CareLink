@@ -7,7 +7,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator, Platform, ScrollView, StyleSheet,
@@ -44,6 +44,7 @@ const DOC_SLOTS: DocSlot[] = [
 export default function DocumentsScreen() {
   const router = useRouter();
   const { profileData, loading, refresh } = useParentProfile();
+  const { highlight_doc_id } = useLocalSearchParams<{ highlight_doc_id?: string }>();
 
   const [busyType, setBusyType] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'docs' | 'history'>('docs');
@@ -254,6 +255,7 @@ export default function DocumentsScreen() {
                 : null;
               const scanStatus = doc?.ai_verification_status;
               const scanned = scanStatus && scanStatus !== 'Unchecked';
+              const highlighted = !!highlight_doc_id && !!doc?.document_id && String(doc.document_id) === String(highlight_doc_id);
 
               // Valid ID = front + back, uploaded one side at a time.
               if (slot.field === 'valid_id') {
@@ -265,6 +267,7 @@ export default function DocumentsScreen() {
                     busy={busy}
                     onUploadSide={uploadValidIdSide}
                     onOpen={() => goToDetail(doc, false)}
+                    highlighted={highlighted}
                   />
                 );
               }
@@ -272,7 +275,7 @@ export default function DocumentsScreen() {
               return (
                 <TouchableOpacity
                   key={slot.type}
-                  style={[c.card, uploaded ? c.cardFilled : c.cardEmpty]}
+                  style={[c.card, uploaded ? c.cardFilled : c.cardEmpty, highlighted && c.cardHighlighted]}
                   activeOpacity={uploaded ? 0.85 : 1}
                   onPress={uploaded ? () => goToDetail(doc, false) : () => pickAndUpload(slot)}
                   disabled={busy}
@@ -379,6 +382,7 @@ const c = StyleSheet.create({
   },
   cardFilled: { borderColor: '#F0E2CF' },
   cardEmpty: { borderColor: '#EAD9C0', borderStyle: 'dashed', backgroundColor: '#FFFCF7' },
+  cardHighlighted: { borderColor: '#DC2626', borderWidth: 2, backgroundColor: '#FEF2F2' },
   icon: { width: 46, height: 46, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1, gap: 3 },
   name: { fontSize: 14.5, fontWeight: '800', color: '#3B2A18' },

@@ -17,12 +17,15 @@ import { useResponsive } from '@/hooks/shared';
 import { Sidebar, HelperTabBar } from '@/components/helper/home';
 import { WorkModeTabBar } from '@/components/helper/work';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
-import { ConfirmationModal, NotificationModal } from '@/components/shared';
+import { ConfirmationModal, NotificationModal, NotificationDetailModal } from '@/components/shared';
 import { useAuth } from '@/hooks/shared';
 import { useHelperProfile } from '@/hooks/helper';
 import { HelperNotificationsWeb } from '@/components/helper/web/HelperNotificationsWeb';
 import type { Notification } from '@/hooks/shared';
-import { resolveHelperNotificationRoute } from '@/utils/notification-routes';
+import {
+  resolveHelperNotificationRoute, kindForNotificationType, labelForNotificationDestination,
+  type NotificationDestination,
+} from '@/utils/notification-routes';
 import {
   MUTED, ORANGE, GREEN, BLUE, ICON_BG, PAGE_BG, SURFACE,
   SUCCESS_BG, WARNING_BG, DANGER, DANGER_BG, INFO, INFO_BG,
@@ -122,13 +125,18 @@ function NotifContent({
 }) {
   const router = useRouter();
   const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } = useNotifications('helper');
+  const [detail, setDetail] = React.useState<{ item: Notification; dest: NotificationDestination | null } | null>(null);
 
+  // Reads the message first — this used to redirect immediately on tap, so a
+  // rejection reason was never actually seen before the screen changed.
   const handleNotificationPress = async (item: Notification) => {
     if (!item.is_read) markOneRead(item.notification_id);
-    const route = await resolveHelperNotificationRoute(item);
-    if (route) {
-      router.push(route as any);
-    }
+    const dest = await resolveHelperNotificationRoute(item);
+    setDetail({ item, dest });
+  };
+  const goToDestination = () => {
+    if (detail?.dest) router.push(detail.dest as any);
+    setDetail(null);
   };
 
   return (
@@ -179,6 +187,15 @@ function NotifContent({
           contentContainerStyle={[s.listContent, listBottomExtra > 0 ? { paddingBottom: 20 + listBottomExtra } : null]}
         />
       )}
+      <NotificationDetailModal
+        visible={!!detail}
+        title={detail?.item.title ?? ''}
+        message={detail?.item.message ?? ''}
+        type={detail ? kindForNotificationType(detail.item.type) : 'info'}
+        actionLabel={detail?.dest ? labelForNotificationDestination(detail.dest) : null}
+        onAction={goToDestination}
+        onClose={() => setDetail(null)}
+      />
     </View>
   );
 }

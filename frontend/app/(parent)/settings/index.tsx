@@ -16,7 +16,7 @@ import { useColorSchemePreference, type ColorSchemePreference } from '@/contexts
 import { PARENT_THEME_OPTIONS, type ParentThemeId } from '@/constants/parentThemePalettes';
 import { useParentTheme } from '@/contexts/ParentThemeContext';
 import { useAuth, useResponsive } from '@/hooks/shared';
-import { useParentProfile } from '@/hooks/parent';
+import { useParentProfile, usePlusStatus } from '@/hooks/parent';
 import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
 import { ParentSettingsWeb } from '@/components/parent/web/ParentSettingsWeb';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
@@ -40,6 +40,7 @@ export default function SettingsScreen() {
   const { handleLogout, getFullName } = useAuth();
   const { profileData } = useParentProfile();
   const { themeId, setThemeId } = useParentTheme();
+  const { isPlus } = usePlusStatus();
 
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -156,11 +157,11 @@ export default function SettingsScreen() {
         <Text style={ss.sectionTitle}>Subscription</Text>
         <TouchableOpacity style={ss.optionRow} onPress={() => router.push('/(parent)/settings/subscription')} activeOpacity={0.85}>
           <View style={ss.optionIcon}>
-            <Ionicons name="star-outline" size={22} color={BROWN} />
+            <Ionicons name={isPlus ? 'star' : 'star-outline'} size={22} color={BROWN} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={ss.optionTitle}>CareLink Plus</Text>
-            <Text style={ss.optionHint}>Boost credits, unlimited posts and priority review.</Text>
+            <Text style={ss.optionTitle}>{isPlus ? 'CareLink Plus · Receipt' : 'CareLink Plus'}</Text>
+            <Text style={ss.optionHint}>{isPlus ? 'View your plan, renewal date and boost credits.' : 'Boost credits, unlimited posts and priority review.'}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={MUTED} />
         </TouchableOpacity>

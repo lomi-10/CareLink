@@ -22,6 +22,7 @@ try {
     require_once "../dbcon.php";
     require_once __DIR__ . "/../shared/auth_codes.php";
     require_once __DIR__ . "/../shared/phone.php";
+    require_once __DIR__ . "/../shared/phone_identity.php";
     require_once __DIR__ . "/../shared/mailer.php";
 
     if (!$conn) {
@@ -109,15 +110,15 @@ try {
     $stmt->close();
 
     if ($phone !== null) {
-        $pstmt = $conn->prepare("SELECT user_id FROM users WHERE phone = ?");
-        $pstmt->bind_param("s", $phone);
-        $pstmt->execute();
-        if ($pstmt->get_result()->num_rows > 0) {
+        // Checks users.phone AND helper_profiles/parent_profiles.contact_number —
+        // a number entered in profile setup never used to block signup with the
+        // same number, letting one person hold a helper AND a parent account.
+        $conflict = carelink_phone_conflict($conn, 0, $phone);
+        if ($conflict !== null) {
             // Phone is optional, so tell them the cheapest way out rather than
             // leaving them stuck on a field they never needed to fill.
             $errors['phone'] = "This mobile number is already used by another account. Use a different number, or leave it blank — it's optional.";
         }
-        $pstmt->close();
     }
 
     if (!empty($errors)) {

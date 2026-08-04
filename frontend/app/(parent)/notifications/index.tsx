@@ -12,9 +12,12 @@ import { useNotifications, useResponsive, useAuth } from '@/hooks/shared';
 import { useParentProfile } from '@/hooks/parent';
 import { ParentNotificationsWeb } from '@/components/parent/web/ParentNotificationsWeb';
 import { Sidebar, ParentTabBar } from '@/components/parent/home';
-import { ConfirmationModal, NotificationModal } from '@/components/shared';
+import { ConfirmationModal, NotificationModal, NotificationDetailModal } from '@/components/shared';
 import type { Notification } from '@/hooks/shared';
-import { resolveParentNotificationRoute } from '@/utils/notification-routes';
+import {
+  resolveParentNotificationRoute, kindForNotificationType, labelForNotificationDestination,
+  type NotificationDestination,
+} from '@/utils/notification-routes';
 import { BROWN, ICON_BG } from '@/components/parent/home/parentWarmTheme';
 
 import { ns } from './notifications.styles';
@@ -82,11 +85,16 @@ function NotifItem({ item, onPress }: { item: Notification; onPress: () => void 
 function NotifContent() {
   const router = useRouter();
   const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } = useNotifications('parent');
+  const [detail, setDetail] = useState<{ item: Notification; dest: NotificationDestination | null } | null>(null);
 
   const handleNotificationPress = async (item: Notification) => {
     if (!item.is_read) markOneRead(item.notification_id);
-    const route = await resolveParentNotificationRoute(item);
-    if (route) router.push(route as any);
+    const dest = await resolveParentNotificationRoute(item);
+    setDetail({ item, dest });
+  };
+  const goToDestination = () => {
+    if (detail?.dest) router.push(detail.dest as any);
+    setDetail(null);
   };
 
   return (
@@ -131,6 +139,15 @@ function NotifContent() {
           contentContainerStyle={ns.listContent}
         />
       )}
+      <NotificationDetailModal
+        visible={!!detail}
+        title={detail?.item.title ?? ''}
+        message={detail?.item.message ?? ''}
+        type={detail ? kindForNotificationType(detail.item.type) : 'info'}
+        actionLabel={detail?.dest ? labelForNotificationDestination(detail.dest) : null}
+        onAction={goToDestination}
+        onClose={() => setDetail(null)}
+      />
     </View>
   );
 }

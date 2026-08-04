@@ -333,7 +333,10 @@ export function DocumentAIScan({
           result={result}
           imgUri={imgUri}
           elapsed={elapsed}
-          onViewImage={onViewImage}
+          // Close this modal before opening the zoom viewer — two RN <Modal>s
+          // mounted at once render with unreliable stacking (the zoom could
+          // end up BEHIND this one, especially on Android).
+          onViewImage={onViewImage ? (uri) => { setShowResults(false); onViewImage(uri); } : undefined}
         />
       )}
     </View>

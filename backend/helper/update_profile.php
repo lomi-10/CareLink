@@ -24,6 +24,7 @@ include_once __DIR__ . '/../shared/sync_profile_completed.php';
 include_once __DIR__ . '/../shared/create_notification.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
 include_once __DIR__ . '/../shared/phone.php';
+include_once __DIR__ . '/../shared/geocode.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -100,7 +101,7 @@ try {
     $address = isset($_POST['address']) ? trim($_POST['address']) : '';
     $latitude  = isset($_POST['latitude'])  && $_POST['latitude']  !== '' ? floatval($_POST['latitude'])  : null;
     $longitude = isset($_POST['longitude']) && $_POST['longitude'] !== '' ? floatval($_POST['longitude']) : null;
-    
+
     // Optional fields
     $civil_status = isset($_POST['civil_status']) ? $_POST['civil_status'] : 'Single';
     $religion = isset($_POST['religion']) ? trim($_POST['religion']) : NULL;
@@ -282,21 +283,33 @@ try {
         // STEP 1: Check if profile exists
         // ====================================================================
         
-        $checkSql = "SELECT profile_id FROM helper_profiles WHERE user_id = ?";
+        $checkSql = "SELECT profile_id, latitude, longitude FROM helper_profiles WHERE user_id = ?";
         $checkStmt = $conn->prepare($checkSql);
         $checkStmt->bind_param("i", $user_id);
         $checkStmt->execute();
         $checkResult = $checkStmt->get_result();
-        
+
         $profile_id = null;
         $profileExists = false;
-        
+        $hadCoords = false;
+
         if ($checkResult->num_rows > 0) {
             $row = $checkResult->fetch_assoc();
             $profile_id = intval($row['profile_id']);
             $profileExists = true;
+            $hadCoords = $row['latitude'] !== null && $row['longitude'] !== null;
         }
         $checkStmt->close();
+
+        // Only geocode to fill a real gap — never overwrite coordinates the
+        // profile already has just because this particular save omitted them.
+        if ($latitude === null && $longitude === null && !$hadCoords && ($municipality !== '' || $province !== '')) {
+            $geo = carelink_geocode_ph($barangay, $municipality, $province);
+            if ($geo !== null) {
+                $latitude  = $geo['lat'];
+                $longitude = $geo['lng'];
+            }
+        }
 
         // ====================================================================
         // STEP 2: Update users table (name, username)
@@ -423,23 +436,23 @@ try {
                 user_id, contact_number, birth_date, gender, civil_status, religion,
                 province, municipality, barangay, address, landmark, bio,
                 education_level, experience_years, employment_type, work_schedule,
-                expected_salary, salary_period, profile_image, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-            
+                expected_salary, salary_period, profile_image, latitude, longitude, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+
             $insertStmt = $conn->prepare($insertSql);
             if (!$insertStmt) {
                 throw new Exception("Failed to prepare insert: " . $conn->error);
             }
-            
-            // 19 columns: user_id(i), 12 strings (contact…education_level),
+
+            // 21 columns: user_id(i), 12 strings (contact…education_level),
             // experience_years(i), employment_type(s), work_schedule(s),
-            // expected_salary(d), salary_period(s), profile_image(s).
+            // expected_salary(d), salary_period(s), profile_image(s), latitude(d), longitude(d).
             $insertStmt->bind_param(
-                "issssssssssssissdss",
+                "issssssssssssissdssdd",
                 $user_id, $contact_number, $birth_date, $gender, $civil_status, $religion,
                 $province, $municipality, $barangay, $address, $landmark, $bio,
                 $education_level, $experience_years, $employment_type, $work_schedule,
-                $expected_salary, $salary_period, $profile_image_url
+                $expected_salary, $salary_period, $profile_image_url, $latitude, $longitude
             );
             
             if (!$insertStmt->execute()) {

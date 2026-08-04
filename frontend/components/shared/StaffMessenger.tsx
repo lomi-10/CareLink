@@ -42,11 +42,13 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export function StaffMessenger({
-  staffId, role, palette: p,
+  staffId, role, palette: p, initialUserId,
 }: {
   staffId: number;
   role: 'peso' | 'admin';
   palette: StaffPalette;
+  /** Open straight into this user's thread (e.g. deep-linked from "Message this user"). */
+  initialUserId?: number;
 }) {
   const { width } = useWindowDimensions();
   const twoPane = width >= 900;
@@ -104,6 +106,18 @@ export function StaffMessenger({
   }, [loadContacts, query]);
 
   useEffect(() => { if (active) void loadThread(active.user_id); }, [active, loadThread]);
+
+  // Deep-linked in with a specific user to message (e.g. "Request more info"
+  // on the verification screen) — select their thread as soon as it loads.
+  const appliedInitialRef = useRef(false);
+  useEffect(() => {
+    if (appliedInitialRef.current || !initialUserId || contacts.length === 0) return;
+    const found = contacts.find((c) => c.user_id === initialUserId);
+    if (found) {
+      setActive(found);
+      appliedInitialRef.current = true;
+    }
+  }, [contacts, initialUserId]);
 
   // Poll the open thread, matching the 5s cadence the helper/parent chat uses.
   useEffect(() => {

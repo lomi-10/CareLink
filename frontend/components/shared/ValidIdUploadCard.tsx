@@ -25,13 +25,15 @@ const PALETTE: Record<PaletteKey, {
 };
 
 export function ValidIdUploadCard({
-  doc, themeKey = 'helper', busy, onUploadSide, onOpen,
+  doc, themeKey = 'helper', busy, onUploadSide, onOpen, highlighted,
 }: {
   doc: any | null;
   themeKey?: PaletteKey;
   busy: boolean;
   onUploadSide: (side: 'front' | 'back') => void;
   onOpen: () => void;
+  /** Deep-linked from a rejection notification — outlines this exact card. */
+  highlighted?: boolean;
 }) {
   const t = PALETTE[themeKey];
   const frontUp = !!doc?.file_url;
@@ -49,8 +51,12 @@ export function ValidIdUploadCard({
     : null;
 
   return (
-    <View style={[st.card, { backgroundColor: t.cardBg, borderColor: any ? t.line : t.lineEmpty, borderStyle: any ? 'solid' : 'dashed' }]}>
-      <TouchableOpacity style={st.headerRow} activeOpacity={both ? 0.85 : 1} onPress={both ? onOpen : undefined} disabled={busy}>
+    <View style={[
+      st.card,
+      { backgroundColor: t.cardBg, borderColor: any ? t.line : t.lineEmpty, borderStyle: any ? 'solid' : 'dashed' },
+      highlighted && st.cardHighlighted,
+    ]}>
+      <TouchableOpacity style={st.headerRow} activeOpacity={any ? 0.85 : 1} onPress={any ? onOpen : undefined} disabled={busy}>
         <View style={[st.icon, { backgroundColor: any ? '#DBEAFE' : '#F1E7D6' }]}>
           <Ionicons name="card-outline" size={22} color={any ? '#2563EB' : '#C2A988'} />
         </View>
@@ -75,7 +81,7 @@ export function ValidIdUploadCard({
           )}
           {any && uploadDate ? <Text style={[st.date, { color: t.subtle }]}>Uploaded {uploadDate}</Text> : null}
         </View>
-        {both ? <Ionicons name="chevron-forward" size={18} color={t.muted} /> : null}
+        {any ? <Ionicons name="chevron-forward" size={18} color={t.muted} /> : null}
       </TouchableOpacity>
 
       {/* Front / Back — each its own upload */}
@@ -110,6 +116,7 @@ export function ValidIdUploadCard({
 }
 
 const st = StyleSheet.create({
+  cardHighlighted: { borderColor: '#DC2626', borderWidth: 2, backgroundColor: '#FEF2F2' },
   card: {
     borderRadius: 16, padding: 14, borderWidth: 1,
     ...Platform.select({

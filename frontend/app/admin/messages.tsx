@@ -8,6 +8,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { useAdminTheme } from '@/contexts/AdminThemeContext';
@@ -15,6 +16,7 @@ import { StaffMessenger, type StaffPalette } from '@/components/shared/StaffMess
 
 export default function AdminMessagesScreen() {
   const { palette: c } = useAdminTheme();
+  const { user_id } = useLocalSearchParams<{ user_id?: string }>();
   const [adminId, setAdminId] = useState<number>(0);
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export default function AdminMessagesScreen() {
       subtitle="Message helpers, employers and PESO staff directly"
     >
       <View style={{ flex: 1, minHeight: 520 }}>
-        <StaffMessenger staffId={adminId} role="admin" palette={palette} />
+        <StaffMessenger staffId={adminId} role="admin" palette={palette} initialUserId={user_id ? Number(user_id) : undefined} />
       </View>
     </AdminShell>
   );

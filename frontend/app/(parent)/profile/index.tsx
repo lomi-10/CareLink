@@ -8,11 +8,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator, RefreshControl, SafeAreaView,
   ScrollView, Text, TouchableOpacity, View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useParentProfile, useParentStats } from '@/hooks/parent';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
@@ -45,14 +46,38 @@ export default function ParentProfile() {
   const isWorkMode = useParentPortalMode();
   const { profileData, loading, refresh, getFullName, getVerificationBadge } = useParentProfile();
   const { stats } = useParentStats();
+  // Toggling into Work Mode with no active hire must NOT unlock the Work Mode
+  // tab bar (Tasks, Helper Management) — Home already enforces this; this
+  // screen was checking only the toggle, which is how those got reachable.
+  const workModeUnlocked = isWorkMode && (stats?.active_placements ?? 0) > 0;
 
   const [menuOpen,      setMenuOpen]      = useState(false);
   const [editOpen,      setEditOpen]      = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [successLogout, setSuccessLogout] = useState(false);
+  const [strengthCelebration, setStrengthCelebration] = useState(false);
 
   const initiateLogout = () => { setMenuOpen(false); setConfirmLogout(true); };
   const executeLogout  = () => { setConfirmLogout(false); setSuccessLogout(true); };
+
+  // Celebrate reaching 100% once ever per account — not once per screen visit.
+  useEffect(() => {
+    const strengthNow = profileData?.profile_completeness ?? 0;
+    if (loading || strengthNow < 100) return;
+    let cancelled = false;
+    (async () => {
+      const raw = await AsyncStorage.getItem('user_data');
+      const uid = raw ? JSON.parse(raw)?.user_id : null;
+      if (!uid) return;
+      const key = `profile_100_celebrated_${uid}`;
+      const seen = await AsyncStorage.getItem(key);
+      if (!seen && !cancelled) {
+        await AsyncStorage.setItem(key, '1');
+        setStrengthCelebration(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [profileData?.profile_completeness, loading]);
 
   if (loading || !profileData) {
     return (
@@ -267,6 +292,13 @@ export default function ParentProfile() {
           autoClose duration={1500}
           onClose={() => { setSuccessLogout(false); handleLogout(); }}
         />
+        <NotificationModal
+          visible={strengthCelebration}
+          title="Profile Complete! 🎉"
+          message="Your profile is 100% complete. A complete profile helps helpers and PESO trust your job posts faster."
+          type="success"
+          onClose={() => setStrengthCelebration(false)}
+        />
       </View>
     );
   }
@@ -301,7 +333,7 @@ export default function ParentProfile() {
 
         {content}
 
-        {isWorkMode ? <ParentWorkModeTabBar /> : <ParentTabBar />}
+        {workModeUnlocked ? <ParentWorkModeTabBar /> : <ParentTabBar />}
       </SafeAreaView>
 
       <MobileMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} handleLogout={initiateLogout} />
@@ -316,6 +348,13 @@ export default function ParentProfile() {
         visible={successLogout} message="Logged Out Successfully!" type="success"
         autoClose duration={1500}
         onClose={() => { setSuccessLogout(false); handleLogout(); }}
+      />
+      <NotificationModal
+        visible={strengthCelebration}
+        title="Profile Complete! 🎉"
+        message="Your profile is 100% complete. A complete profile helps helpers and PESO trust your job posts faster."
+        type="success"
+        onClose={() => setStrengthCelebration(false)}
       />
     </View>
   );

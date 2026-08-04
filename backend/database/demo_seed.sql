@@ -84,7 +84,7 @@ INSERT INTO job_posts
    province, municipality, barangay, latitude, longitude,
    min_age, max_age, min_experience_years, work_hours, days_off, contract_duration,
    provides_meals, provides_accommodation, provides_sss, provides_philhealth, provides_pagibig,
-   vacation_days, sick_days, status, posted_at, verified_at)
+   vacation_days, sick_days, status, posted_at, verified_at) 
 SELECT u.user_id, v.cat, v.jobs, v.skills, v.title, v.descr,
        v.etype, v.sched, v.salary, 'Monthly',
        'Leyte', 'Ormoc City', pp.barangay, pp.latitude, pp.longitude,

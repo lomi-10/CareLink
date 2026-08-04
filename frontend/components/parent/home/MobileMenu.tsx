@@ -21,6 +21,7 @@ import { useParentTheme } from '@/contexts/ParentThemeContext';
 import { useCareBot } from '@/contexts/CareBotContext';
 import { useGuide } from '@/contexts/GuideContext';
 import { useNotifications } from '@/hooks/shared';
+import { usePlusStatus } from '@/hooks/parent';
 import {
   getParentMobileDrawerNavRows,
   isParentNavActive,
@@ -150,6 +151,7 @@ export function MobileMenu({
   const unread = notificationUnread ?? hookUnread;
   const careBot = useCareBot();
   const { openGuide } = useGuide();
+  const { isPlus } = usePlusStatus();
   const navRows = useMemo(() => getParentMobileDrawerNavRows(), []);
   const slideAnim = useRef(new Animated.Value(-width)).current;
 
@@ -235,8 +237,10 @@ export function MobileMenu({
               activeOpacity={0.8}
             >
               <View style={styles.drawerItemLeft}>
-                <Ionicons name="star-outline" size={22} color={c.parent} />
-                <Text style={styles.drawerItemText} numberOfLines={1}>CareLink Plus</Text>
+                <Ionicons name={isPlus ? 'star' : 'star-outline'} size={22} color={c.parent} />
+                <Text style={styles.drawerItemText} numberOfLines={1}>
+                  {isPlus ? 'CareLink Plus · Receipt' : 'CareLink Plus'}
+                </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={c.subtle} />
             </TouchableOpacity>

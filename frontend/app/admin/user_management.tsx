@@ -5,6 +5,7 @@ import {
   ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import { NotificationModal } from "@/components/shared/NotificationModal";
+import { ConfirmationModal } from "@/components/shared/ConfirmationModal";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { useAdminTheme, type AdminPalette } from "@/contexts/AdminThemeContext";
 import API_URL from "../../constants/api";
@@ -19,6 +20,7 @@ export default function UserManagementScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [adminId, setAdminId] = useState<number>(0);
   const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error" | "warning" | "info"; message: string; title?: string }>({ visible: false, type: "info", message: "" });
+  const [confirmSuspend, setConfirmSuspend] = useState<{ user_id: number; name: string } | null>(null);
 
   useEffect(() => { loadAdmin(); fetchUsers(); }, [filter]);
 
@@ -112,7 +114,7 @@ export default function UserManagementScreen() {
                   <Text style={s.btnText}>Approve</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={[s.actionButton, s.btnSuspend]} onPress={() => handleStatusUpdate(item.user_id, 'suspended')}>
+              <TouchableOpacity style={[s.actionButton, s.btnSuspend]} onPress={() => setConfirmSuspend({ user_id: item.user_id, name: item.name })}>
                 <Ionicons name="ban" size={16} color="#fff" />
                 <Text style={s.btnText}>Suspend</Text>
               </TouchableOpacity>
@@ -159,12 +161,22 @@ export default function UserManagementScreen() {
           data={filteredUsers}
           keyExtractor={(item) => String(item.user_id)}
           renderItem={renderUserCard}
+          style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator
           ListEmptyComponent={<Text style={s.empty}>No users found.</Text>}
         />
       )}
 
       <NotificationModal visible={toast.visible} title={toast.title} message={toast.message} type={toast.type} onClose={() => setToast((t) => ({ ...t, visible: false }))} autoClose={toast.type === "success"} duration={2200} />
+      <ConfirmationModal
+        visible={!!confirmSuspend}
+        title="Suspend Account"
+        message={confirmSuspend ? `Suspend ${confirmSuspend.name}'s account? They will not be able to sign in until reactivated.` : ''}
+        confirmText="Suspend" cancelText="Cancel" type="danger"
+        onConfirm={() => { if (confirmSuspend) handleStatusUpdate(confirmSuspend.user_id, 'suspended'); setConfirmSuspend(null); }}
+        onCancel={() => setConfirmSuspend(null)}
+      />
     </AdminShell>
   );
 }

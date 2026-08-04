@@ -5,6 +5,7 @@
 // verify_document.php, update_job_status.php.
 
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -39,6 +40,7 @@ export default function UserDetailPanel({
   onClose?: () => void;
 }) {
   const { c } = usePesoTheme();
+  const router = useRouter();
   const st = useMemo(() => makeStyles(c), [c]);
   const [verifierId, setVerifierId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -247,8 +249,9 @@ export default function UserDetailPanel({
     finally { setProcessingJobId(null); }
   };
 
-  const requestMoreInfo = () => showNotif("info", "Request More Info",
-    "To ask the applicant for clarifications or a clearer document, message them directly from Messages. Rejecting a specific document also notifies them with your reason.");
+  // Goes straight into Messages with this applicant already selected — a modal
+  // that just told the officer to go message them was an extra, pointless step.
+  const requestMoreInfo = () => router.push({ pathname: '/(peso)/messages', params: { user_id: String(userId) } } as never);
 
   // ── render ──
   if (loading) {

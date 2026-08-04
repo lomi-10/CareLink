@@ -17,8 +17,6 @@ import { theme } from '@/constants/theme';
 import { submitComplaint, type ComplaintCategory } from '@/lib/complaintsApi';
 import { NotificationModal } from './NotificationModal';
 
-const MIN_DESC = 20;
-
 // theme.color.parent/helper are a legacy blue/green that match neither portal's
 // branding — a blue CTA in the warm brown parent app reads like someone else's form.
 // Key the accent off userType instead, using each portal's real brand colour.
@@ -77,13 +75,14 @@ export function SubmitComplaintModal({
   };
 
   const validate = () => {
+    // Only checks that something was actually written — no arbitrary length
+    // floor. A short, true complaint ("He slapped me") is still a complaint;
+    // a minimum character count just taught people to pad it with filler.
     const next: { subject?: string; body?: string } = {};
     const sub = subject.trim();
     const desc = body.trim();
     if (!sub) next.subject = 'Please add a short title.';
-    else if (sub.length < 5) next.subject = 'Give it a little more detail (at least 5 characters).';
     if (!desc) next.body = 'Please describe what happened.';
-    else if (desc.length < MIN_DESC) next.body = `Please add a bit more — at least ${MIN_DESC} characters so admins can review it fairly.`;
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -214,11 +213,7 @@ export function SubmitComplaintModal({
                 <Text style={styles.errText}>{errors.body}</Text>
               </View>
             ) : (
-              <Text style={styles.counter}>
-                {body.trim().length < MIN_DESC
-                  ? `${body.trim().length}/${MIN_DESC} characters minimum`
-                  : `${body.length}/2000`}
-              </Text>
+              <Text style={styles.counter}>{body.length}/2000</Text>
             )}
 
             <View style={styles.privacyRow}>

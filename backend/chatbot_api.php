@@ -139,6 +139,38 @@ CareLink is a mobile and web app where:
    salary and days worked → see if your employer has 
    marked it as paid.
 
+== REVENUE FEATURES (employer-only — helpers are never charged) ==
+- FEATURED JOB POST (₱99, one-time): From "My Job Posts," open an
+  Open post → "Feature this post" → pay via PayMongo → the post
+  sorts to the top of helper search for a limited time (a "Boosted"
+  tag shows). It does not change the match score, only the order.
+- CARELINK PLUS (₱149/month subscription): From the menu
+  (hamburger on mobile, profile dropdown on web) → "CareLink Plus"
+  → subscribe via PayMongo. Includes 3 free Featured Job Post
+  credits per month plus other perks. Once subscribed, that same
+  menu item shows their receipt and renewal date instead of the
+  purchase screen — if a user says they paid but nothing changed,
+  suggest checking their email for the PayMongo receipt and
+  reopening the app, since activation can take a short moment.
+- PLACEMENT FEE (₱199, charged when a hire is finalized): Covers
+  the platform's role in the placement; part of it is shared with
+  PESO. This is charged to the employer automatically at hiring —
+  it is not something a user manually pays for.
+- Helpers/kasambahay NEVER pay anything on CareLink. If a helper
+  asks about any of the above, clarify these are employer-only.
+
+== MESSAGING & SUPPORT ==
+- MESSAGE PESO OR CARELINK ADMIN: Both helpers and employers can
+  reach PESO staff directly from Messages (it's the same inbox
+  used for chatting with the other party) — useful for asking
+  about a document rejection, verification delay, or a complaint.
+- SEND FEEDBACK: From the menu, "Send Feedback" lets a user rate
+  the app and answer a short survey — available to both helpers
+  and employers.
+- FILE A COMPLAINT: If something goes wrong with the other party
+  (a helper or employer), users can submit a complaint from their
+  menu; PESO or a CareLink admin reviews it and may reach out.
+
 == KASAMBAHAY LAW QUICK FACTS (RA 10361) ==
 - Minimum wage: ₱7,000/month (2025 rate, may vary by region)
 - Rest day: at least 1 day per week (usually Sunday)
@@ -194,6 +226,7 @@ function carelink_chatbot_context_block(array $ctx): string
     $lines[] = "- Profile completion: {$pct}%";
     if ($type === 'parent') {
         $lines[] = '- Has an active job post: ' . (!empty($ctx['has_active_job_post']) ? 'yes' : 'no');
+        $lines[] = '- CareLink Plus subscriber: ' . (!empty($ctx['is_plus_subscriber']) ? 'yes' : 'no');
     }
     $lines[] = "- Currently in an active placement (employed / active hire): {$placement}";
     $lines[] = '';
@@ -205,6 +238,7 @@ function carelink_chatbot_context_block(array $ctx): string
     $lines[] = '- If verification is Unverified, explain they must complete their profile and upload documents to start PESO verification.';
     if ($type === 'parent') {
         $lines[] = '- If they have no active job post, suggest posting a job (My Job Posts → +) to start hiring.';
+        $lines[] = '- If they ask about CareLink Plus and are already subscribed, tell them to check the menu — it now shows their receipt, not a purchase button. Never tell an existing subscriber to "subscribe."';
     }
     $lines[] = '- If they are in an active placement, focus on day-to-day work features (tasks, attendance, schedule, leave, salary).';
     $lines[] = 'Weave this naturally into answers. Never list these values like a database dump, never reveal another user\'s data, and never invent details beyond this context.';

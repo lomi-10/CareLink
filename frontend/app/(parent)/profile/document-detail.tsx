@@ -16,6 +16,7 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import { ParentTabBar } from '@/components/parent/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { DocumentAIScan } from '@/components/shared/DocumentAIScan';
+import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
 import { DARK, MUTED, GREEN } from '@/components/parent/home/parentWarmTheme';
 import { s } from './document-detail.styles';
 
@@ -88,7 +89,10 @@ export default function DocumentDetailScreen() {
   const [docStatus, setDocStatus] = useState<string>(status || 'Pending');
   const [aiStatus, setAiStatus]   = useState<string>(ai_status || '');
   const [aiReason, setAiReason]   = useState<string>('');
-  const [imgSide, setImgSide]     = useState<'front' | 'back'>('front');
+  // Default to whichever side actually has a file — opening straight to an
+  // empty "front" thumbnail when only the back was uploaded looked broken.
+  const [imgSide, setImgSide]     = useState<'front' | 'back'>(file_url ? 'front' : 'back');
+  const [zoomUri, setZoomUri]     = useState<string | null>(null);
 
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -247,18 +251,21 @@ export default function DocumentDetailScreen() {
           {/* ── Document info card ── */}
           <View style={s.docCard}>
             <View style={s.docRow}>
-              {/* Left: document thumbnail (tap to flip front/back on a Valid ID) */}
+              {/* Left: document thumbnail — tap to view/zoom full-screen */}
               <TouchableOpacity
                 style={s.docThumb}
-                activeOpacity={hasBack ? 0.85 : 1}
-                onPress={hasBack ? () => setImgSide((v) => (v === 'front' ? 'back' : 'front')) : undefined}
+                activeOpacity={shownHasImage ? 0.85 : 1}
+                onPress={shownHasImage ? () => setZoomUri(shownUrl) : undefined}
               >
                 {shownHasImage ? (
-                  <Image
-                    source={{ uri: shownUrl }}
-                    style={s.docThumbImg}
-                    contentFit="cover"
-                  />
+                  <>
+                    <Image
+                      source={{ uri: shownUrl }}
+                      style={s.docThumbImg}
+                      contentFit="cover"
+                    />
+                    <View style={{ position: 'absolute', right: 6, bottom: 6, width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}><Ionicons name="expand" size={13} color="#fff" /></View>
+                  </>
                 ) : (
                   <View style={s.docThumbFallback}>
                     <Ionicons
@@ -360,6 +367,7 @@ export default function DocumentDetailScreen() {
                     setAiReason('Our AI could not confirm this is a genuine document, so it was not sent for PESO verification. Please re-upload a clear, authentic copy.');
                   }
                 }}
+                onViewImage={(uri) => setZoomUri(uri)}
               />
             </View>
           ) : null}
@@ -432,6 +440,12 @@ export default function DocumentDetailScreen() {
         <ParentTabBar />
       </SafeAreaView>
 
+      <ImageZoomModal
+        visible={!!zoomUri}
+        uri={zoomUri}
+        title={`${document_type}${hasBack ? ` — ${imgSide === 'front' ? 'Front' : 'Back'}` : ''}`}
+        onClose={() => setZoomUri(null)}
+      />
       <ConfirmationModal
         visible={confirmDelete}
         title="Delete Document"

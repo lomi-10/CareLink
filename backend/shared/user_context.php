@@ -15,9 +15,11 @@
  *   user_type                   'parent' | 'helper' | (other)
  *   verification_status         'Verified' | 'Pending' | 'Rejected' | 'Unverified'
  *   profile_completion_percent  0-100  (same formula as get_profile.php)
- *   has_active_job_post         bool   (parents only; false otherwise)
+ *   has_active_job_post          bool   (parents only; false otherwise)
  *   has_active_placement        bool   (true when in an active employment)
+ *   is_plus_subscriber          bool   (parents only; CareLink Plus, false otherwise)
  */
+
 
 function carelink_user_safe_context(int $userId): ?array
 {
@@ -160,6 +162,9 @@ function carelink_uc_parent(mysqli $conn, int $userId, array &$ctx): void
          WHERE jp.parent_id = ? AND ja.status IN ('hired','Accepted','termination_pending') LIMIT 1",
         $userId
     );
+
+    require_once __DIR__ . '/is_plus_subscriber.php';
+    $ctx['is_plus_subscriber'] = carelink_is_plus_subscriber($conn, $userId);
 }
 
 // ── tiny query helpers ────────────────────────────────────────────────────────

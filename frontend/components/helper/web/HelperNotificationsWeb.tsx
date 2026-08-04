@@ -6,7 +6,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useNotifications, type Notification } from '@/hooks/shared';
-import { resolveHelperNotificationRoute } from '@/utils/notification-routes';
+import {
+  resolveHelperNotificationRoute, kindForNotificationType, labelForNotificationDestination,
+  type NotificationDestination,
+} from '@/utils/notification-routes';
+import { NotificationDetailModal } from '@/components/shared';
 import { HelperTopNav } from './HelperTopNav';
 import { wt } from './webTheme';
 
@@ -63,6 +67,7 @@ export function HelperNotificationsWeb({ userName, avatar, verified, onLogout }:
   const router = useRouter();
   const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } = useNotifications('helper');
   const [tab, setTab] = useState<'all' | 'unread'>('all');
+  const [detail, setDetail] = useState<{ item: Notification; dest: NotificationDestination | null } | null>(null);
 
   const list = tab === 'unread' ? notifications.filter((n) => !n.is_read) : notifications;
   const groups = useMemo(() => {
@@ -74,8 +79,12 @@ export function HelperNotificationsWeb({ userName, avatar, verified, onLogout }:
 
   const press = async (n: Notification) => {
     if (!n.is_read) markOneRead(n.notification_id);
-    const route = await resolveHelperNotificationRoute(n);
-    if (route) router.push(route as any);
+    const dest = await resolveHelperNotificationRoute(n);
+    setDetail({ item: n, dest });
+  };
+  const goToDestination = () => {
+    if (detail?.dest) router.push(detail.dest as any);
+    setDetail(null);
   };
 
   return (
@@ -149,6 +158,15 @@ export function HelperNotificationsWeb({ userName, avatar, verified, onLogout }:
           <View style={{ height: 40 }} />
         </View>
       </ScrollView>
+      <NotificationDetailModal
+        visible={!!detail}
+        title={detail?.item.title ?? ''}
+        message={detail?.item.message ?? ''}
+        type={detail ? kindForNotificationType(detail.item.type) : 'info'}
+        actionLabel={detail?.dest ? labelForNotificationDestination(detail.dest) : null}
+        onAction={goToDestination}
+        onClose={() => setDetail(null)}
+      />
     </View>
   );
 }

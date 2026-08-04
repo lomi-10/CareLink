@@ -7,14 +7,15 @@
 // never charged for anything. A paywall on a safety feature would be indefensible
 // in this domain, so the screen says so out loud.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Linking, Platform, RefreshControl,
+  ActivityIndicator, Linking, Platform, RefreshControl, AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import * as ExpoLinking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
@@ -44,9 +45,13 @@ export default function SubscriptionScreen() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const [notif, setNotif] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
     visible: false, message: '', type: 'success',
   });
+  // Tracks the last known state so we can tell "just became Plus" apart from
+  // "opened the screen already subscribed" — only the transition gets a modal.
+  const wasPlusRef = useRef<boolean | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -57,6 +62,12 @@ export default function SubscriptionScreen() {
       const res = await fetch(`${API_URL}/parent/subscribe.php?parent_id=${id}&requester_id=${id}`);
       const data = await res.json();
       if (data.success) {
+        const nowPlus = !!data.plus?.is_plus;
+        // The checkout happens in an external browser tab — this screen never
+        // sees a direct "payment succeeded" callback, only whatever the next
+        // status check reports. A false → true transition IS that callback.
+        if (wasPlusRef.current === false && nowPlus) setReceiptOpen(true);
+        wasPlusRef.current = nowPlus;
         setPlus(data.plus);
         setPrice(data.price_php ?? '149.00');
         setBenefits(data.benefits ?? []);
@@ -68,18 +79,37 @@ export default function SubscriptionScreen() {
 
   useEffect(() => { void load(); }, [load]);
 
+  // Re-check whenever the user returns to this screen or brings the app back
+  // to the foreground — exactly the moment they'd return from paying in the
+  // browser. Without this, "nothing happened" until they manually pull-to-refresh.
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void load();
+    });
+    return () => sub.remove();
+  }, [load]);
+
   const subscribe = async () => {
     setBusy(true);
     try {
       const raw = await AsyncStorage.getItem('user_data');
       const user = raw ? JSON.parse(raw) : {};
       const id = String(user.user_id ?? '');
+      // On web, PayMongo redirects the browser tab back to this exact page.
+      // On native there is no tab to return to — it opens a system browser —
+      // so the return URL must be a deep link back into the app itself
+      // (registered "carelink" scheme) or the user is stranded on a bare
+      // web page with no way back in.
+      const returnUrl = Platform.OS === 'web'
+        ? window.location.href
+        : ExpoLinking.createURL('/(parent)/settings/subscription');
       const res = await fetch(`${API_URL}/parent/subscribe.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           parent_id: id, requester_id: id,
-          return_url: Platform.OS === 'web' ? window.location.href : undefined,
+          return_url: returnUrl,
         }),
       });
       const data = await res.json();
@@ -302,6 +332,13 @@ export default function SubscriptionScreen() {
         autoClose
         duration={2200}
         onClose={() => setNotif((n) => ({ ...n, visible: false }))}
+      />
+      <NotificationModal
+        visible={receiptOpen}
+        title="You're on CareLink Plus! 🎉"
+        message={`Payment received — ₱${price}/month.${renews ? ` Renews ${renews}.` : ''} You now have ${plus?.featured_credits ?? 3} boost credits and unlimited open job posts.`}
+        type="success"
+        onClose={() => setReceiptOpen(false)}
       />
     </View>
   );

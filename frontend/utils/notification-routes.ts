@@ -64,6 +64,42 @@ function messagesRoute(role: Role, params?: Record<string, string | undefined>):
   return Object.keys(clean).length ? { pathname, params: clean } : pathname;
 }
 
+/** A rejected DOCUMENT notification's ref_id is the specific document_id —
+ *  carry it through so the Documents screen can outline that exact card. */
+function documentsRoute(role: Role, highlightDocId?: number | null): NotificationDestination {
+  const pathname = role === 'helper' ? '/(helper)/profile/documents' : '/(parent)/profile/documents';
+  return highlightDocId ? { pathname, params: { highlight_doc_id: String(highlightDocId) } } : pathname;
+}
+
+/** Visual tone for the notification detail modal, derived from the type name. */
+export function kindForNotificationType(type: string): 'success' | 'error' | 'warning' | 'info' {
+  if (/rejected|terminated|declined/.test(type)) return 'error';
+  if (/verified|confirmed|completed|checkin/.test(type)) return 'success';
+  if (/request/.test(type)) return 'warning';
+  return 'info';
+}
+
+/**
+ * Human label for the "go there" button on the notification detail modal.
+ * Derived from the resolved destination's path rather than the notification
+ * type, so it stays correct even as routes above change or new types appear.
+ */
+export function labelForNotificationDestination(dest: NotificationDestination): string {
+  const path = typeof dest === 'string' ? dest : dest.pathname;
+  if (path.includes('/messages')) return 'Open Chat';
+  if (path.includes('/documents')) return 'View Documents';
+  if (path.includes('/profile')) return 'View Profile';
+  if (path.includes('/browse')) return 'Browse Jobs';
+  if (path.includes('/jobs')) return 'View Job Post';
+  if (path.includes('/applications')) return 'View Application';
+  if (path.includes('/complaints')) return 'View Complaint';
+  if (path.includes('/users')) return 'View Account';
+  if (path.includes('/interviews')) return 'View Interview';
+  if (path.includes('/contracts')) return 'View Contract';
+  if (path.includes('/work') || path.includes('/hire') || path.includes('/placements')) return 'Go to Work Mode';
+  return 'View Details';
+}
+
 // HELPER
 export async function resolveHelperNotificationRoute(n: Notification): Promise<NotificationDestination | null> {
   const id = n.ref_id;
@@ -106,10 +142,19 @@ export async function resolveHelperNotificationRoute(n: Notification): Promise<N
       return '/(helper)/work';
     }
 
-    case 'account_verified':
-    case 'account_rejected':
-    case 'document_verified':
     case 'document_rejected':
+      // ref_type is 'document' and ref_id is the specific document_id — take
+      // them straight to that document so the rejected one is obvious, not
+      // just the general profile screen.
+      return documentsRoute('helper', n.ref_type === 'document' ? id : undefined);
+
+    case 'account_rejected':
+      // Message explicitly says "review your documents and resubmit" —
+      // go straight there instead of the general profile screen.
+      return documentsRoute('helper');
+
+    case 'account_verified':
+    case 'document_verified':
     case 'profile_update':
       return '/(helper)/profile';
 
@@ -166,10 +211,14 @@ export async function resolveParentNotificationRoute(n: Notification): Promise<N
       return '/(parent)/hire';
     }
 
-    case 'account_verified':
-    case 'account_rejected':
-    case 'document_verified':
     case 'document_rejected':
+      return documentsRoute('parent', n.ref_type === 'document' ? id : undefined);
+
+    case 'account_rejected':
+      return documentsRoute('parent');
+
+    case 'account_verified':
+    case 'document_verified':
     case 'profile_update':
       return '/(parent)/profile';
 

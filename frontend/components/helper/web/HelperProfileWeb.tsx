@@ -258,8 +258,10 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
     setter((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]));
 
   // Category toggle mirrors mobile: "General Househelp" (id 1) is all-around —
-  // selecting it checks all 5 PESO categories AND auto-selects every role under
-  // them. "Others" (id 6) is never auto-included. Selecting all 5 promotes to General.
+  // selecting it checks all 5 PESO categories, unlocking every role under them
+  // for picking, but doesn't force-tick them — a helper still only wants to
+  // list roles they actually do. "Others" (id 6) is never auto-included.
+  // Selecting all 5 individually promotes to General the same way.
   const toggleCategory = (id: number) => {
     const GENERAL = 1, OTHERS = 6;
     const pesoFive = refs.categories.filter((c: any) => Number(c.category_id) !== OTHERS).map((c: any) => Number(c.category_id));
@@ -275,7 +277,6 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
         setSelSkills((ss) => ss.filter((x) => keepSkills.includes(x)));
       } else {
         setSelCats(selCats.includes(OTHERS) ? [...pesoFive, OTHERS] : pesoFive);
-        setSelJobs((js) => Array.from(new Set([...js, ...jobIdsIn(pesoFive)])));
       }
       return;
     }
@@ -289,7 +290,6 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
       const next = [...selCats, id];
       if (pesoFive.every((c: number) => next.includes(c))) {
         setSelCats(next.includes(OTHERS) ? [...pesoFive, OTHERS] : pesoFive);
-        setSelJobs((js) => Array.from(new Set([...js, ...jobIdsIn(pesoFive)])));
       } else setSelCats(next);
     }
   };

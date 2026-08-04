@@ -304,10 +304,11 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         const keepSkills = availableSkills.filter(s => keepJobs.includes(s.job_id)).map(s => s.skill_id);
         setSelectedSkillIds(selectedSkillIds.filter(x => keepSkills.includes(x)));
       } else {
-        // Select all-around → all 5 categories + ALL their job roles auto-checked
+        // Select all-around → unlocks every role across all 5 categories for
+        // picking in the next step, but doesn't tick them all — a helper who
+        // does everything still only wants to list the roles they actually do.
         const cats = selectedCategoryIds.includes(OTHERS_ID) ? [...pesoFive, OTHERS_ID] : pesoFive;
         setSelectedCategoryIds(cats);
-        setSelectedJobIds(Array.from(new Set([...selectedJobIds, ...jobIdsIn(pesoFive)])));
       }
       return;
     }
@@ -322,11 +323,11 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       setSelectedSkillIds(selectedSkillIds.filter(x => !rmSkills.includes(x)));
     } else {
       const next = [...selectedCategoryIds, id];
-      // If all 5 PESO categories end up selected, promote to General + auto-select all their roles
+      // If all 5 PESO categories end up selected, promote to General — still
+      // without force-ticking every role, same as picking General directly.
       if (pesoFive.every(c => next.includes(c))) {
         const cats = next.includes(OTHERS_ID) ? [...pesoFive, OTHERS_ID] : pesoFive;
         setSelectedCategoryIds(cats);
-        setSelectedJobIds(Array.from(new Set([...selectedJobIds, ...jobIdsIn(pesoFive)])));
       } else {
         setSelectedCategoryIds(next);
       }

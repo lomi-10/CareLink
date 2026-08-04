@@ -60,6 +60,9 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
   const { open: openCareBot } = useCareBot();
   const { profileData, loading, refresh, getFullName, getVerificationBadge } = useParentProfile();
   const { stats } = useParentStats();
+  // Toggling into Work Mode with no active hire must not unlock the Work Mode
+  // nav (Tasks, Helper Management) — mirrors the same gate on Home.
+  const workModeUnlocked = isWorkMode && (stats?.active_placements ?? 0) > 0;
 
   const [editing, setEditing] = useState<SecKey | null>(null);
   const [saving, setSaving] = useState(false);
@@ -299,7 +302,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
   if (loading || !profileData) {
     return (
       <View style={s.root}>
-        <ParentTopNav active="none" mode={isWorkMode ? 'work' : 'recruitment'} userName="" avatar={null} verified={false} onLogout={onLogout} />
+        <ParentTopNav active="none" mode={workModeUnlocked ? 'work' : 'recruitment'} userName="" avatar={null} verified={false} onLogout={onLogout} />
         <ActivityIndicator size="large" color={pt.accent} style={{ marginTop: 60 }} />
       </View>
     );
@@ -375,7 +378,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
 
   return (
     <View style={s.root}>
-      <ParentTopNav active="none" mode={isWorkMode ? 'work' : 'recruitment'} userName={fullName} avatar={avatar} verified={verified} onLogout={onLogout} />
+      <ParentTopNav active="none" mode={workModeUnlocked ? 'work' : 'recruitment'} userName={fullName} avatar={avatar} verified={verified} onLogout={onLogout} />
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.page}>
           {/* ── SIDEBAR ── */}

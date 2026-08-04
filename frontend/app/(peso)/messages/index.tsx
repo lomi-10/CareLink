@@ -11,12 +11,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScreenHeader, usePesoTheme } from '@/components/peso/ui';
 import { StaffMessenger, type StaffPalette } from '@/components/shared/StaffMessenger';
 
 export default function PesoMessagesScreen() {
   const { c } = usePesoTheme();
+  const { user_id } = useLocalSearchParams<{ user_id?: string }>();
   const [staffId, setStaffId] = useState<number>(0);
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function PesoMessagesScreen() {
         title="Messages"
         subtitle="Reach a helper or employer directly — it arrives in their normal inbox"
       />
-      <StaffMessenger staffId={staffId} role="peso" palette={palette} />
+      <StaffMessenger staffId={staffId} role="peso" palette={palette} initialUserId={user_id ? Number(user_id) : undefined} />
     </View>
   );
 }

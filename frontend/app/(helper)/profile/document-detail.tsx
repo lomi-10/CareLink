@@ -130,7 +130,9 @@ export default function DocumentDetailScreen() {
   const [aiStatus, setAiStatus]   = useState<string>(ai_status || '');
   const [aiReason, setAiReason]   = useState<string>('');
   // Two-sided docs (Valid ID): flip the preview between front and back.
-  const [imgSide, setImgSide]     = useState<'front' | 'back'>('front');
+  // Default to whichever side actually has a file — opening straight to an
+  // empty "front" thumbnail when only the back was uploaded looked broken.
+  const [imgSide, setImgSide]     = useState<'front' | 'back'>(file_url ? 'front' : 'back');
   const [zoomUri, setZoomUri]     = useState<string | null>(null);
 
   const [deleting, setDeleting] = useState(false);

@@ -24,6 +24,7 @@ include_once __DIR__ . '/../shared/sync_profile_completed.php';
 include_once __DIR__ . '/../shared/create_notification.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
 include_once __DIR__ . '/../shared/phone.php';
+include_once __DIR__ . '/../shared/geocode.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -172,18 +173,32 @@ try {
         }
 
         // 1. CHECK IF PROFILE EXISTS
-        $checkStmt = $conn->prepare("SELECT profile_id FROM parent_profiles WHERE user_id = ?");
+        $checkStmt = $conn->prepare("SELECT profile_id, latitude, longitude FROM parent_profiles WHERE user_id = ?");
         $checkStmt->bind_param("i", $user_id);
         $checkStmt->execute();
         $checkResult = $checkStmt->get_result();
-        
+
         $profile_id = null;
         $profileExists = false;
+        $hadCoords = false;
         if ($checkResult->num_rows > 0) {
-            $profile_id = intval($checkResult->fetch_assoc()['profile_id']);
+            $existing = $checkResult->fetch_assoc();
+            $profile_id = intval($existing['profile_id']);
             $profileExists = true;
+            $hadCoords = $existing['latitude'] !== null && $existing['longitude'] !== null;
         }
         $checkStmt->close();
+
+        // The client only sends coordinates when the address came from picking
+        // a search suggestion; a manually typed address has none. Fill the gap
+        // here rather than overwrite coordinates the profile already has.
+        if ($latitude === null && $longitude === null && !$hadCoords && ($municipality !== '' || $province !== '')) {
+            $geo = carelink_geocode_ph($barangay, $municipality, $province);
+            if ($geo !== null) {
+                $latitude  = $geo['lat'];
+                $longitude = $geo['lng'];
+            }
+        }
 
         // 2. CREATE OR UPDATE PROFILE
         if ($profileExists) {
@@ -222,9 +237,9 @@ try {
             $updateStmt->execute();
             $updateStmt->close();
         } else {
-            $insertSql = "INSERT INTO parent_profiles (user_id, contact_number, province, municipality, barangay, address, bio, landmark, religion, profile_image, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $insertSql = "INSERT INTO parent_profiles (user_id, contact_number, province, municipality, barangay, address, bio, landmark, religion, profile_image, latitude, longitude, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $insertStmt = $conn->prepare($insertSql);
-            $insertStmt->bind_param("isssssssss", $user_id, $contact_number, $province, $municipality, $barangay, $address, $bio, $landmark, $religion, $profile_image_url);
+            $insertStmt->bind_param("isssssssssdd", $user_id, $contact_number, $province, $municipality, $barangay, $address, $bio, $landmark, $religion, $profile_image_url, $latitude, $longitude);
             $insertStmt->execute();
             $profile_id = $conn->insert_id;
             $insertStmt->close();

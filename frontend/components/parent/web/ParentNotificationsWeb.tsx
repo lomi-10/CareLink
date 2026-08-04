@@ -6,8 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useNotifications, type Notification } from '@/hooks/shared';
-import { useParentPortalMode } from '@/hooks/parent';
-import { resolveParentNotificationRoute } from '@/utils/notification-routes';
+import { useParentWorkModeUnlocked } from '@/hooks/parent';
+import {
+  resolveParentNotificationRoute, kindForNotificationType, labelForNotificationDestination,
+  type NotificationDestination,
+} from '@/utils/notification-routes';
+import { NotificationDetailModal } from '@/components/shared';
 import { ParentTopNav } from './ParentTopNav';
 import { pt } from './parentWebTheme';
 
@@ -58,9 +62,10 @@ function bucket(v: string): 'Today' | 'Yesterday' | 'Earlier' {
 
 export function ParentNotificationsWeb({ userName, avatar, verified, onLogout }: { userName: string; avatar: string | null; verified: boolean; onLogout: () => void }) {
   const router = useRouter();
-  const isWorkMode = useParentPortalMode();
+  const { unlocked: workModeUnlocked } = useParentWorkModeUnlocked();
   const { notifications, unreadCount, loading, refresh, markAllRead, markOneRead } = useNotifications('parent');
   const [tab, setTab] = useState<'all' | 'unread'>('all');
+  const [detail, setDetail] = useState<{ item: Notification; dest: NotificationDestination | null } | null>(null);
 
   const list = tab === 'unread' ? notifications.filter((n) => !n.is_read) : notifications;
   const groups = useMemo(() => {
@@ -72,13 +77,17 @@ export function ParentNotificationsWeb({ userName, avatar, verified, onLogout }:
 
   const press = async (n: Notification) => {
     if (!n.is_read) markOneRead(n.notification_id);
-    const route = await resolveParentNotificationRoute(n);
-    if (route) router.push(route as any);
+    const dest = await resolveParentNotificationRoute(n);
+    setDetail({ item: n, dest });
+  };
+  const goToDestination = () => {
+    if (detail?.dest) router.push(detail.dest as any);
+    setDetail(null);
   };
 
   return (
     <View style={s.root}>
-      <ParentTopNav active="none" mode={isWorkMode ? 'work' : 'recruitment'} userName={userName} avatar={avatar} verified={verified} onLogout={onLogout} />
+      <ParentTopNav active="none" mode={workModeUnlocked ? 'work' : 'recruitment'} userName={userName} avatar={avatar} verified={verified} onLogout={onLogout} />
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.page}>
           <View style={s.head}>
@@ -147,6 +156,15 @@ export function ParentNotificationsWeb({ userName, avatar, verified, onLogout }:
           <View style={{ height: 40 }} />
         </View>
       </ScrollView>
+      <NotificationDetailModal
+        visible={!!detail}
+        title={detail?.item.title ?? ''}
+        message={detail?.item.message ?? ''}
+        type={detail ? kindForNotificationType(detail.item.type) : 'info'}
+        actionLabel={detail?.dest ? labelForNotificationDestination(detail.dest) : null}
+        onAction={goToDestination}
+        onClose={() => setDetail(null)}
+      />
     </View>
   );
 }
