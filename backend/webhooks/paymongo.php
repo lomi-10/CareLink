@@ -15,9 +15,9 @@
 require_once __DIR__ . '/../dbcon.php';
 require_once __DIR__ . '/../shared/paymongo.php';
 require_once __DIR__ . '/../shared/create_notification.php';
-require_once __DIR__ . '/../shared/subscriptions_table.php';
+require_once __DIR__ . '/../shared/settle_plus.php';
 
-if ($conn) { ensure_subscriptions_table($conn); }
+if ($conn) { ensure_revenue_tables($conn); }
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -52,7 +52,16 @@ if ($eventId === '' || $type === '') {
     exit();
 }
 
-/** Record the event; false means we've already processed this exact id. */
+/**
+ * Record the event; false means we've already processed this exact id.
+ *
+ * A prepare() failure used to return false here, which the caller read as
+ * "duplicate" — so on any database where payment_events did not exist, every
+ * webhook replied 200 "Duplicate event ignored" and granted nothing, while
+ * PayMongo saw success and never retried. Payments were taken and silently
+ * dropped. It now throws instead, so the handler 500s, PayMongo retries, and
+ * the failure is visible in the error log rather than invisible everywhere.
+ */
 function wh_claim_event(mysqli $conn, string $eventId, string $type, string $refType, ?int $refId, string $summary): bool
 {
     $st = $conn->prepare(
@@ -60,7 +69,7 @@ function wh_claim_event(mysqli $conn, string $eventId, string $type, string $ref
             (paymongo_event_id, event_type, reference_type, reference_id, payload_summary)
          VALUES (?, ?, ?, ?, ?)"
     );
-    if (!$st) return false;
+    if (!$st) throw new Exception('payment_events unavailable: ' . $conn->error);
     $st->bind_param('sssis', $eventId, $type, $refType, $refId, $summary);
     $st->execute();
     $claimed = $st->affected_rows > 0;
@@ -117,45 +126,13 @@ try {
         // costs the employer the days they already bought.
         if ($kind === 'subscription') {
             $parentId = (int) ($meta['parent_id'] ?? 0);
-            if ($parentId > 0) {
-                $st = $conn->prepare(
-                    "INSERT INTO subscriptions
-                        (user_id, plan_type, status, started_at, current_period_end,
-                         featured_credits_remaining, featured_credits_reset_at)
-                     VALUES (?, 'carelink_plus', 'active', NOW(),
-                             DATE_ADD(NOW(), INTERVAL 1 MONTH), 3, DATE_ADD(NOW(), INTERVAL 1 MONTH))"
-                );
-                $existing = $conn->prepare(
-                    "SELECT subscription_id, current_period_end FROM subscriptions
-                      WHERE user_id = ? ORDER BY subscription_id DESC LIMIT 1"
-                );
-                $existing->bind_param('i', $parentId);
-                $existing->execute();
-                $row = $existing->get_result()->fetch_assoc();
-                $existing->close();
-
-                if ($row && strtotime((string) $row['current_period_end']) > time()) {
-                    $ext = $conn->prepare(
-                        "UPDATE subscriptions
-                            SET status = 'active', cancelled_at = NULL,
-                                current_period_end = DATE_ADD(current_period_end, INTERVAL 1 MONTH)
-                          WHERE subscription_id = ?"
-                    );
-                    $ext->bind_param('i', $row['subscription_id']);
-                    $ext->execute();
-                    $ext->close();
-                } else {
-                    $st->bind_param('i', $parentId);
-                    $st->execute();
-                }
-                $st->close();
-
-                createNotification(
-                    $conn, $parentId, 'payment', 'CareLink Plus active',
-                    'Your CareLink Plus subscription is active. You have 3 featured post credits this month.',
-                    null, null
-                );
-            }
+            // Granting now lives in shared/settle_plus.php, because the app can
+            // also settle a payment by asking PayMongo directly when the user
+            // returns from checkout. Both paths share one guard (the checkout
+            // session row), so a payment grants exactly one month whichever
+            // path gets there first — or if both do.
+            $sessionId = (string) ($body['data']['attributes']['data']['id'] ?? '');
+            carelink_settle_plus($conn, $sessionId, $parentId);
         }
 
         // ── Stream 3: placement success fee ──

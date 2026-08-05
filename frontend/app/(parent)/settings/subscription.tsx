@@ -32,6 +32,7 @@ const GREEN = '#059669';
 type PlusStatus = {
   is_plus: boolean;
   status: string | null;
+  started_at: string | null;
   current_period_end: string | null;
   featured_credits: number;
 };
@@ -59,13 +60,25 @@ export default function SubscriptionScreen() {
       const user = raw ? JSON.parse(raw) : {};
       const id = String(user.user_id ?? '');
       if (!id) return;
+
+      // Ask the server to reconcile with PayMongo BEFORE reading status.
+      // Checkout happens in an external browser tab, so this screen never gets
+      // a direct "payment succeeded" callback — and the webhook that was meant
+      // to carry it can silently never arrive. This makes the app confirm the
+      // payment itself instead of waiting to be told.
+      try {
+        await fetch(`${API_URL}/parent/confirm_subscription.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parent_id: id, requester_id: id }),
+        });
+      } catch { /* offline — fall through and show whatever we last knew */ }
+
       const res = await fetch(`${API_URL}/parent/subscribe.php?parent_id=${id}&requester_id=${id}`);
       const data = await res.json();
       if (data.success) {
         const nowPlus = !!data.plus?.is_plus;
-        // The checkout happens in an external browser tab — this screen never
-        // sees a direct "payment succeeded" callback, only whatever the next
-        // status check reports. A false → true transition IS that callback.
+        // A false → true transition is the moment the payment landed.
         if (wasPlusRef.current === false && nowPlus) setReceiptOpen(true);
         wasPlusRef.current = nowPlus;
         setPlus(data.plus);
@@ -143,9 +156,10 @@ export default function SubscriptionScreen() {
   };
 
   const isPlus = !!plus?.is_plus;
-  const renews = plus?.current_period_end
-    ? new Date(String(plus.current_period_end).replace(' ', 'T')).toLocaleDateString('en-PH', { dateStyle: 'medium' })
-    : null;
+  const fmtDate = (v?: string | null) =>
+    v ? new Date(String(v).replace(' ', 'T')).toLocaleDateString('en-PH', { dateStyle: 'medium' }) : null;
+  const renews  = fmtDate(plus?.current_period_end);
+  const started = fmtDate(plus?.started_at);
 
   return (
     <View style={s.page}>
@@ -224,6 +238,13 @@ export default function SubscriptionScreen() {
                 <Text style={s.rowText}>You pay</Text>
                 <Text style={s.rowValue}>{isPlus ? `₱${price} / month` : '₱0'}</Text>
               </View>
+              {isPlus && (
+                <View style={[s.row, s.rowLine]}>
+                  <Ionicons name="play-circle-outline" size={18} color={MUTED} />
+                  <Text style={s.rowText}>Started on</Text>
+                  <Text style={s.rowValue}>{started ?? '—'}</Text>
+                </View>
+              )}
               <View style={[s.row, s.rowLine]}>
                 <Ionicons name="calendar-outline" size={18} color={MUTED} />
                 <Text style={s.rowText}>
@@ -336,7 +357,12 @@ export default function SubscriptionScreen() {
       <NotificationModal
         visible={receiptOpen}
         title="You're on CareLink Plus! 🎉"
-        message={`Payment received — ₱${price}/month.${renews ? ` Renews ${renews}.` : ''} You now have ${plus?.featured_credits ?? 3} boost credits and unlimited open job posts.`}
+        message={
+          `Payment received — ₱${price}/month.\n\n`
+          + `${started ? `Started ${started}\n` : ''}`
+          + `${renews ? `Renews ${renews}\n` : ''}`
+          + `\nYou now have ${plus?.featured_credits ?? 3} boost credits, unlimited open job posts, and priority PESO review. Your receipt stays on this screen.`
+        }
         type="success"
         onClose={() => setReceiptOpen(false)}
       />

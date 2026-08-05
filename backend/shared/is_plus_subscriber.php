@@ -88,6 +88,7 @@ if (!function_exists('carelink_is_plus_subscriber')) {
         $out = [
             'is_plus'            => false,
             'status'             => null,
+            'started_at'         => null,
             'current_period_end' => null,
             'featured_credits'   => 0,
         ];
@@ -95,7 +96,7 @@ if (!function_exists('carelink_is_plus_subscriber')) {
         ensure_subscriptions_table($conn);
 
         $st = $conn->prepare(
-            "SELECT status, current_period_end, featured_credits_remaining
+            "SELECT status, started_at, current_period_end, featured_credits_remaining
                FROM subscriptions
               WHERE user_id = ?
               ORDER BY subscription_id DESC
@@ -109,6 +110,7 @@ if (!function_exists('carelink_is_plus_subscriber')) {
         if (!$row) return $out;
 
         $out['status']             = $row['status'];
+        $out['started_at']         = $row['started_at'];
         $out['current_period_end'] = $row['current_period_end'];
         $out['featured_credits']   = (int) $row['featured_credits_remaining'];
         $out['is_plus']            = in_array($row['status'], ['active', 'cancelled'], true)

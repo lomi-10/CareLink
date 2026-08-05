@@ -49,7 +49,9 @@ try {
         }
     }
 
-    // FIXED: Removed u.phone and correctly added hp.contact_number
+    // contact_number is selected but never returned — see the response mapping
+    // below for why. Kept in the SELECT only so nothing downstream that reads
+    // $row breaks; drop it too if you confirm nothing else touches it.
     $query = "
         SELECT
             u.user_id, u.first_name, u.last_name, u.email,
@@ -180,10 +182,15 @@ try {
             'age' => $age,
             'gender' => $row['gender'],
             
-            // FIXED: Now mapping hp.contact_number!
-            'email' => $row['email'],
-            'phone' => $row['contact_number'],
-            
+            // Contact details are deliberately NOT returned here. This endpoint
+            // is the open helper directory — any employer can page through it
+            // without applying, messaging, or being matched. Returning a phone
+            // number and email made the whole helper base harvestable by anyone
+            // with an employer account, which the RA 10173 consent a helper
+            // signs at signup does not cover. Neither field was used by any UI.
+            // Contact details become available through the hiring flow, where
+            // there is a real relationship and a record of it.
+
             // Professional
             'category_ids' => $category_ids,
             'categories' => $categories,

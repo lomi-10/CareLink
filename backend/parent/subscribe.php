@@ -29,6 +29,7 @@ require_once __DIR__ . '/../shared/ownership_guard.php';
 require_once __DIR__ . '/../shared/paymongo.php';
 require_once __DIR__ . '/../shared/is_plus_subscriber.php';
 require_once __DIR__ . '/../shared/subscriptions_table.php';
+require_once __DIR__ . '/../shared/settle_plus.php';
 
 function sub_out(bool $ok, string $msg, array $extra = []): void
 {
@@ -51,7 +52,7 @@ function sub_benefits(): array
 
 try {
     if (!$conn) throw new Exception('Database connection failed');
-    ensure_subscriptions_table($conn);
+    ensure_revenue_tables($conn);
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $parent_id    = isset($_GET['parent_id']) ? (int) $_GET['parent_id'] : 0;
@@ -77,6 +78,11 @@ try {
     if ($parent_id <= 0) sub_out(false, 'parent_id is required.');
     carelink_require_self($requester_id, $parent_id, 'You are not allowed to subscribe for this account.');
 
+    // Settle anything already paid but not yet granted BEFORE offering to charge
+    // again. Without this, an employer whose webhook never landed is invisible to
+    // the check below and gets sent to pay a second time for the same month.
+    carelink_reconcile_plus($conn, $parent_id);
+
     // Guard against paying twice for an overlapping period.
     if (carelink_is_plus_subscriber($conn, $parent_id)) {
         $st = carelink_plus_status($conn, $parent_id);
@@ -96,16 +102,35 @@ try {
 
     if (!carelink_paymongo_configured()) sub_out(false, 'Payments are not set up on this server yet.');
 
-    // Cooldown independent of the webhook: `already_plus` above only engages
-    // once a payment has actually settled, which takes a moment (and fails
-    // silently if the webhook can't reach this server). Without this, a user
-    // whose first payment hasn't settled yet could open a new checkout every
-    // tap — this caps it to one attempt per 3 minutes per account instead.
-    $cooldownFile = sys_get_temp_dir() . '/carelink_sub_attempt_' . $parent_id . '.txt';
-    if (is_file($cooldownFile) && (time() - (int) @filemtime($cooldownFile)) < 180) {
-        sub_out(false, 'A CareLink Plus payment was just started for this account. Check your email for the PayMongo receipt, or wait a few minutes and try again.');
+    // Reuse an unpaid session instead of blocking or opening a second one.
+    //
+    // This replaces a time-based cooldown that was simply wrong: it fired on a
+    // CANCELLED checkout too, so backing out of the payment page locked the
+    // employer out of retrying for three minutes with an error implying they
+    // had already paid. A PayMongo checkout session stays valid until it is
+    // paid, so handing the same link back is both correct and better UX — the
+    // employer lands exactly where they left off, and we never create two
+    // sessions competing to charge for one month.
+    $reuse = $conn->prepare(
+        "SELECT checkout_url FROM payment_checkouts
+          WHERE user_id = ? AND kind = 'subscription' AND status = 'pending'
+            AND checkout_url IS NOT NULL
+            AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+          ORDER BY checkout_id DESC LIMIT 1"
+    );
+    if ($reuse) {
+        $reuse->bind_param('i', $parent_id);
+        $reuse->execute();
+        $open = $reuse->get_result()->fetch_assoc();
+        $reuse->close();
+        if ($open && !empty($open['checkout_url'])) {
+            sub_out(true, 'Continuing your payment.', [
+                'checkout_url' => $open['checkout_url'],
+                'amount_php'   => carelink_centavos_to_pesos(PRICE_PLUS_MONTHLY),
+                'resumed'      => true,
+            ]);
+        }
     }
-    @file_put_contents($cooldownFile, (string) time());
 
     $base   = carelink_url_scheme() . ($_SERVER['HTTP_HOST'] ?? 'localhost');
     $return = trim((string) ($input['return_url'] ?? '')) ?: $base;
@@ -118,6 +143,9 @@ try {
         $return
     );
     if (!$checkout['ok']) sub_out(false, $checkout['error'] ?: 'Could not start the payment.');
+
+    // Recorded so it can be reconciled on return even if the webhook never lands.
+    carelink_record_checkout($conn, (string) $checkout['id'], $parent_id, 'subscription', $checkout['url']);
 
     sub_out(true, 'Checkout ready.', [
         'checkout_url' => $checkout['url'],
