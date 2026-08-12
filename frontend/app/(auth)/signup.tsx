@@ -317,6 +317,40 @@ export default function SignUpScreen() {
   // the mobile card centered on a gradient; this gives it the same weight as
   // login instead of feeling like an afterthought.
   if (isDesktop) {
+    // The mobile role themes assume the page BEHIND the card is a flat dark
+    // gradient: the helper card is near-black (#3B1A08) and the parent card is
+    // cream. Over the web background photo that falls apart — the helper card
+    // becomes dark-brown-on-dark-brown with no edge, and the parent's pale gold
+    // button on a cream card reads as disabled.
+    //
+    // So the web card gets one light, high-contrast surface for BOTH roles
+    // (matching login.tsx), and role identity lives in the accent alone. This
+    // shadows `t` for the desktop branch only; mobile is untouched.
+    const t = {
+      ...(role === 'helper' ? HELPER_T : PARENT_T),
+      cardBg:      '#FDF9F3',
+      inputBg:     '#FDF5E8',
+      inputBorder: '#EFDCC0',
+      inputText:   '#2A1608',
+      label:       '#2A1608',
+      placeholder: '#B8956A',
+      optional:    '#9A7B5A',
+      required:    role === 'helper' ? '#E86019' : '#B4762A',
+      eye:         '#9A7B5A',
+      pillBg:      role === 'helper' ? 'rgba(232,96,25,0.10)' : 'rgba(139,90,43,0.10)',
+      pillBorder:  role === 'helper' ? 'rgba(232,96,25,0.28)' : 'rgba(139,90,43,0.28)',
+      pillText:    '#2A1608',
+      pillIcon:    role === 'helper' ? '#E86019' : '#8B5A2B',
+      reqBg:       '#FFFFFF',
+      reqBorder:   '#EFDCC0',
+      reqText:     '#9A7B5A',
+      // Saturated enough to read as a real primary action on a cream card.
+      btn:         role === 'helper' ? '#E86019' : '#8B5A2B',
+      btnText:     '#FFFFFF',
+      footerText:  '#7A5C3E',
+      footerLink:  role === 'helper' ? '#E86019' : '#8B5A2B',
+    };
+
     return (
       <View style={d.page}>
         <Image source={WEB_BG} style={d.bgImage} resizeMode="cover" />

@@ -245,14 +245,30 @@ export function useChat(partnerId: number) {
   }, [partnerId, fetchMessages]);
 
   // ── Start video call ──────────────────────────────────────────────────────
+  // Rooms are created server-side (shared/create_call_room.php) rather than by
+  // building a URL here. The old code pointed at meet.jit.si — Jitsi's free
+  // public server, which now demands the first participant sign in with a
+  // Google/Facebook/GitHub account and drops calls under load. That is what
+  // testers were hitting. The room URL still opens in the browser, so this
+  // keeps working under Expo Go with no native build.
   const sendVideoCall = useCallback(async (
     myId: number,
     jobPostId?: number | null,
   ): Promise<string | null> => {
-    const roomId  = `CareLink-${Math.min(myId, partnerId)}-${Math.max(myId, partnerId)}`;
-    const callUrl = `https://meet.jit.si/${roomId}`;
-    const sent    = await sendMessage(callUrl, jobPostId, 'video_call');
-    return sent ? callUrl : null;
+    try {
+      const res = await fetch(`${API_URL}/shared/create_call_room.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: myId, requester_id: myId, partner_id: partnerId }),
+      });
+      const data = await res.json();
+      if (!data?.success || !data?.url) return null;
+
+      const sent = await sendMessage(String(data.url), jobPostId, 'video_call');
+      return sent ? String(data.url) : null;
+    } catch {
+      return null;
+    }
   }, [partnerId, sendMessage]);
 
   // ── Respond to a job invitation (helper accepts / declines) ────────────────

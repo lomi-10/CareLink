@@ -202,9 +202,13 @@ try {
 
         // 2. CREATE OR UPDATE PROFILE
         if ($profileExists) {
-            $updateFields = array("contact_number = ?", "province = ?", "municipality = ?", "barangay = ?", "bio = ?", "address = ?", "landmark = ?", "religion = ?", "updated_at = NOW()");
-            $types = "ssssssss";
-            $params = array($contact_number, $province, $municipality, $barangay, $bio, $address, $landmark, $religion);
+            // contact_number is deliberately NOT written here any more — the
+            // number is owned by users.phone and was already saved above by
+            // carelink_claim_phone(). Writing it in two places is what let the
+            // copies diverge. See migration_2026_08_06_phone_normalization.sql.
+            $updateFields = array("province = ?", "municipality = ?", "barangay = ?", "bio = ?", "address = ?", "landmark = ?", "religion = ?", "updated_at = NOW()");
+            $types = "sssssss";
+            $params = array($province, $municipality, $barangay, $bio, $address, $landmark, $religion);
 
             if ($latitude !== null) {
                 $updateFields[] = "latitude = ?";
@@ -237,9 +241,10 @@ try {
             $updateStmt->execute();
             $updateStmt->close();
         } else {
-            $insertSql = "INSERT INTO parent_profiles (user_id, contact_number, province, municipality, barangay, address, bio, landmark, religion, profile_image, latitude, longitude, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            // contact_number omitted on purpose — owned by users.phone.
+            $insertSql = "INSERT INTO parent_profiles (user_id, province, municipality, barangay, address, bio, landmark, religion, profile_image, latitude, longitude, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $insertStmt = $conn->prepare($insertSql);
-            $insertStmt->bind_param("isssssssssdd", $user_id, $contact_number, $province, $municipality, $barangay, $address, $bio, $landmark, $religion, $profile_image_url, $latitude, $longitude);
+            $insertStmt->bind_param("issssssssdd", $user_id, $province, $municipality, $barangay, $address, $bio, $landmark, $religion, $profile_image_url, $latitude, $longitude);
             $insertStmt->execute();
             $profile_id = $conn->insert_id;
             $insertStmt->close();

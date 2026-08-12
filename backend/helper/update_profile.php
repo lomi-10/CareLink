@@ -343,8 +343,11 @@ try {
         
         if ($profileExists) {
             // UPDATE existing profile
+            // contact_number is deliberately NOT written here any more — the
+            // number is owned by users.phone and was already saved above by
+            // carelink_claim_phone(). Writing it in two places is what let the
+            // copies diverge. See migration_2026_08_06_phone_normalization.sql.
             $updateFields = array(
-                "contact_number = ?",
                 "birth_date = ?",
                 "gender = ?",
                 "civil_status = ?",
@@ -365,9 +368,8 @@ try {
             );
             
             // Build params array
-            $types = "ssssssssssssissds";
+            $types = "sssssssssssissds";
             $params = array(
-                $contact_number,      // s
                 $birth_date,          // s
                 $gender,              // s
                 $civil_status,        // s
@@ -432,24 +434,25 @@ try {
             
         } else {
             // CREATE new profile
+            // contact_number omitted on purpose — owned by users.phone.
             $insertSql = "INSERT INTO helper_profiles (
-                user_id, contact_number, birth_date, gender, civil_status, religion,
+                user_id, birth_date, gender, civil_status, religion,
                 province, municipality, barangay, address, landmark, bio,
                 education_level, experience_years, employment_type, work_schedule,
                 expected_salary, salary_period, profile_image, latitude, longitude, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
             $insertStmt = $conn->prepare($insertSql);
             if (!$insertStmt) {
                 throw new Exception("Failed to prepare insert: " . $conn->error);
             }
 
-            // 21 columns: user_id(i), 12 strings (contact…education_level),
+            // 20 columns: user_id(i), 11 strings (birth_date…education_level),
             // experience_years(i), employment_type(s), work_schedule(s),
             // expected_salary(d), salary_period(s), profile_image(s), latitude(d), longitude(d).
             $insertStmt->bind_param(
-                "issssssssssssissdssdd",
-                $user_id, $contact_number, $birth_date, $gender, $civil_status, $religion,
+                "isssssssssssissdssdd",
+                $user_id, $birth_date, $gender, $civil_status, $religion,
                 $province, $municipality, $barangay, $address, $landmark, $bio,
                 $education_level, $experience_years, $employment_type, $work_schedule,
                 $expected_salary, $salary_period, $profile_image_url, $latitude, $longitude

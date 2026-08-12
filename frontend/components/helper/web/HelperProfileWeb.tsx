@@ -19,6 +19,7 @@ import { NotificationModal, ConfirmationModal, VerifyChangeModal } from '@/compo
 import { DocumentAIScan, ScanResult } from '@/components/shared/DocumentAIScan';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
+import { isPdfDocument } from '@/lib/documentType';
 import { LocationSearchInput, type LocationResult } from '@/components/shared/LocationSearchInput';
 import { HelperTopNav } from './HelperTopNav';
 import { wt, FEATURE_GRADIENT, ACCENT_GRADIENT } from './webTheme';
@@ -1187,7 +1188,9 @@ function SideScan({ doc, side, label, url, pendingScan, onScanned, onZoom }: {
   pendingScan: { type: string; side: 'front' | 'back' } | null;
   onScanned: () => void; onZoom: (uri: string, title: string) => void;
 }) {
-  const isPdf = String(url ?? '').toLowerCase().endsWith('.pdf');
+  // From the stored path, not the signed serve_document.php URL — that URL
+  // never ends in ".pdf". See lib/documentType.ts.
+  const isPdf = isPdfDocument(side === 'back' ? doc?.file_path_back : doc?.file_path, url);
   const initial = sideScanResult(doc, side);
   const isPending = pendingScan?.type === doc.document_type && pendingScan?.side === side;
   return (
@@ -1234,7 +1237,7 @@ function DocDetailPanel({ slot, doc, pendingScan, uploadingKey, onUpload, onScan
   const isRejected = status === 'rejected';
   const hasBack = !!doc?.file_url_back;
   const shownUrl = side === 'back' && hasBack ? doc.file_url_back : doc?.file_url;
-  const shownIsPdf = String(shownUrl ?? '').toLowerCase().endsWith('.pdf');
+  const shownIsPdf = isPdfDocument(side === 'back' && hasBack ? doc?.file_path_back : doc?.file_path, shownUrl);
   const uploaded = doc?.uploaded_at ? new Date(String(doc.uploaded_at).replace(' ', 'T')).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
 
   return (

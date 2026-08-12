@@ -65,6 +65,27 @@ try {
         ]);
     }
 
+    // Defence in depth: a helper may only accept a post PESO has approved.
+    //
+    // Delivery already withholds a direct-hire offer until approval, so this
+    // should be unreachable through the UI. It exists because "the helper
+    // agreed to these terms" is the fact a contract is built on — if that can
+    // ever attach to unvetted terms, the whole review step is decorative. A
+    // guard on the thing being protected costs nothing and cannot be bypassed
+    // by a crafted request or a future change to the delivery path.
+    if ($action === 'accept') {
+        $jobStmt = $conn->prepare("SELECT status FROM job_posts WHERE job_post_id = ? LIMIT 1");
+        if ($jobStmt) {
+            $jobStmt->bind_param('i', $job_post_id);
+            $jobStmt->execute();
+            $jobRow = $jobStmt->get_result()->fetch_assoc();
+            $jobStmt->close();
+            if (!$jobRow || $jobRow['status'] !== 'Open') {
+                throw new Exception('This job is still being reviewed by PESO. You can accept once it is approved.');
+            }
+        }
+    }
+
     // ── Update status ───────────────────────────────────────────────────────
     $stmt = $conn->prepare("UPDATE job_invites SET status = ?, responded_at = NOW() WHERE invite_id = ?");
     $stmt->bind_param("si", $newStatus, $invite['invite_id']);

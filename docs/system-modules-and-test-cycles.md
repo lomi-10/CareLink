@@ -24,7 +24,7 @@ cluster you can point at.
 | 1 | **Authentication & Accounts** | Signup, login (email *or* mobile), email verification codes, password reset, verified email/contact changes | `backend/auth/`, `shared/auth_codes.php`, `shared/mailer.php` |
 | 2 | **Helper Profile** | Personal details, address, photo, roles, skills, languages, work history, profile strength | `backend/helper/`, `helper_profiles` + 5 tables |
 | 3 | **Employer Profile** | Household details, size and type, children/elderly, address | `backend/parent/`, `parent_profiles` + 3 tables |
-| 4 | **Document Verification** | Upload, Gemini AI pre-screening, expiry/identity/duplicate checks, PESO approval, sharing rules | `helper/scan_id.php`, `shared/gemini_id.php`, `user_documents` |
+| 4 | **Document Verification** | Upload, Gemini AI pre-screening, expiry/identity/duplicate checks, PESO approval, sharing rules | `helper/scan_id.php`, `share  d/gemini_id.php`, `user_documents` |
 | 5 | **PESO Verification** | Account review queue, document review, job post approval, rejection with reason | `backend/peso/` (30 endpoints) |
 | 6 | **Job Posting** | Create/edit, categories→roles→skills, salary floor, deadlines, PESO gate, generated descriptions | `parent/post_job.php`, `job_posts` |
 | 7 | **Matching & Search** | Weighted compatibility both directions, browse, filters, saved jobs, recommendations | `shared/job_match.php`, `browse_jobs.php`, `parentHelperMatch.ts` |

@@ -88,7 +88,7 @@ function createChatCallModalStyles(c: ThemeColor) {
   });
 }
 
-/** Step 1: choose action. Step 2: confirm instant video (posts link + opens Jitsi). */
+/** Step 1: choose action. Step 2: confirm instant video (posts link + opens the room). */
 export function ChatCallOptionsModal({
   visible,
   onClose,
@@ -153,7 +153,7 @@ export function ChatCallOptionsModal({
             <>
               <Text style={s.title}>Start video call?</Text>
               <Text style={s.sub}>
-                A Jitsi meeting link will be sent in this chat and the call will open in your browser.
+                A private meeting link will be sent in this chat and the call will open in your browser. The link stays joinable for 2 hours.
                 {Platform.OS !== 'web' ? ' On mobile, your browser will open.' : ''}
               </Text>
               <TouchableOpacity

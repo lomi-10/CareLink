@@ -17,6 +17,7 @@ import { NotificationModal, ConfirmationModal, VerifyChangeModal } from '@/compo
 import { DocumentAIScan, type ScanResult } from '@/components/shared/DocumentAIScan';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
+import { isPdfDocument } from '@/lib/documentType';
 import { LocationSearchInput, type LocationResult } from '@/components/shared/LocationSearchInput';
 import { PARENT_HOUSEHOLD_TYPE_OPTIONS, formatParentHouseholdType } from '@/constants/parentHousehold';
 import { ParentTopNav } from './ParentTopNav';
@@ -887,7 +888,9 @@ function SideScan({ doc, side, label, url, pendingScan, onScanned, onZoom }: {
   pendingScan: { type: string; side: 'front' | 'back' } | null;
   onScanned: () => void; onZoom: (uri: string, title: string) => void;
 }) {
-  const isPdf = String(url ?? '').toLowerCase().endsWith('.pdf');
+  // From the stored path, not the signed serve_document.php URL — that URL
+  // never ends in ".pdf". See lib/documentType.ts.
+  const isPdf = isPdfDocument(side === 'back' ? doc?.file_path_back : doc?.file_path, url);
   const initial = sideScanResult(doc, side);
   const isPending = pendingScan?.type === doc.document_type && pendingScan?.side === side;
   return (

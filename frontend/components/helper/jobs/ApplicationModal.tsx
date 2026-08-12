@@ -62,6 +62,11 @@ function fmtPeriod(p: string) {
 
 
 // ── Component ─────────────────────────────────────────────────────────────────
+/** Generation counter is stored per helper AND per job — three previews for
+ *  each application, not three for the account. */
+const genKey = (userId: string | number, jobPostId: string | number) =>
+  `cover_gen_${userId}_${jobPostId}`;
+
 export function ApplicationModal({ visible, job, onSubmit, onClose }: ApplicationModalProps) {
   const [coverLetter,   setCoverLetter]   = useState('');
   const [genCount,      setGenCount]      = useState(0); // cover-letter generations used
@@ -78,10 +83,40 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
   // no two helpers produce the same text.
   const [helperInfo, setHelperInfo] = useState<HelperInfo | null>(null);
 
+  // Load how many previews this helper already used FOR THIS JOB.
+  //
+  // This counter used to be reset to 0 every time the modal opened, so closing
+  // and reopening handed out another three — the "3 previews" cap was purely
+  // cosmetic and a helper could generate endlessly. Persisting it per job is
+  // what actually enforces the limit across opens.
+  useEffect(() => {
+    if (!visible || !job) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem('user_data');
+        const uid = raw ? JSON.parse(raw)?.user_id : null;
+        if (!uid || cancelled) return;
+        const stored = await AsyncStorage.getItem(genKey(uid, job.job_post_id));
+        if (!cancelled) setGenCount(Math.max(0, Number(stored ?? 0) || 0));
+      } catch { /* storage unavailable — fall back to this session's count */ }
+    })();
+    return () => { cancelled = true; };
+  }, [visible, job?.job_post_id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Count one generation and remember it, so reopening can't reset the cap. */
+  const bumpGenCount = async () => {
+    const next = genCount + 1;
+    setGenCount(next);
+    try {
+      const raw = await AsyncStorage.getItem('user_data');
+      const uid = raw ? JSON.parse(raw)?.user_id : null;
+      if (uid && job) await AsyncStorage.setItem(genKey(uid, job.job_post_id), String(next));
+    } catch { /* best effort — the in-memory count still caps this session */ }
+  };
+
   useEffect(() => {
     if (!visible) return;
-    // Fresh application: reset the generation counter (and last generated letter).
-    setGenCount(0);
 
     let cancelled = false;
     (async () => {
@@ -254,7 +289,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
                     onPress={() => {
                       if (locked) return;
                       setCoverLetter(pickCoverLetter(job, genCount, helperInfo ?? undefined));
-                      setGenCount((n) => n + 1);
+                      void bumpGenCount();
                       setError(null);
                     }}
                     activeOpacity={0.8}
@@ -408,7 +443,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
           <View style={s.editorFooter}>
             <TouchableOpacity
               style={[s.editorGenerate, genCount >= MAX_GENERATIONS && { opacity: 0.5 }]}
-              onPress={() => { if (!job || genCount >= MAX_GENERATIONS) return; setCoverLetter(pickCoverLetter(job, genCount, helperInfo ?? undefined)); setGenCount((n) => n + 1); }}
+              onPress={() => { if (!job || genCount >= MAX_GENERATIONS) return; setCoverLetter(pickCoverLetter(job, genCount, helperInfo ?? undefined)); void bumpGenCount(); }}
               activeOpacity={0.8}
               disabled={genCount >= MAX_GENERATIONS}
             >

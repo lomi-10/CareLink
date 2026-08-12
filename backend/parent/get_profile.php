@@ -72,7 +72,15 @@ try {
     // ========================================================================
     // QUERY 2: PROFILE DATA
     // ========================================================================
-    $profileSql = "SELECT * FROM parent_profiles WHERE user_id = ?";
+    // pp.* still returns the legacy contact_number column, so users.phone is
+    // selected AFTER it — later columns win in mysqli's assoc fetch, making
+    // users.phone the effective value under the same key. Single source of
+    // truth without changing the API shape.
+    // See migration_2026_08_06_phone_normalization.sql.
+    $profileSql = "SELECT pp.*, u.phone AS contact_number
+                     FROM parent_profiles pp
+                     INNER JOIN users u ON u.user_id = pp.user_id
+                    WHERE pp.user_id = ?";
     $profileStmt = $conn->prepare($profileSql);
     $profileStmt->bind_param("i", $user_id);
     $profileStmt->execute();

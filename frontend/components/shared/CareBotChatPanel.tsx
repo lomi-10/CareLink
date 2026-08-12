@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import API_URL from '@/constants/api';
 import { theme } from '@/constants/theme';
 import { useNotice } from '@/hooks/shared/useNotice';
+import { useCareBot, type CareBotLine } from '@/contexts/CareBotContext';
 
 export type CareBotAccent = 'parent' | 'helper';
 
@@ -23,13 +24,8 @@ const PARENT_ACCENT = '#8B4A1F';
 
 type ChatAction = { label: string; route: string };
 
-type ChatLine = {
-  id: string;
-  text: string;
-  createdAt: number;
-  side: 'user' | 'bot';
-  actions?: ChatAction[];
-};
+/** Defined in CareBotContext, because that is where the transcript lives now. */
+type ChatLine = CareBotLine;
 
 // ─── Keyword → screen redirects (quick-nav buttons under a reply) ──────────────
 const HELPER_INTENTS: { keywords: string[]; label: string; route: string }[] = [
@@ -198,22 +194,20 @@ const HELPER_TOPICS: Topic[] = [
 ];
 
 export type CareBotChatPanelProps = {
-  /** Bumped only on logout — restarts the conversation for the next session. */
-  resetNonce: number;
   showChrome?: boolean;
   onRequestClose?: () => void;
   accentRole?: CareBotAccent;
 };
 
 export function CareBotChatPanel({
-  resetNonce,
   showChrome,
   onRequestClose,
   accentRole: accentProp,
 }: CareBotChatPanelProps) {
   const { notify, noticeHost } = useNotice();
-  const [lines, setLines] = useState<ChatLine[]>([]);
-  const [draft, setDraft] = useState('');
+  // Transcript and draft live in CareBotContext, not here — this component is
+  // unmounted every time the modal closes, so anything held locally is lost.
+  const { lines, setLines, draft, setDraft } = useCareBot();
   const [isTyping, setIsTyping] = useState(false);
   const [booting, setBooting] = useState(true);
   const [userId, setUserId] = useState(0);
@@ -252,13 +246,14 @@ export function CareBotChatPanel({
 
   useEffect(() => { if (accentProp) setAccent(accentProp); }, [accentProp]);
 
-  // Seeds the welcome message once per session — NOT on every open, so the
-  // conversation survives closing and reopening the panel (this effect's
-  // deps don't change on open/close). Only a logout (resetNonce bumping)
-  // restarts it.
+  // Seeds the welcome message only into an EMPTY transcript. Reopening CareBot
+  // remounts this component, so an unconditional seed here would wipe the
+  // conversation on every open — the emptiness check is what makes reopening
+  // resume where the user left off. logout clears lines via resetChat(),
+  // which is what brings the welcome message back for the next user.
   useEffect(() => {
     if (booting || userId < 1) return;
-    setLines([
+    setLines((prev) => prev.length > 0 ? prev : [
       {
         id: 'welcome',
         text: "Hi! I'm CareBot. I can help you with CareLink jobs, hiring, tasks, attendance, and Kasambahay Law basics.\n\nWhat would you like to know?",
@@ -266,8 +261,7 @@ export function CareBotChatPanel({
         side: 'bot',
       },
     ]);
-    setDraft('');
-  }, [booting, userId, resetNonce]);
+  }, [booting, userId, setLines]);
 
   const router = useRouter();
   const accentColor = accent === 'helper' ? HELPER_ACCENT : PARENT_ACCENT;

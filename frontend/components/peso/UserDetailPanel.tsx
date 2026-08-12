@@ -27,6 +27,10 @@ const DOC_ICONS: Record<string, React.ComponentProps<typeof Ionicons>["name"]> =
 
 type TabKey = "overview" | "documents" | "jobs";
 
+/** Must be on file before an account can be PESO Verified. Mirrors
+ *  CARELINK_REQUIRED_DOCUMENT_TYPES in shared/sync_profile_completed.php. */
+const REQUIRED_DOC_TYPES = ["Valid ID", "Barangay Clearance"];
+
 function legitLabel(v: number) { return v >= 90 ? "High" : v >= 70 ? "Medium" : "Low"; }
 function clarityLabel(v: number) { return v >= 85 ? "Very Clear" : v >= 60 ? "Readable" : "Low"; }
 function scoreColor(v: number, c: PesoColors) { return v >= 85 ? c.ok : v >= 60 ? c.warn : c.bad; }
@@ -99,12 +103,26 @@ export default function UserDetailPanel({
   const hasRejectedDoc = useMemo(() => docList.some((d) => d?.status === "Rejected"), [docList]);
   const hasPendingDoc = useMemo(() => docList.some((d) => d?.status === "Pending"), [docList]);
   const allDocsVerified = useMemo(() => docList.length > 0 && docList.every((d) => d?.status === "Verified"), [docList]);
+  // Which REQUIRED documents are absent. "All submitted documents verified" says
+  // nothing about whether the right ones were submitted — an applicant with only
+  // a TESDA NC2 and Police Clearance used to satisfy every check here and be
+  // approved with no ID on file. Backend enforces this too (verify_user.php).
+  const missingRequired = useMemo(() => {
+    const onFile = new Set(
+      docList.filter((d) => d?.status === "Verified" || d?.status === "Pending").map((d) => d?.document_type),
+    );
+    return REQUIRED_DOC_TYPES.filter((t) => !onFile.has(t));
+  }, [docList]);
+
   const canApproveUser = vs === "Pending" && docList.length > 0 && allDocsVerified;
   const approvalBlockReason = hasRejectedDoc
     ? "One or more documents were rejected. The applicant must re-upload before approval."
     : hasPendingDoc ? "Some documents are still pending. Approve or reject each document first."
     : docList.length === 0 ? "No documents on file. The applicant must upload required documents."
-    : !allDocsVerified ? "All submitted documents must be marked Verified before approval." : "";
+    : !allDocsVerified ? "All submitted documents must be marked Verified before approval."
+    : missingRequired.length > 0
+      ? `Missing ${missingRequired.join(" and ")}. You can still approve, but you'll be asked to confirm.`
+      : "";
 
   // ── init / fetch ──
   useEffect(() => {
@@ -146,25 +164,52 @@ export default function UserDetailPanel({
   };
 
   // ── actions ──
+  /** Sends the approval. `acknowledge` is set only after the officer has been
+   *  shown exactly which required documents are missing and chose to proceed. */
+  const submitApproval = async (acknowledge: boolean) => {
+    try {
+      setProcessing(true);
+      const res = await fetch(`${API_URL}/peso/verify_user.php`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId, action: "approve", verified_by: verifierId,
+          ...(acknowledge ? { acknowledge_missing_documents: true } : {}),
+        }),
+      });
+      const data = await res.json();
+
+      // The applicant is missing a required document — name it and make the
+      // officer confirm, rather than approving silently or refusing outright.
+      if (!data.success && data.code === "missing_required_documents") {
+        setProcessing(false);
+        showNotif(
+          "warning",
+          "Missing required document",
+          data.message || "This applicant is missing a required document.",
+          "Approve anyway",
+          () => submitApproval(true),
+        );
+        return;
+      }
+
+      if (data.success) {
+        setUserData((prev: any) => prev ? { ...prev, profile: { ...(prev.profile ?? {}), verification_status: "Verified" } } : prev);
+        onChanged?.();
+        showNotif("success", "Account Approved!", "This user is now PESO Verified.");
+      } else showNotif("error", "Failed", data.message || "Failed to approve account.");
+    } catch { showNotif("error", "Error", "Network error occurred."); }
+    finally { setProcessing(false); }
+  };
+
   const handleApproveUser = () => {
     if (processing) return;
-    if (!canApproveUser) { showNotif("warning", "Cannot approve yet", approvalBlockReason); return; }
-    showNotif("warning", "Verify Account", "Approve this account? This will mark them as PESO Verified.", "Approve", async () => {
-      try {
-        setProcessing(true);
-        const res = await fetch(`${API_URL}/peso/verify_user.php`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId, action: "approve", verified_by: verifierId }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          setUserData((prev: any) => prev ? { ...prev, profile: { ...(prev.profile ?? {}), verification_status: "Verified" } } : prev);
-          onChanged?.();
-          showNotif("success", "Account Approved!", "This user is now PESO Verified.");
-        } else showNotif("error", "Failed", data.message || "Failed to approve account.");
-      } catch { showNotif("error", "Error", "Network error occurred."); }
-      finally { setProcessing(false); }
-    });
+    // Missing required documents no longer blocks here — the backend asks for
+    // an explicit acknowledgement instead, so the officer sees WHAT is missing.
+    if (!canApproveUser && missingRequired.length === 0) {
+      showNotif("warning", "Cannot approve yet", approvalBlockReason); return;
+    }
+    showNotif("warning", "Verify Account", "Approve this account? This will mark them as PESO Verified.", "Approve",
+      () => submitApproval(false));
   };
 
   const handleRejectUser = async () => {

@@ -1,9 +1,13 @@
 // hooks/auth/useLoginForm.ts
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_URL from "@/constants/api";
 import { isProfileCompleted } from "./authProfile";
+
+const LOCK_KEY = "login_lock_until";
+const ATTEMPTS_KEY = "login_attempts_left";
+const LOCK_MS = 60_000;
 
 export function useLoginForm() {
   const router = useRouter();
@@ -13,9 +17,38 @@ export function useLoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Login attempts tracking
+  // Login attempts tracking.
+  //
+  // Persisted, because these were plain useState: leaving the login screen
+  // unmounted the hook and the lock evaporated, so "5 attempts then locked"
+  // could be bypassed by pressing home and coming back. Storing the lock
+  // EXPIRY (not a countdown) also means it survives the app being killed —
+  // a timer alone would not.
   const [attemptsLeft, setAttemptsLeft] = useState(5);
   const [isLocked, setIsLocked] = useState(false);
+
+  /** Re-read the persisted lock; also clears it once the window has passed. */
+  const syncLock = useCallback(async () => {
+    try {
+      const [untilRaw, attemptsRaw] = await Promise.all([
+        AsyncStorage.getItem(LOCK_KEY),
+        AsyncStorage.getItem(ATTEMPTS_KEY),
+      ]);
+      const until = Number(untilRaw ?? 0);
+      if (until > Date.now()) {
+        setIsLocked(true);
+        setAttemptsLeft(0);
+        // Re-check when the window expires so the form unlocks on its own.
+        setTimeout(() => { void syncLock(); }, Math.min(until - Date.now() + 250, LOCK_MS));
+      } else {
+        if (untilRaw) await AsyncStorage.multiRemove([LOCK_KEY, ATTEMPTS_KEY]);
+        setIsLocked(false);
+        setAttemptsLeft(untilRaw ? 5 : Math.max(0, Number(attemptsRaw ?? 5) || 5));
+      }
+    } catch { /* storage unavailable — fall back to in-memory only */ }
+  }, []);
+
+  useEffect(() => { void syncLock(); }, [syncLock]);
 
   // Unified Notification State
   const [notification, setNotification] = useState({
@@ -24,14 +57,15 @@ export function useLoginForm() {
     type: "info" as "success" | "error" | "warning" | "info",
   });
 
-  const handleLockout = () => {
+  const handleLockout = async () => {
     setIsLocked(true);
     setNotification({ visible: true, message: "Account locked for 1 minute.", type: "error" });
-    
-    setTimeout(() => {
-      setIsLocked(false);
-      setAttemptsLeft(5);
-    }, 60000);
+    try {
+      await AsyncStorage.setItem(LOCK_KEY, String(Date.now() + LOCK_MS));
+      await AsyncStorage.setItem(ATTEMPTS_KEY, "0");
+    } catch { /* in-memory lock still applies for this session */ }
+
+    setTimeout(() => { void syncLock(); }, LOCK_MS);
   };
 
   const handleLogin = async () => {
@@ -80,6 +114,8 @@ export function useLoginForm() {
         await AsyncStorage.setItem("user_data", JSON.stringify(mergedUser));
 
         setAttemptsLeft(5);
+        // A successful sign-in clears the persisted counter too.
+        try { await AsyncStorage.multiRemove([LOCK_KEY, ATTEMPTS_KEY]); } catch {}
         setNotification({ visible: true, message: data.message || "Welcome Back!", type: "success" });
 
         // Always land on Home — the guided profile-setup coach lives there, so
@@ -110,8 +146,10 @@ export function useLoginForm() {
         } else if (data.reason === "wrong_password" || !data.reason) {
           const newAttempts = attemptsLeft - 1;
           setAttemptsLeft(newAttempts);
+          // Persisted so the count can't be reset by leaving and returning.
+          try { await AsyncStorage.setItem(ATTEMPTS_KEY, String(Math.max(0, newAttempts))); } catch {}
 
-          if (newAttempts <= 0) handleLockout();
+          if (newAttempts <= 0) await handleLockout();
           else setNotification({ visible: true, message: `${data.message || "Incorrect email or password."}\n${newAttempts} attempt${newAttempts !== 1 ? "s" : ""} left.`, type: "error" });
 
         } else if (data.reason === "Account Pending") {

@@ -68,6 +68,7 @@ try {
                 user_id,
                 document_type,
                 file_path,
+                file_path_back,
                 id_type,
                 expiry_date,
                 status,
@@ -105,6 +106,12 @@ try {
         // Signed, time-limited link instead of a raw static file path — see
         // shared/serve_document.php and shared/file_security.php.
         $row['file_url'] = carelink_signed_document_url($row['document_id']);
+        // Two-sided documents (Valid ID) need the back link too — get_profile.php
+        // already returned this, so its absence here made a freshly uploaded
+        // back side look missing until the next full profile load.
+        $row['file_url_back'] = !empty($row['file_path_back'])
+            ? carelink_signed_document_url($row['document_id'], 'back')
+            : null;
         
         // Parse dates
         $row['uploaded_at'] = $row['uploaded_at'] ? date('Y-m-d H:i:s', strtotime($row['uploaded_at'])) : null;

@@ -185,6 +185,25 @@ export default function ChatPanel({
     }
   };
 
+  // Take a photo instead of choosing one. Chat previously offered gallery only,
+  // which is the wrong default here: most things sent in a hiring chat (a
+  // document, a room, an ID) are photographed in the moment. Camera is
+  // unavailable in a browser, so web falls back to the gallery.
+  const handleTakePhoto = async () => {
+    if (Platform.OS === 'web') { void handlePickImage(); return; }
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) { showChatNotif('Allow camera access to take a photo.', 'warning'); return; }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.85,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const ok = await sendImage(result.assets[0].uri, jobPostId);
+      if (!ok) showChatNotif('Could not send the photo. Please try again.', 'error');
+    }
+  };
+
   const openReviewContract = async () => {
     if (!resolvedApp) return;
     try {
@@ -403,6 +422,7 @@ export default function ChatPanel({
           setText={setText}
           handleSend={handleSend}
           handlePickImage={handlePickImage}
+          handleTakePhoto={handleTakePhoto}
           editTarget={editTarget}
           setEditTarget={setEditTarget}
           viewerUri={viewerUri}

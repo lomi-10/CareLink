@@ -69,9 +69,15 @@ function carelink_user_safe_context(int $userId): ?array
 function carelink_uc_helper(mysqli $conn, int $userId, array &$ctx): void
 {
     $stmt = $conn->prepare(
-        "SELECT profile_id, contact_number, birth_date, gender, province, municipality, barangay,
-                bio, education_level, religion, landmark, profile_image, verification_status
-         FROM helper_profiles WHERE user_id = ? LIMIT 1"
+        // contact_number now comes from users.phone — the profile copy is no
+        // longer written. See migration_2026_08_06_phone_normalization.sql.
+        "SELECT hp.profile_id, u.phone AS contact_number, hp.birth_date, hp.gender,
+                hp.province, hp.municipality, hp.barangay,
+                hp.bio, hp.education_level, hp.religion, hp.landmark, hp.profile_image,
+                hp.verification_status
+         FROM helper_profiles hp
+         INNER JOIN users u ON u.user_id = hp.user_id
+         WHERE hp.user_id = ? LIMIT 1"
     );
     $stmt->bind_param("i", $userId);
     $stmt->execute();
@@ -116,8 +122,11 @@ function carelink_uc_helper(mysqli $conn, int $userId, array &$ctx): void
 function carelink_uc_parent(mysqli $conn, int $userId, array &$ctx): void
 {
     $stmt = $conn->prepare(
-        "SELECT profile_id, contact_number, province, municipality, barangay, bio, profile_image, verification_status
-         FROM parent_profiles WHERE user_id = ? LIMIT 1"
+        "SELECT pp.profile_id, u.phone AS contact_number, pp.province, pp.municipality,
+                pp.barangay, pp.bio, pp.profile_image, pp.verification_status
+         FROM parent_profiles pp
+         INNER JOIN users u ON u.user_id = pp.user_id
+         WHERE pp.user_id = ? LIMIT 1"
     );
     $stmt->bind_param("i", $userId);
     $stmt->execute();

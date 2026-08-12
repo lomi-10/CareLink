@@ -15,7 +15,7 @@ import { Bubble, EditModal, ImageViewer } from './components';
 
 export default function MessagesTab({
   messages, myUserId, sending, partnerName, flatRef,
-  text, setText, handleSend, handlePickImage,
+  text, setText, handleSend, handlePickImage, handleTakePhoto,
   editTarget, setEditTarget, viewerUri, setViewerUri, editMessage, insets,
 }: {
   messages: Message[];
@@ -27,6 +27,7 @@ export default function MessagesTab({
   setText: (t: string) => void;
   handleSend: () => void | Promise<void>;
   handlePickImage: () => void | Promise<void>;
+  handleTakePhoto?: () => void | Promise<void>;
   editTarget: Message | null;
   setEditTarget: (m: Message | null) => void;
   viewerUri: string | null;
@@ -78,6 +79,11 @@ export default function MessagesTab({
         <TouchableOpacity style={s.inputIcon} onPress={handlePickImage}>
           <Ionicons name="image-outline" size={22} color={MUTED} />
         </TouchableOpacity>
+        {handleTakePhoto ? (
+          <TouchableOpacity style={s.inputIcon} onPress={handleTakePhoto}>
+            <Ionicons name="camera-outline" size={22} color={MUTED} />
+          </TouchableOpacity>
+        ) : null}
         <TextInput
           style={s.input}
           value={text}

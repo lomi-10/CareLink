@@ -395,6 +395,16 @@ const PARENT_NEXT: GuideChapter = {
       title: 'Then Work Mode opens',
       body: 'Assign daily tasks, track attendance (off by default — you choose), approve leave requests, and see a payroll summary. Payroll is a clear read-only view of what’s owed; CareLink never moves money.',
     },
+    {
+      icon: 'star-outline',
+      title: 'Optional: CareLink Plus',
+      body: 'A ₱149/month plan for employers who hire often. It adds 3 job post boosts a month, unlimited open job posts, priority PESO review, payroll export and 20% off placement fees. Find it under CareLink Plus in the menu.',
+    },
+    {
+      icon: 'lock-open-outline',
+      title: 'What Plus does NOT change',
+      body: 'Nothing that keeps people safe is behind payment. PESO verification, matching, contracts and signing, messaging, and CareBot are free for everyone, always — and helpers are never charged for anything, at any tier. Plus only makes hiring faster.',
+    },
   ],
 };
 

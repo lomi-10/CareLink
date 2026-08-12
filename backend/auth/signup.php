@@ -165,10 +165,10 @@ try {
     // 9. INSERT INTO PROFILE TABLES
     if ($user_type === 'parent') {
         // Prefill contact_number so the user isn't asked for the same number twice.
-        $profSql = "INSERT INTO parent_profiles (user_id, contact_number) VALUES (?, ?)";
+        $profSql = "INSERT INTO parent_profiles (user_id) VALUES (?)";
         $profStmt = $conn->prepare($profSql);
         if ($profStmt) {
-            $profStmt->bind_param("is", $new_user_id, $phone);
+            $profStmt->bind_param("i", $new_user_id);
             $profStmt->execute();
             $profStmt->close();
         } else {
@@ -177,10 +177,10 @@ try {
     } 
     else if ($user_type === 'helper') {
         // Setting a default verification status for helpers
-        $profSql = "INSERT INTO helper_profiles (user_id, contact_number) VALUES (?, ?)";
+        $profSql = "INSERT INTO helper_profiles (user_id) VALUES (?)";
         $profStmt = $conn->prepare($profSql);
         if ($profStmt) {
-            $profStmt->bind_param("is", $new_user_id, $phone);
+            $profStmt->bind_param("i", $new_user_id);
             $profStmt->execute();
             $profStmt->close();
         } else {

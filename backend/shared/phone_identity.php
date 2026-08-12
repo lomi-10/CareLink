@@ -28,18 +28,20 @@ if (!function_exists('carelink_phone_conflict')) {
     {
         if ($normalized === '') return null;
 
+        // users.phone is now the single source of truth (see
+        // database/migration_2026_08_06_phone_normalization.sql). This used to
+        // also scan helper_profiles.contact_number and parent_profiles
+        // .contact_number, because the same number lived in three columns that
+        // nothing kept in agreement. With the copies backfilled into
+        // users.phone and no longer written, one lookup is both correct and
+        // able to use the UNIQUE index instead of two EXISTS subqueries.
         $sql = "SELECT u.user_type
                   FROM users u
-                 WHERE u.user_id <> ?
-                   AND (
-                        u.phone = ?
-                     OR EXISTS (SELECT 1 FROM helper_profiles hp WHERE hp.user_id = u.user_id AND hp.contact_number = ?)
-                     OR EXISTS (SELECT 1 FROM parent_profiles pp WHERE pp.user_id = u.user_id AND pp.contact_number = ?)
-                   )
+                 WHERE u.user_id <> ? AND u.phone = ?
                  LIMIT 1";
         $st = $conn->prepare($sql);
         if (!$st) return null; // never block a save because of a lookup failure
-        $st->bind_param('isss', $user_id, $normalized, $normalized, $normalized);
+        $st->bind_param('is', $user_id, $normalized);
         $st->execute();
         $row = $st->get_result()->fetch_assoc();
         $st->close();

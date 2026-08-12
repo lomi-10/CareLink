@@ -19,6 +19,7 @@ error_reporting(0);
 
 include_once '../dbcon.php';
 include_once __DIR__ . '/peso_auth.php';
+include_once __DIR__ . '/../shared/sync_profile_completed.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -98,6 +99,39 @@ try {
             $docCheck->close();
             if ($rejectedCount > 0) {
                 throw new Exception("Cannot approve this user while one or more documents are rejected. Resolve documents first.");
+            }
+
+            // REQUIRED documents must actually be on file.
+            //
+            // The only guard before this was "every submitted document is
+            // Verified", which says nothing about whether the RIGHT documents
+            // were submitted: an applicant who uploaded only a TESDA NC2 and a
+            // Police Clearance passed it and became PESO Verified with no ID
+            // and no Barangay Clearance on file at all.
+            //
+            // This is enforced server-side because the frontend guard alone is
+            // advisory — anything that can grant verified status has to be
+            // checked where it is granted.
+            $missing = carelink_missing_required_documents($conn, $user_id);
+            if (!empty($missing)) {
+                // An officer may still have a legitimate reason to proceed, so
+                // this is an explicit acknowledgement rather than a hard block —
+                // but it can never happen by accident or by omission.
+                if (empty($data['acknowledge_missing_documents'])) {
+                    echo json_encode([
+                        'success'          => false,
+                        'code'             => 'missing_required_documents',
+                        'missing_documents' => array_values($missing),
+                        'message'          => 'This applicant has not submitted: ' . implode(' and ', $missing)
+                            . '. Approving now marks them PESO Verified without it. Confirm to proceed anyway.',
+                    ]);
+                    exit();
+                }
+                // Proceeding on an override is recorded, so the decision has an owner.
+                error_log(sprintf(
+                    'VERIFY_USER override: peso_user=%d approved user=%d missing=[%s]',
+                    $verified_by, $user_id, implode(',', $missing)
+                ));
             }
         }
 

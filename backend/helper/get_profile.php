@@ -88,35 +88,39 @@ try {
     // QUERY 2: Helper profile
     // ========================================================================
     
-    $profileSql = "SELECT 
-                    profile_id,
-                    contact_number,
-                    profile_image,
-                    birth_date,
-                    gender,
-                    civil_status,
-                    religion,
-                    province,
-                    municipality,
-                    barangay,
-                    address,
-                    landmark,
-                    bio,
-                    education_level,
-                    experience_years,
-                    employment_type,
-                    work_schedule,
-                    expected_salary,
-                    salary_period,
-                    verification_status,
-                    rating_average,
-                    rating_count,
-                    custom_jobs,
-                    custom_skills,
-                    created_at,
-                    updated_at
-                FROM helper_profiles
-                WHERE user_id = ?";
+    // contact_number is read from users.phone (single source of truth) but kept
+    // under the same key so the app and API shape are unchanged.
+    // See migration_2026_08_06_phone_normalization.sql.
+    $profileSql = "SELECT
+                    hp.profile_id,
+                    u.phone AS contact_number,
+                    hp.profile_image,
+                    hp.birth_date,
+                    hp.gender,
+                    hp.civil_status,
+                    hp.religion,
+                    hp.province,
+                    hp.municipality,
+                    hp.barangay,
+                    hp.address,
+                    hp.landmark,
+                    hp.bio,
+                    hp.education_level,
+                    hp.experience_years,
+                    hp.employment_type,
+                    hp.work_schedule,
+                    hp.expected_salary,
+                    hp.salary_period,
+                    hp.verification_status,
+                    hp.rating_average,
+                    hp.rating_count,
+                    hp.custom_jobs,
+                    hp.custom_skills,
+                    hp.created_at,
+                    hp.updated_at
+                FROM helper_profiles hp
+                INNER JOIN users u ON u.user_id = hp.user_id
+                WHERE hp.user_id = ?";
     
     $profileStmt = $conn->prepare($profileSql);
     $profileStmt->bind_param("i", $user_id);

@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
 import { useHelperProfile } from '@/hooks/helper';
 import { HelperTabBar } from '@/components/helper/home';
-import { NotificationModal } from '@/components/shared';
+import { NotificationModal, DocumentStatusTag, AiScanTag } from '@/components/shared';
 import { ValidIdUploadCard } from '@/components/shared/ValidIdUploadCard';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { useProfileTheme } from './profile.theme';
@@ -302,23 +302,10 @@ export default function DocumentsScreen() {
                       <Text style={c.name}>{slot.type}</Text>
                       {uploaded ? (
                         <View style={c.statusLine}>
-                          <View style={[
-                            c.pill,
-                            isVerified ? c.pillVerified : isRejected ? c.pillRejected : c.pillPending,
-                          ]}>
-                            <Text style={[
-                              c.pillText,
-                              isVerified ? { color: GREEN } : isRejected ? { color: '#DC2626' } : { color: '#B45309' },
-                            ]}>
-                              {isVerified ? 'Verified ✓' : isRejected ? 'Rejected' : 'Pending'}
-                            </Text>
-                          </View>
-                          {scanned ? (
-                            <View style={c.aiPill}>
-                              <Ionicons name="sparkles" size={10} color={ORANGE} />
-                              <Text style={c.aiPillText}>AI {scanStatus === 'Passed' ? 'verified' : 'checked'}</Text>
-                            </View>
-                          ) : null}
+                          {/* Names PESO explicitly — "Verified" alone read as if
+                              the app or the AI had cleared the document. */}
+                          <DocumentStatusTag status={doc?.status} compact />
+                          <AiScanTag status={scanStatus} compact />
                         </View>
                       ) : (
                         <Text style={c.desc}>{slot.desc}</Text>

@@ -17,6 +17,7 @@ import { HelperTabBar } from '@/components/helper/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { DocumentAIScan, ScanResult } from '@/components/shared/DocumentAIScan';
 import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
+import { isPdfDocument } from '@/lib/documentType';
 import { useProfileTheme } from './profile.theme';
 import { createStyles } from './document-detail.styles';
 
@@ -182,12 +183,15 @@ export default function DocumentDetailScreen() {
   );
   const stepIndex  = computeStep(docStatus ?? '', scanned);
   const rejectReason = aiReason || rejection_reason;
-  const isPdf      = file_url.toLowerCase().endsWith('.pdf');
+  // Detected from file_path, not file_url — the served URL is a signed
+  // serve_document.php link that never ends in ".pdf". See lib/documentType.ts.
+  const isPdf      = isPdfDocument(file_path, file_url);
   const hasImage   = !!file_url && !isPdf;
   // Back side (Valid ID). When present, the preview can flip between sides.
-  const hasBack     = !!file_url_back && !file_url_back.toLowerCase().endsWith('.pdf');
+  const backIsPdf   = isPdfDocument(file_path_back, file_url_back);
+  const hasBack     = !!file_url_back && !backIsPdf;
   const shownUrl    = imgSide === 'back' && hasBack ? file_url_back : file_url;
-  const shownIsPdf  = shownUrl.toLowerCase().endsWith('.pdf');
+  const shownIsPdf  = imgSide === 'back' && hasBack ? backIsPdf : isPdf;
   const shownHasImage = !!shownUrl && !shownIsPdf;
 
   const uploadedLabel = uploaded_at
@@ -504,6 +508,7 @@ export default function DocumentDetailScreen() {
         visible={!!zoomUri}
         uri={zoomUri}
         title={`${document_type}${hasBack ? ` — ${imgSide === 'front' ? 'Front' : 'Back'}` : ''}`}
+        isPdf={shownIsPdf}
         onClose={() => setZoomUri(null)}
       />
       <ConfirmationModal

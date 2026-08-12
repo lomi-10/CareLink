@@ -125,6 +125,10 @@ try {
         LEFT JOIN job_applications ja
             ON jp.job_post_id = ja.job_post_id AND ja.helper_id = ? AND ja.status != 'Withdrawn'
         WHERE jp.status = 'Open'
+          -- Direct-hire offers are private to one invited helper; they must
+          -- never surface in general discovery. See
+          -- database/migration_2026_08_06_direct_hire.sql.
+          AND jp.visibility = 'public'
           AND (jp.expires_at IS NULL OR jp.expires_at >= NOW())
           AND ja.application_id IS NULL
         ORDER BY jp.posted_at DESC

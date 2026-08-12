@@ -569,8 +569,13 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
   };
 
   // ── Guided "Start here" — highlight the next incomplete section ─────────────
+  // Must agree with lib/parentProfileCompletion.ts, which the home-screen setup
+  // guide reads. Contact number is NOT treated as optional here any more: names
+  // come from signup and are always present, so ticking "Personal Information"
+  // on names alone meant this section was green from the moment the account
+  // existed — while the guide correctly said the details were incomplete.
   const sectionDone: Record<SectionKey, boolean> = {
-    personal:  !!(firstName.trim() && lastName.trim()), // contact number is optional
+    personal:  !!(firstName.trim() && lastName.trim() && contactNumber.trim()),
     address:   !!(province.trim() && municipality.trim() && barangay.trim()),
     household: !!householdType,
   };

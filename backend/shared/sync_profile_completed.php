@@ -6,6 +6,49 @@
  * endpoints, so uploading a single document (e.g. just a Valid ID) can no
  * longer flip verification_status to 'Pending' on its own.
  */
+/**
+ * The documents an account must have on file before PESO can verify it.
+ *
+ * Valid ID proves who they are; Barangay Clearance places them in a community
+ * a PESO officer can check with. Police Clearance and TESDA NC2 are optional
+ * credentials that strengthen a profile but cannot stand in for identity.
+ */
+if (!defined('CARELINK_REQUIRED_DOCUMENT_TYPES')) {
+    define('CARELINK_REQUIRED_DOCUMENT_TYPES', ['Valid ID', 'Barangay Clearance']);
+}
+
+/**
+ * Which required documents this account is missing.
+ *
+ * Returns the human-readable names, so callers can say exactly what is absent
+ * instead of a generic "documents incomplete".
+ *
+ * @return string[] empty when nothing is missing
+ */
+function carelink_missing_required_documents(mysqli $conn, int $user_id): array
+{
+    $required = CARELINK_REQUIRED_DOCUMENT_TYPES;
+
+    $stmt = $conn->prepare(
+        "SELECT DISTINCT document_type
+           FROM user_documents
+          WHERE user_id = ?
+            AND status IN ('Pending', 'Verified')"
+    );
+    // A lookup failure must not silently report "nothing missing" — that is the
+    // failure mode that let unverified accounts through in the first place.
+    if (!$stmt) return $required;
+
+    $stmt->bind_param('i', $user_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $onFile = [];
+    while ($row = $res->fetch_assoc()) $onFile[] = (string) $row['document_type'];
+    $stmt->close();
+
+    return array_values(array_diff($required, $onFile));
+}
+
 function carelink_has_required_documents(mysqli $conn, int $user_id): bool
 {
     $stmt = $conn->prepare(
@@ -35,7 +78,8 @@ function carelink_sync_helper_profile_completed(mysqli $conn, int $user_id): boo
 {
     $sql = "
         SELECT u.username,
-               hp.contact_number, hp.province, hp.municipality, hp.barangay, hp.bio, hp.profile_id
+               u.phone AS contact_number,
+               hp.province, hp.municipality, hp.barangay, hp.bio, hp.profile_id
         FROM users u
         INNER JOIN helper_profiles hp ON hp.user_id = u.user_id
         WHERE u.user_id = ?
@@ -119,8 +163,10 @@ function carelink_sync_helper_profile_completed(mysqli $conn, int $user_id): boo
 function carelink_sync_parent_profile_completed(mysqli $conn, int $user_id): bool
 {
     $sql = "
-        SELECT pp.contact_number, pp.province, pp.municipality, pp.barangay, pp.bio, pp.profile_id
+        SELECT u.phone AS contact_number,
+               pp.province, pp.municipality, pp.barangay, pp.bio, pp.profile_id
         FROM parent_profiles pp
+        INNER JOIN users u ON u.user_id = pp.user_id
         WHERE pp.user_id = ?
         LIMIT 1
     ";

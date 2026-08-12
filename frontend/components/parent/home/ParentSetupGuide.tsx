@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { BROWN, DARK, MUTED, SUBTLE, GREEN, SUCCESS_BG, DIVIDER, SURFACE, ICON_BG } from './parentWarmTheme';
+import { parentProfileCompletion } from '@/lib/parentProfileCompletion';
 
 type Step = {
   key: string;
@@ -23,28 +24,31 @@ type Step = {
 export function ParentSetupGuide({ profileData, firstName }: { profileData: any; firstName?: string }) {
   const router = useRouter();
 
-  const p = profileData?.profile;
-  const household = profileData?.household;
-  const docs: any[] = profileData?.documents ?? [];
-  const hasDoc = (t: string) => docs.some((d) => d?.document_type === t);
-
-  const personalDone = !!(p?.contact_number && p?.address);
-  const householdDone = !!household?.household_type;
-  const docsDone = hasDoc('Valid ID') && hasDoc('Barangay Clearance');
+  // Completion comes from ONE shared source (lib/parentProfileCompletion.ts).
+  // This screen and the Edit Profile modal used to compute it separately and
+  // disagreed — the guide asked you to "complete your details" while the modal
+  // showed every section already ticked. The steps below now map one-for-one
+  // onto that modal's sections, so a tick means the same thing in both places.
+  const done = parentProfileCompletion(profileData);
 
   const steps: Step[] = [
     {
-      key: 'personal', title: 'Complete your details', icon: 'person', done: personalDone,
-      instruction: 'Your contact number and home address — so helpers and PESO can reach you.',
+      key: 'personal', title: 'Add your contact number', icon: 'person', done: done.personal,
+      instruction: 'So helpers and PESO can reach you about your job posts.',
       route: '/(parent)/profile/personal',
     },
     {
-      key: 'household', title: 'Add your household info', icon: 'home', done: householdDone,
+      key: 'address', title: 'Add your home address', icon: 'location', done: done.address,
+      instruction: 'Your province, municipality and barangay — this is how we match you with helpers nearby.',
+      route: '/(parent)/profile/address',
+    },
+    {
+      key: 'household', title: 'Add your household info', icon: 'home', done: done.household,
       instruction: 'Tell helpers about your home — housing type, family size, and pets. This helps us match the right helper.',
       route: '/(parent)/profile/household',
     },
     {
-      key: 'documents', title: 'Upload your documents', icon: 'shield-checkmark', done: docsDone,
+      key: 'documents', title: 'Upload your documents', icon: 'shield-checkmark', done: done.documents,
       instruction: 'Upload your Valid ID and Barangay Clearance. PESO reviews these to verify your household.',
       route: '/(parent)/profile/documents',
     },
@@ -58,7 +62,7 @@ export function ParentSetupGuide({ profileData, firstName }: { profileData: any;
 
   // The guide is only for getting set up. Once everything's done — or once PESO
   // has verified the account — it disappears so verified users aren't nagged.
-  const verified = p?.verification_status === 'Verified';
+  const verified = profileData?.profile?.verification_status === 'Verified';
   if (allDone || verified) return null;
 
   return (

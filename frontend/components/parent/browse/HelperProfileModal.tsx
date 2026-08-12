@@ -22,6 +22,8 @@ interface Props {
   visible: boolean;
   helper: HelperProfile | null;
   onInvite?: () => void;
+  /** Open the direct-hire offer form for this helper. */
+  onDirectHire?: () => void;
   onSave?: () => void;
   onMessage?: () => void;
   onReport?: () => void;
@@ -60,7 +62,7 @@ function whRange(start: string, end?: string | null): string {
   return end ? `${fmt(start)} – ${fmt(end)}` : `${fmt(start)} – Present`;
 }
 
-export function HelperProfileModal({ visible, helper, onInvite, onSave, onMessage, onReport, onClose, referenceJob, match }: Props) {
+export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, onSave, onMessage, onReport, onClose, referenceJob, match }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
   useEffect(() => {
@@ -418,6 +420,14 @@ export function HelperProfileModal({ visible, helper, onInvite, onSave, onMessag
               <TouchableOpacity style={st.shortlistBtn} onPress={onSave} activeOpacity={0.8}>
                 <Ionicons name="star-outline" size={18} color={BROWN} />
                 <Text style={st.shortlistBtnText}>Shortlist</Text>
+              </TouchableOpacity>
+            )}
+            {/* For an employer who already knows they want this helper and
+                doesn't need to publish a post and wait for applicants. */}
+            {onDirectHire && (
+              <TouchableOpacity style={st.shortlistBtn} onPress={onDirectHire} activeOpacity={0.8}>
+                <Ionicons name="briefcase-outline" size={18} color={BROWN} />
+                <Text style={st.shortlistBtnText}>Hire Directly</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity style={st.inviteBtn} onPress={onInvite ?? onClose} activeOpacity={0.8}>

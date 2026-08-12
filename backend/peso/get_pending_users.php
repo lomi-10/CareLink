@@ -56,7 +56,7 @@ try {
                 CONCAT(u.first_name, ' ', IFNULL(u.middle_name, ''), ' ', u.last_name) as name,
                 u.user_type,
                 COALESCE(h.profile_image, p.profile_image) as profile_image,
-                COALESCE(h.contact_number, p.contact_number) as contact_number,
+                u.phone as contact_number,
                 CASE
                     WHEN COALESCE(u.profile_completed, 0) = 1
                          AND COALESCE(h.verification_status, p.verification_status, 'Unverified') = 'Unverified'
@@ -81,7 +81,7 @@ try {
                   u.user_type = 'helper'
                   AND h.profile_id IS NOT NULL
                   AND COALESCE(u.username,'') <> '' AND CHAR_LENGTH(u.username) >= 3
-                  AND COALESCE(h.contact_number,'') <> ''
+                  AND COALESCE(u.phone,'') <> ''
                   AND COALESCE(h.province,'') <> ''
                   AND COALESCE(h.municipality,'') <> ''
                   AND COALESCE(h.barangay,'') <> ''
@@ -97,7 +97,7 @@ try {
                 OR (
                   u.user_type = 'parent'
                   AND p.profile_id IS NOT NULL
-                  AND COALESCE(p.contact_number,'') <> ''
+                  AND COALESCE(u.phone,'') <> ''
                   AND COALESCE(p.province,'') <> ''
                   AND COALESCE(p.municipality,'') <> ''
                   AND COALESCE(p.barangay,'') <> ''

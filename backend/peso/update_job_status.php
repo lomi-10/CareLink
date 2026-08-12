@@ -65,14 +65,28 @@ try {
     $module    = 'PESO Job Verification';
     peso_audit_verification($conn, $verified_by, $logAction, $module, $job_id);
 
+    // A direct-hire offer is held back from the helper until this moment — it
+    // is only now that PESO has confirmed the terms are lawful. Both calls are
+    // no-ops for ordinary public posts, so this is safe to run unconditionally.
+    // See shared/direct_hire.php.
+    require_once '../shared/direct_hire.php';
+    $deliveredDirectHire = false;
+    if ($status === 'Open') {
+        $deliveredDirectHire = carelink_deliver_direct_hire_offer($conn, $job_id);
+    } else {
+        carelink_cancel_direct_hire_offer($conn, $job_id);
+    }
+
     // Notify the parent about their job post decision
     require_once '../shared/create_notification.php';
     $jobRow = $conn->query("SELECT title, parent_id FROM job_posts WHERE job_post_id = $job_id")->fetch_assoc();
     if ($jobRow) {
         if ($status === 'Open') {
             createNotification($conn, (int)$jobRow['parent_id'], 'job_verified',
-                'Job Post Approved ✅',
-                'Your job post "' . $jobRow['title'] . '" has been verified by PESO and is now live.',
+                $deliveredDirectHire ? 'Direct Hire Offer Approved ✅' : 'Job Post Approved ✅',
+                $deliveredDirectHire
+                    ? 'PESO approved your direct hire offer "' . $jobRow['title'] . '". The helper has received it and can now accept or decline.'
+                    : 'Your job post "' . $jobRow['title'] . '" has been verified by PESO and is now live.',
                 'job', $job_id);
         } else {
             $reasonText = $reason ? ' Reason: ' . $reason : '';

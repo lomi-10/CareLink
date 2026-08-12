@@ -1,19 +1,38 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
+export type CareBotAction = { label: string; route: string };
+
+export type CareBotLine = {
+  id: string;
+  text: string;
+  createdAt: number;
+  side: 'user' | 'bot';
+  actions?: CareBotAction[];
+};
+
 type CareBotContextValue = {
   isOpen: boolean;
-  /**
-   * Increments only when the conversation should actually restart — on
-   * logout, not on every open/close. Opening and closing the panel used to
-   * wipe the transcript each time (it bumped what was then called
-   * `sessionKey` on every `open()`), so the conversation never survived past
-   * a single glance at the FAB. The chat panel itself stays mounted for the
-   * whole app session (RN's <Modal> doesn't unmount hidden children), so as
-   * long as nothing forces a reseed, the transcript already persists.
-   */
-  resetNonce: number;
   open: () => void;
   close: () => void;
+
+  /**
+   * The conversation lives HERE, not in the chat panel.
+   *
+   * React Native's <Modal> renders nothing while `visible` is false, so the
+   * panel inside it is fully unmounted every time CareBot is closed — taking
+   * any local useState with it. That is why the transcript kept vanishing on
+   * close even after the reset-on-open bug was fixed: nothing was resetting
+   * it, the component holding it simply ceased to exist.
+   *
+   * Holding it in the provider (which sits above the modal and never
+   * unmounts) is what actually makes a conversation survive being closed and
+   * reopened. It is cleared only on logout, via resetChat().
+   */
+  lines: CareBotLine[];
+  setLines: React.Dispatch<React.SetStateAction<CareBotLine[]>>;
+  draft: string;
+  setDraft: React.Dispatch<React.SetStateAction<string>>;
+
   /** Call on logout so the next signed-in user starts a fresh conversation. */
   resetChat: () => void;
 };
@@ -22,23 +41,20 @@ const CareBotContext = createContext<CareBotContextValue | null>(null);
 
 export function CareBotProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [resetNonce, setResetNonce] = useState(0);
+  const [lines, setLines] = useState<CareBotLine[]>([]);
+  const [draft, setDraft] = useState('');
 
-  const open = useCallback(() => {
-    setIsOpen(true);
-  }, []);
-
-  const close = useCallback(() => {
-    setIsOpen(false);
-  }, []);
+  const open = useCallback(() => setIsOpen(true), []);
+  const close = useCallback(() => setIsOpen(false), []);
 
   const resetChat = useCallback(() => {
-    setResetNonce((k) => k + 1);
+    setLines([]);
+    setDraft('');
   }, []);
 
   const value = useMemo(
-    () => ({ isOpen, resetNonce, open, close, resetChat }),
-    [isOpen, resetNonce, open, close, resetChat],
+    () => ({ isOpen, open, close, lines, setLines, draft, setDraft, resetChat }),
+    [isOpen, open, close, lines, draft, resetChat],
   );
 
   return <CareBotContext.Provider value={value}>{children}</CareBotContext.Provider>;

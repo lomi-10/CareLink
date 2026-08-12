@@ -7,6 +7,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { DocumentStatusTag, AiScanTag } from './DocumentStatusTag';
 
 type PaletteKey = 'helper' | 'parent';
 
@@ -64,17 +65,10 @@ export function ValidIdUploadCard({
           <Text style={[st.name, { color: t.ink }]}>Valid ID</Text>
           {any ? (
             <View style={st.statusLine}>
-              <View style={[st.pill, { backgroundColor: isVerified ? '#D1FAE5' : isRejected ? '#FECACA' : '#FEF3C7' }]}>
-                <Text style={[st.pillText, { color: isVerified ? '#059669' : isRejected ? '#DC2626' : '#B45309' }]}>
-                  {isVerified ? 'Verified ✓' : isRejected ? 'Rejected' : 'Pending'}
-                </Text>
-              </View>
-              {scanned ? (
-                <View style={[st.aiPill, { backgroundColor: t.aiBg }]}>
-                  <Ionicons name="sparkles" size={10} color={t.accent} />
-                  <Text style={[st.aiPillText, { color: t.accent }]}>AI {scan === 'Passed' ? 'verified' : 'checked'}</Text>
-                </View>
-              ) : null}
+              {/* Names PESO explicitly — "Verified" alone read as if the app or
+                  the AI pre-scan had cleared the document. */}
+              <DocumentStatusTag status={status} compact />
+              <AiScanTag status={scan} compact />
             </View>
           ) : (
             <Text style={[st.desc, { color: t.muted }]}>Government ID — upload the front and back separately.</Text>

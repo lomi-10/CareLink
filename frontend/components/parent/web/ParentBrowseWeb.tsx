@@ -20,6 +20,7 @@ import { MatchBreakdown } from './MatchBreakdown';
 import { useCareBot } from '@/contexts/CareBotContext';
 import { NotificationModal, SubmitComplaintModal } from '@/components/shared';
 import { FilterModal } from '@/components/parent/browse';
+import { DirectHirePanel } from './DirectHirePanel';
 import { ParentTopNav } from './ParentTopNav';
 import { pt, ACCENT_GRADIENT } from './parentWebTheme';
 
@@ -31,7 +32,8 @@ const fmtPeriod = (p?: string) => { const l = (p ?? '').toLowerCase(); return l.
 type Tab = 'overview' | 'experience' | 'skills' | 'documents';
 type Panel =
   | { mode: 'profile'; helper: HelperProfile; tab: Tab; job: JobPost | null }
-  | { mode: 'invite'; helper: HelperProfile };
+  | { mode: 'invite'; helper: HelperProfile }
+  | { mode: 'directhire'; helper: HelperProfile };
 
 const CAT_ICON = (name: string): keyof typeof Ionicons.glyphMap => {
   const c = (name || '').toLowerCase();
@@ -246,7 +248,7 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
         {panel ? (
           <View style={s.panel}>
             <View style={s.panelHead}>
-              {panel.mode === 'invite' ? (
+              {panel.mode === 'invite' || panel.mode === 'directhire' ? (
                 <Pressable onPress={() => setPanel({ mode: 'profile', helper: panel.helper, tab: 'overview', job: bestJobForHelper(panel.helper, openJobs) })} style={({ hovered }: any) => [s.panelBack, TRANS, hovered && { opacity: 0.7 }]}>
                   <Ionicons name="arrow-back" size={17} color={pt.accent} /><Text style={s.panelBackText}>Back to Profile</Text>
                 </Pressable>
@@ -261,8 +263,17 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
                   tab={panel.tab}
                   onTab={(t) => setPanel((cur) => (cur && cur.mode === 'profile' ? { ...cur, tab: t } : cur))}
                   onInvite={() => setPanel({ mode: 'invite', helper: panel.helper })}
+                  onDirectHire={() => setPanel({ mode: 'directhire', helper: panel.helper })}
                   onMessage={() => messageHelper(panel.helper)}
                   onReport={() => setComplaint(panel.helper)}
+                />
+              )}
+              {/* Inline, in the same pane — no pop-up, matching InvitePanel. */}
+              {panel.mode === 'directhire' && (
+                <DirectHirePanel
+                  helper={panel.helper}
+                  onBack={() => setPanel({ mode: 'profile', helper: panel.helper, tab: 'overview', job: bestJobForHelper(panel.helper, openJobs) })}
+                  onSent={(name) => { setNotif({ visible: true, msg: `Offer for ${name} sent to PESO for review.`, type: 'success' }); refresh(); }}
                 />
               )}
               {panel.mode === 'invite' && (
@@ -374,8 +385,8 @@ function HelperGridCard({ helper, match, active, onView, onInvite }: { helper: H
 }
 
 // ─── Helper profile panel (4 tabs) ───
-function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onMessage, onReport }: {
-  helper: HelperProfile; referenceJob: any; tab: Tab; onTab: (t: Tab) => void; onInvite: () => void; onMessage: () => void; onReport: () => void;
+function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onDirectHire, onMessage, onReport }: {
+  helper: HelperProfile; referenceJob: any; tab: Tab; onTab: (t: Tab) => void; onInvite: () => void; onDirectHire: () => void; onMessage: () => void; onReport: () => void;
 }) {
   const h = helper as any;
   const match = computeHelperJobMatch(helper, referenceJob);
@@ -534,6 +545,9 @@ function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onMessage, o
       <View style={s.ppActions}>
         <Pressable onPress={onMessage} style={({ hovered }: any) => [s.msgBtn, TRANS, hovered && { borderColor: pt.accent, backgroundColor: pt.lineSoft }]}>
           <Ionicons name="chatbubble-outline" size={17} color={pt.ink} /><Text style={s.msgBtnText}>Message</Text>
+        </Pressable>
+        <Pressable onPress={onDirectHire} style={({ hovered }: any) => [s.msgBtn, TRANS, hovered && { borderColor: pt.accent, backgroundColor: pt.lineSoft }]}>
+          <Ionicons name="briefcase-outline" size={17} color={pt.ink} /><Text style={s.msgBtnText}>Hire Directly</Text>
         </Pressable>
         <Pressable onPress={onInvite} style={({ hovered, pressed }: any) => [{ flex: 1.4 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
           <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.inviteBtn}>

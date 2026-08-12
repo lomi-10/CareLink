@@ -75,7 +75,7 @@ try {
             c.payment_schedule, c.other_benefits, c.pdf_file_path,
             jp.title AS job_title, jp.start_date AS job_start_date, jp.category_id, jp.skill_ids AS job_skill_ids, jp.custom_skills AS job_custom_skills,
             rc.category_name,
-            u.first_name, u.last_name, u.email, hp.contact_number,
+            u.first_name, u.last_name, u.email, u.phone AS contact_number,
             hp.profile_id, hp.profile_image, hp.birth_date, hp.gender,
             hp.experience_years, hp.barangay, hp.municipality, hp.province, hp.latitude, hp.longitude,
             hp.education_level, hp.religion, hp.civil_status, hp.bio,

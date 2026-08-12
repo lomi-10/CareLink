@@ -15,6 +15,14 @@ oversight and compliant with the Kasambahay Law (RA 10361).
 **Industry:** HR Tech / Recruitment & Staffing — a **GovTech-enabled employment
 marketplace** for the domestic-work (care economy) sector.
 
+Mission:
+
+"To provide a secure and intuitive platform that directly connects household employers with local domestic helpers, making hiring and job placement safe, direct, and trusted."
+
+Vision:
+
+"To become the most trusted domestic hiring platform that protects the safety, privacy, and rights of both helpers and employers through transparent, mutually beneficial connections."
+
 ## Structure
 
 ```

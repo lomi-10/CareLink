@@ -6,14 +6,21 @@ import { Modal, View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Lin
 import { Ionicons } from '@expo/vector-icons';
 import { FontFamily } from '@/constants/GlobalStyles';
 
-export function ImageZoomModal({ visible, uri, title, onClose }: {
+export function ImageZoomModal({ visible, uri, title, onClose, isPdf: isPdfProp }: {
   visible: boolean;
   uri: string | null;
   title?: string;
   onClose: () => void;
+  /**
+   * Tell the viewer the file is a PDF. Needed because documents are served via
+   * a signed serve_document.php URL that never ends in ".pdf", so the guess
+   * below silently fails and the PDF gets rendered as an <Image> — a blank
+   * frame. Callers that know the stored path should always pass this.
+   */
+  isPdf?: boolean;
 }) {
   const [scale, setScale] = useState(1);
-  const isPdf = !!uri && uri.toLowerCase().split('?')[0].endsWith('.pdf');
+  const isPdf = isPdfProp ?? (!!uri && uri.toLowerCase().split('?')[0].endsWith('.pdf'));
   const clamp = (v: number) => Math.max(1, Math.min(4, v));
 
   // Reset zoom whenever a new image opens.

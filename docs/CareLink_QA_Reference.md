@@ -25,7 +25,7 @@ They request a password reset. The system generates a code, sends it to the veri
 
 ### PESO Verification
 
-**Q: Walk me through the PESO verification process.**
+**Q: Walk me through the PESO verification process.** 
 When a user completes their profile, they upload the required documents — helpers upload Valid ID, Barangay Clearance, and optionally Police Clearance and TESDA NC2. Parents upload Valid ID and Barangay Clearance. Every uploaded document is automatically pre-screened by Google Gemini Vision for clarity, name consistency with the profile, and document format. The pre-screening result is stored but does not approve or reject anything — it's an efficiency layer. The document then enters PESO's review queue. A PESO admin reviews each document manually, sees the pre-screening result as a hint, and approves or rejects with a reason. Once all required documents are approved, the account status becomes Verified and the user gets a PESO-Verified badge.
 
 **Q: Can users bypass PESO verification?**

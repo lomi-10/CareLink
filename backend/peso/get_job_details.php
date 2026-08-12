@@ -29,7 +29,7 @@ try {
             CONCAT(u.first_name, ' ', u.last_name)   AS parent_name,
             u.email                                   AS parent_email,
             u.created_at                              AS parent_since,
-            pp.contact_number                         AS parent_phone,
+            u.phone                                   AS parent_phone,
             pp.profile_image                          AS parent_photo,
             c.category_name,
             CONCAT(vu.first_name, ' ', vu.last_name)  AS verified_by_name,

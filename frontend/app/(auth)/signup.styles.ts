@@ -245,16 +245,17 @@ export const d = StyleSheet.create({
     flexGrow: 0,
     flexShrink: 0,
     borderRadius: 26,
-    padding: 36,
+    paddingHorizontal: 34,
+    paddingVertical: 28,
     ...Platform.select({ default: { boxShadow: '0 24px 70px rgba(0,0,0,0.45)' } as any }),
   },
 
-  title: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 26, marginBottom: 4, letterSpacing: -0.4 },
-  subtitle: { fontFamily: FontFamily.fredokaRegular, fontSize: 13.5, lineHeight: 20, marginBottom: 20 },
+  title: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 25, marginBottom: 3, letterSpacing: -0.4 },
+  subtitle: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, lineHeight: 19, marginBottom: 16 },
 
   pill: {
     flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
-    borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 22,
+    borderRadius: 999, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 7, marginBottom: 18,
   },
   pillText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13 },
 
@@ -276,12 +277,14 @@ export const d = StyleSheet.create({
   hint: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, marginTop: -10, marginBottom: 14 },
 
   // Compact inline password-requirement chips (replaces the tall mobile block).
-  pwReqsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16, marginTop: -4 },
+  // Deliberately small: five chips have to sit on one or two tidy rows inside a
+  // 620px card, and at the previous size the fifth orphaned onto its own line.
+  pwReqsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 16, marginTop: 2 },
   pwReqChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4,
   },
-  pwReqChipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11 },
+  pwReqChipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5 },
 
   consentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 20, marginTop: 4 },
   consentText: { flex: 1, fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, lineHeight: 18 },

@@ -19,6 +19,7 @@ import * as ExpoLinking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
+import { PlusWelcomeModal } from '@/components/parent/PlusWelcomeModal';
 
 const BROWN = '#8B5A2B';
 const GOLD = '#D9A441';
@@ -354,17 +355,13 @@ export default function SubscriptionScreen() {
         duration={2200}
         onClose={() => setNotif((n) => ({ ...n, visible: false }))}
       />
-      <NotificationModal
+      <PlusWelcomeModal
         visible={receiptOpen}
-        title="You're on CareLink Plus! 🎉"
-        message={
-          `Payment received — ₱${price}/month.\n\n`
-          + `${started ? `Started ${started}\n` : ''}`
-          + `${renews ? `Renews ${renews}\n` : ''}`
-          + `\nYou now have ${plus?.featured_credits ?? 3} boost credits, unlimited open job posts, and priority PESO review. Your receipt stays on this screen.`
-        }
-        type="success"
         onClose={() => setReceiptOpen(false)}
+        price={price}
+        started={started}
+        renews={renews}
+        credits={plus?.featured_credits ?? 3}
       />
     </View>
   );

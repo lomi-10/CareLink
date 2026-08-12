@@ -28,7 +28,7 @@ try {
             u.last_name,
             CONCAT(u.first_name, ' ', u.last_name) as helper_name,
             hp.profile_image,
-            hp.contact_number,
+            u.phone AS contact_number,
             hp.rating_average,
             hp.rating_count,
             GROUP_CONCAT(DISTINCT rc.category_name) as categories

@@ -17,6 +17,7 @@ import { ParentTabBar } from '@/components/parent/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
 import { DocumentAIScan } from '@/components/shared/DocumentAIScan';
 import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
+import { isPdfDocument } from '@/lib/documentType';
 import { DARK, MUTED, GREEN } from '@/components/parent/home/parentWarmTheme';
 import { s } from './document-detail.styles';
 
@@ -135,11 +136,16 @@ export default function DocumentDetailScreen() {
   }, [scanned, aiStatus, ai_extracted_data, ai_confidence_score, document_type, docStatus]);
   const stepIndex  = computeStep(docStatus ?? '', scanned);
   const rejectReason = aiReason || rejection_reason;
-  const isPdf      = file_url.toLowerCase().endsWith('.pdf');
+  // Detected from file_path, not file_url — the served URL is a signed
+  // serve_document.php link that never ends in ".pdf". See lib/documentType.ts.
+  const isPdf      = isPdfDocument(file_path, file_url);
   const hasImage   = !!file_url && !isPdf;
-  const hasBack     = !!file_url_back && !file_url_back.toLowerCase().endsWith('.pdf');
+  // The parent screen only carries one file_path, so the back side falls back
+  // to its own URL. Parent documents are single-file in practice.
+  const backIsPdf   = isPdfDocument(null, file_url_back);
+  const hasBack     = !!file_url_back && !backIsPdf;
   const shownUrl    = imgSide === 'back' && hasBack ? file_url_back : file_url;
-  const shownIsPdf  = shownUrl.toLowerCase().endsWith('.pdf');
+  const shownIsPdf  = imgSide === 'back' && hasBack ? backIsPdf : isPdf;
   const shownHasImage = !!shownUrl && !shownIsPdf;
 
   const uploadedLabel = uploaded_at
@@ -444,6 +450,7 @@ export default function DocumentDetailScreen() {
         visible={!!zoomUri}
         uri={zoomUri}
         title={`${document_type}${hasBack ? ` — ${imgSide === 'front' ? 'Front' : 'Back'}` : ''}`}
+        isPdf={shownIsPdf}
         onClose={() => setZoomUri(null)}
       />
       <ConfirmationModal

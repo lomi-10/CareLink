@@ -34,6 +34,7 @@ import {
 } from '@/components/parent/browse/';
 
 import { NotificationModal, LoadingSpinner, ConfirmationModal, SubmitComplaintModal } from '@/components/shared/';
+import { DirectHireOfferModal } from '@/components/parent/hire/DirectHireOfferModal';
 import { s, BG, BROWN, CARAMEL, DARK, MUTED, DIVIDER, ICON_BG } from './browse_helpers.styles';
 
 function getInitials(name?: string) {
@@ -86,6 +87,7 @@ export default function BrowseHelpers() {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [complaintOpen, setComplaintOpen] = useState(false);
+  const [directHireOpen, setDirectHireOpen] = useState(false);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [selectedHelper, setSelectedHelper] = useState<any>(null);
   const [notification, setNotification] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
@@ -130,9 +132,17 @@ export default function BrowseHelpers() {
         referenceJob={selectedHelper ? bestJobForHelper(selectedHelper, jobs) : referenceJob}
         match={selectedHelper ? computeHelperJobMatch(selectedHelper, bestJobForHelper(selectedHelper, jobs)) : null}
         onInvite={handleInviteFromProfile}
+        onDirectHire={() => { setProfileModalVisible(false); setDirectHireOpen(true); }}
         onMessage={handleMessageHelper}
         onReport={() => { setProfileModalVisible(false); setComplaintOpen(true); }}
         onClose={() => setProfileModalVisible(false)}
+      />
+      <DirectHireOfferModal
+        visible={directHireOpen}
+        onClose={() => setDirectHireOpen(false)}
+        helperId={selectedHelper ? Number(selectedHelper.user_id) : null}
+        helperName={(selectedHelper as any)?.full_name ?? (selectedHelper as any)?.helper_name}
+        onSent={() => setNotification({ visible: true, message: 'Offer sent to PESO for review.', type: 'success' })}
       />
       <SubmitComplaintModal
         visible={complaintOpen}

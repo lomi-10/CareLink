@@ -75,7 +75,7 @@ try {
             u.first_name, u.middle_name, u.last_name,
             CONCAT(u.first_name, ' ', u.last_name) as helper_name,
             hp.profile_image as helper_photo,
-            hp.contact_number as helper_contact_number,
+            u.phone as helper_contact_number,
             hp.gender as helper_gender,
             TIMESTAMPDIFF(YEAR, hp.birth_date, CURDATE()) as helper_age,
             hp.experience_years as helper_experience_years,

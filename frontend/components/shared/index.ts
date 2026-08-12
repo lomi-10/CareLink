@@ -1,6 +1,7 @@
 export { NotificationModal } from './NotificationModal';
 export { NotificationDetailModal } from './NotificationDetailModal';
 export { FeedbackScreen } from './FeedbackScreen';
+export { DocumentStatusTag, AiScanTag } from './DocumentStatusTag';
 export { LoadingSpinner } from './LoadingSpinner';
 export { ConfirmationModal } from './ConfirmationModal';
 export { EndEmploymentModal } from './EndEmploymentModal';

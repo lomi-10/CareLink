@@ -49,13 +49,11 @@ try {
         }
     }
 
-    // contact_number is selected but never returned — see the response mapping
-    // below for why. Kept in the SELECT only so nothing downstream that reads
-    // $row breaks; drop it too if you confirm nothing else touches it.
+    // No contact columns here at all — see the response mapping below.
     $query = "
         SELECT
             u.user_id, u.first_name, u.last_name, u.email,
-            hp.profile_id, hp.contact_number, hp.profile_image, hp.birth_date, hp.gender,
+            hp.profile_id, hp.profile_image, hp.birth_date, hp.gender,
             hp.experience_years, hp.employment_type, hp.work_schedule,
             hp.expected_salary, hp.salary_period, hp.barangay, hp.municipality, hp.province,
             hp.education_level, hp.religion, hp.civil_status,

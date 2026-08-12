@@ -101,7 +101,7 @@ try {
             u.status as parent_account_status,
             u.email as parent_email,
             rc.category_name,
-            pp.contact_number as parent_contact_number,
+            u.phone as parent_contact_number,
             pp.profile_image as parent_profile_image,
             pp.barangay as parent_barangay,
             pp.municipality as parent_municipality,
@@ -124,7 +124,7 @@ try {
         LEFT JOIN ref_categories rc ON jp.category_id = rc.category_id
         LEFT JOIN saved_jobs sj ON jp.job_post_id = sj.job_post_id AND sj.helper_id = ?
         LEFT JOIN job_applications myapp ON myapp.job_post_id = jp.job_post_id AND myapp.helper_id = ?
-        WHERE jp.status = 'Open' AND (jp.expires_at IS NULL OR jp.expires_at >= NOW())
+        WHERE jp.status = 'Open' AND jp.visibility = 'public' AND (jp.expires_at IS NULL OR jp.expires_at >= NOW())
         ORDER BY jp.posted_at DESC
     ";
 
