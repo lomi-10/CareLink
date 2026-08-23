@@ -29,6 +29,16 @@ try {
     }
 
     $uid = isset($_GET['peso_user_id']) ? (int) $_GET['peso_user_id'] : 0;
+    // Closed cases stay reachable. An officer needs to reopen a resolved case
+    // to place a public marking on it, and the old query hid every case that
+    // was not currently escalated.
+    $filter = isset($_GET['filter']) ? trim((string) $_GET['filter']) : 'open';
+    // Built here, not interpolated as a PHP expression inside the SQL string —
+    // "$filter === 'all'" inside a double-quoted query would have been
+    // sent to MySQL as the literal text "open === 'all'".
+    $whereClause = $filter === 'all'
+        ? "WHERE c.status IN ('Escalated_PESO', 'Resolved', 'Dismissed', 'Under Review')"
+        : "WHERE c.status = 'Escalated_PESO'";
     if ($uid <= 0) {
         out(false, 'peso_user_id required');
     }
@@ -51,7 +61,7 @@ try {
         FROM complaints c
         INNER JOIN users u ON u.user_id = c.complainant_id
         LEFT JOIN users r ON r.user_id = c.respondent_id
-        WHERE c.status = 'Escalated_PESO'
+        $whereClause
         ORDER BY c.forwarded_at DESC, c.created_at DESC
         LIMIT 200
     ";

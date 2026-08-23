@@ -55,13 +55,10 @@ export default function ViewUserProfile() {
     actionLabel: undefined as string | undefined,
   });
 
-  // ── parent job posts ────────────────────────────────────────────────────
-  const [parentJobs, setParentJobs]             = useState<any[]>([]);
-  const [parentJobsLoading, setParentJobsLoading] = useState(false);
-  const [processingJobId, setProcessingJobId]   = useState<number | null>(null);
-  const [rejectJobModal, setRejectJobModal]      = useState(false);
-  const [rejectJobReason, setRejectJobReason]   = useState("");
-  const [rejectingJob, setRejectingJob]         = useState<any>(null);
+  // The "Job Posts" section was removed here on PESO's feedback — job posts are
+  // reviewed on the dedicated Job Verification screen, which has the compliance
+  // checklist this screen never had. See components/peso/UserDetailPanel.tsx
+  // (the desktop twin of this screen) for the full reasoning.
 
   // ─── always-computed derived state (never conditional) ───────────────────
   const user             = userData?.user             ?? ({} as any);
@@ -125,13 +122,6 @@ export default function ViewUserProfile() {
     fetchUserDetails();
   }, []);
 
-  // Fetch parent's job posts whenever userData is loaded and user is a parent
-  useEffect(() => {
-    if (userData && userData.user?.user_type === "parent" && userIdParam) {
-      fetchParentJobs();
-    }
-  }, [userData]);
-
   const fetchUserDetails = async () => {
     try {
       setLoading(true);
@@ -156,69 +146,6 @@ export default function ViewUserProfile() {
     } finally { setLoading(false); }
   };
 
-  const fetchParentJobs = async () => {
-    try {
-      setParentJobsLoading(true);
-      const res  = await fetch(`${API_URL}/peso/get_jobs_for_verification.php?parent_id=${encodeURIComponent(String(userIdParam))}`);
-      const data = await res.json();
-      if (data.success) setParentJobs(data.data ?? []);
-    } catch { /* silent – jobs section just stays empty */ }
-    finally  { setParentJobsLoading(false); }
-  };
-
-  const handleApproveJob = (job: any) => {
-    showNotif(
-      "info",
-      "Approve Job Post",
-      `Approve "${job.title}"? It will become visible to helpers.`,
-      "Approve",
-      async () => {
-        try {
-          setProcessingJobId(job.job_post_id);
-          const res  = await fetch(`${API_URL}/peso/update_job_status.php`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ job_post_id: job.job_post_id, status: "Open", verified_by: verifierId }),
-          });
-          const data = await res.json();
-          if (data.success) {
-            setParentJobs((prev) =>
-              prev.map((j) => j.job_post_id === job.job_post_id ? { ...j, status: "Open" } : j)
-            );
-            showNotif("success", "Job Approved", "This job post is now live for helpers.");
-          } else {
-            showNotif("error", "Failed", data.message || "Failed to approve job.");
-          }
-        } catch { showNotif("error", "Error", "Network error occurred."); }
-        finally   { setProcessingJobId(null); }
-      }
-    );
-  };
-
-  const handleRejectJob = async () => {
-    if (!rejectJobReason.trim()) { showNotif("warning", "Reason required", "Please provide a rejection reason."); return; }
-    try {
-      setProcessingJobId(rejectingJob.job_post_id);
-      const res  = await fetch(`${API_URL}/peso/update_job_status.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_post_id: rejectingJob.job_post_id, status: "Rejected", reason: rejectJobReason, verified_by: verifierId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setParentJobs((prev) =>
-          prev.map((j) => j.job_post_id === rejectingJob.job_post_id ? { ...j, status: "Rejected", rejection_reason: rejectJobReason } : j)
-        );
-        setRejectJobModal(false);
-        setRejectingJob(null);
-        setRejectJobReason("");
-        showNotif("success", "Job Rejected", "The parent will be notified to revise their posting.");
-      } else {
-        showNotif("error", "Failed", data.message || "Failed to reject job.");
-      }
-    } catch { showNotif("error", "Error", "Network error occurred."); }
-    finally   { setProcessingJobId(null); }
-  };
 
   // ─── helpers ──────────────────────────────────────────────────────────────
   const showNotif = (
@@ -468,7 +395,7 @@ export default function ViewUserProfile() {
                 <View style={[styles.pill, { backgroundColor: roleAccentSoft, borderColor: roleAccent + "44" }]}>
                   <Ionicons name={isHelper ? "briefcase-outline" : "people-outline"} size={12} color={roleAccent} />
                   <Text style={[styles.pillText, { color: roleAccent }]}>
-                    {isHelper ? "Helper" : "Parent"}
+                    {isHelper ? "Helper" : "Household Employer"}
                   </Text>
                 </View>
                 {user.created_at && (
@@ -722,101 +649,6 @@ export default function ViewUserProfile() {
           )}
         </SectionCard>
 
-        {/* ── JOB POSTS (parents only) ── */}
-        {!isHelper && (
-          <SectionCard title="Job Posts" icon="briefcase-outline">
-            {parentJobsLoading ? (
-              <View style={{ alignItems: "center", paddingVertical: 24 }}>
-                <ActivityIndicator size="small" color={c.accent} />
-                <Text style={[styles.emptyLine, { marginTop: 8 }]}>Loading job posts…</Text>
-              </View>
-            ) : parentJobs.length === 0 ? (
-              <View style={styles.noDocWrap}>
-                <Ionicons name="briefcase-outline" size={40} color={c.subtle} />
-                <Text style={styles.noDocText}>No job posts yet</Text>
-              </View>
-            ) : (
-              parentJobs.map((job: any) => {
-                const isPendingJob  = job.status === "Pending";
-                const isApproved    = job.status === "Open";
-                const isRejectedJob = job.status === "Rejected";
-                const jobBg   = isApproved ? c.okSoft : isRejectedJob ? c.badSoft  : c.warnSoft;
-                const jobText = isApproved ? c.ok      : isRejectedJob ? c.bad       : c.warn;
-                const jobBorder = isApproved ? c.ok + "44" : isRejectedJob ? c.bad + "44" : c.line;
-                const isProcessing = processingJobId === job.job_post_id;
-
-                return (
-                  <View key={String(job.job_post_id)} style={[styles.docCard, { borderColor: jobBorder, marginBottom: 12 }]}>
-                    <View style={styles.docCardTop}>
-                      <View style={[styles.docIconWrap, { backgroundColor: jobBg }]}>
-                        <Ionicons name="briefcase" size={20} color={jobText} />
-                      </View>
-                      <View style={styles.docInfo}>
-                        <Text style={styles.docTitle} numberOfLines={2}>{job.title}</Text>
-                        <Text style={styles.docSub}>{job.custom_category || job.category_name || "General"}</Text>
-                        <Text style={styles.docDate}>
-                          Posted {new Date(job.posted_at).toLocaleDateString("en-PH", { dateStyle: "medium" })}
-                          {" · "}₱{Number(job.salary_offered).toLocaleString()}/{job.salary_period}
-                        </Text>
-                      </View>
-                      <View style={[styles.docStatusPill, { backgroundColor: jobBg }]}>
-                        <Ionicons
-                          name={isApproved ? "checkmark-circle" : isRejectedJob ? "close-circle" : "time"}
-                          size={13}
-                          color={jobText}
-                        />
-                        <Text style={[styles.docStatusText, { color: jobText }]}>
-                          {isApproved ? "Approved" : job.status}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {isPendingJob && (
-                      <View style={styles.docActions}>
-                        <TouchableOpacity
-                          style={[styles.docApproveBtn, isProcessing && styles.btnDisabled]}
-                          onPress={() => !isProcessing && handleApproveJob(job)}
-                          disabled={isProcessing}
-                          activeOpacity={0.8}
-                        >
-                          {isProcessing
-                            ? <ActivityIndicator size="small" color="#fff" />
-                            : <><Ionicons name="checkmark-circle-outline" size={16} color="#fff" /><Text style={styles.docActionBtnText}>Approve</Text></>
-                          }
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.docRejectBtn, isProcessing && styles.btnDisabled]}
-                          onPress={() => { if (!isProcessing) { setRejectingJob(job); setRejectJobReason(""); setRejectJobModal(true); } }}
-                          disabled={isProcessing}
-                          activeOpacity={0.8}
-                        >
-                          <Ionicons name="close-circle-outline" size={16} color="#fff" />
-                          <Text style={styles.docActionBtnText}>Reject</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-
-                    {isRejectedJob && job.rejection_reason && (
-                      <View style={styles.docRejectionNote}>
-                        <Ionicons name="information-circle-outline" size={14} color={c.bad} />
-                        <Text style={styles.docRejectionText}>Reason: {job.rejection_reason}</Text>
-                      </View>
-                    )}
-                    {isApproved && job.verified_by_name && (
-                      <View style={[styles.docRejectionNote, { backgroundColor: c.okSoft, borderColor: c.ok + "33" }]}>
-                        <Ionicons name="shield-checkmark-outline" size={14} color={c.ok} />
-                        <Text style={[styles.docRejectionText, { color: c.ok }]}>
-                          Verified by {job.verified_by_name}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                );
-              })
-            )}
-          </SectionCard>
-        )}
-
         {/* ── ACCOUNT ACTIONS ── */}
         {vs === "Pending" && (
           <View style={styles.actionSection}>
@@ -901,18 +733,6 @@ export default function ViewUserProfile() {
         />
       </Modal>
 
-      {/* ── REJECT JOB MODAL ── */}
-      <Modal visible={rejectJobModal} animationType="slide" transparent>
-        <RejectModal
-          title="Reject Job Post"
-          subtitle={`Rejecting: "${rejectingJob?.title ?? "job post"}"`}
-          value={rejectJobReason}
-          onChange={setRejectJobReason}
-          onCancel={() => { setRejectJobModal(false); setRejectingJob(null); setRejectJobReason(""); }}
-          onConfirm={handleRejectJob}
-          processing={processingJobId !== null}
-        />
-      </Modal>
     </View>
   );
 }

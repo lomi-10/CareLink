@@ -94,6 +94,17 @@ try {
     if (($roles[$parent_id] ?? '') !== 'parent') dh_out(false, 'Only employer accounts can send hire offers.');
     if (($roles[$helper_id] ?? '') !== 'helper') dh_out(false, 'That account is not a helper.');
 
+    // Hiring is the strongest action on the platform, so both sides must be
+    // PESO-verified before an offer can even be created. Without this a pending
+    // employer could put a private offer in a helper's inbox.
+    require_once __DIR__ . '/../shared/verification_guard.php';
+    if (!carelink_is_verified($conn, $parent_id)) {
+        dh_out(false, 'Your account is still being verified by PESO. You can send hire offers once you are verified.');
+    }
+    if (!carelink_is_verified($conn, $helper_id)) {
+        dh_out(false, 'This helper is still awaiting PESO verification, so they cannot receive a hire offer yet.');
+    }
+
     // A helper already in an active placement is not available to be hired.
     $busy = $conn->prepare(
         "SELECT 1 FROM job_applications

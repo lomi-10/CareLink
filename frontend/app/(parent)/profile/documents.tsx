@@ -20,6 +20,8 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import { useParentProfile } from '@/hooks/parent';
 import { ParentTabBar } from '@/components/parent/home';
 import { NotificationModal } from '@/components/shared';
+import { CredentialWall } from '@/components/shared/CredentialBadge';
+import { useColorSchemePreference } from '@/contexts/ColorSchemePreferenceContext';
 import { ValidIdUploadCard } from '@/components/shared/ValidIdUploadCard';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { BG, BROWN, CARAMEL, DARK, MUTED, GREEN, SUCCESS_BG, ICON_BG } from '@/components/parent/home/parentWarmTheme';
@@ -44,6 +46,7 @@ const DOC_SLOTS: DocSlot[] = [
 export default function DocumentsScreen() {
   const router = useRouter();
   const { profileData, loading, refresh } = useParentProfile();
+  const { resolvedColorScheme } = useColorSchemePreference();
   const { highlight_doc_id } = useLocalSearchParams<{ highlight_doc_id?: string }>();
 
   const [busyType, setBusyType] = useState<string | null>(null);
@@ -228,6 +231,16 @@ export default function DocumentsScreen() {
               <Text style={s.bannerSub}>All documents are encrypted and securely stored. We never share your documents without your consent.</Text>
             </View>
           </View>
+
+          {/* Credential seals — what this household has actually earned, shown
+              before the list of what is still missing. */}
+          <CredentialWall
+            documents={documents}
+            role="parent"
+            dark={resolvedColorScheme === 'dark'}
+            title="Your PESO credentials"
+            style={{ marginBottom: 18 }}
+          />
 
           {/* Tab toggle */}
           <View style={tab.row}>

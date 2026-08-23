@@ -8,8 +8,10 @@
  * never deducted from the agreed salary. The helper is not shown this fee at
  * all; it is invisible on their side of the app.
  *
- * A share accrues for PESO Ormoc City in peso_share_amount. It is recorded, not
- * disbursed: payout requires a signed MOA.
+ * PESO TAKES NO SHARE. peso_share_amount is always 0.00 and platform_share_amount
+ * always equals the gross. Under RA 8759 a PESO provides employment facilitation
+ * free of charge, so there is no partnership revenue to accrue — see
+ * PESO_REVENUE_SHARE in shared/paymongo.php.
  */
 
 require_once __DIR__ . '/paymongo.php';

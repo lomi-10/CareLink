@@ -44,6 +44,35 @@ try {
     $helperId     = $senderType === 'helper' ? $sender_id : ($receiverType === 'helper' ? $receiver_id : 0);
     $partyParent  = $senderType === 'parent' ? $sender_id : ($receiverType === 'parent' ? $receiver_id : 0);
 
+    // A helper and an employer may only talk once BOTH are PESO-verified.
+    //
+    // Nothing enforced this before, so a pending account could message a
+    // verified one and start arranging work while still outside the checks that
+    // make CareLink safe — which is the whole point of verification. Staff are
+    // deliberately not covered here: this only triggers when one side is a
+    // helper AND the other is a parent, so a pending user can still reach PESO
+    // (and PESO can still reach them) to sort their verification out.
+    if ($helperId && $partyParent) {
+        require_once __DIR__ . '/../shared/verification_guard.php';
+        $senderVerified   = carelink_is_verified($conn, $sender_id);
+        $receiverVerified = carelink_is_verified($conn, $receiver_id);
+
+        if (!$senderVerified || !$receiverVerified) {
+            $youArePending = !$senderVerified;
+            echo json_encode([
+                'success' => false,
+                'code'    => 'not_verified',
+                'message' => $youArePending
+                    ? 'Your account is still being verified by PESO. Once you are verified you can message '
+                      . ($senderType === 'helper' ? 'employers' : 'helpers') . ' directly. '
+                      . 'If you need help in the meantime, you can message PESO from your inbox.'
+                    : 'This account is still awaiting PESO verification, so they cannot receive messages yet. '
+                      . 'You will be able to reach them once PESO has verified them.',
+            ]);
+            exit();
+        }
+    }
+
     if ($helperId && $partyParent) {
         $hireStmt = $conn->prepare(
             "SELECT jp.parent_id FROM job_applications ja

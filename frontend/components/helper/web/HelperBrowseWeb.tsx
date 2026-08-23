@@ -547,10 +547,9 @@ function FamilyPanel({ parentName, data, loading, jobs, tab, onTab, onOpenJob }:
       ) : (
         <View style={{ gap: 12, marginTop: 16 }}>
           <View style={s.ratingSummary}><Text style={s.ratingBig}>{rating > 0 ? rating.toFixed(1) : '—'}</Text><View><View style={{ flexDirection: 'row', gap: 2 }}>{[1, 2, 3, 4, 5].map((i) => <Ionicons key={i} name={rating >= i ? 'star' : rating >= i - 0.5 ? 'star-half' : 'star-outline'} size={16} color={rating >= i - 0.4 ? wt.amber : wt.line} />)}</View><Text style={s.jpMetaText}>{reviews} review{reviews !== 1 ? 's' : ''}</Text></View></View>
-          {recentReviews.length === 0 ? <Text style={s.jpBody}>No written reviews yet.</Text> : recentReviews.map((r: any, i: number) => (
+          {recentReviews.length === 0 ? <Text style={s.jpBody}>No ratings yet.</Text> : recentReviews.map((r: any, i: number) => (
             <View key={i} style={s.reviewCard}>
               <View style={s.reviewHead}><View style={s.reviewAva}><Text style={s.famAvaText}>{(r.reviewer_name?.[0] ?? '?').toUpperCase()}</Text></View><View style={{ flex: 1 }}><Text style={s.reviewName}>{r.reviewer_name}</Text><View style={{ flexDirection: 'row', gap: 2 }}>{[1, 2, 3, 4, 5].map((j) => <Ionicons key={j} name={Number(r.rating) >= j ? 'star' : 'star-outline'} size={11} color={wt.amber} />)}</View></View></View>
-              {!!r.review_text && <Text style={s.jpBody}>{r.review_text}</Text>}
             </View>
           ))}
         </View>

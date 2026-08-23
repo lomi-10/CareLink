@@ -47,8 +47,6 @@ if (!function_exists('ensure_revenue_tables')) {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
         );
 
-        // peso_share_amount ACCUMULATES here. Never disbursed automatically —
-        // payout requires a signed MOA with PESO Ormoc City.
         // No FK constraints: this may be created before placements exists on a
         // partially-migrated database, and a failed FK would abort the CREATE.
         $conn->query(
@@ -57,7 +55,10 @@ if (!function_exists('ensure_revenue_tables')) {
                 placement_id          INT NOT NULL,
                 parent_id             INT NOT NULL COMMENT 'Payer. Never a helper.',
                 gross_amount          DECIMAL(10,2) NOT NULL,
-                peso_share_amount     DECIMAL(10,2) NOT NULL,
+                /* Always 0.00 — PESO takes no revenue share (RA 8759: a PESO
+                   provides employment facilitation free of charge). Kept so the
+                   historical rows and the insert shape stay stable. */
+                peso_share_amount     DECIMAL(10,2) NOT NULL DEFAULT 0.00,
                 platform_share_amount DECIMAL(10,2) NOT NULL,
                 status                ENUM('pending','paid','failed','refunded') NOT NULL DEFAULT 'pending',
                 paymongo_payment_id   VARCHAR(255) NULL DEFAULT NULL,

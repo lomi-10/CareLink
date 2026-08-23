@@ -77,7 +77,7 @@ export function PostPlacementRenewalCard({
   const [editingChoices, setEditingChoices] = useState(false);
 
   const counterpartInterestLabel =
-    userType === 'parent' ? 'Helper' : 'Employer';
+    userType === 'parent' ? 'Helper' : 'Household Employer';
 
   const myIntent = userType === 'parent' ? parentInterested : helperInterested;
   const showChoiceButtons = bothInterested ? false : myIntent === null || editingChoices;

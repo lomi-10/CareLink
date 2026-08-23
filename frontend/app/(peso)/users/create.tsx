@@ -109,7 +109,15 @@ export default function CreatePESOUser() {
         <ScrollView contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.lg, paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
           <AnimateIn delay={80} style={s.infoCard}>
             <Ionicons name="information-circle" size={22} color={c.accent} />
-            <Text style={s.infoText}>PESO admin accounts can review user verification, manage job posts, and oversee the platform.</Text>
+            {/* States the ceiling as well as the grant. An officer creating an
+                account should know they are handing over their own level of
+                access and no more — Super Admin accounts come from the Admin
+                Portal, not from here. */}
+            <Text style={s.infoText}>
+              This creates a PESO Officer account with the same access you have: user verification, job verification,
+              applications, interviews, contracts and reports. It is active as soon as you create it.
+              Super Admin accounts are created in the Admin Portal instead.
+            </Text>
           </AnimateIn>
 
           <AnimateIn delay={140} style={s.formCard}>

@@ -58,7 +58,7 @@ export default function SignUpScreen() {
     else router.replace('/');
   };
 
-  const title = role === 'parent' ? 'Parent registration'
+  const title = role === 'parent' ? 'Household Employer registration'
     : role === 'helper'           ? 'Helper registration'
     :                               'Create account';
 
@@ -84,7 +84,7 @@ export default function SignUpScreen() {
             color={t.pillIcon}
           />
           <Text style={[s.pillText, { color: t.pillText }]}>
-            Registering as a {role === 'parent' ? 'Parent' : 'Helper'}
+            Registering as a {role === 'parent' ? 'Household Employer' : 'Helper'}
           </Text>
         </View>
       ) : (
@@ -95,7 +95,7 @@ export default function SignUpScreen() {
             style={{ color: t.label }}
           >
             <Picker.Item label="Select your role" value="" />
-            <Picker.Item label="Parent — hiring help" value="parent" />
+            <Picker.Item label="Household Employer — hiring help" value="parent" />
             <Picker.Item label="Helper — looking for work" value="helper" />
           </Picker>
         </View>
@@ -418,14 +418,14 @@ export default function SignUpScreen() {
                     <View style={[d.pill, { backgroundColor: t.pillBg, borderColor: t.pillBorder }]}>
                       <Ionicons name={role === 'parent' ? 'people' : 'briefcase'} size={16} color={t.pillIcon} />
                       <Text style={[d.pillText, { color: t.pillText }]}>
-                        Registering as a {role === 'parent' ? 'Parent' : 'Helper'}
+                        Registering as a {role === 'parent' ? 'Household Employer' : 'Helper'}
                       </Text>
                     </View>
                   ) : (
                     <View style={[s.pickerWrap, { backgroundColor: t.inputBg, borderColor: t.inputBorder, marginBottom: 18 }]}>
                       <Picker selectedValue={form.user_type} onValueChange={(v) => handleChange('user_type', v)} style={{ color: t.label }}>
                         <Picker.Item label="Select your role" value="" />
-                        <Picker.Item label="Parent — hiring help" value="parent" />
+                        <Picker.Item label="Household Employer — hiring help" value="parent" />
                         <Picker.Item label="Helper — looking for work" value="helper" />
                       </Picker>
                     </View>

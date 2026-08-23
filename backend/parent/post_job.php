@@ -40,6 +40,18 @@ try {
     $parent_id = intval($data['parent_id']);
     $requester_id = isset($data['requester_id']) ? intval($data['requester_id']) : 0;
     carelink_require_self($requester_id, $parent_id, 'You are not allowed to post jobs for this employer account.');
+
+    // Only a PESO-verified employer may post work.
+    //
+    // The app hides the post button from pending employers, but that is a UI
+    // courtesy, not a control — this endpoint can be called directly, and until
+    // now it would have created the post. Verification is the thing that makes
+    // a CareLink job trustworthy to a helper, so it has to be enforced here,
+    // where the post is actually created.
+    require_once __DIR__ . '/../shared/verification_guard.php';
+    if (!carelink_is_verified($conn, $parent_id)) {
+        throw new Exception('Your account is still being verified by PESO. Once you are verified you can post jobs. Finish your profile and documents to move the review along.');
+    }
     $category_id = isset($data['category_id']) ? intval($data['category_id']) : null;
     $salary_min = isset($data['salary_min']) ? floatval($data['salary_min']) : (isset($data['salary_offered']) ? floatval($data['salary_offered']) : 0);
     $salary_max = isset($data['salary_max']) && $data['salary_max'] !== null ? floatval($data['salary_max']) : null;

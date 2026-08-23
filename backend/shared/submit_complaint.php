@@ -18,6 +18,7 @@ ini_set('display_errors', 0);
 require_once __DIR__ . '/../dbcon.php';
 require_once __DIR__ . '/placement_dispute_helpers.php';
 require_once __DIR__ . '/create_notification.php';
+require_once __DIR__ . '/complaint_tracking_tables.php';
 
 function out($ok, $msg, $extra = [])
 {
@@ -43,6 +44,21 @@ try {
     $subject = isset($input['subject']) ? trim((string) $input['subject']) : '';
     $body = isset($input['body']) ? trim((string) $input['body']) : '';
     $category_raw = isset($input['category']) ? trim((string) $input['category']) : 'other';
+
+    // WHEN and WHERE the incident happened. PESO could previously see only a
+    // subject and a description, so every case opened with a phone call to ask
+    // these two things. Optional, because a reporter may genuinely not recall a
+    // date and blocking the report on that would be worse than an unknown.
+    $incident_at      = isset($input['incident_at']) ? trim((string) $input['incident_at']) : '';
+    $inc_location     = isset($input['incident_location']) ? trim((string) $input['incident_location']) : '';
+    $inc_barangay     = isset($input['incident_barangay']) ? trim((string) $input['incident_barangay']) : '';
+    $inc_municipality = isset($input['incident_municipality']) ? trim((string) $input['incident_municipality']) : '';
+    $inc_province     = isset($input['incident_province']) ? trim((string) $input['incident_province']) : '';
+    $incident_at_val      = $incident_at !== '' ? date('Y-m-d H:i:s', strtotime($incident_at)) : null;
+    $inc_location_val     = $inc_location !== '' ? $inc_location : null;
+    $inc_barangay_val     = $inc_barangay !== '' ? $inc_barangay : null;
+    $inc_municipality_val = $inc_municipality !== '' ? $inc_municipality : null;
+    $inc_province_val     = $inc_province !== '' ? $inc_province : null;
 
     if ($user_id <= 0) {
         out(false, 'user_id required');
@@ -107,18 +123,23 @@ try {
 
     $category_db = carelink_map_complaint_category($category_raw);
 
+    // The incident columns are added by ALTER on first use, so this runs before
+    // the insert that depends on them.
+    ensure_complaint_tracking_tables($conn);
+
     // Single insert — placement_id / application_id are NULL for general complaints
     // (mysqli sends SQL NULL when the bound PHP variable is null).
     $st = $conn->prepare('
         INSERT INTO complaints
-          (complainant_id, respondent_id, placement_id, application_id, subject, description, category, status, complainant_role)
-        VALUES (?, ?, ?, ?, ?, ?, ?, \'Pending\', ?)
+          (complainant_id, respondent_id, placement_id, application_id, subject, description, category, status, complainant_role,
+           incident_at, incident_location, incident_barangay, incident_municipality, incident_province)
+        VALUES (?, ?, ?, ?, ?, ?, ?, \'Pending\', ?, ?, ?, ?, ?, ?)
     ');
     if (!$st) {
         throw new Exception('Prepare failed');
     }
     $st->bind_param(
-        'iiiissss',
+        'iiiisssssssss',
         $user_id,
         $respondent_id,
         $placement_id,
@@ -127,6 +148,11 @@ try {
         $body,
         $category_db,
         $user_type,
+        $incident_at_val,
+        $inc_location_val,
+        $inc_barangay_val,
+        $inc_municipality_val,
+        $inc_province_val,
     );
 
     if (!$st->execute()) {
@@ -136,7 +162,16 @@ try {
     $cid = (int) $conn->insert_id;
     $st->close();
 
-    $roleLabel = $user_type === 'parent' ? 'Employer' : 'Helper';
+    // Seed the tracker at the moment of filing, so the reporter sees their case
+    // acknowledged immediately instead of an empty panel until PESO opens it.
+    carelink_log_complaint_action(
+        $conn, $cid, null, 'system', 'received',
+        'Complaint received',
+        'Your report was filed and is queued for review.',
+        null, true
+    );
+
+    $roleLabel = $user_type === 'parent' ? 'Household Employer' : 'Helper';
     $context = $is_general ? 'a profile' : ('application #' . $application_id);
     $adminTitle = 'New CareLink complaint';
     $adminMsg = $roleLabel . ' reported an issue (' . $context . '): ' . $subject;

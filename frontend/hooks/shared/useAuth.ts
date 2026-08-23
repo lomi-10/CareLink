@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useCareBotOptional } from '@/contexts/CareBotContext';
+import { setAuthToken } from '@/lib/authFetch';
 
 export interface UserData {
   user_id: string;
@@ -50,6 +51,9 @@ export function useAuth() {
   const handleLogout = async () => {
     try {
       await AsyncStorage.multiRemove(['user_data', 'user_token']);
+      // Drop the session token too, or the next person on this device inherits
+      // a working session.
+      await setAuthToken(null);
       // CareBot's chat panel stays mounted for the whole app session, so its
       // conversation would otherwise carry over to whoever signs in next.
       careBot?.resetChat();

@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
 import { CareLinkLogoMark } from '@/components/branding/CareLinkLogoMark';
 import { usePesoTheme, font, radius } from '@/contexts/PesoThemeContext';
-import { NAV_GROUPS, type BadgeKey } from './navConfig';
+import { NAV_GROUPS, isNavItemActive, type BadgeKey } from './navConfig';
 
 type Props = {
   router: ReturnType<typeof useRouter>;
@@ -23,7 +23,7 @@ type Props = {
 
 export function Sidebar({ router, pathname, collapsed, onToggleCollapse, userName, badges, onLogout }: Props) {
   const { c, dark, toggle } = usePesoTheme();
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => isNavItemActive(path, pathname);
   const W = collapsed ? 76 : 250;
 
   return (

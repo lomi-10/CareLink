@@ -16,6 +16,8 @@ import {
   ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions,
 } from "react-native";
 import { useNotice } from "@/hooks/shared/useNotice";
+import { CredentialReviewSection, type ReviewDoc } from "@/components/peso/CredentialReviewSection";
+import { DocumentViewerModal } from "@/components/peso/DocumentViewerModal";
 import API_URL from "@/constants/api";
 import {
   usePesoTheme, ScreenHeader, StatRow, StatTile, ListRow, EmptyState, IconButton, AnimateIn, layout, font, radius, space,
@@ -69,8 +71,16 @@ export default function PesoApplicationsScreen() {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Case file / Documents, matching the Job Verification panel.
+  const [tab, setTab] = useState<"case" | "documents">("case");
+  const [docView, setDocView] = useState<ReviewDoc | null>(null);
+  const [docSide, setDocSide] = useState<"front" | "back">("front");
+  const [flagDoc, setFlagDoc] = useState<ReviewDoc | null>(null);
+  const [flagDocReason, setFlagDocReason] = useState("");
+  const [flagDocRevoke, setFlagDocRevoke] = useState(false);
+
   const openDetail = async (a: AppRow) => {
-    setViewing(a); setDetail(null); setDetailLoading(true);
+    setViewing(a); setDetail(null); setDetailLoading(true); setTab("case");
     try {
       const raw = await AsyncStorage.getItem("user_data");
       const uid = raw ? JSON.parse(raw)?.user_id : "";
@@ -126,6 +136,30 @@ export default function PesoApplicationsScreen() {
     }
   };
 
+  const submitDocFlag = async () => {
+    if (!flagDoc || !flagDocReason.trim()) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_URL}/peso/flag_credential.php`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          document_id: flagDoc.document_id,
+          reason: flagDocReason.trim(),
+          revoke_verification: flagDocRevoke,
+          flagged_by: staffId,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFlagDoc(null); setFlagDocReason(""); setFlagDocRevoke(false);
+        if (viewing) await openDetail(viewing);
+        notify("Done", data.message || "Flag recorded.");
+      } else notify("Couldn't flag", data.message || "Please try again.");
+    } catch {
+      notify("Offline", "Couldn't reach the server.");
+    } finally { setBusy(false); }
+  };
+
   // ── List row (selector) ──
   const ListCard = ({ a, index }: { a: AppRow; index: number }) => {
     const m = statusMeta(a.status, c);
@@ -154,6 +188,12 @@ export default function PesoApplicationsScreen() {
   const renderDetail = (inPanel: boolean) => {
     const flagAction = !!viewing && CAN_FLAG(viewing.status, viewing.is_flagged);
     const vm = viewing ? statusMeta(viewing.status, c) : null;
+    const helperDocs: ReviewDoc[] = detail?.helper_credentials?.documents ?? [];
+    const employerDocs: ReviewDoc[] = detail?.employer_credentials?.documents ?? [];
+    const docCount = helperDocs.length + employerDocs.length;
+    const openFlagCount =
+      (detail?.helper_credentials?.flags?.length ?? 0) + (detail?.employer_credentials?.flags?.length ?? 0);
+
     return (
       <View style={inPanel ? s.detailPanel : [s.modalCard, { maxWidth: 720, padding: 0, overflow: "hidden" }]}>
         <View style={s.dHead}>
@@ -165,8 +205,41 @@ export default function PesoApplicationsScreen() {
           {!inPanel && <TouchableOpacity onPress={closeDetail} hitSlop={8} style={{ marginLeft: 8 }}><Ionicons name="close" size={22} color={c.muted} /></TouchableOpacity>}
         </View>
 
+        {/* Tabs */}
+        <View style={s.tabsRow}>
+          {([["case", "Case file"], ["documents", `Documents${docCount ? ` (${docCount})` : ""}`]] as const).map(([key, label]) => (
+            <Pressable key={key} onPress={() => setTab(key)} style={[s.tab, tab === key && s.tabActive]}>
+              <Text style={[s.tabText, tab === key && s.tabTextActive]}>{label}</Text>
+              {key === "documents" && openFlagCount > 0 && <View style={s.tabDot} />}
+            </Pressable>
+          ))}
+        </View>
+
         {detailLoading && !detail ? (
           <ActivityIndicator color={c.accent} style={{ marginVertical: 60 }} />
+        ) : tab === "documents" ? (
+          <ScrollView style={inPanel ? { flex: 1 } : { maxHeight: 540 }} contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
+            <CredentialReviewSection
+              title="Applicant credentials"
+              subtitle="Everything PESO holds for this helper. The marker on each card says whether this employer can see it."
+              role="helper"
+              documents={helperDocs}
+              flags={detail?.helper_credentials?.flags}
+              showSharing
+              onView={(d, side) => { setDocSide(side); setDocView(d); }}
+              onFlag={(d) => { setFlagDoc(d); setFlagDocReason(""); setFlagDocRevoke(false); }}
+            />
+            <View style={{ height: 22 }} />
+            <CredentialReviewSection
+              title="Employer credentials"
+              subtitle="The household behind this posting."
+              role="parent"
+              documents={employerDocs}
+              flags={detail?.employer_credentials?.flags}
+              onView={(d, side) => { setDocSide(side); setDocView(d); }}
+              onFlag={(d) => { setFlagDoc(d); setFlagDocReason(""); setFlagDocRevoke(false); }}
+            />
+          </ScrollView>
         ) : (
           <ScrollView style={inPanel ? { flex: 1 } : { maxHeight: 540 }} contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
             {/* Risk signals — the reason this screen exists */}
@@ -245,18 +318,25 @@ export default function PesoApplicationsScreen() {
               </View>
             )}
 
-            {/* Shared documents */}
+            {/* Shared documents — summary only. The full review, with the AI
+                pre-check and the viewer, lives in the Documents tab; keeping a
+                second copy here meant two places to read and two to maintain. */}
             <Text style={[s.secTitle, { marginTop: 18 }]}>Documents shared with the employer</Text>
             {Array.isArray(detail?.shared_documents) && detail.shared_documents.length > 0 ? (
-              <View style={{ gap: 6 }}>
-                {detail.shared_documents.map((d: any, i: number) => (
-                  <View key={i} style={s.docRow}>
-                    <Ionicons name="document-text-outline" size={15} color={c.accent} />
-                    <Text style={s.docName}>{d.document_type}</Text>
-                    <Text style={[s.docStatus, { color: d.status === "Verified" ? c.ok : c.warn }]}>{d.status}</Text>
-                  </View>
-                ))}
-              </View>
+              <>
+                <View style={s.chipsWrap}>
+                  {detail.shared_documents.map((d: any, i: number) => (
+                    <View key={i} style={[s.roleChip, { backgroundColor: d.status === "Verified" ? c.okSoft : c.warnSoft }]}>
+                      <Text style={[s.roleChipText, { color: d.status === "Verified" ? c.ok : c.warn }]}>{d.document_type}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Pressable onPress={() => setTab("documents")} style={s.tabLink}>
+                  <Ionicons name="folder-open-outline" size={14} color={c.accent} />
+                  <Text style={s.tabLinkText}>Review all documents</Text>
+                  <Ionicons name="arrow-forward" size={13} color={c.accent} />
+                </Pressable>
+              </>
             ) : <Text style={s.mutedText}>None shared — only the helper's profile is visible to the employer.</Text>}
 
             {/* Cover letter */}
@@ -384,6 +464,47 @@ export default function PesoApplicationsScreen() {
           </View>
         </View>
       </Modal>
+      <DocumentViewerModal
+        visible={!!docView}
+        doc={docView as any}
+        side={docSide}
+        onChangeSide={setDocSide}
+        onClose={() => setDocView(null)}
+        onFlag={() => { setFlagDoc(docView); setFlagDocReason(""); setFlagDocRevoke(false); setDocView(null); }}
+      />
+
+      {/* Flag an altered credential — same endpoint the Job Verification panel uses */}
+      <Modal visible={!!flagDoc} transparent animationType="fade" onRequestClose={() => setFlagDoc(null)}>
+        <View style={s.modalBg}>
+          <View style={s.modalCard}>
+            <View style={s.modalIcon}><Ionicons name="flag" size={26} color={c.bad} /></View>
+            <Text style={s.modalTitle}>Flag this credential</Text>
+            <Text style={s.modalHint}>{flagDoc?.document_type} — the reason is shown to the account holder and kept on the record even after they re-upload.</Text>
+            <TextInput
+              style={[s.input, s.multiline]} value={flagDocReason} onChangeText={setFlagDocReason}
+              placeholder="e.g. Details do not match the profile; the document appears edited…"
+              placeholderTextColor={c.subtle} multiline
+            />
+            <Pressable onPress={() => setFlagDocRevoke((v) => !v)} style={[s.revokeRow, flagDocRevoke && { borderColor: c.bad, backgroundColor: c.badSoft }]}>
+              <Ionicons name={flagDocRevoke ? "checkbox" : "square-outline"} size={20} color={flagDocRevoke ? c.bad : c.subtle} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[s.revokeTitle, flagDocRevoke && { color: c.bad }]}>Also withdraw PESO verification</Text>
+                <Text style={s.revokeSub}>
+                  {flagDocRevoke
+                    ? "The account returns to Rejected and must be re-reviewed. They keep access so they can re-upload."
+                    : "Leave off to record the concern without changing their status."}
+                </Text>
+              </View>
+            </Pressable>
+            <View style={s.modalRow}>
+              <TouchableOpacity style={[s.mBtn, s.mCancel]} onPress={() => setFlagDoc(null)}><Text style={s.mCancelText}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.mBtn, s.mDanger, (busy || !flagDocReason.trim()) && { opacity: 0.5 }]} onPress={submitDocFlag} disabled={busy || !flagDocReason.trim()}>
+                {busy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.mDangerText}>{flagDocRevoke ? "Flag & withdraw" : "Record flag"}</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       {noticeHost}
     </View>
   );
@@ -445,6 +566,19 @@ const makeStyles = (c: PesoColors) => StyleSheet.create({
   dEyebrow: { fontSize: 10.5, fontFamily: font.semibold, color: c.subtle, letterSpacing: 0.6, marginBottom: 3 },
   dTitle: { fontSize: 18, fontFamily: font.display, color: c.ink, lineHeight: 23 },
   secTitle: { fontSize: 12, fontFamily: font.semibold, color: c.muted, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 },
+
+  tabsRow: { flexDirection: "row", gap: 4, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: c.line, backgroundColor: c.surface },
+  tab: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 11, paddingHorizontal: 12, borderBottomWidth: 2, borderBottomColor: "transparent" },
+  tabActive: { borderBottomColor: c.accent },
+  tabText: { fontFamily: font.semibold, fontSize: 13.5, color: c.muted },
+  tabTextActive: { color: c.accent },
+  tabDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: c.bad },
+  tabLink: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", marginTop: 10, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: c.accentSoft },
+  tabLinkText: { fontFamily: font.semibold, fontSize: 12, color: c.accent },
+
+  revokeRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14, padding: 12, borderRadius: 12, borderWidth: 1.4, borderColor: c.line },
+  revokeTitle: { fontFamily: font.semibold, fontSize: 13, color: c.ink },
+  revokeSub: { fontFamily: font.regular, fontSize: 11.5, color: c.muted, marginTop: 2, lineHeight: 16 },
   signal: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
   signalText: { flex: 1, fontSize: 12.5, fontFamily: font.regular, lineHeight: 17 },
 

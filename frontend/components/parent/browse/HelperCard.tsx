@@ -1,5 +1,6 @@
 // components/parent/browse/HelperCard.tsx — Desktop 3-col grid card (warm palette)
 import React from 'react';
+import { TrustStrip } from '@/components/shared/TrustStrip';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FontFamily } from '@/constants/GlobalStyles';
@@ -90,6 +91,16 @@ export function HelperCard({ helper, onPress, onInvite, matchScore, matchReasons
           </View>
         )}
 
+
+        {/* PESO seals and any safety marking. Placed above the category chips
+            because "who is this person" outranks "what can they do". */}
+        <TrustStrip
+          credentials={helper.credentials}
+          safetyFlag={helper.safety_flag}
+          size="sm"
+          max={2}
+          style={{ marginTop: 10 }}
+        />
         {/* Category chips */}
         {helper.categories?.length > 0 && (
           <View style={styles.chipsRow}>

@@ -38,6 +38,14 @@ try {
     $requester_id = isset($body['requester_id']) ? intval($body['requester_id']) : 0;
     carelink_require_self($requester_id, $parent_id, 'You are not allowed to send invitations for this employer account.');
 
+    // An invite lands in the helper's inbox as a message, so it is another way
+    // to reach someone — and it bypasses send_message.php entirely. Gate it the
+    // same way, or a pending employer could still open a conversation.
+    require_once __DIR__ . '/../shared/verification_guard.php';
+    if (!carelink_is_verified($conn, $parent_id)) {
+        throw new Exception('Your account is still being verified by PESO. You can invite helpers once you are verified.');
+    }
+
     // ── Get parent name + job title ──────────────────────────────────────────
     $stmt = $conn->prepare("SELECT first_name, last_name FROM users WHERE user_id = ?");
     $stmt->bind_param("i", $parent_id);

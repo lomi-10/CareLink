@@ -10,6 +10,29 @@ export const PARENT_HOUSEHOLD_TYPE_OPTIONS = [
 
 export type ParentHouseholdTypeSlug = (typeof PARENT_HOUSEHOLD_TYPE_OPTIONS)[number]['value'];
 
+/**
+ * Religion options for employers — same list helpers already choose from, so
+ * both sides of a match describe themselves in the same vocabulary.
+ *
+ * Stored as the plain label (not a slug) to match helper_profiles.religion,
+ * which is free text. Always optional, and "Prefer not to say" is a real
+ * choice rather than an absence — an employer who declines to answer should
+ * not look like one who simply hasn't finished their profile.
+ */
+export const PARENT_RELIGION_OPTIONS = [
+  { value: 'Roman Catholic', label: 'Roman Catholic' },
+  { value: 'Christian', label: 'Christian' },
+  { value: 'Iglesia ni Cristo', label: 'Iglesia ni Cristo' },
+  { value: 'Islam', label: 'Islam' },
+  { value: 'Protestant', label: 'Protestant' },
+  { value: 'Seventh-day Adventist', label: 'Seventh-day Adventist' },
+  { value: 'Born Again', label: 'Born Again' },
+  { value: 'Buddhist', label: 'Buddhist' },
+  { value: 'Aglipayan', label: 'Aglipayan' },
+  { value: 'Other', label: 'Other' },
+  { value: 'Prefer not to say', label: 'Prefer not to say' },
+] as const;
+
 export function formatParentHouseholdType(
   value: string | null | undefined
 ): string {

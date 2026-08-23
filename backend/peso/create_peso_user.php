@@ -109,22 +109,33 @@ try {
         // Hash password
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-        // Insert into users table
-        $insertUserSql = "INSERT INTO users 
-                         (first_name, middle_name, last_name, email, username, password, user_type, status, profile_completed, created_at) 
-                         VALUES (?, ?, ?, ?, ?, ?, 'peso', 'active', 1, NOW())";
-        
+        // status MUST be 'approved'.
+        //
+        // This previously wrote 'active', which no code anywhere looks for. Both
+        // staff guards (peso_require_staff and peso_validate_staff_actor) test
+        // for status = 'approved', so every account created here could log in
+        // and then be refused by User Verification, Job Verification, reports —
+        // every staff-only screen in the portal. admin/admin_create_user.php has
+        // always written 'approved'; this endpoint was the odd one out.
+        $insertUserSql = "INSERT INTO users
+                         (first_name, middle_name, last_name, email, username, password, phone, user_type, status, profile_completed, created_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, 'peso', 'approved', 1, NOW())";
+
         $insertUserStmt = $conn->prepare($insertUserSql);
+        if (!$insertUserStmt) throw new Exception('Prepare failed: ' . $conn->error);
+        // The form has always collected a contact number and this endpoint has
+        // always thrown it away — the profile insert below it was commented out.
         $insertUserStmt->bind_param(
-            "ssssss", 
-            $first_name, 
-            $middle_name, 
-            $last_name, 
-            $email, 
-            $username, 
-            $hashed_password
+            "sssssss",
+            $first_name,
+            $middle_name,
+            $last_name,
+            $email,
+            $username,
+            $hashed_password,
+            $contact_number
         );
-        
+
         if (!$insertUserStmt->execute()) {
             throw new Exception("Failed to create user: " . $insertUserStmt->error);
         }
@@ -132,22 +143,13 @@ try {
         $new_user_id = $conn->insert_id;
         $insertUserStmt->close();
 
-        // Optionally create a peso_profiles table entry if you have one
-        // For now, we'll just store the contact number in users table or create a simple profile
-        
-        // If you have a peso_profiles table, uncomment and adjust:
-        /*
-        $insertProfileSql = "INSERT INTO peso_profiles 
-                            (user_id, contact_number, created_at) 
-                            VALUES (?, ?, NOW())";
-        $insertProfileStmt = $conn->prepare($insertProfileSql);
-        $insertProfileStmt->bind_param("is", $new_user_id, $contact_number);
-        $insertProfileStmt->execute();
-        $insertProfileStmt->close();
-        */
+        // Granting someone staff access is the most privilege-sensitive action
+        // in this portal, and it was the only PESO mutation with no audit row.
+        // Inside the transaction, so a failed log rolls the account back rather
+        // than leaving an unattributable staff account behind.
+        peso_audit_verification($conn, $staff_user_id, 'CREATE_PESO_USER', 'User Management', $new_user_id);
 
-        // Log the creation
-        error_log("PESO user created successfully. User ID: $new_user_id, Email: $email");
+        error_log("PESO user created. User ID: $new_user_id, Email: $email, by staff: $staff_user_id");
 
         // Commit transaction
         $conn->commit();

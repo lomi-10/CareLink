@@ -17,9 +17,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontFamily } from '@/constants/GlobalStyles';
 import API_URL from '@/constants/api';
-import { NotificationModal, LocationSearchInput, LocationResult, VerifyChangeModal } from '@/components/shared';
+import { NotificationModal, LocationSearchInput, LocationResult, VerifyChangeModal, SelectField } from '@/components/shared';
 import { isValidPhMobile, normalizePhMobile } from '@/lib/phone';
-import { PARENT_HOUSEHOLD_TYPE_OPTIONS } from '@/constants/parentHousehold';
+import { PARENT_HOUSEHOLD_TYPE_OPTIONS, PARENT_RELIGION_OPTIONS } from '@/constants/parentHousehold';
 import {
   CARAMEL, BROWN, DARK, MUTED, DANGER,
 } from '@/components/parent/home/parentWarmTheme';
@@ -85,6 +85,7 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
   const [email, setEmail] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [bio, setBio] = useState('');
+  const [religion, setReligion] = useState('');
   const [changeField, setChangeField] = useState<null | 'email' | 'contact'>(null);
 
   // Address
@@ -161,6 +162,7 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
         setLatitude(p.latitude   ? parseFloat(p.latitude)  : null);
         setLongitude(p.longitude ? parseFloat(p.longitude) : null);
         setBio(p.bio || '');
+        setReligion(p.religion || '');
         setLandmark(p.landmark || '');
         if (p.profile_image) setProfileImage(p.profile_image);
       }
@@ -250,6 +252,7 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
       fd.append('municipality', municipality.trim());
       fd.append('barangay', barangay.trim());
       fd.append('bio', bio.trim());
+      fd.append('religion', religion.trim());
       fd.append('landmark', landmark.trim());
       if (latitude  !== null) fd.append('latitude',  String(latitude));
       if (longitude !== null) fd.append('longitude', String(longitude));
@@ -383,6 +386,21 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
         placeholderTextColor="#B8956A"
       />
       <Text style={s.inputHint}>If provided, must be at least 15 characters</Text>
+
+      {/* Employers can state a religion for the same reason helpers can: both
+          sides judge household fit on it (practices, dietary rules, rest days
+          around worship) before committing. The column and the save path have
+          existed since the 2026-08-03 migration — there was simply no input,
+          so the field could never be set. Optional, with an explicit
+          "Prefer not to say". */}
+      <Label>Religion <OptTag /></Label>
+      <SelectField
+        value={religion}
+        onChange={setReligion}
+        options={PARENT_RELIGION_OPTIONS}
+        placeholder="Select religion"
+        accent={CARAMEL}
+      />
 
       <Label>Contact Number <OptTag /></Label>
       <StyledInput value={contactNumber} onChangeText={setContactNumber} placeholder="09XX XXX XXXX" keyboardType="phone-pad" />

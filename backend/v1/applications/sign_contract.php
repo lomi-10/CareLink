@@ -23,6 +23,7 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 require_once __DIR__ . '/../../dbcon.php';
 require_once __DIR__ . '/../../shared/finalize_hire_after_contract.inc.php';
+require_once __DIR__ . '/../../shared/contract_signatures_table.php';
 
 function carelink_sign_send_json(bool $ok, string $message, array $extra = []): void
 {
@@ -143,6 +144,33 @@ try {
         }
     }
 
+
+    // ── Signature evidence (RA 8792) ────────────────────────────────────────
+    // A timestamp alone proves a row was updated. This records WHO signed, a
+    // hash of WHAT they signed, and a tamper-evident seal over both, so a later
+    // alteration to the contract is detectable. See
+    // shared/contract_signatures_table.php for why each field is there.
+    //
+    // Outside the signing branch so it runs for whichever party just signed.
+    // A failure here must not roll back the signature itself — the officer can
+    // re-verify, but silently losing a signature would be worse.
+    try {
+        $sigRole = $user_type === 'parent' ? 'employer' : 'helper';
+        $docRow = $conn->query('SELECT pdf_file_path FROM contracts WHERE application_id = ' . (int) $application_id . ' LIMIT 1');
+        $docRef = $docRow ? ($docRow->fetch_assoc()['pdf_file_path'] ?? '') : '';
+        // Hash the stored PDF when it exists; fall back to the contract terms
+        // themselves so a signature is never recorded without something to bind
+        // it to.
+        $docPath = $docRef !== '' ? __DIR__ . '/../../uploads/' . $docRef : '';
+        $docBytes = ($docPath !== '' && is_file($docPath)) ? (string) file_get_contents($docPath) : '';
+        if ($docBytes === '') {
+            $tRow = $conn->query('SELECT confirmed_salary, work_hours, rest_days, employment_start_date, employment_end_date, contract_duration FROM contracts WHERE application_id = ' . (int) $application_id . ' LIMIT 1');
+            $docBytes = $tRow ? json_encode($tRow->fetch_assoc()) : ('application:' . $application_id);
+        }
+        carelink_record_contract_signature($conn, $application_id, $user_id, $sigRole, $docBytes, 'password');
+    } catch (Throwable $sigErr) {
+        error_log('sign_contract: signature evidence failed: ' . $sigErr->getMessage());
+    }
     $st2 = $conn->prepare('SELECT status, employer_signed_at, helper_signed_at FROM job_applications WHERE application_id = ? LIMIT 1');
     $st2->bind_param('i', $application_id);
     $st2->execute();

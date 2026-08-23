@@ -3,13 +3,15 @@
 
 import React, { useState } from 'react';
 import {
-  Modal, View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, TouchableOpacity,
   ScrollView, StyleSheet, ActivityIndicator, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import API_URL from '@/constants/api';
 import { theme } from '@/constants/theme';
+import { NotificationModal } from './NotificationModal';
+import { BottomSheetModal } from './BottomSheetModal';
 
 export interface InterviewInfo {
   interview_id?: number;
@@ -69,6 +71,8 @@ export function InterviewModal({ visible, onClose, applicationId, helperName, jo
   const [showDateTime, setShowDateTime] = useState(false);
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState('');
+  const [errorField, setErrorField] = useState<null | 'date' | 'location'>(null);
+  const [alert,      setAlert]      = useState('');
 
   const placeholderMap = {
     'In-person': 'e.g. 123 Main St, Ormoc City',
@@ -76,18 +80,34 @@ export function InterviewModal({ visible, onClose, applicationId, helperName, jo
     'Phone':     'e.g. 09XX-XXX-XXXX',
   };
 
+  /**
+   * Surfaces a validation problem two ways on purpose.
+   *
+   * The message alone was a line of small red text below a long form, directly
+   * under the button the user had just pressed — so their eye was nowhere near
+   * it and the tap read as "nothing happened". The modal makes the failure
+   * impossible to miss; the field highlight is what tells them WHERE to fix it,
+   * which a modal on its own cannot do.
+   */
+  const fail = (message: string, field?: 'date' | 'location') => {
+    setError(message);
+    setErrorField(field ?? null);
+    setAlert(message);
+  };
+
   const handleSchedule = async () => {
     if (date.getTime() <= Date.now()) {
-      setError('Please choose a date and time in the future.');
+      fail('Please choose a date and time in the future.', 'date');
       return;
     }
     if (type === 'Phone' && !location.trim()) {
-      setError('Please enter a phone number.'); return;
+      fail('Please enter a phone number.', 'location'); return;
     }
     if (type !== 'Phone' && !location.trim()) {
-      setError('Please enter a location or meeting link.'); return;
+      fail('Please enter a location or meeting link.', 'location'); return;
     }
     setError('');
+    setErrorField(null);
     setLoading(true);
     try {
       const res  = await fetch(`${API_URL}/interviews/schedule.php`, {
@@ -107,7 +127,9 @@ export function InterviewModal({ visible, onClose, applicationId, helperName, jo
       onScheduled?.();
       onClose();
     } catch (e: any) {
-      setError(e.message || 'Something went wrong');
+      // A server-side failure is exceptional, not a field problem — surface it
+      // the same loud way so a failed submit is never mistaken for a dead tap.
+      fail(e.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -150,26 +172,27 @@ export function InterviewModal({ visible, onClose, applicationId, helperName, jo
   );
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={s.overlay}>
-        <View style={s.card}>
-          {/* Header */}
-          <View style={s.header}>
-            <Ionicons name="calendar-outline" size={22} color={theme.color.parent} />
-            <Text style={s.title}>Schedule Interview</Text>
-            <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-              <Ionicons name="close" size={22} color={theme.color.muted} />
-            </TouchableOpacity>
-          </View>
-
+    // Bottom sheet on mobile (edge-to-edge, rounded top, thumb-reachable
+    // action), centred card on web — see BottomSheetModal for the reasoning.
+    <BottomSheetModal
+      visible={visible}
+      onClose={onClose}
+      title="Schedule Interview"
+      subtitle={jobTitle ? `${helperName} · ${jobTitle}` : helperName}
+      footer={
+        <TouchableOpacity style={[s.scheduleBtn, loading && s.scheduleBtnDisabled]} onPress={handleSchedule} disabled={loading}>
+          {loading
+            ? <ActivityIndicator color="#fff" />
+            : <><Ionicons name="send-outline" size={18} color="#fff" /><Text style={s.scheduleBtnTxt}>Send Interview Invite</Text></>
+          }
+        </TouchableOpacity>
+      }
+    >
+      <>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
-            {/* Context */}
-            <View style={s.contextBox}>
-              <Text style={s.contextLabel}>Applicant</Text>
-              <Text style={s.contextValue}>{helperName}</Text>
-              <Text style={s.contextLabel}>For Position</Text>
-              <Text style={s.contextValue}>{jobTitle}</Text>
-            </View>
+            {/* The applicant and position now live in the sheet header, so the
+                old context box here would state the same two facts twice in a
+                small surface — costing the vertical space the form needs. */}
 
             {/* Existing info */}
             {existing?.interview_date && (
@@ -229,9 +252,9 @@ export function InterviewModal({ visible, onClose, applicationId, helperName, jo
             {/* Location / link */}
             <Text style={s.sectionLabel}>{type === 'In-person' ? 'Location' : type === 'Video Call' ? 'Meeting Link' : 'Phone Number'}</Text>
             <TextInput
-              style={s.textInput}
+              style={[s.textInput, errorField === 'location' && s.inputError]}
               value={location}
-              onChangeText={setLocation}
+              onChangeText={(v) => { setLocation(v); if (errorField === 'location') { setErrorField(null); setError(''); } }}
               placeholder={placeholderMap[type]}
               placeholderTextColor={theme.color.subtle}
             />
@@ -251,52 +274,25 @@ export function InterviewModal({ visible, onClose, applicationId, helperName, jo
             {error ? <Text style={s.errorTxt}>{error}</Text> : null}
           </ScrollView>
 
-          <TouchableOpacity style={[s.scheduleBtn, loading && s.scheduleBtnDisabled]} onPress={handleSchedule} disabled={loading}>
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <><Ionicons name="send-outline" size={18} color="#fff" /><Text style={s.scheduleBtnTxt}>Send Interview Invite</Text></>
-            }
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
+          {/* Not auto-dismissing: the user has to acknowledge it, which is the
+              whole point — the quiet inline line is what they were missing. */}
+          <NotificationModal
+            visible={!!alert}
+            title="Can't send this invite yet"
+            message={alert}
+            type="warning"
+            autoClose={false}
+            onClose={() => setAlert('')}
+          />
+      </>
+    </BottomSheetModal>
   );
 }
 
+// The overlay / card / header / close styles that used to live here are gone:
+// BottomSheetModal owns the shell now, and the context box was removed because
+// the sheet header already names the applicant and the position.
 const s = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    width: '100%',
-    maxWidth: 440,
-    maxHeight: '90%',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.25,
-        shadowRadius: 20,
-        elevation: 10,
-      },
-    }),
-  },
-  header:     { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  title:      { flex: 1, fontSize: 17, fontWeight: '700', color: theme.color.ink, marginLeft: 8 },
-  closeBtn:   { padding: 4 },
-  contextBox: { backgroundColor: theme.color.parentSoft, borderRadius: 10, padding: 12, marginBottom: 14 },
-  contextLabel: { fontSize: 11, color: theme.color.muted, fontWeight: '600', textTransform: 'uppercase', marginTop: 4 },
-  contextValue: { fontSize: 14, fontWeight: '600', color: theme.color.ink },
   existingBox:{ flexDirection: 'row', backgroundColor: theme.color.warningSoft, borderRadius: 8, padding: 10, marginBottom: 12, alignItems: 'flex-start', gap: 6 },
   existingTxt:{ fontSize: 12, color: theme.color.warning, flex: 1 },
   sectionLabel: { fontSize: 13, fontWeight: '600', color: theme.color.ink, marginTop: 14, marginBottom: 6 },
@@ -334,6 +330,9 @@ const s = StyleSheet.create({
   textArea:   { minHeight: 72, textAlignVertical: 'top' },
   optional:   { color: theme.color.muted, fontWeight: '400' },
   errorTxt:   { color: theme.color.danger, fontSize: 13, marginTop: 8 },
+  /** Marks the field the message is about, so dismissing the alert leaves the
+   *  user looking at exactly what needs fixing. */
+  inputError: { borderColor: theme.color.danger, borderWidth: 1.5 },
   scheduleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.color.parent, borderRadius: 12, paddingVertical: 14, marginTop: 16 },
   scheduleBtnDisabled: { opacity: 0.6 },
   scheduleBtnTxt: { color: '#fff', fontSize: 15, fontWeight: '700' },

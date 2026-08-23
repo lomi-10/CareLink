@@ -5,6 +5,31 @@
  *
  * @param array<string,mixed> $d Sanitized display values (pre-escaped where noted)
  */
+
+/*
+ * TERMINATION CLAUSE — rewritten Aug 2026, after the PESO review.
+ *
+ * The previous clause read: "Either party may terminate this agreement with at
+ * least 30 days written notice or payment in lieu thereof (P7,000.00), as
+ * provided under RA 10361." That citation was wrong on two counts, and a wrong
+ * citation is worse than none because it reads as authoritative:
+ *
+ *   - RA 10361 Sec. 32 gives FIVE days notice, not thirty, and only where the
+ *     duration of service is undetermined. The 30-day rule belongs to the Labor
+ *     Code for regular employees; a kasambahay is covered by RA 10361.
+ *   - Sec. 32 has no "payment in lieu" of notice. What it does provide is an
+ *     indemnity of fifteen (15) days work where the kasambahay is unjustly
+ *     dismissed, and forfeiture of up to fifteen (15) days unpaid salary where
+ *     they leave without justifiable cause.
+ *
+ * PESO asked what grounds justify immediate termination. Sections 33 and 34
+ * answer that directly, so they are reproduced in the contract rather than
+ * paraphrased.
+ *
+ * STILL OPEN, FOR COUNSEL — see docs/contract-legal-review.md:
+ *   - whether an overtime premium rate applies to kasambahay, and at what rate;
+ *   - the minimum engagement below which a contract should not be generated.
+ */
 function carelink_bk1_build_html(array $d): string
 {
     $nl = static function ($s): string {
@@ -71,7 +96,18 @@ function carelink_bk1_build_html(array $d): string
             . '</tr></table>';
     };
 
-    $benefitsListSmall = '';
+    // Mandatory benefits under RA 10361 (Batas Kasambahay).
+    //
+    // 13th month pay is listed UNCONDITIONALLY and first. Sec. 27 entitles a
+    // kasambahay who has rendered at least one month of service to 13th month
+    // pay under PD 851 — it is not a benefit the employer opts into, so it is
+    // not driven by a job-post toggle the way SSS/PhilHealth/Pag-IBIG are.
+    // PESO flagged its absence in the Aug 2026 review.
+    //
+    // Service incentive leave (Sec. 29) is likewise statutory: five days paid
+    // leave after one year of service.
+    $benefitsListSmall = '&bull; 13th month pay (RA 10361 Sec. 27, PD 851)<br/>'
+        . '&bull; 5 days service incentive leave after 1 year (Sec. 29)<br/>';
     if (!empty($d['prov_sss'])) {
         $benefitsListSmall .= '&bull; SSS<br/>';
     }
@@ -80,9 +116,6 @@ function carelink_bk1_build_html(array $d): string
     }
     if (!empty($d['prov_pi'])) {
         $benefitsListSmall .= '&bull; Pag-IBIG<br/>';
-    }
-    if ($benefitsListSmall === '') {
-        $benefitsListSmall = 'None applicable';
     }
 
     $mealsText = (($d['other_benefits'] ?? 'Wala') !== 'Wala')
@@ -340,7 +373,7 @@ function carelink_bk1_build_html(array $d): string
         ' . $termItem(1, 'Place of Work', 'The helper shall work at the employer&#39;s residence located at ' . $d['place_of_work'] . '.') . '
         ' . $termItem(2, 'Job Title', 'The helper shall be employed as a ' . ($d['category_name'] ?? $d['job_title']) . ' (specific roles: ' . $d['job_title'] . ').') . '
         ' . $termItem(3, 'Duties and Responsibilities', 'The helper shall perform the duties as listed in Page 1 of this agreement and other reasonable tasks related to the household.') . '
-        ' . $termItem(4, 'Working Hours', 'The regular working hours shall be ' . $d['work_hours'] . '. Overtime work must be agreed upon and paid accordingly.') . '
+        ' . $termItem(4, 'Working Hours', 'Normal working hours shall not exceed eight (8) hours per day, within the agreed schedule of ' . $d['work_hours'] . '. Work rendered beyond eight (8) hours is overtime and shall be compensated at the agreed overtime rate; it may not be required without the helper&#39;s consent. Total hours of work shall not exceed twelve (12) hours in any day. The helper is entitled to an aggregate daily rest period of eight (8) hours (RA 10361 Sec. 20) and at least twenty-four (24) consecutive hours of rest each week (Sec. 21).') . '
         ' . $termItem(5, 'Rest Day', 'The helper shall have at least one (1) rest day every week, which is ' . $d['rest_days'] . '.') . '
         ' . $termItem(6, 'Salary', 'The employer shall pay the helper a salary of ' . $d['salary_big'] . ' ' . $salaryPeriodAdverb . ', payable ' . $d['payment_schedule'] . '.') . '
       </td>
@@ -356,9 +389,42 @@ function carelink_bk1_build_html(array $d): string
   </table>
 
   <div style="background:#FDF3E7; border-left:4px solid #C8733A; padding:12px; margin-top:6px;">
-    <div style="font-size:10pt; font-weight:bold; color:#8B4513; margin-bottom:4px;">&#9888; NOTICE FOR TERMINATION</div>
-    <div style="font-size:9pt; color:#1A1A1A; line-height:1.4;">Either party may terminate this agreement with at least 30 days written notice or payment in lieu thereof (' . $d['termination_pay'] . '), as provided under RA 10361.</div>
+    <div style="font-size:10pt; font-weight:bold; color:#8B4513; margin-bottom:4px;">&#9888; TERMINATION OF SERVICE (RA 10361, Sec. 32&ndash;34)</div>
+    <div style="font-size:8.5pt; color:#1A1A1A; line-height:1.45;">
+      Neither party may end this agreement before the end of its term except on the grounds in Sections 33 and 34, listed below.
+      If the helper is unjustly dismissed, the employer shall pay compensation already earned plus the equivalent of fifteen (15) days&rsquo; work as indemnity.
+      If the helper leaves without justifiable cause, unpaid salary not exceeding fifteen (15) days&rsquo; work is forfeited.
+      Where the duration of service is not fixed, either party may end the relationship by giving notice five (5) days before the intended termination.
+    </div>
   </div>
+
+  <table style="width:100%; border-collapse:collapse; margin-top:8px;">
+    <tr>
+      <td style="width:50%; vertical-align:top; padding-right:10px;">
+        <div style="font-size:8.5pt; font-weight:bold; color:#8B4513; margin-bottom:3px;">Sec. 33 &mdash; Grounds the HELPER may end service</div>
+        <div style="font-size:7.5pt; color:#1A1A1A; line-height:1.4;">
+          (a) Verbal or emotional abuse by the employer or any household member;<br/>
+          (b) Inhuman treatment, including physical abuse;<br/>
+          (c) Commission of a crime or offense against the helper;<br/>
+          (d) Violation by the employer of the terms of this contract or of the law;<br/>
+          (e) Any disease prejudicial to the health of the helper, employer or household;<br/>
+          (f) Other causes analogous to the foregoing.
+        </div>
+      </td>
+      <td style="width:50%; vertical-align:top; padding-left:10px;">
+        <div style="font-size:8.5pt; font-weight:bold; color:#8B4513; margin-bottom:3px;">Sec. 34 &mdash; Grounds the EMPLOYER may end service</div>
+        <div style="font-size:7.5pt; color:#1A1A1A; line-height:1.4;">
+          (a) Misconduct or willful disobedience of a lawful order connected to the work;<br/>
+          (b) Gross or habitual neglect or inefficiency in performing duties;<br/>
+          (c) Fraud or willful breach of the trust reposed in the helper;<br/>
+          (d) Commission of a crime or offense against the employer or an immediate family member;<br/>
+          (e) Violation by the helper of the terms of this contract or of the law;<br/>
+          (f) Any disease prejudicial to the health of the helper, employer or household;<br/>
+          (g) Other causes analogous to the foregoing.
+        </div>
+      </td>
+    </tr>
+  </table>
 
   <div style="border:1px solid #E0D5C8; padding:12px; margin-top:10px;">
     <div style="font-size:10pt; font-weight:bold; color:#1A1A1A; margin-bottom:4px;">&#9878; DISPUTE RESOLUTION</div>

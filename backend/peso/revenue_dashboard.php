@@ -1,18 +1,29 @@
 <?php
 /**
- * peso/revenue_dashboard.php — PESO's accumulated partnership share.
+ * peso/revenue_dashboard.php — platform fee activity, for PESO's oversight only.
  *
  * GET ?staff_user_id=
  *
- * Reporting only. This endpoint moves no money and has no payout action,
- * because disbursement requires a signed MOA with PESO Ormoc City. Until then
- * the share simply accrues and is shown here with that status stated plainly.
+ * PESO RECEIVES NO REVENUE FROM CARELINK. Under RA 8759 a Public Employment
+ * Service Office provides employment facilitation free of charge, and PESO
+ * Ormoc City confirmed (Aug 2026) that they take no share. An earlier version
+ * of this endpoint reported an accruing 30% "partnership share" pending an MOA
+ * — that arrangement does not exist and was never permissible.
+ *
+ * What it reports now is what EMPLOYERS were charged, so PESO can see the
+ * commercial activity around placements they verified. Every peso_share figure
+ * is 0.00 by construction (see PESO_REVENUE_SHARE in shared/paymongo.php) and is
+ * returned only so historical rows still parse.
+ *
+ * Reporting only. It moves no money and has no payout action.
+ *
+ * NOTE: nothing in the PESO portal currently links here.
  */
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
 

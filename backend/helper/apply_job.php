@@ -30,6 +30,22 @@ try {
     exit;
 }
 
+// Only a PESO-verified helper may apply.
+//
+// An application is a real claim about someone — it shares their documents with
+// an employer and can lead to a contract. The app hides the Apply button from
+// pending helpers, but that is a UI courtesy, not a control: this endpoint can
+// be called directly. Enforced here, where the application is created.
+require_once __DIR__ . '/../shared/verification_guard.php';
+if (!carelink_is_verified($conn, $helper_id)) {
+    echo json_encode([
+        'success' => false,
+        'code'    => 'not_verified',
+        'message' => 'Your account is still being verified by PESO. Once you are verified you can apply to jobs. Completing your profile and documents helps the review move faster.',
+    ]);
+    exit;
+}
+
 // Documents the helper explicitly chose to share with this employer (consent is per-application)
 $shared_document_ids = [];
 if (isset($input['shared_document_ids']) && is_array($input['shared_document_ids'])) {

@@ -14,6 +14,7 @@ error_reporting(0);
 include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
 include_once __DIR__ . '/../shared/file_security.php';
+include_once __DIR__ . '/../shared/complaint_tracking_tables.php';
 
 function send($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -142,11 +143,19 @@ try {
     }
     $docStmt->close();
 
-    // ── Recent reviews (helpers browsing employer reputation) ─────────────────
+    // ── Recent ratings (helpers browsing employer reputation) ────────────────
+    //
+    // RATINGS ARE PUBLIC, WRITTEN REVIEWS ARE NOT. PESO's decision (Aug 2026):
+    // the star rating each party gives the other is published, but the written
+    // review stays between the reviewer and PESO. Only PESO and super admin can
+    // read the text — see peso/get_user_reviews.php.
+    //
+    // review_text is deliberately NOT selected here. Leaving it out of the query
+    // rather than filtering it later means it cannot be leaked by a future edit
+    // that forgets to strip it.
     $recentReviews = [];
     $revSql = "
-        SELECT pr.rating,
-               COALESCE(pr.review_text, '') AS review_text,
+        SELECT pr.rating, pr.created_at,
                TRIM(CONCAT(COALESCE(ru.first_name,''), ' ', COALESCE(ru.last_name,''))) AS reviewer_name
         FROM placement_reviews pr
         INNER JOIN users ru ON ru.user_id = pr.reviewer_id
@@ -162,8 +171,8 @@ try {
         while ($revRes && ($rr = $revRes->fetch_assoc())) {
             $recentReviews[] = [
                 'rating' => round((float) ($rr['rating'] ?? 0), 1),
-                'review_text' => trim((string) ($rr['review_text'] ?? '')),
                 'reviewer_name' => trim((string) ($rr['reviewer_name'] ?? '')) ?: 'Reviewer',
+                'created_at' => $rr['created_at'] ?? null,
             ];
         }
         if ($revRes) {
@@ -183,6 +192,12 @@ try {
         'active_jobs'   => $activeJobCount,
         'documents'     => $documents,
         'recent_reviews' => $recentReviews,
+        // Public safety marking on this household, if PESO issued one.
+        // Symmetric with the helper side on purpose: a confirmed abuse finding
+        // against an employer is exactly what a kasambahay needs warned about,
+        // and a one-directional system would just be a blacklist for workers.
+        'safety_flag'    => carelink_active_safety_flag($conn, $parent_id),
+        'credentials'    => carelink_public_credentials($conn, $parent_id),
     ]);
 
 } catch (Exception $e) {

@@ -10,6 +10,7 @@ import API_URL from "@/constants/api";
 import { withPesoStaffQuery } from "@/lib/pesoStaffQuery";
 import { Donut, Legend, LineMini, HBars, type Segment } from "@/components/peso/reports/Charts";
 import { usePesoTheme, ScreenHeader, IconButton, AnimateIn, layout, font, space, type PesoColors } from "@/components/peso/ui";
+import { ReportPreviewModal } from "@/components/peso/ReportPreviewModal";
 
 function fmtDate(ts?: string) {
   if (!ts) return "—";
@@ -17,18 +18,33 @@ function fmtDate(ts?: string) {
   return isNaN(d.getTime()) ? "—" : d.toLocaleString("en-PH", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-function downloadCsv(name: string, headers: string[], data: (string | number)[][]) {
-  if (Platform.OS !== "web") return false;
-  const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const csv = [headers.map(esc).join(","), ...data.map((r) => r.map(esc).join(","))].join("\n");
+/**
+ * Pulls the workbook from peso/export_report.php and saves it.
+ *
+ * Fetched as a blob rather than pointed at with a plain link: the endpoint is
+ * staff-only, and a bare <a href> would drop the caller out of the app's auth
+ * wrapper. Going through fetch keeps the staff query string attached and lets a
+ * server-side refusal surface as an error instead of a downloaded HTML page.
+ */
+async function downloadWorkbookFile(): Promise<string | null> {
+  if (Platform.OS !== "web") return "Download is available on the web dashboard.";
   try {
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+    const url = await withPesoStaffQuery(`${API_URL}/peso/export_report.php`);
+    const res = await fetch(url);
+    if (!res.ok) return `The server refused the export (${res.status}).`;
+    const blob = await res.blob();
+    // A JSON body here means an auth failure, not a workbook.
+    if (blob.type.includes("json")) return "Not signed in as PESO staff. Please sign in again.";
+    const href = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = name; a.click();
-    URL.revokeObjectURL(url);
-    return true;
-  } catch { return false; }
+    a.href = href;
+    a.download = `CareLink_PESO_Report_${new Date().toISOString().slice(0, 10)}.xls`;
+    a.click();
+    URL.revokeObjectURL(href);
+    return null;
+  } catch {
+    return "Couldn't reach the server.";
+  }
 }
 
 export default function ReportsAnalytics() {
@@ -37,6 +53,9 @@ export default function ReportsAnalytics() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const { width } = useWindowDimensions();
   const cols = width >= 1100 ? 3 : width >= 720 ? 2 : 1;
 
@@ -51,6 +70,14 @@ export default function ReportsAnalytics() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
   const onRefresh = async () => { setRefreshing(true); await fetchData(); setRefreshing(false); };
+
+  const downloadWorkbook = async () => {
+    setExporting(true);
+    setExportError(null);
+    const err = await downloadWorkbookFile();
+    if (err) setExportError(err);
+    setExporting(false);
+  };
 
   const grievanceColors = useMemo(() => [c.accent, c.info, "#7C3AED", c.warn, c.bad, "#0891B2", c.ok, "#DB2777"], [c]);
 
@@ -87,6 +114,51 @@ export default function ReportsAnalytics() {
   const grievances: Segment[] = (data?.grievances_by_type ?? []).map((g: any, i: number) => ({ label: g.type, value: g.count, color: grievanceColors[i % grievanceColors.length] }));
   const grievTotal = grievances.reduce((sum: number, g: Segment) => sum + g.value, 0);
   const terms = (data?.termination_reasons ?? []).map((t: any) => ({ label: String(t.reason).replace(/_/g, " ").replace(/\b\w/g, (m: string) => m.toUpperCase()), value: t.count }));
+
+  // ── The demographic questions PESO asked for (Aug 2026) ────────────────────
+  const gender = data?.gender ?? {};
+  const gHelpers = gender.helpers ?? { Male: 0, Female: 0, "Not stated": 0 };
+  const gRate = gender.complaint_rate ?? { Male: 0, Female: 0, "Not stated": 0 };
+  const gPlace = gender.placements ?? { Male: 0, Female: 0, "Not stated": 0 };
+  const genderTotal = (gHelpers.Male ?? 0) + (gHelpers.Female ?? 0) + (gHelpers["Not stated"] ?? 0);
+  const genderSeg: Segment[] = [
+    { label: "Female", value: gHelpers.Female ?? 0, color: "#DB2777" },
+    { label: "Male", value: gHelpers.Male ?? 0, color: c.info },
+    { label: "Not stated", value: gHelpers["Not stated"] ?? 0, color: c.subtle },
+  ];
+  const GENDER_KEYS = ["Female", "Male", "Not stated"] as const;
+  const complaintRateItems = GENDER_KEYS.map((k) => ({ label: k, value: Number(gRate[k] ?? 0) }));
+  const placementGenderItems = GENDER_KEYS.map((k) => ({ label: k, value: Number(gPlace[k] ?? 0) }));
+
+  const parties = data?.complaint_parties ?? { against_helper: 0, against_employer: 0 };
+  const reportedTotal = (parties.against_helper ?? 0) + (parties.against_employer ?? 0);
+  const reportedSeg: Segment[] = [
+    { label: "Against helpers", value: parties.against_helper ?? 0, color: c.warn },
+    { label: "Against employers", value: parties.against_employer ?? 0, color: c.bad },
+  ];
+
+  const geo = data?.geography ?? {};
+  const geoH = geo.helpers ?? { inside: 0, outside: 0, unknown: 0 };
+  const geoE = geo.employers ?? { inside: 0, outside: 0, unknown: 0 };
+  const geoHelperTotal = geoH.inside + geoH.outside + geoH.unknown;
+  const geoEmpTotal = geoE.inside + geoE.outside + geoE.unknown;
+  const geoSegOf = (g: any): Segment[] => [
+    { label: "Within Ormoc", value: g.inside, color: c.accent },
+    { label: "Beyond Ormoc", value: g.outside, color: c.info },
+    { label: "Not recorded", value: g.unknown, color: c.subtle },
+  ];
+  const geoHelperSeg = geoSegOf(geoH);
+  const geoEmpSeg = geoSegOf(geoE);
+  const topOutside = (geo.top_outside ?? []).map((r: any) => ({
+    label: [r.name, r.province].filter(Boolean).join(", "),
+    value: r.count,
+  }));
+
+  const topCats = data?.top_categories ?? {};
+  const toBars = (arr: any[]) => (arr ?? []).map((r: any) => ({ label: r.name, value: r.count }));
+  const catJobs = toBars(topCats.job_posts);
+  const catPlacements = toBars(topCats.placements);
+  const catSpecialty = toBars(topCats.specialty);
 
   const cardW = { width: cols === 1 ? ("100%" as const) : cols === 2 ? ("48%" as const) : ("31.5%" as const) };
 
@@ -161,10 +233,104 @@ export default function ReportsAnalytics() {
           </View>
         </Section>
 
-        {/* Section 3 */}
-        <Section title="3. Dispute & Incident Management">
+        {/* Section 3 — the demographic questions PESO asked for */}
+        <Section title="3. Workforce Demographics">
           <View style={s.grid}>
-            <Panel title="Active Grievances by Type" style={cols === 1 ? cardW : { width: "40%" }} delay={0}>
+            <Panel title="Helper Gender" style={cardW} delay={0}>
+              {genderTotal ? (
+                <View style={s.donutRow}>
+                  <Donut segments={genderSeg} centerValue={String(genderTotal)} centerLabel="Helpers" />
+                  <Legend segments={genderSeg} suffix={(x) => `${x.value} ${x.label} (${Math.round((x.value / genderTotal) * 100)}%)`} />
+                </View>
+              ) : <Empty text="No helper profiles yet" />}
+            </Panel>
+
+            <Panel title="Complaint Rate by Gender" style={cardW} delay={60}>
+              {/* Rate, not raw count. A raw count just follows headcount, so it
+                  cannot answer "which group is more prone to complaint" — with
+                  4x more women on the platform they would top a raw chart even
+                  if they were complained about half as often per person. */}
+              {genderTotal ? (
+                <>
+                  <HBars items={complaintRateItems} color={c.bad} />
+                  <Text style={s.panelNote}>Complaints received per 100 helpers of that gender.</Text>
+                </>
+              ) : <Empty text="No data yet" />}
+            </Panel>
+
+            <Panel title="Placements by Gender" style={cardW} delay={120}>
+              {placementGenderItems.some((x) => x.value > 0)
+                ? <HBars items={placementGenderItems} color={c.ok} />
+                : <Empty text="No placements yet" />}
+            </Panel>
+          </View>
+        </Section>
+
+        {/* Section 4 — geography */}
+        <Section title="4. Where Users Are">
+          <View style={s.grid}>
+            <Panel title="Helpers: Ormoc vs Beyond" style={cardW} delay={0}>
+              {geoHelperTotal ? (
+                <View style={s.donutRow}>
+                  <Donut segments={geoHelperSeg} centerValue={`${Math.round((geoH.inside / geoHelperTotal) * 100)}%`} centerLabel="In Ormoc" />
+                  <Legend segments={geoHelperSeg} suffix={(x) => `${x.value} ${x.label}`} />
+                </View>
+              ) : <Empty text="No helper locations recorded" />}
+            </Panel>
+            <Panel title="Employers: Ormoc vs Beyond" style={cardW} delay={60}>
+              {geoEmpTotal ? (
+                <View style={s.donutRow}>
+                  <Donut segments={geoEmpSeg} centerValue={`${Math.round((geoE.inside / geoEmpTotal) * 100)}%`} centerLabel="In Ormoc" />
+                  <Legend segments={geoEmpSeg} suffix={(x) => `${x.value} ${x.label}`} />
+                </View>
+              ) : <Empty text="No employer locations recorded" />}
+            </Panel>
+            <Panel title="Top Areas Beyond Ormoc" style={cardW} delay={120}>
+              {/* "Beyond Ormoc" is only actionable if you know where. */}
+              {topOutside.length
+                ? <HBars items={topOutside} color={c.info} />
+                : <Empty text="All recorded users are within Ormoc" />}
+            </Panel>
+          </View>
+        </Section>
+
+        {/* Section 5 — categories */}
+        <Section title="5. Category Leaders">
+          <View style={s.grid}>
+            <Panel title="Job Posts by Category" style={cardW} delay={0}>
+              {catJobs.length ? <HBars items={catJobs} color={c.accent} /> : <Empty text="No job posts yet" />}
+            </Panel>
+            <Panel title="Placements by Category" style={cardW} delay={60}>
+              {catPlacements.length ? <HBars items={catPlacements} color={c.ok} /> : <Empty text="No placements yet" />}
+            </Panel>
+            <Panel title="Helper Specialty by Category" style={cardW} delay={120}>
+              {catSpecialty.length ? <HBars items={catSpecialty} color={c.info} /> : <Empty text="No specialties recorded" />}
+            </Panel>
+          </View>
+        </Section>
+
+        {/* Section 6 */}
+        <Section title="6. Dispute & Incident Management">
+          <View style={s.grid}>
+            <Panel title="Who Gets Reported" style={cardW} delay={0}>
+              {reportedTotal ? (
+                <>
+                  <View style={s.donutRow}>
+                    <Donut segments={reportedSeg} centerValue={String(reportedTotal)} centerLabel="Complaints" />
+                    <Legend segments={reportedSeg} suffix={(x) => `${x.value} ${x.label}`} />
+                  </View>
+                  <View style={s.verdictBox}>
+                    <Ionicons name="information-circle" size={15} color={c.accentInk} />
+                    <Text style={s.verdictText}>
+                      {parties.against_helper === parties.against_employer
+                        ? "Helpers and employers are reported equally often."
+                        : `${parties.against_helper > parties.against_employer ? "Helpers" : "Employers"} are reported more often (${Math.max(parties.against_helper, parties.against_employer)} vs ${Math.min(parties.against_helper, parties.against_employer)}).`}
+                    </Text>
+                  </View>
+                </>
+              ) : <Empty text="No complaints on record" />}
+            </Panel>
+            <Panel title="Active Grievances by Type" style={cardW} delay={60}>
               {grievances.length ? (
                 <View style={s.donutRow}>
                   <Donut segments={grievances} centerValue={String(grievTotal)} centerLabel="Total" />
@@ -172,14 +338,14 @@ export default function ReportsAnalytics() {
                 </View>
               ) : <Empty text="No active grievances" />}
             </Panel>
-            <Panel title="Termination Reasons" style={cols === 1 ? cardW : { flex: 1 }} delay={60}>
+            <Panel title="Termination Reasons" style={cardW} delay={120}>
               {terms.length ? <HBars items={terms} /> : <Empty text="No terminations recorded" />}
             </Panel>
           </View>
         </Section>
 
-        {/* Section 4 — audit log */}
-        <Section title="4. System Audit & Log Trails">
+        {/* Section 7 — audit log */}
+        <Section title="7. System Audit & Log Trails">
           <Panel title="Recent Activity Logs" delay={0}>
             <View style={s.tableHead}>
               <Text style={[s.th, { flex: 1.4 }]}>DATE & TIME</Text>
@@ -200,24 +366,62 @@ export default function ReportsAnalytics() {
           </Panel>
         </Section>
 
-        {/* Quick reports */}
-        <Section title="Quick Reports & Export">
-          <View style={s.grid}>
-            <ExportCard icon="document-text-outline" title="Placements Report" sub="Export placement summary" style={cardW}
-              onPress={() => downloadCsv("placements_over_time.csv", ["Week", "Placements"], (data?.placements_over_time ?? []).map((p: any) => [p.label, p.count]))} />
-            <ExportCard icon="shield-checkmark-outline" title="Compliance Report" sub="RA 10361 compliance" style={cardW}
-              onPress={() => downloadCsv("benefits_compliance.csv", ["Status", "Count"], benSeg.map((b) => [b.label, b.value]))} />
-            <ExportCard icon="people-outline" title="User Demographics" sub="User statistics report" style={cardW}
-              onPress={() => downloadCsv("user_demographics.csv", ["Group", "Count"], demoSeg.map((d) => [d.label, d.value]))} />
-            <ExportCard icon="alert-circle-outline" title="Grievance Report" sub="Dispute & incident report" style={cardW}
-              onPress={() => downloadCsv("grievances_by_type.csv", ["Type", "Count"], grievances.map((g: Segment) => [g.label, g.value]))} />
-            <ExportCard icon="download-outline" title="All Reports (CSV)" sub="Export activity log" style={cardW}
-              onPress={() => downloadCsv("activity_log.csv", ["Date", "User", "Action", "Details"], (data?.recent_activities ?? []).map((a: any) => [fmtDate(a.ts), a.actor, a.action, a.details]))} />
-          </View>
-          {Platform.OS !== "web" ? <Text style={s.exportNote}>CSV export is available on the web dashboard.</Text> : null}
+        {/* Data export */}
+        <Section title="Data Export">
+          <Panel title="Full analytics workbook" delay={0}>
+            <Text style={s.exportLead}>
+              A six-sheet Excel workbook: Summary, Helpers, Employers, Placements, Complaints and Demographics.
+              Every helper and employer row carries name, age, gender, barangay, municipality, whether they are within
+              or beyond Ormoc, category specialty, verification status and their placement and complaint counts.
+              Placements name both parties; complaints name who filed and who was reported.
+            </Text>
+            <View style={s.sheetChips}>
+              {["Summary", "Helpers", "Employers", "Placements", "Complaints", "Demographics"].map((n) => (
+                <View key={n} style={s.sheetChip}><Text style={s.sheetChipText}>{n}</Text></View>
+              ))}
+            </View>
+            <View style={s.exportActions}>
+              {/* Preview first. An export is something PESO files or hands to a
+                  supervisor, so checking it beforehand beats downloading twice. */}
+              <Pressable
+                onPress={() => setPreviewOpen(true)}
+                style={({ hovered }: any) => [s.bigExport, hovered && { backgroundColor: c.accent2 }]}
+              >
+                <Ionicons name="eye-outline" size={18} color="#fff" />
+                <Text style={s.bigExportText}>Preview report</Text>
+              </Pressable>
+              <Pressable
+                onPress={downloadWorkbook}
+                disabled={exporting}
+                style={({ hovered }: any) => [s.ghostExport, hovered && { borderColor: c.accent }, exporting && { opacity: 0.6 }]}
+              >
+                {exporting
+                  ? <ActivityIndicator color={c.accent} size="small" />
+                  : <Ionicons name="download-outline" size={18} color={c.accent} />}
+                <Text style={s.ghostExportText}>{exporting ? "Preparing…" : "Download now"}</Text>
+              </Pressable>
+            </View>
+            {!!exportError && (
+              <View style={s.exportError}>
+                <Ionicons name="alert-circle" size={14} color={c.bad} />
+                <Text style={s.exportErrorText}>{exportError}</Text>
+              </View>
+            )}
+            <Text style={s.exportNote}>
+              {Platform.OS === "web"
+                ? "Opens in Excel, LibreOffice or Google Sheets."
+                : "Download is available on the web dashboard."}
+            </Text>
+          </Panel>
         </Section>
       </View>
 
+      <ReportPreviewModal
+        visible={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        downloading={exporting}
+        onDownload={async () => { await downloadWorkbook(); }}
+      />
       <View style={{ height: 30 }} />
     </ScrollView>
   );
@@ -256,20 +460,6 @@ function Panel({ title, children, style, delay = 0 }: { title: string; children:
   const s = useMemo(() => makeStyles(c), [c]);
   return <AnimateIn delay={delay} style={[s.panel, style]}><Text style={s.panelTitle}>{title}</Text>{children}</AnimateIn>;
 }
-function ExportCard({ icon, title, sub, onPress, style }: any) {
-  const { c } = usePesoTheme();
-  const s = useMemo(() => makeStyles(c), [c]);
-  return (
-    <Pressable onPress={onPress} style={({ hovered }: any) => [s.exportCard, style, hovered && { borderColor: c.accent, backgroundColor: c.raise }]}>
-      <View style={s.exportIcon}><Ionicons name={icon} size={20} color={c.accent} /></View>
-      <View style={{ flex: 1 }}>
-        <Text style={s.exportTitle}>{title}</Text>
-        <Text style={s.exportSub}>{sub}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={16} color={c.subtle} />
-    </Pressable>
-  );
-}
 function Empty({ text }: { text: string }) {
   const { c } = usePesoTheme();
   const s = useMemo(() => makeStyles(c), [c]);
@@ -306,10 +496,21 @@ const makeStyles = (c: PesoColors) => StyleSheet.create({
   actionChip: { alignSelf: "flex-start", backgroundColor: c.accentSoft, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8 },
   actionChipText: { fontSize: 11, fontFamily: font.semibold, color: c.accentInk },
 
-  exportCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: c.surface, borderRadius: 12, borderWidth: 1, borderColor: c.line, padding: 14, minWidth: 200, ...(({ transitionDuration: "140ms" }) as any) },
-  exportIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: c.accentSoft, alignItems: "center", justifyContent: "center" },
-  exportTitle: { fontSize: 13.5, fontFamily: font.display, color: c.ink },
-  exportSub: { fontSize: 11.5, color: c.muted, marginTop: 1, fontFamily: font.regular },
+  panelNote: { fontSize: 11.5, color: c.subtle, fontFamily: font.regular, marginTop: 10, lineHeight: 16 },
+  verdictBox: { flexDirection: "row", alignItems: "flex-start", gap: 7, backgroundColor: c.accentSoft, borderRadius: 10, padding: 11, marginTop: 12 },
+  verdictText: { flex: 1, fontSize: 12, color: c.accentInk, fontFamily: font.semibold, lineHeight: 17 },
+
+  exportLead: { fontSize: 13, color: c.muted, fontFamily: font.regular, lineHeight: 19 },
+  sheetChips: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 13 },
+  sheetChip: { backgroundColor: c.sunken, borderWidth: 1, borderColor: c.line, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5 },
+  sheetChipText: { fontSize: 11.5, fontFamily: font.semibold, color: c.muted },
+  bigExport: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, backgroundColor: c.accent, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 24, ...(({ transitionDuration: "140ms" }) as any) },
+  exportActions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 16 },
+  ghostExport: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, borderWidth: 1.5, borderColor: c.line, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 22, ...(({ transitionDuration: "140ms" }) as any) },
+  ghostExportText: { color: c.accent, fontSize: 14, fontFamily: font.semibold },
+  bigExportText: { color: "#fff", fontSize: 14, fontFamily: font.semibold },
+  exportError: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: c.badSoft, borderRadius: 9, padding: 10, marginTop: 10 },
+  exportErrorText: { flex: 1, fontSize: 12, color: c.bad, fontFamily: font.semibold },
   exportNote: { fontSize: 12, color: c.muted, marginTop: 10, fontFamily: font.regular },
 
   emptyBox: { padding: 24, alignItems: "center" },

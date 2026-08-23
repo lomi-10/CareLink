@@ -19,6 +19,8 @@ import API_URL from '@/constants/api';
 import { useHelperProfile } from '@/hooks/helper';
 import { HelperTabBar } from '@/components/helper/home';
 import { NotificationModal, DocumentStatusTag, AiScanTag } from '@/components/shared';
+import { CredentialWall } from '@/components/shared/CredentialBadge';
+import { useColorSchemePreference } from '@/contexts/ColorSchemePreferenceContext';
 import { ValidIdUploadCard } from '@/components/shared/ValidIdUploadCard';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { useProfileTheme } from './profile.theme';
@@ -45,6 +47,7 @@ const DOC_SLOTS: DocSlot[] = [
 export default function DocumentsScreen() {
   const router = useRouter();
   const t = useProfileTheme();
+  const { resolvedColorScheme } = useColorSchemePreference();
   const { GREEN, MUTED, ORANGE, DARK } = t;
   const s = useMemo(() => createStyles(t), [t]);
   const { profileData, loading, refresh } = useHelperProfile();
@@ -231,6 +234,18 @@ export default function DocumentsScreen() {
               <Text style={s.bannerSub}>All documents are encrypted and securely stored. We never share your documents without your consent.</Text>
             </View>
           </View>
+
+          {/* Credential seals.
+              Sits above the upload cards on purpose: what you have EARNED
+              should be the first thing you see on this screen, not the list of
+              things still missing. The upload cards below stay the place to act. */}
+          <CredentialWall
+            documents={documents}
+            role="helper"
+            dark={resolvedColorScheme === 'dark'}
+            title="Your PESO credentials"
+            style={{ marginBottom: 18 }}
+          />
 
           {/* Tab toggle */}
           <View style={s.tabRow}>

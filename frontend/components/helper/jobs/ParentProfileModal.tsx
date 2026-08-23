@@ -1,6 +1,7 @@
 // components/helper/jobs/ParentProfileModal.tsx
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TrustStrip } from '@/components/shared/TrustStrip';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -80,15 +81,26 @@ function InfoRow({ icon, label, value, last = false }: {
 }
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
-function OverviewTab({ profile, household, children, elderly, documents, setDocViewing }: {
+function OverviewTab({ profile, household, children, elderly, documents, setDocViewing, credentials, safetyFlag }: {
   profile: any; household: any; children: any[]; elderly: any[];
   documents: any[]; setDocViewing: (v: { title: string; url: string } | null) => void;
+  credentials?: any[]; safetyFlag?: any;
 }) {
   const fullAddress = [profile.barangay, profile.municipality, profile.province]
     .filter(Boolean).join(', ') || null;
 
   return (
     <View style={ot.root}>
+      {/* Who this household is, before what they are like. A helper deciding
+          whether to accept work needs PESO standing first. */}
+      <TrustStrip
+        credentials={credentials}
+        safetyFlag={safetyFlag}
+        size="md"
+        showEmpty
+        style={{ marginBottom: 16 }}
+      />
+
       {profile.bio ? (
         <View style={ot.section}>
           <SectionHead icon="person-outline" title="About" />
@@ -251,7 +263,7 @@ function JobsTab({ browseJobs, onOpenJob }: {
 
 // ── Reviews Tab ───────────────────────────────────────────────────────────────
 function ReviewsTab({ recentReviews, avgRating, reviewCount }: {
-  recentReviews: { rating: number; review_text: string; reviewer_name: string }[];
+  recentReviews: { rating: number; reviewer_name: string }[];
   avgRating: number;
   reviewCount: number;
 }) {
@@ -299,11 +311,8 @@ function ReviewsTab({ recentReviews, avgRating, reviewCount }: {
                 </View>
               </View>
             </View>
-            {r.review_text ? (
-              <Text style={rt.body}>{r.review_text}</Text>
-            ) : (
-              <Text style={rt.noComment}>No written comment.</Text>
-            )}
+            {/* Rating only. Written reviews are PESO-only by policy — a review
+                the subject can read is not a candid review. */}
           </View>
         ))
       ) : (
@@ -358,12 +367,14 @@ export function ParentProfileModal({
   const children     = data?.children     ?? [];
   const elderly      = data?.elderly      ?? [];
   const documents    = data?.documents    ?? [];
+  const credentials  = data?.credentials  ?? [];
+  const safetyFlag   = data?.safety_flag  ?? null;
   const avgRating    = data?.avg_rating   ?? 0;
   const reviewCount  = data?.review_count ?? 0;
   const activeJobs   = data?.active_jobs  ?? 0;
   const hiredCount   = data?.hired_count  ?? 0;
   const recentReviews = (data?.recent_reviews ?? []) as {
-    rating: number; review_text: string; reviewer_name: string;
+    rating: number; reviewer_name: string;
   }[];
 
   const name         = user.first_name
@@ -468,6 +479,8 @@ export function ParentProfileModal({
                     elderly={elderly}
                     documents={documents}
                     setDocViewing={setDocViewing}
+                    credentials={credentials}
+                    safetyFlag={safetyFlag}
                   />
                 )}
                 {activeTab === 'jobs' && (

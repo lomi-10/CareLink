@@ -24,8 +24,21 @@ const PRICE_FEATURED_BOOST = 9900;   // ₱99   one-off, 7-day boost
 const PRICE_PLUS_MONTHLY   = 14900;  // ₱149  per month
 const PRICE_PLACEMENT_FEE  = 19900;  // ₱199  one-off on a completed hire
 
-/** Share of the placement fee accrued for PESO Ormoc City (not auto-disbursed). */
-const PESO_REVENUE_SHARE = 0.30;
+/**
+ * PESO's share of the placement fee: ZERO, and it must stay zero.
+ *
+ * PESO Ormoc City confirmed (Aug 2026) that they take no revenue share. Under
+ * RA 8759 (the PESO Act of 1999) a Public Employment Service Office provides
+ * employment facilitation services FREE OF CHARGE — it is a government service,
+ * not a commercial partner. An earlier version of this file split 30% to PESO
+ * pending a "signed MOA"; there is no MOA to sign, because the arrangement it
+ * described is not one a PESO is permitted to enter.
+ *
+ * The constant and the split function are kept rather than deleted so the
+ * placement_fees columns still populate (as 0.00) and nothing downstream has to
+ * special-case a missing value. Do not raise this above zero.
+ */
+const PESO_REVENUE_SHARE = 0.00;
 
 /** CareLink Plus loyalty discount applied to the placement fee. */
 const PLUS_PLACEMENT_DISCOUNT = 0.20;

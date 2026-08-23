@@ -13,13 +13,13 @@ import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useParentProfile, useParentStats, useParentPortalMode } from '@/hooks/parent';
 import { useCareBot } from '@/contexts/CareBotContext';
-import { NotificationModal, ConfirmationModal, VerifyChangeModal } from '@/components/shared';
+import { NotificationModal, ConfirmationModal, VerifyChangeModal, SelectField } from '@/components/shared';
 import { DocumentAIScan, type ScanResult } from '@/components/shared/DocumentAIScan';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
 import { isPdfDocument } from '@/lib/documentType';
 import { LocationSearchInput, type LocationResult } from '@/components/shared/LocationSearchInput';
-import { PARENT_HOUSEHOLD_TYPE_OPTIONS, formatParentHouseholdType } from '@/constants/parentHousehold';
+import { PARENT_HOUSEHOLD_TYPE_OPTIONS, PARENT_RELIGION_OPTIONS, formatParentHouseholdType } from '@/constants/parentHousehold';
 import { ParentTopNav } from './ParentTopNav';
 import { pt, CARAMEL_GRADIENT, ACCENT_GRADIENT } from './parentWebTheme';
 import { isValidPhMobile, normalizePhMobile } from '@/lib/phone';
@@ -115,7 +115,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
   const startEdit = (key: SecKey) => {
     setForm({
       first_name: U.first_name ?? '', middle_name: U.middle_name ?? '', last_name: U.last_name ?? '',
-      contact_number: p.contact_number ?? '', bio: p.bio ?? '',
+      contact_number: p.contact_number ?? '', bio: p.bio ?? '', religion: p.religion ?? '',
       province: p.province ?? 'Leyte', municipality: p.municipality ?? '', barangay: p.barangay ?? '',
       landmark: p.landmark ?? '', latitude: '', longitude: '',
       household_size: household?.household_size != null ? String(household.household_size) : '',
@@ -143,7 +143,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
 
       const base: Record<string, string> = {
         first_name: U.first_name ?? '', middle_name: U.middle_name ?? '', last_name: U.last_name ?? '',
-        contact_number: p.contact_number ?? '', bio: p.bio ?? '',
+        contact_number: p.contact_number ?? '', bio: p.bio ?? '', religion: p.religion ?? '',
         province: p.province ?? '', municipality: p.municipality ?? '', barangay: p.barangay ?? '', landmark: p.landmark ?? '',
         household_size: household?.household_size != null ? String(household.household_size) : '',
         household_type: household?.household_type ?? '',
@@ -158,7 +158,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
       const fd = new FormData();
       fd.append('user_id', uid);
       fd.append('requester_id', uid);
-      (['first_name', 'middle_name', 'last_name', 'contact_number', 'province', 'municipality', 'barangay', 'bio', 'landmark', 'household_type'] as const)
+      (['first_name', 'middle_name', 'last_name', 'contact_number', 'province', 'municipality', 'barangay', 'bio', 'religion', 'landmark', 'household_type'] as const)
         .forEach((k) => fd.append(k, String(v[k] ?? '').trim()));
       fd.append('household_size', v.household_size || '0');
       fd.append('has_children', v.has_children);
@@ -211,7 +211,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
       if (form.contact_number?.trim() && !isValidPhMobile(form.contact_number)) return err('Enter a valid PH mobile number, like 0917 123 4567 — or leave it blank');
       if (form.bio?.trim() && form.bio.trim().length < 15) return err('Bio must be at least 15 characters');
       // Email is changed via the verified flow; everything else saves here.
-      return submit({ first_name: form.first_name, middle_name: form.middle_name, last_name: form.last_name, contact_number: normalizePhMobile(form.contact_number) ?? form.contact_number, bio: form.bio }, { success: 'Personal information saved!', onDone: () => setEditing(null) });
+      return submit({ first_name: form.first_name, middle_name: form.middle_name, last_name: form.last_name, contact_number: normalizePhMobile(form.contact_number) ?? form.contact_number, bio: form.bio, religion: form.religion }, { success: 'Personal information saved!', onDone: () => setEditing(null) });
     }
     if (editing === 'address') {
       if (!form.province?.trim() || !form.municipality?.trim() || !form.barangay?.trim()) return err('Province, municipality and barangay are required');
@@ -316,6 +316,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
       { label: 'Username', value: U.username || '—' },
       { label: 'Email Address', value: U.email || '—' },
       { label: 'Contact Number', value: p.contact_number || '—' },
+      { label: 'Religion', value: p.religion || '—' },
       { label: 'About the Household', value: p.bio || '—' },
     ],
     address: [
@@ -564,6 +565,20 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
                       </View>
                       <FLabel>Middle Name <Opt /></FLabel>
                       <FInput value={form.middle_name} onChange={(v) => setF('middle_name', v)} placeholder="(optional)" />
+                      {/* Employers can state a religion for the same reason
+                          helpers can — both sides judge household fit on it
+                          (practices, dietary rules, rest days around worship).
+                          The column has existed since the 2026-08-03 migration;
+                          there was simply never an input for it. */}
+                      <FLabel>Religion <Opt /></FLabel>
+                      <SelectField
+                        value={form.religion ?? ''}
+                        onChange={(v) => setF('religion', v)}
+                        options={PARENT_RELIGION_OPTIONS}
+                        placeholder="Select religion"
+                        accent={pt.accent}
+                        colors={{ ink: pt.ink, muted: pt.muted, subtle: pt.subtle, line: pt.line, surface: pt.surface, listSurface: pt.surface, placeholder: pt.subtle } as any}
+                      />
                       <FLabel>Contact Number <Opt /></FLabel>
                       <FInput value={form.contact_number} onChange={(v) => setF('contact_number', v)} placeholder="09XX XXX XXXX" />
                       <PVerifiedField label="Email Address" value={U.email || 'Not set'} onChange={() => setChangeField('email')} />

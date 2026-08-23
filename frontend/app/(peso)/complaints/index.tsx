@@ -13,7 +13,8 @@ import {
   usePesoTheme, ScreenHeader, ListRow, Pill, EmptyState, IconButton, PButton, layout, font, radius, space,
 } from "@/components/peso/ui";
 import { type PesoColors } from "@/contexts/PesoThemeContext";
-import { fetchPesoComplaints, resolvePesoComplaint, type AdminComplaintRow } from "@/lib/complaintsApi";
+import { fetchPesoComplaints, type AdminComplaintRow } from "@/lib/complaintsApi";
+import { ComplaintCasePanel } from "@/components/peso/ComplaintCasePanel";
 
 function timeAgo(v: string) {
   if (!v) return '—';
@@ -38,9 +39,6 @@ export default function PesoComplaintsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected] = useState<AdminComplaintRow | null>(null);
 
-  const [actionTarget, setActionTarget] = useState<{ row: AdminComplaintRow; action: "Resolved" | "Dismissed" } | null>(null);
-  const [notes, setNotes] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async (uid: number) => {
     try {
@@ -71,25 +69,6 @@ export default function PesoComplaintsScreen() {
     setRefreshing(false);
   };
 
-  const submitAction = async () => {
-    if (!actionTarget || !pesoUserId) return;
-    setSubmitting(true);
-    try {
-      const res = await resolvePesoComplaint({
-        complaint_id: actionTarget.row.complaint_id,
-        peso_user_id: pesoUserId,
-        action: actionTarget.action,
-        notes: notes.trim() || undefined,
-      });
-      if (res.success) {
-        setActionTarget(null); setNotes("");
-        await load(pesoUserId);
-        if (!twoPane) setSelected(null);
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const messageUser = (userId?: number | null) => {
     if (!userId) return;
@@ -140,73 +119,34 @@ export default function PesoComplaintsScreen() {
     </View>
   );
 
-  const detailColumn = !selected ? (
-    <EmptyState icon="alert-circle-outline" title="Select a complaint to review" sub="Pick a case from the list to see the full report, message either party, or resolve it." />
-  ) : (
+  const detailColumn = (
     <View style={{ flex: 1 }}>
-      {!twoPane && (
+      {!twoPane && !!selected && (
         <View style={s.detailBackRow}>
           <IconButton icon="arrow-back" onPress={() => setSelected(null)} />
           <Text style={{ fontFamily: font.semibold, fontSize: 14, color: c.ink }}>Back to queue</Text>
         </View>
       )}
-      <ScrollView contentContainerStyle={{ padding: space.xl }} showsVerticalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          <Pill label={selected.category ?? "Other"} tone="warn" dot={false} />
-          {selected.status && <Pill label={selected.status} tone={selected.status === 'Escalated_PESO' ? 'info' : 'neutral'} dot={false} />}
-        </View>
-
-        <Text style={s.detailTitle}>{selected.subject}</Text>
-        <Text style={s.detailMeta}>
-          Forwarded {timeAgo(selected.forwarded_at ?? selected.created_at)}
-          {selected.application_id != null ? ` · Application #${selected.application_id}` : ' · General report'}
-        </Text>
-
-        <View style={s.partiesCard}>
-          <View style={s.partyRow}>
-            <View style={s.partyIcon}><Ionicons name="person" size={15} color={c.accent} /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.partyLabel}>Complainant</Text>
-              <Text style={s.partyName}>{selected.complainant_name} <Text style={s.partyRole}>({selected.complainant_role ?? '—'})</Text></Text>
-            </View>
-            <Pressable onPress={() => messageUser(selected.complainant_user_id)} style={s.msgBtn}>
+      <ComplaintCasePanel
+        complaintId={selected?.complaint_id ?? null}
+        onChanged={() => { if (pesoUserId) void load(pesoUserId); }}
+      />
+      {/* Messaging stays available from the case file — an officer resolving a
+          dispute usually needs to talk to one side before recording anything. */}
+      {!!selected && (
+        <View style={s.msgBar}>
+          <Pressable onPress={() => messageUser(selected.complainant_user_id)} style={s.msgBtn}>
+            <Ionicons name="chatbubble-outline" size={14} color={c.accent} />
+            <Text style={s.msgBtnText}>Message {selected.complainant_name?.split(' ')[0] || 'reporter'}</Text>
+          </Pressable>
+          {!!selected.respondent_id && (
+            <Pressable onPress={() => messageUser(selected.respondent_id)} style={s.msgBtn}>
               <Ionicons name="chatbubble-outline" size={14} color={c.accent} />
-              <Text style={s.msgBtnText}>Message</Text>
+              <Text style={s.msgBtnText}>Message {selected.respondent_name?.split(' ')[0] || 'reported party'}</Text>
             </Pressable>
-          </View>
-          {!!selected.respondent_name && (
-            <View style={[s.partyRow, { marginTop: 10 }]}>
-              <View style={[s.partyIcon, { backgroundColor: c.sunken }]}><Ionicons name="person-outline" size={15} color={c.muted} /></View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.partyLabel}>Respondent</Text>
-                <Text style={s.partyName}>{selected.respondent_name}</Text>
-              </View>
-              {!!selected.respondent_id && (
-                <Pressable onPress={() => messageUser(selected.respondent_id)} style={s.msgBtn}>
-                  <Ionicons name="chatbubble-outline" size={14} color={c.accent} />
-                  <Text style={s.msgBtnText}>Message</Text>
-                </Pressable>
-              )}
-            </View>
           )}
         </View>
-
-        <Text style={s.sectionLabel}>What happened</Text>
-        <Text style={s.detailBody}>{selected.body}</Text>
-
-        {!!selected.admin_notes && (
-          <>
-            <Text style={s.sectionLabel}>Notes from Super Admin</Text>
-            <Text style={s.detailBody}>{selected.admin_notes}</Text>
-          </>
-        )}
-
-        <Text style={s.sectionLabel}>Resolve this case</Text>
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          <PButton label="Resolve" icon="checkmark-circle-outline" variant="primary" full onPress={() => setActionTarget({ row: selected, action: "Resolved" })} />
-          <PButton label="Dismiss" icon="close-circle-outline" variant="ghost" full onPress={() => setActionTarget({ row: selected, action: "Dismissed" })} />
-        </View>
-      </ScrollView>
+      )}
     </View>
   );
 
@@ -219,54 +159,17 @@ export default function PesoComplaintsScreen() {
         </View>
       ) : selected ? detailColumn : listColumn}
 
-      <Modal visible={!!actionTarget} transparent animationType="fade" onRequestClose={() => setActionTarget(null)}>
-        <View style={s.modalOverlay}>
-          <View style={s.modalCard}>
-            <Text style={s.modalTitle}>{actionTarget?.action === "Resolved" ? "Resolve complaint" : "Dismiss complaint"}</Text>
-            <Text style={s.modalSub} numberOfLines={2}>{actionTarget?.row.subject}</Text>
-            <TextInput
-              style={s.notesInput}
-              placeholder="Resolution notes (optional)"
-              placeholderTextColor={c.subtle}
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-            />
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10, alignItems: "center" }}>
-              <PButton label="Cancel" variant="ghost" onPress={() => setActionTarget(null)} />
-              <PButton label="Confirm" loading={submitting} onPress={() => void submitAction()} />
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
 
 const makeStyles = (c: PesoColors) => StyleSheet.create({
+  msgBar: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: 16, paddingVertical: 11, borderTopWidth: 1, borderTopColor: c.line, backgroundColor: c.surface },
   detailBackRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: space.md },
-  detailTitle: { fontSize: 20, fontFamily: font.display, color: c.ink, marginTop: 12 },
-  detailMeta: { fontSize: 12.5, fontFamily: font.regular, color: c.muted, marginTop: 4 },
-
-  partiesCard: { backgroundColor: c.sunken, borderRadius: radius.md, borderWidth: 1, borderColor: c.line, padding: 14, marginTop: 18 },
-  partyRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  partyIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' },
-  partyLabel: { fontSize: 10.5, fontFamily: font.semibold, color: c.subtle, letterSpacing: 0.4, textTransform: 'uppercase' },
-  partyName: { fontSize: 14, fontFamily: font.semibold, color: c.ink, marginTop: 1 },
-  partyRole: { fontFamily: font.regular, color: c.muted },
-  msgBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: c.accent, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 6 },
-  msgBtnText: { fontSize: 12, fontFamily: font.semibold, color: c.accent },
-
-  sectionLabel: { fontSize: 11.5, fontFamily: font.semibold, color: c.subtle, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 20, marginBottom: 10 },
-  detailBody: { fontSize: 14.5, fontFamily: font.regular, color: c.ink, lineHeight: 22 },
-
-  modalOverlay: { flex: 1, backgroundColor: c.overlay, justifyContent: "center", alignItems: "center", padding: 20 },
-  modalCard: { width: "100%", maxWidth: 420, backgroundColor: c.surface, borderRadius: 16, padding: 22, borderWidth: 1, borderColor: c.line },
-  modalTitle: { fontSize: 17, fontFamily: font.display, color: c.ink, marginBottom: 6 },
-  modalSub: { fontSize: 13, color: c.muted, marginBottom: 16, fontFamily: font.regular },
-  notesInput: {
-    borderWidth: 1, borderColor: c.line, borderRadius: 10, padding: 12, fontSize: 14, color: c.ink,
-    minHeight: 80, textAlignVertical: "top", marginBottom: 18, backgroundColor: c.sunken, fontFamily: font.regular,
-    ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}),
+  msgBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1, borderColor: c.accent + '55', borderRadius: radius.pill,
+    paddingHorizontal: 12, paddingVertical: 7,
   },
+  msgBtnText: { fontSize: 12, fontFamily: font.semibold, color: c.accent },
 });

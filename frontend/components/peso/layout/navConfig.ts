@@ -33,7 +33,10 @@ export const NAV_GROUPS: NavGroup[] = [
       { icon: 'pricetags', label: 'Categories & Skills', path: '/(peso)/reference' },
       { icon: 'calendar', label: 'Interviews', path: '/(peso)/interviews' },
       { icon: 'document-text', label: 'Contracts', path: '/(peso)/contracts' },
-      { icon: 'home', label: 'Placements', path: '/(peso)/placements' },
+      // Placements removed on PESO's request (Aug 2026) — the screen duplicated
+      // what Contracts and Reports already show and was never used. The route
+      // file app/(peso)/placements/ still exists and is now unreachable; delete
+      // it once you're sure nothing else wants it.
     ],
   },
   {
@@ -41,7 +44,19 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { icon: 'chatbubbles', label: 'Messages', path: '/(peso)/messages' },
       { icon: 'alert-circle', label: 'Complaints', path: '/(peso)/complaints', badgeKey: 'complaints' },
+      // Peer reviews between helpers and households. Ratings are public on
+      // profiles; the written text is readable only here and by super admin.
+      { icon: 'star', label: 'Reviews', path: '/(peso)/reviews' },
       { icon: 'bar-chart', label: 'Reports & Analytics', path: '/(peso)/reports' },
+    ],
+  },
+  {
+    label: 'OFFICE ADMINISTRATION',
+    items: [
+      // The create screen existed but nothing linked to it, so a PESO officer
+      // had no way to reach it — the account-creation feature was effectively
+      // absent from the portal despite being fully built.
+      { icon: 'person-add', label: 'Add PESO Staff', path: '/(peso)/users/create' },
     ],
   },
   {
@@ -56,3 +71,16 @@ export const NAV_GROUPS: NavGroup[] = [
 
 /** Flat list — used by the mobile drawer, which doesn't render group headers as separately. */
 export const ALL_NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
+
+/**
+ * Whether a nav item matches the current route.
+ *
+ * `usePathname()` resolves route GROUPS away: on the Job Verification screen it
+ * returns "/jobs", never "/(peso)/jobs". A plain `pathname === item.path`
+ * therefore never matched anything, so the sidebar's active pill has never
+ * appeared on any screen. Compare against the group-stripped path instead.
+ */
+export function isNavItemActive(itemPath: string, pathname: string): boolean {
+  const target = itemPath.replace(/^\/\([^)]*\)/, '');
+  return pathname === target || pathname === itemPath;
+}

@@ -214,7 +214,7 @@ function carelink_chatbot_context_block(array $ctx): string
         return ''; // only personalize for parents and helpers
     }
 
-    $roleLabel = $type === 'parent' ? 'Employer (parent)' : 'Helper (kasambahay)';
+    $roleLabel = $type === 'parent' ? 'Household Employer' : 'Helper (kasambahay)';
     $verif     = (string) ($ctx['verification_status'] ?? 'Unverified');
     $pct       = (int) ($ctx['profile_completion_percent'] ?? 0);
     $placement = !empty($ctx['has_active_placement']) ? 'yes' : 'no';

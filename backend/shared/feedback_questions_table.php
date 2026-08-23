@@ -27,6 +27,11 @@ if (!function_exists('ensure_feedback_questions_table')) {
                 question_type   ENUM('rating','text') NOT NULL DEFAULT 'rating',
                 applies_to      ENUM('all','helper','parent') NOT NULL DEFAULT 'all',
                 sort_order      INT NOT NULL DEFAULT 0,
+                /* ISO/IEC 25010 quality characteristic this item measures.
+                   Chapter 4 reports a weighted mean PER characteristic, so the
+                   grouping has to live with the question, not be re-derived by
+                   hand in a spreadsheet afterwards. */
+                iso_characteristic VARCHAR(48) NOT NULL DEFAULT 'Usability',
                 active          TINYINT(1) NOT NULL DEFAULT 1,
                 created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
@@ -47,18 +52,36 @@ if (!function_exists('ensure_feedback_questions_table')) {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
         );
 
+        // Added after the table already existed in some environments.
+        $cols = [];
+        $res = $conn->query("SHOW COLUMNS FROM feedback_questions");
+        if ($res) while ($r = $res->fetch_assoc()) $cols[$r["Field"]] = true;
+        if (!isset($cols["iso_characteristic"])) {
+            $conn->query("ALTER TABLE feedback_questions ADD COLUMN iso_characteristic VARCHAR(48) NOT NULL DEFAULT 'Usability' AFTER sort_order");
+        }
+
         carelink_seed_feedback_questions($conn);
     }
 }
 
 if (!function_exists('carelink_seed_feedback_questions')) {
     /**
-     * 15 rating questions covering usability, trust, reliability, support and
-     * intent-to-use, plus 2 open-text — a real instrument, not a placeholder.
-     * INSERT IGNORE on the unique `code`, so re-running this (every request)
-     * is a no-op once seeded, and adding a NEW question later is just adding
-     * one more row here — every existing user then sees just that one as
-     * unanswered, without re-asking anything they already answered.
+     * The Chapter 4 instrument, mapped to ISO/IEC 25010.
+     *
+     * Rewritten Aug 2026. The previous 17 items were reasonable product
+     * questions but were not grouped by any quality model, so Chapter 4 could
+     * only report one overall mean — a panel asking "which characteristic scored
+     * lowest?" had no answer. Each item now carries the ISO/IEC 25010
+     * characteristic it measures, so the analysis reports a weighted mean per
+     * characteristic and an overall mean, which is what the rubric expects.
+     *
+     * Mirrors docs/chapter4-evaluation-instrument.md. Keep the two in step: the
+     * doc is what the panel reads, this is what the app actually asks.
+     *
+     * Codes are stable and INSERT IGNORE keeps re-seeding a no-op, so answers
+     * already collected stay attached even when wording is edited.
+     *
+     * Scale: 5 Strongly Agree - 4 Agree - 3 Neutral - 2 Disagree - 1 Strongly Disagree.
      */
     function carelink_seed_feedback_questions(mysqli $conn): void
     {
@@ -66,36 +89,98 @@ if (!function_exists('carelink_seed_feedback_questions')) {
         if ($done) return;
         $done = true;
 
+        $FS = 'Functional Suitability';
+        $US = 'Usability';
+        $RE = 'Reliability';
+        $PE = 'Performance Efficiency';
+        $SE = 'Security';
+        $PU = 'Perceived Usefulness';
+
         $rows = [
-            ['overall_rating',        'Overall, how would you rate your experience using CareLink?', 'rating', 'all', 1],
-            ['ease_of_use',           'The app was easy to use and navigate.', 'rating', 'all', 2],
-            ['ease_of_signup',        'Signing up and setting up my profile was straightforward.', 'rating', 'all', 3],
-            ['trust_documents',       'I felt my personal information and documents were safe.', 'rating', 'all', 4],
-            ['peso_confidence',       "PESO's verification made me feel more confident using the app.", 'rating', 'all', 5],
-            ['match_relevance',       'The matches I saw felt relevant to me.', 'rating', 'all', 6],
-            ['messaging_reliable',    'Messaging within the app was reliable and easy to use.', 'rating', 'all', 7],
-            ['contract_clarity',      'The contract and signing process was clear to me.', 'rating', 'all', 8],
-            ['work_mode_helpful',     'Work Mode (tasks, attendance, leave) was helpful for day-to-day work.', 'rating', 'all', 9],
-            ['reliability',           'The app worked without crashing or freezing during my use.', 'rating', 'all', 10],
-            ['speed',                 'The app responded quickly to my actions.', 'rating', 'all', 11],
-            ['support_findable',      'If I had a problem, I knew how to get help (CareBot, PESO, or support).', 'rating', 'all', 12],
-            ['fees_fair',             'Any fees involved felt reasonable and were clearly explained.', 'rating', 'parent', 13],
-            ['recommend',             'I would recommend CareLink to others.', 'rating', 'all', 14],
-            ['continue_using',        'I would continue using CareLink for real hiring or job searching.', 'rating', 'all', 15],
-            ['liked_most',            'What did you like most about CareLink?', 'text', 'all', 16],
-            ['confusing_part',        'What was confusing, frustrating, or hard to use?', 'text', 'all', 17],
+            // A. Functional Suitability
+            ['fs_tasks_expected',  'The system performed all the tasks I expected it to.', 'rating', 'all', 1, $FS],
+            ['fs_completed_goal',  'I was able to complete what I set out to do.', 'rating', 'all', 2, $FS],
+            ['fs_info_accurate',   'The information shown (job details, profiles, match scores) was accurate.', 'rating', 'all', 3, $FS],
+            ['fs_appropriate',     'The features are appropriate for finding or hiring household help.', 'rating', 'all', 4, $FS],
+
+            // B. Usability — the heaviest section, given the target users
+            ['us_easy_learn',      'The system was easy to learn, even without someone teaching me.', 'rating', 'all', 5, $US],
+            ['us_screens_clear',   'The screens and buttons were easy to understand.', 'rating', 'all', 6, $US],
+            ['us_words_clear',     'The words used were clear and easy to understand (not too technical).', 'rating', 'all', 7, $US],
+            ['us_next_step',       'I could tell what to do next at each step.', 'rating', 'all', 8, $US],
+            ['us_fix_mistake',     'It was easy to correct a mistake when I made one.', 'rating', 'all', 9, $US],
+            ['us_text_readable',   'The text was large enough and easy to read.', 'rating', 'all', 10, $US],
+            ['us_guide_helpful',   'The guide ("How CareLink works") helped me understand the system.', 'rating', 'all', 11, $US],
+
+            // C. Reliability
+            ['re_no_crash',        'The system worked without crashing or freezing.', 'rating', 'all', 12, $RE],
+            ['re_consistent',      'The system responded consistently each time I used the same feature.', 'rating', 'all', 13, $RE],
+            ['re_errors_clear',    'When something went wrong, the system explained it clearly.', 'rating', 'all', 14, $RE],
+
+            // D. Performance Efficiency
+            ['pe_screens_fast',    'Screens loaded quickly enough.', 'rating', 'all', 15, $PE],
+            ['pe_search_fast',     'Searching and browsing did not take too long.', 'rating', 'all', 16, $PE],
+            ['pe_upload_fast',     'Uploading documents and photos completed in reasonable time.', 'rating', 'all', 17, $PE],
+
+            // E. Security — critical for this domain
+            ['se_info_safe',       'I felt my personal information was kept safe.', 'rating', 'all', 18, $SE],
+            ['se_docs_peso_only',  'I am comfortable that only PESO can see my ID and Barangay Clearance.', 'rating', 'all', 19, $SE],
+            ['se_peso_trust',      'The PESO verification makes me trust the other people on the platform.', 'rating', 'all', 20, $SE],
+            ['se_in_app_comms',    'I felt safe communicating through the app instead of sharing my number.', 'rating', 'all', 21, $SE],
+
+            // F. Perceived Usefulness (TAM) — panels usually expect this
+            ['pu_easier',          'CareLink would make it easier for me to find work / find a helper.', 'rating', 'all', 22, $PU],
+            ['pu_safer',           'CareLink is safer than how I would normally find work / hire someone.', 'rating', 'all', 23, $PU],
+            ['pu_would_use',       'I would use CareLink if it were available today.', 'rating', 'all', 24, $PU],
+            ['pu_recommend',       'I would recommend CareLink to a friend or relative.', 'rating', 'all', 25, $PU],
+
+            // Role-specific — asked only of the matching respondent.
+            ['hl_profile_setup',   'Setting up my profile was straightforward.', 'rating', 'helper', 26, $US],
+            ['hl_docs_understood', 'I understood what documents I needed and why.', 'rating', 'helper', 27, $US],
+            ['hl_matches_relevant','The job matches shown were relevant to my skills.', 'rating', 'helper', 28, $FS],
+            ['hl_match_pct',       'I understood what the match percentage meant.', 'rating', 'helper', 29, $US],
+            ['hl_cover_letter',    'The generated cover letter was a helpful starting point.', 'rating', 'helper', 30, $PU],
+
+            ['em_post_job',        'Posting a job was straightforward.', 'rating', 'parent', 31, $US],
+            ['em_applicants',      'The applicants shown were relevant to my job post.', 'rating', 'parent', 32, $FS],
+            ['em_match_pct',       'I understood what the match percentage meant.', 'rating', 'parent', 33, $US],
+            ['em_job_desc',        'The generated job description was a helpful starting point.', 'rating', 'parent', 34, $PU],
+            ['em_contract_clear',  'I understood what the contract covers and that both parties must sign.', 'rating', 'parent', 35, $US],
+
+            // Open-ended — the quotes that make Chapter 4 readable.
+            ['oe_liked_most',      'What did you like most about CareLink?', 'text', 'all', 40, $PU],
+            ['oe_confusing',       'What was the most confusing or difficult part?', 'text', 'all', 41, $US],
+            ['oe_missing',         'Was there anything you expected to find but could not?', 'text', 'all', 42, $FS],
+            ['oe_would_change',    'What would you add or change before this is used for real?', 'text', 'all', 43, $PU],
+            ['oe_errors',          'Describe any error or unexpected behaviour you encountered.', 'text', 'all', 44, $RE],
         ];
 
         $stmt = $conn->prepare(
-            "INSERT IGNORE INTO feedback_questions
-                (code, question_text, question_type, applies_to, sort_order)
-             VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO feedback_questions
+                (code, question_text, question_type, applies_to, sort_order, iso_characteristic)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                question_text = VALUES(question_text),
+                question_type = VALUES(question_type),
+                applies_to    = VALUES(applies_to),
+                sort_order    = VALUES(sort_order),
+                iso_characteristic = VALUES(iso_characteristic)"
         );
         if (!$stmt) return;
         foreach ($rows as $r) {
-            $stmt->bind_param('ssssi', $r[0], $r[1], $r[2], $r[3], $r[4]);
+            $stmt->bind_param('ssssis', $r[0], $r[1], $r[2], $r[3], $r[4], $r[5]);
             $stmt->execute();
         }
         $stmt->close();
+
+        // Retire the pre-ISO items rather than deleting them: answers already
+        // collected against them stay valid history, they simply stop being asked.
+        $conn->query(
+            "UPDATE feedback_questions SET active = 0
+             WHERE code IN ('overall_rating','ease_of_use','ease_of_signup','trust_documents',
+                            'peso_confidence','match_relevance','messaging_reliable','contract_clarity',
+                            'work_mode_helpful','reliability','speed','support_findable','fees_fair',
+                            'recommend','continue_using','liked_most','confusing_part')"
+        );
     }
 }

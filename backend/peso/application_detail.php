@@ -14,6 +14,8 @@ include __DIR__ . "/../dbcon.php";
 include __DIR__ . "/peso_auth.php";
 require_once __DIR__ . "/../shared/job_title.php";
 require_once __DIR__ . "/application_flags_table.php";
+require_once __DIR__ . "/../shared/file_security.php";
+require_once __DIR__ . "/../shared/account_credentials.php";
 
 peso_require_staff($conn);
 $appId = (int) ($_GET['application_id'] ?? 0);
@@ -67,8 +69,40 @@ if (!empty($r['birth_date'])) {
 // Documents the helper VERIFIED (count) and which they SHARED with this employer.
 $verifiedDocs = (int) ($conn->query("SELECT COUNT(*) c FROM user_documents WHERE user_id = {$r['helper_id']} AND status = 'Verified'")->fetch_assoc()['c'] ?? 0);
 $shared = [];
-$sd = $conn->query("SELECT ud.document_type, ud.status FROM application_document_shares ads INNER JOIN user_documents ud ON ud.document_id = ads.document_id WHERE ads.application_id = $appId");
-while ($sd && $x = $sd->fetch_assoc()) $shared[] = $x;
+// document_id and file_path come back too so a PESO officer can actually OPEN
+// what the helper shared, instead of only reading its name and status. The
+// signed URL is built the same way every other document viewer gets one.
+// (Scope note: this list is only what was shared WITH THE EMPLOYER — Valid ID
+// and Barangay Clearance are never in it. PESO can already see those in User
+// Verification, so this adds no new exposure.)
+$sd = $conn->query("SELECT ud.document_id, ud.document_type, ud.status, ud.file_path
+                      FROM application_document_shares ads
+                      INNER JOIN user_documents ud ON ud.document_id = ads.document_id
+                     WHERE ads.application_id = $appId");
+while ($sd && $x = $sd->fetch_assoc()) {
+    $x['file_url'] = !empty($x['file_path'])
+        ? carelink_signed_document_url((int) $x['document_id'])
+        : null;
+    $shared[] = $x;
+}
+
+// Full credential set for BOTH parties, for the Documents tab.
+//
+// Same reason the Job Verification screen grew one: a case can turn on whether
+// a document was altered after it was approved, and an officer should not have
+// to leave a case file mid-review to check. `shared_with_employer` marks which
+// of the helper's documents this particular employer can actually see — the
+// distinction between "PESO holds this" and "the household has seen this" is
+// the whole document-sharing policy, so it has to be visible here.
+$sharedIds = [];
+foreach ($shared as $sdoc) $sharedIds[(int) $sdoc['document_id']] = true;
+
+$helperCreds = carelink_account_credentials($conn, (int) $r['helper_id'], 'helper');
+foreach ($helperCreds['documents'] as &$hdoc) {
+    $hdoc['shared_with_employer'] = isset($sharedIds[(int) $hdoc['document_id']]);
+}
+unset($hdoc);
+$employerCreds = carelink_account_credentials($conn, (int) $r['parent_id'], 'parent');
 
 // Employer's footprint: active posts + complaints filed against them.
 $activePosts = (int) ($conn->query("SELECT COUNT(*) c FROM job_posts WHERE parent_id = {$r['parent_id']} AND status IN ('Open','Pending')")->fetch_assoc()['c'] ?? 0);
@@ -138,6 +172,16 @@ echo json_encode([
         "complaints_against" => $complaintsAgainst,
     ],
     "shared_documents" => $shared,
+    "helper_credentials" => [
+        "documents"           => $helperCreds['documents'],
+        "verification_status" => $helperCreds['verification_status'],
+        "flags"               => $helperCreds['flags'],
+    ],
+    "employer_credentials" => [
+        "documents"           => $employerCreds['documents'],
+        "verification_status" => $employerCreds['verification_status'],
+        "flags"               => $employerCreds['flags'],
+    ],
     "flag" => $flag,
     "risk_signals" => $signals,
 ]);

@@ -49,6 +49,11 @@ export interface HelperProfile {
   
   // Status
   verification_status: string;
+
+  // PESO credential seals and any public safety marking. Type + verified status
+  // only — the documents themselves are never sent to an employer.
+  credentials?: { document_type?: string | null; status?: string | null }[];
+  safety_flag?: { level?: string | null; public_reason?: string | null; issued_at?: string | null } | null;
   availability_status: string;
   
   // Ratings

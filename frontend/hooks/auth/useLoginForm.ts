@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_URL from "@/constants/api";
 import { isProfileCompleted } from "./authProfile";
+import { setAuthToken } from "@/lib/authFetch";
 
 const LOCK_KEY = "login_lock_until";
 const ATTEMPTS_KEY = "login_attempts_left";
@@ -111,6 +112,9 @@ export function useLoginForm() {
           status: data.user.status ?? "approved",
         };
         await AsyncStorage.setItem("user_token", data.user.user_id.toString());
+        // The real proof of identity. The line above stores the user id, which
+        // proves nothing — kept only so older code reading it still works.
+        await setAuthToken(data.auth_token ?? null);
         await AsyncStorage.setItem("user_data", JSON.stringify(mergedUser));
 
         setAttemptsLeft(5);
@@ -160,6 +164,7 @@ export function useLoginForm() {
             status: data.user.status ?? "pending",
           };
           await AsyncStorage.setItem("user_token", data.user.user_id.toString());
+          await setAuthToken(data.auth_token ?? null);
           await AsyncStorage.setItem("user_data", JSON.stringify(mergedUser));
           setAttemptsLeft(5);
 

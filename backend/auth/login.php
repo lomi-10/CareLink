@@ -149,11 +149,20 @@ if (password_verify($password, $row["password"])) {
         "profile_completed" => (bool)($row['profile_completed'] ?? 0),
     ];
 
+    // Proof of identity for every later request. Until now the app stored the
+    // user's own id as its "token", which proves nothing — see
+    // shared/auth_tokens.php. Null only if the server lacks secure randomness,
+    // in which case the app falls back to the legacy path rather than using a
+    // weak token.
+    require_once __DIR__ . '/../shared/auth_tokens.php';
+    $auth_token = carelink_issue_auth_token($conn, (int) $row['user_id'], $user_agent ?? null);
+
     echo json_encode([
         "success" => true,
         "message" => "Login Successful!",
         "user" => $user,
-        "user_type" => $row['user_type']
+        "user_type" => $row['user_type'],
+        "auth_token" => $auth_token,
     ]);
 
 } else {

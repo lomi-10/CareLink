@@ -13,6 +13,7 @@ ini_set('display_errors', 0);
 error_reporting(0);
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
+require_once __DIR__ . '/../shared/complaint_tracking_tables.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Haversine distance (km) between two lat/lng pairs
@@ -254,6 +255,14 @@ try {
                 'last_name'           => $helper['last_name'],
                 'profile_image'       => $helper['profile_image'],
                 'bio'                 => $helper['bio'],
+                // Public safety marking, if PESO issued one. Only the level and
+                // the short public line travel here — never the case detail, and
+                // never who reported it.
+                'safety_flag'         => carelink_active_safety_flag($conn, (int) $helper['user_id']),
+                // PESO credential seals. Type + verified status only — never the
+                // document itself, which is why a Valid ID can appear here while
+                // the file stays PESO-only.
+                'credentials'         => carelink_public_credentials($conn, (int) $helper['user_id']),
                 'experience_years'    => $hExpYears,
                 'employment_type'     => $helper['employment_type'],
                 'work_schedule'       => $helper['work_schedule'],

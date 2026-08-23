@@ -2,11 +2,12 @@
 // Shared PESO design system: theme-aware (light/dark), animated, branded backdrop.
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Linking, Pressable, RefreshControl, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Modal, Platform, Pressable, RefreshControl, Text, View, useWindowDimensions } from "react-native";
 import { pesoSignedContractsUrl, pesoTerminatedPlacementsUrl } from "@/constants/applications";
 import { withPesoStaffQuery } from "@/lib/pesoStaffQuery";
+import { ContractDetailPanel } from "@/components/peso/ContractDetailPanel";
 import {
-  usePesoTheme, ScreenHeader, ListRow, Pill, EmptyState, IconButton, PButton, AnimateIn, layout, font, radius, space,
+  usePesoTheme, ScreenHeader, ListRow, Pill, EmptyState, IconButton, AnimateIn, layout, font, radius, space,
 } from "@/components/peso/ui";
 
 type SignedRow = {
@@ -39,6 +40,9 @@ export default function SignedContractsScreen() {
   const [termRows, setTermRows] = useState<TerminatedRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const { width } = useWindowDimensions();
+  const twoPane = Platform.OS === "web" && width >= 1024;
 
   const load = useCallback(async () => {
     try {
@@ -68,8 +72,19 @@ export default function SignedContractsScreen() {
     { key: "terminated", label: "Terminated", count: termRows.length },
   ];
 
+  const selected = rows.find((r) => r.application_id === selectedId) ?? null;
+
+  // Keep the pane populated on desktop; a blank right half reads as broken.
+  useEffect(() => {
+    if (twoPane && tab === "active" && rows.length && !rows.some((r) => r.application_id === selectedId)) {
+      setSelectedId(rows[0].application_id);
+    }
+  }, [twoPane, tab, rows, selectedId]);
+
   return (
     <View style={layout.page(c.canvas)}>
+     <View style={twoPane ? layout.splitRow : layout.flex1}>
+      <View style={twoPane ? layout.leftPane : layout.flex1}>
       <ScreenHeader eyebrow="Records" title="Contracts"
         subtitle="Active hires and contracts ending or already ended."
         right={<IconButton icon="refresh" tone="accent" onPress={load} />} />
@@ -99,7 +114,7 @@ export default function SignedContractsScreen() {
           contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.md, paddingBottom: 40, gap: 10, flexGrow: 1 }}
           ListEmptyComponent={<EmptyState icon="document-text-outline" title="No signed contracts yet" sub="Signed employment contracts will appear here." />}
           renderItem={({ item, index }) => (
-            <ListRow delay={Math.min(index * 45, 320)}>
+            <ListRow delay={Math.min(index * 45, 320)} selected={twoPane && selectedId === item.application_id} onPress={() => setSelectedId(item.application_id)}>
               <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: c.accentSoft, alignItems: "center", justifyContent: "center" }}>
                 <Ionicons name="document-text" size={20} color={c.accent} />
               </View>
@@ -111,9 +126,7 @@ export default function SignedContractsScreen() {
                 <Text style={{ fontFamily: font.regular, fontSize: 11.5, color: c.subtle, marginTop: 3 }}>
                   Signed — employer: {item.employer_signed_at ?? "—"} · helper: {item.helper_signed_at ?? "—"}
                 </Text>
-                {item.pdf_url ? (
-                  <PButton label="Open PDF" icon="open-outline" size="sm" variant="soft" style={{ marginTop: 10 }} onPress={() => Linking.openURL(item.pdf_url!)} />
-                ) : (
+                {!item.pdf_url && (
                   <Text style={{ fontFamily: font.semibold, fontSize: 12, color: c.warn, marginTop: 10 }}>PDF path missing</Text>
                 )}
               </View>
@@ -151,6 +164,23 @@ export default function SignedContractsScreen() {
             </ListRow>
           )}
         />
+      )}
+      </View>
+
+      {twoPane && tab === "active" && (
+        <View style={layout.rightPane(c.line, c.surface)}>
+          <ContractDetailPanel contract={selected} />
+        </View>
+      )}
+     </View>
+
+      {/* Mobile: the contract opens over the list rather than beside it. */}
+      {!twoPane && (
+        <Modal visible={!!selectedId && tab === "active"} animationType="slide" transparent onRequestClose={() => setSelectedId(null)}>
+          <View style={{ flex: 1, backgroundColor: c.canvas, paddingTop: 40 }}>
+            <ContractDetailPanel contract={selected} onClose={() => setSelectedId(null)} showClose />
+          </View>
+        </Modal>
       )}
     </View>
   );

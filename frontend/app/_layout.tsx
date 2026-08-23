@@ -1,4 +1,5 @@
 import { CareBotFab } from '@/components/shared/CareBotFab';
+import { installAuthFetch } from '@/lib/authFetch';
 import { createCareLinkNavigationTheme } from '@/constants/careNavigationTheme';
 import { CareBotProvider } from '@/contexts/CareBotContext';
 import { GuideProvider } from '@/contexts/GuideContext';
@@ -28,6 +29,10 @@ export const unstable_settings = {
   // instead of '(tabs)' which you are deleting.
   initialRouteName: 'index',
 };
+
+// At module scope so it runs before any screen mounts — a request fired during
+// the very first render must already carry the token.
+installAuthFetch();
 
 function RootLayoutInner() {
   const { resolvedColorScheme } = useColorSchemePreference();

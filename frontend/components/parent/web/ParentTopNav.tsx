@@ -58,7 +58,7 @@ export function ParentTopNav({
 
   const go = (path: string) => router.push(path as never);
   const tabs = mode === 'work' ? WORK_TABS : RECRUITMENT_TABS;
-  const initials = (userName || 'Parent').trim().split(/\s+/).map((x) => x[0]).slice(0, 2).join('').toUpperCase();
+  const initials = (userName || 'Household Employer').trim().split(/\s+/).map((x) => x[0]).slice(0, 2).join('').toUpperCase();
 
   return (
     <View style={s.bar}>
@@ -102,7 +102,7 @@ export function ParentTopNav({
           <Pressable style={({ hovered }: any) => [s.user, TRANS, hovered && s.userHover]} onPress={() => setMenuOpen((v) => !v)}>
             {avatar ? <Image source={{ uri: avatar }} style={s.userImg} /> : <View style={[s.userImg, s.userImgFb]}><Text style={s.userInitials}>{initials}</Text></View>}
             <View>
-              <Text style={s.userName} numberOfLines={1}>{userName || 'Parent'}</Text>
+              <Text style={s.userName} numberOfLines={1}>{userName || 'Household Employer'}</Text>
               {verified ? (
                 <View style={s.userVer}><Ionicons name="shield-checkmark" size={11} color={pt.green} /><Text style={s.userVerText}>PESO Verified</Text></View>
               ) : <Text style={s.userSub}>Employer</Text>}

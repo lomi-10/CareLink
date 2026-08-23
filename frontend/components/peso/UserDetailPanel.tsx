@@ -1,8 +1,9 @@
 // components/peso/UserDetailPanel.tsx
 // Embedded user-review panel for the PESO User Verification two-pane screen.
-// Tabs: Overview (profile info) · Documents (with AI pre-verification) · Jobs Posted.
-// Reuses peso/get_user_details.php, get_jobs_for_verification.php, verify_user.php,
-// verify_document.php, update_job_status.php.
+// Tabs: Overview (profile info) · Documents (with AI pre-verification).
+// Reuses peso/get_user_details.php, verify_user.php, verify_document.php.
+// Job posts are reviewed on the dedicated Job Verification screen — see the
+// TabKey note below for why that separation matters.
 
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -14,6 +15,9 @@ import {
 } from "react-native";
 import NotificationModal from "./NotificationModal";
 import API_URL from "@/constants/api";
+import { CredentialBadge, CredentialWall, credentialStateFor } from "../shared/CredentialBadge";
+import { DocumentViewerModal } from "./DocumentViewerModal";
+import { credentialSpec } from "@/constants/credentials";
 import { usePesoTheme, radius, type PesoColors } from "@/contexts/PesoThemeContext";
 import { formatParentHouseholdType } from "@/constants/parentHousehold";
 
@@ -25,7 +29,20 @@ const DOC_ICONS: Record<string, React.ComponentProps<typeof Ionicons>["name"]> =
   "NBI Clearance": "document-text-outline",
 };
 
-type TabKey = "overview" | "documents" | "jobs";
+/**
+ * "Jobs Posted" was removed on PESO's own feedback (interview, Aug 2026).
+ *
+ * It conflated two different decisions. This screen answers "is this person who
+ * they say they are?"; whether a POSTING is lawful is a separate judgement with
+ * its own dedicated screen (Job Verification), which has the compliance
+ * checklist, salary floor check and employer context that this panel's stripped
+ * job cards did not. Approving a job here meant making that call with none of
+ * the material an officer actually needs — and while thinking about identity.
+ *
+ * It was also structurally meaningless for helpers, who never post jobs, and
+ * they are the bulk of the verification queue.
+ */
+type TabKey = "overview" | "documents";
 
 /** Must be on file before an account can be PESO Verified. Mirrors
  *  CARELINK_REQUIRED_DOCUMENT_TYPES in shared/sync_profile_completed.php. */
@@ -43,7 +60,7 @@ export default function UserDetailPanel({
   onChanged?: () => void;
   onClose?: () => void;
 }) {
-  const { c } = usePesoTheme();
+  const { c, dark } = usePesoTheme();
   const router = useRouter();
   const st = useMemo(() => makeStyles(c), [c]);
   const [verifierId, setVerifierId] = useState<number | null>(null);
@@ -59,13 +76,6 @@ export default function UserDetailPanel({
   const [rejectReason, setRejectReason] = useState("");
   const [rejectingDocument, setRejectingDocument] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
-
-  const [parentJobs, setParentJobs] = useState<any[]>([]);
-  const [parentJobsLoading, setParentJobsLoading] = useState(false);
-  const [processingJobId, setProcessingJobId] = useState<number | null>(null);
-  const [rejectJobModal, setRejectJobModal] = useState(false);
-  const [rejectJobReason, setRejectJobReason] = useState("");
-  const [rejectingJob, setRejectingJob] = useState<any>(null);
 
   const [notification, setNotification] = useState({
     visible: false, type: "success" as "success" | "error" | "warning" | "info",
@@ -136,10 +146,6 @@ export default function UserDetailPanel({
 
   useEffect(() => { setTab("overview"); fetchUserDetails(); }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (userData && userData.user?.user_type === "parent") fetchParentJobs();
-  }, [userData]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const fetchUserDetails = async () => {
     try {
       setLoading(true); setLoadError(null); setUserData(null);
@@ -152,15 +158,6 @@ export default function UserDetailPanel({
       else setLoadError(data.message || "Failed to load user");
     } catch { setLoadError("Network error. Please try again."); }
     finally { setLoading(false); }
-  };
-
-  const fetchParentJobs = async () => {
-    try {
-      setParentJobsLoading(true);
-      const res = await fetch(`${API_URL}/peso/get_jobs_for_verification.php?parent_id=${encodeURIComponent(String(userId))}`);
-      const data = await res.json();
-      if (data.success) setParentJobs(data.data ?? []);
-    } catch {} finally { setParentJobsLoading(false); }
   };
 
   // ── actions ──
@@ -260,40 +257,6 @@ export default function UserDetailPanel({
     } catch { showNotif("error", "Error", "Network error occurred."); }
   };
 
-  const handleApproveJob = (job: any) => {
-    showNotif("info", "Approve Job Post", `Approve "${job.title}"? It will become visible to helpers.`, "Approve", async () => {
-      try {
-        setProcessingJobId(job.job_post_id);
-        const res = await fetch(`${API_URL}/peso/update_job_status.php`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ job_post_id: job.job_post_id, status: "Open", verified_by: verifierId }),
-        });
-        const data = await res.json();
-        if (data.success) { setParentJobs((p) => p.map((j) => j.job_post_id === job.job_post_id ? { ...j, status: "Open" } : j)); showNotif("success", "Job Approved", "This job post is now live for helpers."); }
-        else showNotif("error", "Failed", data.message || "Failed to approve job.");
-      } catch { showNotif("error", "Error", "Network error occurred."); }
-      finally { setProcessingJobId(null); }
-    });
-  };
-
-  const handleRejectJob = async () => {
-    if (!rejectJobReason.trim()) { showNotif("warning", "Reason required", "Please provide a rejection reason."); return; }
-    try {
-      setProcessingJobId(rejectingJob.job_post_id);
-      const res = await fetch(`${API_URL}/peso/update_job_status.php`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_post_id: rejectingJob.job_post_id, status: "Rejected", reason: rejectJobReason, verified_by: verifierId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setParentJobs((p) => p.map((j) => j.job_post_id === rejectingJob.job_post_id ? { ...j, status: "Rejected", rejection_reason: rejectJobReason } : j));
-        setRejectJobModal(false); setRejectingJob(null); setRejectJobReason("");
-        showNotif("success", "Job Rejected", "The parent will be notified to revise their posting.");
-      } else showNotif("error", "Failed", data.message || "Failed to reject job.");
-    } catch { showNotif("error", "Error", "Network error occurred."); }
-    finally { setProcessingJobId(null); }
-  };
-
   // Goes straight into Messages with this applicant already selected — a modal
   // that just told the officer to go message them was an extra, pointless step.
   const requestMoreInfo = () => router.push({ pathname: '/(peso)/messages', params: { user_id: String(userId) } } as never);
@@ -343,7 +306,7 @@ export default function UserDetailPanel({
           <View style={st.chipRow}>
             <View style={[st.roleChip, { backgroundColor: roleAccentSoft }]}>
               <Ionicons name={isHelper ? "briefcase" : "people"} size={11} color={roleAccent} />
-              <Text style={[st.roleChipText, { color: roleAccent }]}>{isHelper ? "Helper" : "Parent"}</Text>
+              <Text style={[st.roleChipText, { color: roleAccent }]}>{isHelper ? "Helper" : "Household Employer"}</Text>
             </View>
             {user.created_at && (
               <Text style={st.joined}>Joined {new Date(user.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}</Text>
@@ -361,7 +324,7 @@ export default function UserDetailPanel({
 
       {/* Tabs */}
       <View style={st.tabsRow}>
-        {([["overview", "Overview"], ["documents", `Documents (${docList.length})`], ["jobs", "Jobs Posted"]] as [TabKey, string][]).map(([key, label]) => (
+        {([["overview", "Overview"], ["documents", `Documents (${docList.length})`]] as [TabKey, string][]).map(([key, label]) => (
           <TouchableOpacity key={key} style={[st.tab, tab === key && st.tabActive]} onPress={() => setTab(key)} activeOpacity={0.8}>
             <Text style={[st.tabText, tab === key && st.tabTextActive]}>{label}</Text>
           </TouchableOpacity>
@@ -449,6 +412,10 @@ export default function UserDetailPanel({
               )}
             </View>
 
+            {/* The seals this account holds, before the case-by-case detail —
+                an officer reopening a file wants "where does this stand" first. */}
+            <CredentialWall documents={docList} role={isHelper ? "helper" : "parent"} dark={dark} title={null} style={{ marginBottom: 16 }} />
+
             {docList.length === 0 ? (
               <View style={st.emptyBox}><Ionicons name="document-outline" size={40} color={c.subtle} /><Text style={st.muted}>No documents uploaded yet</Text></View>
             ) : docList.map((doc) => {
@@ -468,11 +435,20 @@ export default function UserDetailPanel({
                       {!!doc.id_type && <Text style={st.docSub}>{doc.id_type}</Text>}
                       <Text style={st.docDate}>Uploaded {new Date(doc.uploaded_at).toLocaleDateString("en-PH", { dateStyle: "medium" })}</Text>
                     </View>
-                    <View style={[st.docStatusPill, { backgroundColor: sBg }]}>
-                      <Ionicons name={isVerified ? "checkmark-circle" : isRejected ? "close-circle" : "time"} size={12} color={sText} />
-                      <Text style={[st.docStatusText, { color: sText }]}>{doc.status}</Text>
-                    </View>
+                    <CredentialBadge
+                      documentType={doc.document_type}
+                      state={credentialStateFor(doc)}
+                      size="sm"
+                      dark={dark}
+                      style={{ maxWidth: 180 }}
+                    />
                   </View>
+
+                  {/* Says plainly why this one can never carry a seal, right where
+                      the officer is about to decide on it. */}
+                  {!credentialSpec(doc.document_type).pesoVerifiable && (
+                    <Text style={st.docPolicy}>{credentialSpec(doc.document_type).blurb}</Text>
+                  )}
 
                   {(legit != null || clarity != null) && (
                     <View style={st.scoreRow}>
@@ -531,7 +507,12 @@ export default function UserDetailPanel({
                     {isPending && (
                       <>
                         <TouchableOpacity style={st.docApprove} onPress={() => handleApproveDocument(doc)} activeOpacity={0.85}>
-                          <Ionicons name="checkmark-circle-outline" size={15} color="#fff" /><Text style={st.docActionText}>Approve</Text>
+                          <Ionicons name="checkmark-circle-outline" size={15} color="#fff" />
+                          {/* Wording follows the authority: PESO *seals* what it can
+                              verify and merely *accepts on file* what it cannot. */}
+                          <Text style={st.docActionText}>
+                            {credentialSpec(doc.document_type).pesoVerifiable ? "Approve" : "Accept on file"}
+                          </Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={st.docReject} onPress={() => { setRejectingDocument(doc); setRejectReason(""); setRejectDocModal(true); }} activeOpacity={0.85}>
                           <Ionicons name="close-circle-outline" size={15} color="#fff" /><Text style={st.docActionText}>Reject</Text>
@@ -568,50 +549,6 @@ export default function UserDetailPanel({
           </>
         )}
 
-        {/* ── JOBS POSTED ── */}
-        {tab === "jobs" && (
-          isHelper ? (
-            <View style={st.emptyBox}><Ionicons name="briefcase-outline" size={40} color={c.subtle} /><Text style={st.muted}>Helpers don’t post jobs.</Text></View>
-          ) : parentJobsLoading ? (
-            <View style={st.emptyBox}><ActivityIndicator size="small" color={c.accent} /><Text style={st.muted}>Loading job posts…</Text></View>
-          ) : parentJobs.length === 0 ? (
-            <View style={st.emptyBox}><Ionicons name="briefcase-outline" size={40} color={c.subtle} /><Text style={st.muted}>No job posts yet.</Text></View>
-          ) : parentJobs.map((job) => {
-            const isPendingJob = job.status === "Pending", isApproved = job.status === "Open", isRejectedJob = job.status === "Rejected";
-            const jBg = isApproved ? c.okSoft : isRejectedJob ? c.badSoft : c.warnSoft;
-            const jText = isApproved ? c.ok : isRejectedJob ? c.bad : c.warn;
-            const isProc = processingJobId === job.job_post_id;
-            return (
-              <View key={String(job.job_post_id)} style={[st.docCard, { borderColor: jText + "33" }]}>
-                <View style={st.docTop}>
-                  <View style={[st.docIcon, { backgroundColor: jBg }]}><Ionicons name="briefcase" size={18} color={jText} /></View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={st.docTitle} numberOfLines={2}>{job.title}</Text>
-                    <Text style={st.docSub}>{job.custom_category || job.category_name || "General"}</Text>
-                    <Text style={st.docDate}>Posted {new Date(job.posted_at).toLocaleDateString("en-PH", { dateStyle: "medium" })} · ₱{Number(job.salary_offered).toLocaleString()}/{job.salary_period}</Text>
-                  </View>
-                  <View style={[st.docStatusPill, { backgroundColor: jBg }]}>
-                    <Ionicons name={isApproved ? "checkmark-circle" : isRejectedJob ? "close-circle" : "time"} size={12} color={jText} />
-                    <Text style={[st.docStatusText, { color: jText }]}>{isApproved ? "Approved" : job.status}</Text>
-                  </View>
-                </View>
-                {isPendingJob && (
-                  <View style={st.docActions}>
-                    <TouchableOpacity style={[st.docApprove, isProc && { opacity: 0.6 }]} onPress={() => !isProc && handleApproveJob(job)} disabled={isProc} activeOpacity={0.85}>
-                      {isProc ? <ActivityIndicator size="small" color="#fff" /> : <><Ionicons name="checkmark-circle-outline" size={15} color="#fff" /><Text style={st.docActionText}>Approve</Text></>}
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[st.docReject, isProc && { opacity: 0.6 }]} onPress={() => { if (!isProc) { setRejectingJob(job); setRejectJobReason(""); setRejectJobModal(true); } }} disabled={isProc} activeOpacity={0.85}>
-                      <Ionicons name="close-circle-outline" size={15} color="#fff" /><Text style={st.docActionText}>Reject</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-                {isRejectedJob && job.rejection_reason && (
-                  <View style={st.docNote}><Ionicons name="information-circle-outline" size={13} color={c.bad} /><Text style={st.docNoteText}>Reason: {job.rejection_reason}</Text></View>
-                )}
-              </View>
-            );
-          })
-        )}
 
         <View style={{ height: 12 }} />
       </ScrollView>
@@ -633,22 +570,27 @@ export default function UserDetailPanel({
         </View>
       )}
 
-      {/* Document viewer */}
-      <Modal visible={!!viewingDocument} animationType="fade" transparent>
-        <View style={st.overlay}>
-          <View style={st.viewerBox}>
-            <View style={st.viewerHead}>
-              <Text style={st.viewerTitle}>{viewingDocument?.document_type}{viewBack ? ' — Back' : viewingDocument?.file_url_back ? ' — Front' : ''}</Text>
-              <TouchableOpacity onPress={() => setViewingDocument(null)} hitSlop={10}><Ionicons name="close" size={24} color="#fff" /></TouchableOpacity>
-            </View>
-            {viewingDocument?.file_path?.toLowerCase().endsWith(".pdf") ? (
-              <View style={st.viewerPdf}><Ionicons name="document-text" size={64} color={c.info} /><Text style={st.viewerPdfText}>PDF Document — open in a browser to view</Text></View>
-            ) : (
-              <Image source={{ uri: viewBack ? viewingDocument?.file_url_back : viewingDocument?.file_url }} style={st.viewerImg} resizeMode="contain" />
-            )}
-          </View>
-        </View>
-      </Modal>
+      {/* Full-screen document review — the page at a readable size with the
+          extracted details beside it, and the decision available from there. */}
+      <DocumentViewerModal
+        visible={!!viewingDocument}
+        doc={viewingDocument}
+        side={viewBack ? 'back' : 'front'}
+        onChangeSide={(sd) => setViewBack(sd === 'back')}
+        onClose={() => setViewingDocument(null)}
+        processing={processing}
+        onApprove={viewingDocument?.status === 'Pending' ? () => {
+          const d = viewingDocument;
+          setViewingDocument(null);
+          handleApproveDocument(d);
+        } : undefined}
+        onReject={viewingDocument?.status === 'Pending' ? () => {
+          setRejectingDocument(viewingDocument);
+          setRejectReason("");
+          setViewingDocument(null);
+          setRejectDocModal(true);
+        } : undefined}
+      />
 
       {/* Reject modals */}
       <Modal visible={rejectUserModal} animationType="slide" transparent>
@@ -660,11 +602,6 @@ export default function UserDetailPanel({
         <RejectModal title="Reject Document" subtitle={`Rejecting: ${rejectingDocument?.document_type ?? "document"}`} value={rejectReason} onChange={setRejectReason}
           presets={["Image is blurry or unreadable", "Document is expired", "Wrong document type uploaded", "Details don't match the profile", "Photo is cropped or incomplete"]}
           onCancel={() => { setRejectDocModal(false); setRejectingDocument(null); setRejectReason(""); }} onConfirm={handleRejectDocument} processing={processing} />
-      </Modal>
-      <Modal visible={rejectJobModal} animationType="slide" transparent>
-        <RejectModal title="Reject Job Post" subtitle={`Rejecting: "${rejectingJob?.title ?? "job post"}"`} value={rejectJobReason} onChange={setRejectJobReason}
-          presets={["Salary is below the legal minimum", "Job description is unclear or incomplete", "Requirements appear discriminatory", "Suspected fraudulent posting", "Duties are outside domestic work"]}
-          onCancel={() => { setRejectJobModal(false); setRejectingJob(null); setRejectJobReason(""); }} onConfirm={handleRejectJob} processing={processingJobId !== null} />
       </Modal>
     </View>
   );
@@ -820,6 +757,7 @@ const makeStyles = (c: PesoColors) => StyleSheet.create({
   docDate: { fontSize: 11, color: c.subtle, marginTop: 2 },
   docStatusPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   docStatusText: { fontSize: 11, fontWeight: "800" },
+  docPolicy: { fontSize: 11.5, color: c.subtle, lineHeight: 16.5, marginTop: 10 },
 
   scoreRow: { flexDirection: "row", gap: 10, marginTop: 12 },
   scoreBox: { flex: 1, borderRadius: 12, paddingVertical: 9, paddingHorizontal: 10 },
@@ -865,12 +803,6 @@ const makeStyles = (c: PesoColors) => StyleSheet.create({
   warnBoxText: { fontSize: 12.5, color: c.ink, fontWeight: "600", lineHeight: 18, marginTop: 2 },
 
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 20 },
-  viewerBox: { width: "100%", maxWidth: 560, backgroundColor: "#111", borderRadius: radius.lg, overflow: "hidden" },
-  viewerHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14 },
-  viewerTitle: { color: "#fff", fontSize: 15, fontWeight: "800" },
-  viewerImg: { width: "100%", height: 440, backgroundColor: "#000" },
-  viewerPdf: { alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 12 },
-  viewerPdfText: { color: "#fff", fontSize: 13, fontWeight: "600" },
 
   rejectBox: { width: "100%", maxWidth: 400, backgroundColor: c.surface, borderRadius: radius.lg, padding: 22, alignItems: "center" },
   rejectIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.badSoft, alignItems: "center", justifyContent: "center", marginBottom: 12 },

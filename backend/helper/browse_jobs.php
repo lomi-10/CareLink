@@ -28,6 +28,7 @@ error_reporting(E_ALL);
 
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/job_match.php';
+require_once __DIR__ . '/../shared/complaint_tracking_tables.php';
 
 try {
     $helper_id = isset($_GET['helper_id']) ? intval($_GET['helper_id']) : 0;
@@ -215,6 +216,11 @@ try {
             'expires_at' => $job['expires_at'],
             
             'parent_name' => trim($job['parent_first_name'] . ' ' . $job['parent_last_name']),
+            // The household's PESO standing, shown on the job card so a helper
+            // can weigh who is offering before they apply. Seals carry type +
+            // verified status only; the documents themselves stay PESO-only.
+            'parent_credentials' => carelink_public_credentials($conn, (int) $job['parent_id']),
+            'parent_safety_flag' => carelink_active_safety_flag($conn, (int) $job['parent_id']),
             'parent_email' => $job['parent_email'],
             'parent_contact_number' => $job['parent_contact_number'],
             'parent_profile_image' => $job['parent_profile_image'],

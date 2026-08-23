@@ -207,21 +207,33 @@ export function ListRow({ children, onPress, selected, tone, delay = 0 }: {
 }) {
   const { c } = usePesoTheme();
   const [hovered, setHovered] = useState(false);
+  // Only rows that DO something get the affordance of one.
+  //
+  // This used to wrap every row in a Pressable and light it up on hover even
+  // when no onPress was passed. On the Interviews screen — which had no detail
+  // pane at all — that produced a card that highlighted under the cursor and
+  // then did nothing when clicked. PESO reported it as a bug, correctly: a
+  // hover state is a promise.
+  const interactive = !!onPress;
+  const body = (
+    <MotiView
+      from={{ opacity: 0, translateX: -6 }} animate={{ opacity: 1, translateX: 0 }} transition={{ type: 'timing', duration: 240, delay }}
+      style={{
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        backgroundColor: selected ? c.accentSoft : hovered && interactive ? c.raise : c.surface,
+        borderRadius: radius.md, borderWidth: 1,
+        borderColor: selected ? c.accent : tone === 'bad' ? c.bad : c.line,
+        paddingVertical: 12, paddingHorizontal: 14, overflow: 'hidden',
+      }}
+    >
+      {selected && <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: c.accent }} />}
+      {children}
+    </MotiView>
+  );
+  if (!interactive) return body;
   return (
     <Pressable onPress={onPress} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)}>
-      <MotiView
-        from={{ opacity: 0, translateX: -6 }} animate={{ opacity: 1, translateX: 0 }} transition={{ type: 'timing', duration: 240, delay }}
-        style={{
-          flexDirection: 'row', alignItems: 'center', gap: 12,
-          backgroundColor: selected ? c.accentSoft : hovered ? c.raise : c.surface,
-          borderRadius: radius.md, borderWidth: 1,
-          borderColor: selected ? c.accent : tone === 'bad' ? c.bad : c.line,
-          paddingVertical: 12, paddingHorizontal: 14, overflow: 'hidden',
-        }}
-      >
-        {selected && <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: c.accent }} />}
-        {children}
-      </MotiView>
+      {body}
     </Pressable>
   );
 }

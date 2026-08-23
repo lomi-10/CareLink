@@ -16,7 +16,43 @@
  */
 function carelink_require_self(int $requesterId, int $targetId, string $message = 'You are not allowed to access this resource.'): void
 {
-    if ($requesterId <= 0 || $targetId <= 0 || $requesterId !== $targetId) {
+    if ($targetId <= 0) {
+        throw new Exception($message);
+    }
+
+    // Prefer PROVEN identity over a claimed one.
+    //
+    // Comparing requesterId to targetId only shows the two numbers match — it
+    // says nothing about who sent them, so anyone could put someone else's id
+    // in both fields and be treated as that person. A token can't be invented:
+    // it is issued only by a successful login and checked against the database.
+    //
+    // Every protected endpoint already calls this function, so upgrading it
+    // here upgrades all of them at once rather than editing ~160 files.
+    global $conn;
+    if (isset($conn) && $conn instanceof mysqli) {
+        require_once __DIR__ . '/auth_tokens.php';
+        $authedId = carelink_authenticated_user_id($conn);
+
+        if ($authedId > 0) {
+            // A real session exists: the token decides, and whatever the
+            // request claimed is ignored entirely.
+            if ($authedId !== $targetId) {
+                throw new Exception($message);
+            }
+            return;
+        }
+
+        // No valid token. Under strict mode that is simply a refusal.
+        if (carelink_auth_is_strict()) {
+            throw new Exception('Your session has expired. Please sign in again.');
+        }
+    }
+
+    // Legacy path — kept so a client build that doesn't send tokens yet keeps
+    // working during rollout. This is the weak check described above; switching
+    // AUTH_STRICT on in config.local.php is what retires it.
+    if ($requesterId <= 0 || $requesterId !== $targetId) {
         throw new Exception($message);
     }
 }
