@@ -97,24 +97,34 @@ is governed by RA 10361. The clause now states Sec. 32 correctly.
 
 ## Part 2 — Needs counsel. Not implemented.
 
-### 2.1 Minimum engagement before a contract is required
+### 2.1 Minimum engagement — resolved, and there is no threshold
+
 **PESO's answer: they were not sure, and said to ask a lawyer.**
 
-CareLink currently declines to generate a contract for very short engagements
-(a day, a week) on the reasoning that BK-1 describes a continuing household
-employment relationship, not casual work. **That threshold is our invention.**
-We cannot cite a provision for it.
+Resolved by reading the statute rather than by inventing a rule. RA 10361
+excludes anyone performing domestic work *"only occasionally or sporadically and
+**not on an occupational basis**."* The test is **occupational basis, not
+engagement length**. A short live-in engagement that is someone's occupation is
+covered; a neighbour paid once to help move furniture is not.
 
-Questions for counsel:
-1. Is there a minimum duration below which RA 10361 does not attach, or is any
-   domestic work engagement covered regardless of length?
-2. Does Sec. 11 (Employment Contract) require a written contract for *every*
-   engagement, including a one-day job?
-3. If there is no statutory floor, what should the platform do — generate a
-   contract for a one-day hire, or decline and say why?
+So CareLink imposes **no minimum duration**, and no such threshold exists in the
+codebase. An earlier draft of this document claimed CareLink "declines to
+generate a contract for very short engagements (a day, a week)" — that behaviour
+was never implemented, and it would not have been defensible if it had been. No
+provision supports a day or week floor.
 
-**Until answered, the current behaviour is a product decision, not a legal one,
-and must not be defended as compliance.**
+**What is implemented instead** (`backend/parent/post_job.php`,
+`components/parent/jobs/EngagementTypeSelector.tsx`): job posting asks one
+required question — *recurring household employment* or *a one-time task*.
+Choosing one-time blocks the post, with an explanation. No job post, no
+contract, no placement. The gate is on the nature of the engagement, which is
+what the statute turns on.
+
+Still worth asking counsel, though nothing depends on it operationally:
+1. Does Sec. 11 (Employment Contract) require a written contract for *every*
+   covered engagement, however short?
+2. Where an employer genuinely disputes whether work is "occasional", who
+   decides — PESO, DOLE, or neither?
 
 ### 2.2 Overtime premium rate
 The contract requires overtime to be compensated at "the agreed overtime rate".
@@ -195,9 +205,10 @@ If asked "is your contract legally sound?":
 > 30-day notice period to RA 10361 — the statute provides five days, and a
 > 15-day indemnity for unjust dismissal. Signatures are electronic with a
 > document hash and a tamper-evident seal, which satisfies the reliability tests
-> in RA 8792 but is not a PKI digital signature. Three questions remain open for
-> counsel, the main one being the minimum engagement length that should require
-> a contract at all — PESO did not know either, and we have not invented an
-> answer.
+> in RA 8792 but is not a PKI digital signature. On scope, the statute turns on
+> whether the work is done on an occupational basis, not on how long it runs, so
+> the app asks that question directly and imposes no minimum duration — we did
+> not invent a threshold the law does not have. Two questions remain open for
+> counsel, and neither blocks operation.
 
 That last sentence is the strongest thing in this document. Say it.

@@ -37,6 +37,7 @@ import { useJobForm } from '@/hooks/parent';
 import { useUserVerification } from '@/hooks/peso';
 import { useJobReferences } from '@/hooks/shared';
 import { buildJobTitle } from '@/lib/jobTitle';
+import { EngagementTypeSelector } from './EngagementTypeSelector';
 
 // Display-only label overrides — underlying value/state is unchanged
 const DISPLAY_LABELS: Record<string, string> = {
@@ -417,6 +418,14 @@ export function JobPostModal({
           </React.Fragment>
         ))}
       </View>
+
+      {/* RA 10361 scope, asked first — a one-time task cannot be posted at all. */}
+      <EngagementTypeSelector
+        value={formData.engagement_type}
+        onChange={(v) => updateField('engagement_type', v)}
+        error={errors.engagement_type}
+        disabled={isDisabled}
+      />
 
       <CategorySelector
         categories={categories}

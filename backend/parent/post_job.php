@@ -64,6 +64,34 @@ try {
     // regional wage boards; it does not itself mandate this specific figure.
     if ($salary < 7000) throw new Exception('CareLink enforces a minimum salary of ₱7,000/month as a platform standard to promote fair compensation.');
 
+    // ── RA 10361 scope gate ─────────────────────────────────────────────────
+    //
+    // CareLink handles kasambahay employment under RA 10361 only. The statute
+    // excludes anyone performing domestic work "only occasionally or
+    // sporadically and not on an occupational basis" — the test is OCCUPATIONAL
+    // BASIS, not how many days the work runs. A two-day live-in engagement that
+    // is someone's occupation is covered; a neighbour paid once to help move
+    // furniture is not.
+    //
+    // So the gate asks the employer which kind of engagement this is, and
+    // refuses the one that falls outside coverage. It deliberately does NOT
+    // impose a minimum duration: no provision supports one, and an invented
+    // threshold cannot be defended as compliance.
+    $engagement = isset($data['engagement_type']) ? trim((string) $data['engagement_type']) : '';
+    if ($engagement === '') {
+        throw new Exception('Tell us whether this is recurring household employment or a one-time task before posting.');
+    }
+    if (!in_array($engagement, ['recurring', 'one_time'], true)) {
+        throw new Exception('Engagement type must be recurring or one_time.');
+    }
+    if ($engagement === 'one_time') {
+        throw new Exception(
+            'CareLink currently supports recurring household employment covered by the Batas Kasambahay '
+            . '(RA 10361). One-time or occasional tasks fall outside that coverage, so this post cannot be '
+            . 'created and no employment contract can be generated for it.'
+        );
+    }
+
     $job_ids_json = json_encode(is_array($data['job_ids'] ?? null) ? $data['job_ids'] : []);
     $skill_ids_json = json_encode(is_array($data['skill_ids'] ?? null) ? $data['skill_ids'] : []);
     $days_off_json = json_encode(is_array($data['days_off'] ?? null) ? $data['days_off'] : []);

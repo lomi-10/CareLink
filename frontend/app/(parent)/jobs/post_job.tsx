@@ -40,6 +40,7 @@ import {
   WorkArrangementCard,
   WorkScheduleCard,
 } from '@/components/parent/jobs';
+import { EngagementTypeSelector } from "@/components/parent/jobs/EngagementTypeSelector";
 
 // Common Components
 import { ConfirmationModal, LoadingSpinner, NotificationModal } from '@/components/shared'; // NEW: Added ConfirmationModal
@@ -239,6 +240,8 @@ export default function PostJob() {
     <ScrollView contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}>
       <View style={[styles.formContainer, isDesktop && styles.formContainerDesktop]}>
         
+        {/* RA 10361 scope, asked first — a one-time task cannot be posted at all. */}
+        <EngagementTypeSelector value={formData.engagement_type} onChange={(v) => updateField('engagement_type', v)} error={errors.engagement_type} disabled={isDisabled} />
         <CategorySelector categories={categories} selectedCategoryIds={formData.category_id ? [formData.category_id] : []} customCategory={formData.custom_category} onToggleCategory={handleSelectCategory} onCustomCategoryChange={(value: string) => updateField('custom_category', value)} error={errors.category} disabled={isDisabled} />
         <JobTitleInput categoryIds={formData.category_id ? [formData.category_id] : []} availableJobs={availableJobs} selectedJobIds={formData.job_ids} customJobTitle={formData.custom_job_title} title={formData.title} onToggleJob={handleToggleJob} onCustomJobChange={(value: string) => updateField('custom_job_title', value)} onTitleChange={(value: string) => updateField('title', value)} error={errors.title} disabled={isDisabled} />
         <SkillsSelector selectedJobIds={formData.job_ids} availableSkills={availableSkills} selectedSkills={formData.skill_ids} customSkills={formData.custom_skills} onToggleSkill={handleToggleSkill} onCustomSkillsChange={(value: string) => updateField('custom_skills', value)} disabled={isDisabled} />

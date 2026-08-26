@@ -17,6 +17,10 @@ export interface JobFormData {
   title: string;
   description: string;
 
+  // RA 10361 scope. The statute covers domestic work done on an occupational
+  // basis and excludes work done "only occasionally or sporadically". A
+  // one-time task falls outside CareLink entirely — see backend/parent/post_job.php.
+  engagement_type: 'recurring' | 'one_time' | '';
   employment_type: 'Stay-in' | 'Stay-out' | 'Any';
   work_schedule: 'Full-time' | 'Part-time' | 'Any';
   salary_min: string;
@@ -300,6 +304,7 @@ const initialFormData: JobFormData = {
   salary_max: '',
   salary_period: 'Monthly',
   province: 'Leyte',
+  engagement_type: '',
   municipality: 'Ormoc City',
   barangay: '',
   latitude: null,
@@ -349,6 +354,17 @@ export function useJobForm() {
   const validate = (categories: Category[]): { isValid: boolean; firstError?: string } => {
     const newErrors: Record<string, string> = {};
     
+    // RA 10361 scope, checked before anything else. A one-time task is not
+    // household employment under the statute, so there is nothing to validate
+    // past this point — the post cannot exist at all.
+    if (!formData.engagement_type) {
+      newErrors.engagement_type = 'Tell us what kind of engagement this is';
+    } else if (formData.engagement_type === 'one_time') {
+      newErrors.engagement_type =
+        'CareLink currently supports recurring household employment covered by the Batas Kasambahay (RA 10361). '
+        + 'One-time or occasional tasks fall outside that coverage and cannot be posted here.';
+    }
+
     // 1. DYNAMICALLY find the "Others" ID from the database
     const othersCat = categories.find(c => c.name.toLowerCase() === 'others');
     const OTHERS_CATEGORY_ID = othersCat ? othersCat.category_id.toString() : '6';
@@ -471,6 +487,7 @@ export function useJobForm() {
       title: formData.title.trim() || null,
       description: formData.description.trim(),
       
+      engagement_type: formData.engagement_type,
       employment_type: formData.employment_type,
       work_schedule: formData.work_schedule,
       salary_min: parseFloat(formData.salary_min),
