@@ -97,6 +97,35 @@ export function FeedbackScreen({
     );
   }
 
+  // ── Could not load ──
+  //
+  // This MUST come before the "nothing left to answer" branch below. Both end up
+  // with questions.length === 0, so ordering them the other way rendered every
+  // load failure — expired session, network drop, a bad response — as
+  // "You're all caught up!", which tells the user the opposite of the truth and
+  // hides the problem from testing. Reported during UAT prep.
+  if (error) {
+    return (
+      <View style={[s.wrap, wide && s.wrapWide]}>
+        <View style={[s.card, wide && s.cardWide, s.centerCard]}>
+          <View style={[s.iconWrap, { backgroundColor: '#FEE2E2' }]}>
+            <Ionicons name="alert-circle" size={40} color="#DC2626" />
+          </View>
+          <Text style={s.title}>Couldn't load the questions</Text>
+          <Text style={s.body}>{error}</Text>
+          <TouchableOpacity
+            style={[s.primaryBtn, { backgroundColor: accent }]}
+            onPress={() => refresh()}
+            activeOpacity={0.88}
+          >
+            <Ionicons name="refresh" size={17} color="#fff" />
+            <Text style={s.primaryText}>Try again</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   // ── Nothing left to answer ──
   if (questions.length === 0) {
     return (

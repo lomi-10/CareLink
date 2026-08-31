@@ -228,7 +228,7 @@ try {
             'work_hours' => $job['work_hours'],
             'days_off' => $daysOff,
             'contract_duration' => $job['contract_duration'],
-            'probation_period' => $job['probation_period'],
+            'probation_period' => $job['probation_period'] ?? null, // column does not exist on job_posts
             
             'benefits' => $job['benefits'],
             'provides_meals' => (bool)$job['provides_meals'],

@@ -4,6 +4,10 @@
 // Note: attendance_logs has no "late" status, so we report Present / Absent / Leave.
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
+// Authorization is allowed because lib/authFetch.ts attaches a bearer token to
+// every API_URL request; without it the browser preflight is refused and the
+// request never reaches PHP.
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';

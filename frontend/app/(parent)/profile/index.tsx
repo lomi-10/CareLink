@@ -44,7 +44,7 @@ export default function ParentProfile() {
   const { isDesktop } = useResponsive();
   const { unreadCount } = useNotifications('parent');
   const isWorkMode = useParentPortalMode();
-  const { profileData, loading, refresh, getFullName, getVerificationBadge } = useParentProfile();
+  const { profileData, loading, error, refresh, getFullName, getVerificationBadge } = useParentProfile();
   const { stats } = useParentStats();
   // Toggling into Work Mode with no active hire must NOT unlock the Work Mode
   // tab bar (Tasks, Helper Management) — Home already enforces this; this
@@ -78,6 +78,26 @@ export default function ParentProfile() {
     })();
     return () => { cancelled = true; };
   }, [profileData?.profile_completeness, loading]);
+
+  // A failed load leaves profileData null while loading is already false, so
+  // checking !profileData first spun the loader forever and never surfaced the
+  // error the hook had already captured. Error is checked first, deliberately.
+  if (!loading && error && !profileData) {
+    return (
+      <View style={{ flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center', padding: 28, gap: 14 }}>
+        <Ionicons name="alert-circle-outline" size={48} color={BROWN} />
+        <Text style={{ fontSize: 16, fontWeight: '800', color: DARK, textAlign: 'center' }}>Couldn't load your profile</Text>
+        <Text style={{ fontSize: 13.5, color: MUTED, textAlign: 'center', lineHeight: 19 }}>{error}</Text>
+        <TouchableOpacity
+          onPress={() => refresh()}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: BROWN, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12 }}
+        >
+          <Ionicons name="refresh" size={17} color="#fff" />
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>Try again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   if (loading || !profileData) {
     return (

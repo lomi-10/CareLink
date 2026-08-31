@@ -11,6 +11,10 @@
 // POST ?staff_user_id=..  { application_id, reason }
 // Also supports { action:'clear', flag_id } to lift a flag.
 header("Access-Control-Allow-Origin: *");
+// Authorization is allowed because lib/authFetch.ts attaches a bearer token to
+// every API_URL request; without it the browser preflight is refused and the
+// request never reaches PHP.
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header("Content-Type: application/json; charset=UTF-8");
 
 include __DIR__ . "/../dbcon.php";

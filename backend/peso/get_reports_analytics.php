@@ -8,6 +8,10 @@
  * dispute/incident breakdowns, and a recent-activity feed — all from live data.
  */
 header('Access-Control-Allow-Origin: *');
+// Authorization is allowed because lib/authFetch.ts attaches a bearer token to
+// every API_URL request; without it the browser preflight is refused and the
+// request never reaches PHP.
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json; charset=UTF-8');
 
 require_once __DIR__ . '/../dbcon.php';
