@@ -61,6 +61,14 @@ if (!function_exists('ensure_feedback_questions_table')) {
         // 'peso' or those rows silently fail to insert.
         $conn->query("ALTER TABLE feedback_questions MODIFY applies_to ENUM('all','helper','parent','peso') NOT NULL DEFAULT 'all'");
 
+        // Part I of the instrument is demographics — multiple choice, not Likert.
+        // question_type only had rating|text, so those seven items could not be
+        // stored at all. 'choice' carries its answer options in a JSON column.
+        $conn->query("ALTER TABLE feedback_questions MODIFY question_type ENUM('rating','text','choice') NOT NULL DEFAULT 'rating'");
+        if (!isset($cols['options']) && !isset($cols["options"])) {
+            $conn->query("ALTER TABLE feedback_questions ADD COLUMN options TEXT NULL AFTER question_type");
+        }
+
         if (!isset($cols["iso_characteristic"])) {
             $conn->query("ALTER TABLE feedback_questions ADD COLUMN iso_characteristic VARCHAR(48) NOT NULL DEFAULT 'Usability' AFTER sort_order");
         }
@@ -180,10 +188,53 @@ if (!function_exists('carelink_seed_feedback_questions')) {
         );
         if (!$stmt) return;
         foreach ($rows as $r) {
-            $stmt->bind_param('ssssis', $r[0], $r[1], $r[2], $r[3], $r[4], $r[5]);
+            // +10 so Part I (demographics, sort_order 1-7) always renders first.
+            // The doc numbers Part II from 1, but the screen numbers by position,
+            // so only relative order matters here.
+            $order = (int) $r[4] + 10;
+            $stmt->bind_param('ssssis', $r[0], $r[1], $r[2], $r[3], $order, $r[5]);
             $stmt->execute();
         }
         $stmt->close();
+
+        // ── Part I — Respondent profile (demographics) ───────────────────────
+        //
+        // Multiple choice, asked first, and DELIBERATELY EXCLUDED from every
+        // weighted mean: "Age: 25-34" is not a 1-5 agreement score and averaging
+        // it would be meaningless. admin/get_instrument_results.php filters on
+        // question_type = 'rating' for exactly this reason.
+        //
+        // Why they matter: CareLink targets users who may not be tech-savvy, so
+        // correlating the usability scores against Q5 (app frequency) and Q6
+        // (prior app use) is the strongest discussion point Chapter 4 has.
+        $demographics = [
+            ['dm_role',       'Which role did you test?', ['Helper (Kasambahay)', 'Employer (Household)', 'PESO Staff'], 1],
+            ['dm_age',        'Age', ['18-24', '25-34', '35-44', '45-54', '55+'], 2],
+            ['dm_sex',        'Sex', ['Female', 'Male', 'Prefer not to say'], 3],
+            ['dm_education',  'Highest education', ['Elementary', 'High School', 'Vocational/TESDA', 'College', 'Post-grad'], 4],
+            ['dm_app_freq',   'How often do you use a smartphone app?', ['Daily', 'Weekly', 'Rarely', 'First time'], 5],
+            ['dm_prior_app',  'Have you used a job-seeking or hiring app before?', ['Yes', 'No'], 6],
+            ['dm_device',     'Device used today', ['Android', 'iPhone', 'Laptop/Desktop browser'], 7],
+        ];
+        $dstmt = $conn->prepare(
+            "INSERT INTO feedback_questions
+                (code, question_text, question_type, options, applies_to, sort_order, iso_characteristic)
+             VALUES (?, ?, 'choice', ?, 'all', ?, 'Respondent Profile')
+             ON DUPLICATE KEY UPDATE
+                question_text = VALUES(question_text),
+                question_type = VALUES(question_type),
+                options       = VALUES(options),
+                sort_order    = VALUES(sort_order),
+                iso_characteristic = VALUES(iso_characteristic)"
+        );
+        if ($dstmt) {
+            foreach ($demographics as $d) {
+                $opts = json_encode($d[2]);
+                $dstmt->bind_param('sssi', $d[0], $d[1], $opts, $d[3]);
+                $dstmt->execute();
+            }
+            $dstmt->close();
+        }
 
         // Retire the pre-ISO items rather than deleting them: answers already
         // collected against them stay valid history, they simply stop being asked.

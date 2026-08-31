@@ -44,7 +44,7 @@ try {
     ensure_feedback_questions_table($conn);
 
     $stmt = $conn->prepare(
-        "SELECT q.question_id, q.code, q.question_text, q.question_type
+        "SELECT q.question_id, q.code, q.question_text, q.question_type, q.options
            FROM feedback_questions q
           WHERE q.active = 1 AND (q.applies_to = 'all' OR q.applies_to = ?)
             AND NOT EXISTS (
@@ -63,6 +63,8 @@ try {
             'code'          => $row['code'],
             'question_text' => $row['question_text'],
             'question_type' => $row['question_type'],
+            // Choice questions carry their answer options; null for rating and text.
+            'options'       => !empty($row['options']) ? json_decode($row['options'], true) : null,
         ];
     }
     $stmt->close();

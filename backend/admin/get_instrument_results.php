@@ -130,6 +130,49 @@ try {
         ];
     }
 
+
+    // ── Part I — demographics ───────────────────────────────────────────────
+    // Counted, never averaged. These are the rows behind the Chapter 4
+    // demographics table; they are excluded from every weighted mean above
+    // because an age bracket is not a 1-5 agreement score.
+    $demographics = [];
+    $res = $conn->query(
+        "SELECT q.question_id, q.code, q.question_text, q.sort_order,
+                a.text_value AS choice, COUNT(*) AS n
+         FROM feedback_questions q
+         LEFT JOIN feedback_answers a
+                ON a.question_id = q.question_id
+               AND a.text_value IS NOT NULL AND TRIM(a.text_value) <> ''
+         WHERE q.active = 1 AND q.question_type = 'choice'
+         GROUP BY q.question_id, a.text_value
+         ORDER BY q.sort_order, n DESC"
+    );
+    $byQ = [];
+    while ($res && ($r = $res->fetch_assoc())) {
+        $qid = (int) $r['question_id'];
+        if (!isset($byQ[$qid])) {
+            $byQ[$qid] = [
+                'question_id' => $qid,
+                'code' => $r['code'],
+                'question_text' => $r['question_text'],
+                'total' => 0,
+                'breakdown' => [],
+            ];
+        }
+        if ($r['choice'] !== null) {
+            $n = (int) $r['n'];
+            $byQ[$qid]['total'] += $n;
+            $byQ[$qid]['breakdown'][] = ['choice' => $r['choice'], 'count' => $n];
+        }
+    }
+    foreach ($byQ as &$q) {
+        foreach ($q['breakdown'] as &$b) {
+            $b['percent'] = $q['total'] > 0 ? round(($b['count'] / $q['total']) * 100, 1) : 0;
+        }
+        unset($b);
+    }
+    unset($q);
+    $demographics = array_values($byQ);
     // Respondents — the demographics table, and the unit you delete by.
     $respondents = [];
     $res = $conn->query(
@@ -160,6 +203,7 @@ try {
         'total_responses' => $grandN,
         'characteristics' => $characteristics,
         'items' => $items,
+        'demographics' => $demographics,
         'open_ended' => $openEnded,
         'respondents' => $respondents,
     ]);

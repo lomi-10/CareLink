@@ -11,7 +11,9 @@ export type FeedbackQuestion = {
   question_id: number;
   code: string;
   question_text: string;
-  question_type: 'rating' | 'text';
+  question_type: 'rating' | 'text' | 'choice';
+  /** Present only on 'choice' (Part I demographics). */
+  options?: string[] | null;
 };
 
 export type FeedbackAnswerDraft = { question_id: number; rating_value?: number; text_value?: string };

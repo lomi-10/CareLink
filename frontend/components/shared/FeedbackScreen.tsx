@@ -204,6 +204,24 @@ export function FeedbackScreen({
                   );
                 })}
               </View>
+            ) : q.question_type === 'choice' ? (
+              // Part I demographics. Stored as text_value, and excluded from
+              // every weighted mean server-side — an age bracket is not a score.
+              <View style={s.choiceWrap}>
+                {(q.options ?? []).map((opt) => {
+                  const on = draft[q.question_id] === opt;
+                  return (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[s.choiceChip, on && { backgroundColor: accent, borderColor: accent }]}
+                      onPress={() => setDraft((d) => ({ ...d, [q.question_id]: opt }))}
+                      accessibilityLabel={`${q.question_text}: ${opt}`}
+                    >
+                      <Text style={[s.choiceChipText, on && { color: '#fff' }]}>{opt}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             ) : (
               <TextInput
                 style={s.textInput}
@@ -259,6 +277,9 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff',
   },
   scaleDotText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#7A5C3E' },
+  choiceWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  choiceChip: { borderWidth: 1.4, borderColor: '#E5D5C0', borderRadius: 999, paddingVertical: 9, paddingHorizontal: 15, backgroundColor: '#fff' },
+  choiceChipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: '#5A3D22' },
   textInput: {
     borderWidth: 1.5, borderColor: '#EDE0D0', borderRadius: 12, padding: 12,
     fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: '#2A1608',
