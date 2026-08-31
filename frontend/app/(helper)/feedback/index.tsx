@@ -1,5 +1,5 @@
 // app/(helper)/feedback/index.tsx
-// "Send Feedback" — the persistent instrument (see FeedbackScreen). Works on
+// "System Evaluation" — the persistent instrument (see FeedbackScreen). Works on
 // both mobile and web from one file; FeedbackScreen itself is responsive.
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
@@ -23,7 +23,7 @@ export default function HelperFeedbackScreen() {
           <TouchableOpacity style={s.barBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={DARK} />
           </TouchableOpacity>
-          <Text style={s.barTitle}>Send Feedback</Text>
+          <Text style={s.barTitle}>System Evaluation</Text>
           <View style={{ width: 42 }} />
         </View>
         <FeedbackScreen role="helper" accent={ORANGE} messagesRoute="/(helper)/messages" />

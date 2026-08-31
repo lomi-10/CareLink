@@ -1,5 +1,5 @@
 // components/shared/FeedbackScreen.tsx
-// The persistent "Send Feedback" screen (as opposed to FeedbackModal, the
+// The persistent "System Evaluation" screen (as opposed to FeedbackModal, the
 // short end-of-demo popup). One submission isn't a single event here — each
 // QUESTION is tracked separately per account, so:
 //   - a user answers everything once, ever
@@ -173,11 +173,11 @@ export function FeedbackScreen({
       showsVerticalScrollIndicator={false}
     >
       <View style={[s.card, wide && s.cardWide]}>
-        <Text style={s.formTitle}>Send Feedback</Text>
+        <Text style={s.formTitle}>System Evaluation</Text>
         <Text style={s.formSub}>
           {answeredCount > 0
             ? `You've answered ${answeredCount} of ${totalCount} so far — here are the rest.`
-            : 'Honest answers help most — including the critical ones.'}
+            : 'Rate each statement from 1 (strongly disagree) to 5 (strongly agree). Honest answers help most — including the critical ones.'}
         </Text>
 
         <View style={s.progressTrack}>

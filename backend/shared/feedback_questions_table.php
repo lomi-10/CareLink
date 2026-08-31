@@ -56,6 +56,11 @@ if (!function_exists('ensure_feedback_questions_table')) {
         $cols = [];
         $res = $conn->query("SHOW COLUMNS FROM feedback_questions");
         if ($res) while ($r = $res->fetch_assoc()) $cols[$r["Field"]] = true;
+        // applies_to was enum(all,helper,parent). PESO staff answer their own
+        // four items (Part III of the instrument), so the enum has to carry
+        // 'peso' or those rows silently fail to insert.
+        $conn->query("ALTER TABLE feedback_questions MODIFY applies_to ENUM('all','helper','parent','peso') NOT NULL DEFAULT 'all'");
+
         if (!isset($cols["iso_characteristic"])) {
             $conn->query("ALTER TABLE feedback_questions ADD COLUMN iso_characteristic VARCHAR(48) NOT NULL DEFAULT 'Usability' AFTER sort_order");
         }
@@ -99,8 +104,8 @@ if (!function_exists('carelink_seed_feedback_questions')) {
         $rows = [
             // A. Functional Suitability
             ['fs_tasks_expected',  'The system performed all the tasks I expected it to.', 'rating', 'all', 1, $FS],
-            ['fs_completed_goal',  'I was able to complete what I set out to do.', 'rating', 'all', 2, $FS],
-            ['fs_info_accurate',   'The information shown (job details, profiles, match scores) was accurate.', 'rating', 'all', 3, $FS],
+            ['fs_completed_goal',  'I was able to complete what I set out to do (set up my profile / post a job / apply).', 'rating', 'all', 2, $FS],
+            ['fs_info_accurate',   'The information shown (job details, helper profiles, match scores) was accurate.', 'rating', 'all', 3, $FS],
             ['fs_appropriate',     'The features are appropriate for finding or hiring household help.', 'rating', 'all', 4, $FS],
 
             // B. Usability — the heaviest section, given the target users
@@ -147,12 +152,19 @@ if (!function_exists('carelink_seed_feedback_questions')) {
             ['em_job_desc',        'The generated job description was a helpful starting point.', 'rating', 'parent', 34, $PU],
             ['em_contract_clear',  'I understood what the contract covers and that both parties must sign.', 'rating', 'parent', 35, $US],
 
+            // PESO staff. The applies_to enum originally had no 'peso' value, so
+            // these four could not be stored at all — the ALTER above widens it.
+            ['ps_queue_easy',      'The verification queue is easy to review.', 'rating', 'peso', 36, $US],
+            ['ps_enough_info',     'I had enough information to decide whether to approve a document.', 'rating', 'peso', 37, $FS],
+            ['ps_ai_flags',        'The AI pre-check flags were helpful, not confusing.', 'rating', 'peso', 38, $US],
+            ['ps_less_paperwork',  'The system would reduce our manual paperwork.', 'rating', 'peso', 39, $PU],
+
             // Open-ended — the quotes that make Chapter 4 readable.
             ['oe_liked_most',      'What did you like most about CareLink?', 'text', 'all', 40, $PU],
             ['oe_confusing',       'What was the most confusing or difficult part?', 'text', 'all', 41, $US],
-            ['oe_missing',         'Was there anything you expected to find but could not?', 'text', 'all', 42, $FS],
+            ['oe_missing',         "Was there anything you expected to find but couldn't?", 'text', 'all', 42, $FS],
             ['oe_would_change',    'What would you add or change before this is used for real?', 'text', 'all', 43, $PU],
-            ['oe_errors',          'Describe any error or unexpected behaviour you encountered.', 'text', 'all', 44, $RE],
+            ['oe_errors',          '(If applicable) Describe any error or unexpected behaviour you encountered.', 'text', 'all', 44, $RE],
         ];
 
         $stmt = $conn->prepare(

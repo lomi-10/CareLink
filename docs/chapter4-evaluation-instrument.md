@@ -40,7 +40,7 @@ in-app prompt as an optional extra for qualitative quotes.
 
 ---
 
-## Part I — Respondent profile
+## Part I — Respondent profile 
 
 Used for your demographics table.
 

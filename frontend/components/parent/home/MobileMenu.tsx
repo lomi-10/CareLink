@@ -270,7 +270,7 @@ export function MobileMenu({
             >
               <View style={styles.drawerItemLeft}>
                 <Ionicons name="chatbox-ellipses-outline" size={22} color={c.muted} />
-                <Text style={styles.drawerItemText} numberOfLines={1}>Send Feedback</Text>
+                <Text style={styles.drawerItemText} numberOfLines={1}>System Evaluation</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={c.subtle} />
             </TouchableOpacity>
