@@ -1,0 +1,977 @@
+{
+  "info": {
+    "_postman_id": "carelink-api-collection",
+    "name": "CareLink API",
+    "description": "CareLink backend, grouped by what you would actually test.\n\nSETUP\n1. Import CareLink.postman_environment.json too, and select it (top-right dropdown).\n2. Fill in the ids for your own database — the environment file lists which.\n3. Run \"1 - Auth > Login\" first. It saves auth_token and user_id automatically.\n\nREADING THE RESULTS\nThis API answers with HTTP 200 and a JSON body of {success: true|false, message}.\nSo a refusal is a 200, not a 401. The tests assert on `success`, not the status\ncode — anything in \"2 - Security checks\" PASSES when the request is refused.\n\nRequests marked destructive really change data. Read before sending.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Warn once if the environment has not been filled in.",
+          "if (!pm.environment.get('base_url')) {",
+          "  console.warn('base_url is empty — select the CareLink environment (top-right dropdown).');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost/carelink_api"
+    }
+  ],
+  "item": [
+    {
+      "name": "1 · Auth",
+      "description": "Start here. Login writes {{auth_token}} and {{user_id}} into the environment automatically, so every later request is already signed in.",
+      "item": [
+        {
+          "name": "Login (helper or employer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login.php",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login.php"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{helper_email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "On success the test script saves auth_token and user_id to the environment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('is JSON', () => pm.response.to.be.json);",
+                  "const j = pm.response.json();",
+                  "if (j.success && j.user) {",
+                  "  pm.environment.set('user_id', j.user.user_id);",
+                  "  if (j.auth_token) pm.environment.set('auth_token', j.auth_token);",
+                  "  pm.test('token issued', () => pm.expect(j.auth_token, 'auth_token missing — AUTH_STRICT will fail').to.be.a('string'));",
+                  "} else {",
+                  "  pm.test('login failed: ' + (j.message || 'unknown'), () => pm.expect(j.success).to.eql(true));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login — wrong password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login.php",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login.php"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{helper_email}}\",\n  \"password\": \"definitely-wrong\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Should refuse. Confirms the account is not accepting any password."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.code;",
+                  "let body = null; try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('request was refused', () => {",
+                  "  const refused = status === 401 || status === 403 || (status === 200 && body && body.success === false);",
+                  "  pm.expect(refused, 'expected a refusal, got ' + status + ' ' + JSON.stringify(body)).to.eql(true);",
+                  "});",
+                  "pm.test('refusal explains itself', () => {",
+                  "  pm.expect(body && body.message, 'no message in the refusal').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 · Security checks",
+      "description": "The ones worth showing a panel. Each SHOULD be refused — a 200 with success:false and a clear message is the pass condition.",
+      "item": [
+        {
+          "name": "IDOR — read another account’s documents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/helper/get_documents.php?user_id={{other_user_id}}&requester_id={{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "helper",
+                "get_documents.php"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "{{other_user_id}}"
+                },
+                {
+                  "key": "requester_id",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Asks for someone else’s documents while identifying as yourself. Must be refused."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.code;",
+                  "let body = null; try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('request was refused', () => {",
+                  "  const refused = status === 401 || status === 403 || (status === 200 && body && body.success === false);",
+                  "  pm.expect(refused, 'expected a refusal, got ' + status + ' ' + JSON.stringify(body)).to.eql(true);",
+                  "});",
+                  "pm.test('refusal explains itself', () => {",
+                  "  pm.expect(body && body.message, 'no message in the refusal').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Staff-only endpoint without staff id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/peso/get_job_details.php?job_post_id={{job_post_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peso",
+                "get_job_details.php"
+              ],
+              "query": [
+                {
+                  "key": "job_post_id",
+                  "value": "{{job_post_id}}"
+                }
+              ]
+            },
+            "description": "PESO job details with no staff_user_id. Must be refused — this endpoint returns employer contact details and signed document URLs."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.code;",
+                  "let body = null; try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('request was refused', () => {",
+                  "  const refused = status === 401 || status === 403 || (status === 200 && body && body.success === false);",
+                  "  pm.expect(refused, 'expected a refusal, got ' + status + ' ' + JSON.stringify(body)).to.eql(true);",
+                  "});",
+                  "pm.test('refusal explains itself', () => {",
+                  "  pm.expect(body && body.message, 'no message in the refusal').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Staff-only endpoint as a non-staff user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/peso/list_reviews.php?staff_user_id={{user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peso",
+                "list_reviews.php"
+              ],
+              "query": [
+                {
+                  "key": "staff_user_id",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "A helper/employer id where a PESO id is required. Must be refused."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.code;",
+                  "let body = null; try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('request was refused', () => {",
+                  "  const refused = status === 401 || status === 403 || (status === 200 && body && body.success === false);",
+                  "  pm.expect(refused, 'expected a refusal, got ' + status + ' ' + JSON.stringify(body)).to.eql(true);",
+                  "});",
+                  "pm.test('refusal explains itself', () => {",
+                  "  pm.expect(body && body.message, 'no message in the refusal').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin account creation without auth",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/admin_create_user.php",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "admin_create_user.php"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Mallory\",\n  \"last_name\": \"Test\",\n  \"email\": \"mallory@test.invalid\",\n  \"password\": \"password123\",\n  \"user_type\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "The most severe bug that was fixed. Creating an admin with no admin_user_id must be refused."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.code;",
+                  "let body = null; try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('request was refused', () => {",
+                  "  const refused = status === 401 || status === 403 || (status === 200 && body && body.success === false);",
+                  "  pm.expect(refused, 'expected a refusal, got ' + status + ' ' + JSON.stringify(body)).to.eql(true);",
+                  "});",
+                  "pm.test('refusal explains itself', () => {",
+                  "  pm.expect(body && body.message, 'no message in the refusal').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 · RA 10361 scope gate",
+      "description": "The job-post gate. A one-time task must be refused before a post exists.",
+      "item": [
+        {
+          "name": "Post job — engagement_type missing",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/parent/post_job.php",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "parent",
+                "post_job.php"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parent_id\": \"{{employer_id}}\",\n  \"requester_id\": \"{{employer_id}}\",\n  \"description\": \"Test\",\n  \"municipality\": \"Ormoc\",\n  \"salary_min\": 8000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Required question not answered. Must be refused."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.code;",
+                  "let body = null; try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('request was refused', () => {",
+                  "  const refused = status === 401 || status === 403 || (status === 200 && body && body.success === false);",
+                  "  pm.expect(refused, 'expected a refusal, got ' + status + ' ' + JSON.stringify(body)).to.eql(true);",
+                  "});",
+                  "pm.test('refusal explains itself', () => {",
+                  "  pm.expect(body && body.message, 'no message in the refusal').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Post job — one_time (must be blocked)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/parent/post_job.php",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "parent",
+                "post_job.php"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parent_id\": \"{{employer_id}}\",\n  \"requester_id\": \"{{employer_id}}\",\n  \"description\": \"Test\",\n  \"municipality\": \"Ormoc\",\n  \"salary_min\": 8000,\n  \"engagement_type\": \"one_time\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "A one-time task falls outside RA 10361. Must be refused and must mention the Batas Kasambahay."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.code;",
+                  "let body = null; try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('request was refused', () => {",
+                  "  const refused = status === 401 || status === 403 || (status === 200 && body && body.success === false);",
+                  "  pm.expect(refused, 'expected a refusal, got ' + status + ' ' + JSON.stringify(body)).to.eql(true);",
+                  "});",
+                  "pm.test('refusal explains itself', () => {",
+                  "  pm.expect(body && body.message, 'no message in the refusal').to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('cites RA 10361', () => pm.expect(pm.response.json().message).to.include('10361'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Post job — salary below the floor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/parent/post_job.php",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "parent",
+                "post_job.php"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parent_id\": \"{{employer_id}}\",\n  \"requester_id\": \"{{employer_id}}\",\n  \"description\": \"Test\",\n  \"municipality\": \"Ormoc\",\n  \"salary_min\": 3000,\n  \"engagement_type\": \"recurring\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Below the P7,000 platform standard. Must be refused."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.code;",
+                  "let body = null; try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('request was refused', () => {",
+                  "  const refused = status === 401 || status === 403 || (status === 200 && body && body.success === false);",
+                  "  pm.expect(refused, 'expected a refusal, got ' + status + ' ' + JSON.stringify(body)).to.eql(true);",
+                  "});",
+                  "pm.test('refusal explains itself', () => {",
+                  "  pm.expect(body && body.message, 'no message in the refusal').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 · PESO — verification",
+      "description": "Staff endpoints. All require staff_user_id belonging to an APPROVED peso account.",
+      "item": [
+        {
+          "name": "Job details (staff)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/peso/get_job_details.php?job_post_id={{job_post_id}}&staff_user_id={{peso_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peso",
+                "get_job_details.php"
+              ],
+              "query": [
+                {
+                  "key": "job_post_id",
+                  "value": "{{job_post_id}}"
+                },
+                {
+                  "key": "staff_user_id",
+                  "value": "{{peso_user_id}}"
+                }
+              ]
+            },
+            "description": "Returns the posting plus the employer’s credentials and any open flags."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('is JSON', () => pm.response.to.be.json);",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User details (staff)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/peso/get_user_details.php?user_id={{other_user_id}}&staff_user_id={{peso_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peso",
+                "get_user_details.php"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "{{other_user_id}}"
+                },
+                {
+                  "key": "staff_user_id",
+                  "value": "{{peso_user_id}}"
+                }
+              ]
+            },
+            "description": "Full profile and documents with signed, expiring URLs."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('is JSON', () => pm.response.to.be.json);",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Interview detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/peso/get_interview_detail.php?interview_id={{interview_id}}&staff_user_id={{peso_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peso",
+                "get_interview_detail.php"
+              ],
+              "query": [
+                {
+                  "key": "interview_id",
+                  "value": "{{interview_id}}"
+                },
+                {
+                  "key": "staff_user_id",
+                  "value": "{{peso_user_id}}"
+                }
+              ]
+            },
+            "description": "Two-party tracker, stages and the PESO-only review history."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('is JSON', () => pm.response.to.be.json);",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complaint case file",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/peso/get_complaint_detail.php?complaint_id={{complaint_id}}&staff_user_id={{peso_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peso",
+                "get_complaint_detail.php"
+              ],
+              "query": [
+                {
+                  "key": "complaint_id",
+                  "value": "{{complaint_id}}"
+                },
+                {
+                  "key": "staff_user_id",
+                  "value": "{{peso_user_id}}"
+                }
+              ]
+            },
+            "description": "What / when / where / how, both parties, the action tracker and the escalation ladder."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('is JSON', () => pm.response.to.be.json);",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Safety flag on an unresolved case (must refuse)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/peso/set_safety_flag.php",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peso",
+                "set_safety_flag.php"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"issue\",\n  \"staff_user_id\": \"{{peso_user_id}}\",\n  \"user_id\": \"{{other_user_id}}\",\n  \"complaint_id\": \"{{complaint_id}}\",\n  \"level\": \"caution\",\n  \"public_reason\": \"Test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "A public marking may only be issued from a RESOLVED complaint. If the cited case is not resolved this must be refused."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.code;",
+                  "let body = null; try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('request was refused', () => {",
+                  "  const refused = status === 401 || status === 403 || (status === 200 && body && body.success === false);",
+                  "  pm.expect(refused, 'expected a refusal, got ' + status + ' ' + JSON.stringify(body)).to.eql(true);",
+                  "});",
+                  "pm.test('refusal explains itself', () => {",
+                  "  pm.expect(body && body.message, 'no message in the refusal').to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 · PESO — reports & export",
+      "description": "Analytics and the Chapter 4 workbook.",
+      "item": [
+        {
+          "name": "Reports & analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/peso/get_reports_analytics.php?staff_user_id={{peso_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peso",
+                "get_reports_analytics.php"
+              ],
+              "query": [
+                {
+                  "key": "staff_user_id",
+                  "value": "{{peso_user_id}}"
+                }
+              ]
+            },
+            "description": "Gender demographics, complaint rate per 100 helpers, geography, category leaders."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('is JSON', () => pm.response.to.be.json);",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.eql(true));",
+                  "const d = pm.response.json().data;",
+                  "pm.test('has gender block', () => pm.expect(d.gender).to.be.an('object'));",
+                  "pm.test('has geography block', () => pm.expect(d.geography).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Export preview (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/peso/export_report.php?format=json&limit=5&staff_user_id={{peso_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peso",
+                "export_report.php"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                },
+                {
+                  "key": "staff_user_id",
+                  "value": "{{peso_user_id}}"
+                }
+              ]
+            },
+            "description": "The six sheets as JSON — the same data the workbook is written from."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('is JSON', () => pm.response.to.be.json);",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.eql(true));",
+                  "pm.test('six sheets', () => pm.expect(pm.response.json().sheets).to.have.lengthOf(6));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Export workbook (.xls)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/peso/export_report.php?staff_user_id={{peso_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peso",
+                "export_report.php"
+              ],
+              "query": [
+                {
+                  "key": "staff_user_id",
+                  "value": "{{peso_user_id}}"
+                }
+              ]
+            },
+            "description": "The actual file. Use Send and Download in Postman to save it."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('is a spreadsheet, not JSON', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('ms-excel'));",
+                  "pm.test('has a filename', () => pm.expect(pm.response.headers.get('Content-Disposition')||'').to.include('.xls'));",
+                  "pm.test('not empty', () => pm.expect(pm.response.responseSize).to.be.above(1000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reviews (staff)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/peso/list_reviews.php?staff_user_id={{peso_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "peso",
+                "list_reviews.php"
+              ],
+              "query": [
+                {
+                  "key": "staff_user_id",
+                  "value": "{{peso_user_id}}"
+                }
+              ]
+            },
+            "description": "Peer reviews. Ratings are public on profiles; this written text is staff-only."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('is JSON', () => pm.response.to.be.json);",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 · Super admin",
+      "description": "Chapter 4 evaluation data. admin_user_id must be an approved admin account.",
+      "item": [
+        {
+          "name": "ISO/IEC 25010 results",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/get_instrument_results.php?admin_user_id={{admin_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "get_instrument_results.php"
+              ],
+              "query": [
+                {
+                  "key": "admin_user_id",
+                  "value": "{{admin_user_id}}"
+                }
+              ]
+            },
+            "description": "Weighted mean per quality characteristic, per-item means, Likert distribution, open-ended answers."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('is JSON', () => pm.response.to.be.json);",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.eql(true));",
+                  "const j = pm.response.json();",
+                  "pm.test('has characteristics', () => pm.expect(j.characteristics).to.be.an('array'));",
+                  "pm.test('has items', () => pm.expect(j.items).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete a respondent (destructive)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/delete_feedback.php",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "delete_feedback.php"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"admin_user_id\": \"{{admin_user_id}}\",\n  \"scope\": \"respondent\",\n  \"user_id\": \"{{other_user_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "REALLY DELETES DATA. Only run against sample responses. Writes an audit row."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('is JSON', () => pm.response.to.be.json);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

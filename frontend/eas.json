@@ -1,0 +1,27 @@
+{
+  "cli": { "version": ">= 5.9.0", "appVersionSource": "remote" },
+  "build": {
+    "preview": {
+      "//": "APK for sideloading onto a phone — this is the one you want for UAT and the defense demo. buildType 'apk' matters: the default is .aab, which Play Store accepts but a phone cannot install directly.",
+      "android": { "buildType": "apk" },
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-DOMAIN/carelink_api"
+      }
+    },
+    "development": {
+      "//": "Dev client — like Expo Go but with YOUR native modules compiled in.",
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": { "buildType": "apk" }
+    },
+    "production": {
+      "//": "Play Store submission bundle (.aab). Not installable directly on a phone.",
+      "android": { "buildType": "app-bundle" },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-DOMAIN/carelink_api"
+      }
+    }
+  },
+  "submit": { "production": {} }
+}
