@@ -43,6 +43,12 @@ try {
 
     ensure_feedback_questions_table($conn);
 
+    // Answer what the system already knows — role, age, sex, education, device —
+    // before working out what is left to ask. Idempotent and INSERT IGNORE, so
+    // it never overwrites an answer the respondent typed themselves.
+    require_once __DIR__ . '/feedback_autofill.php';
+    $autofilled = carelink_autofill_demographics($conn, $user_id, $user_type);
+
     $stmt = $conn->prepare(
         "SELECT q.question_id, q.code, q.question_text, q.question_type, q.options
            FROM feedback_questions q
@@ -78,6 +84,8 @@ try {
         'questions'       => $questions,
         'answered_count'  => $total - count($questions),
         'total_count'     => $total,
+        // Shown back to the respondent so the capture is visible, not silent.
+        'autofilled'      => $autofilled,
     ]);
 } catch (Throwable $e) {
     error_log('get_feedback_status.php: ' . $e->getMessage());

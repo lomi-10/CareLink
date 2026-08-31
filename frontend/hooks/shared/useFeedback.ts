@@ -23,6 +23,7 @@ export function useFeedback(role: 'helper' | 'parent' | 'peso') {
   const [questions, setQuestions] = useState<FeedbackQuestion[]>([]);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [autofilled, setAutofilled] = useState<Record<string,string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +42,7 @@ export function useFeedback(role: 'helper' | 'parent' | 'peso') {
       setQuestions(data.questions ?? []);
       setAnsweredCount(data.answered_count ?? 0);
       setTotalCount(data.total_count ?? 0);
+      setAutofilled(data.autofilled ?? {});
     } catch (e: any) {
       setError(e?.message || 'Could not load feedback questions.');
     } finally {
@@ -73,5 +75,5 @@ export function useFeedback(role: 'helper' | 'parent' | 'peso') {
     }
   }, [role]);
 
-  return { loading, questions, answeredCount, totalCount, submitting, error, submit, refresh: load };
+  return { loading, questions, answeredCount, totalCount, autofilled, submitting, error, submit, refresh: load };
 }

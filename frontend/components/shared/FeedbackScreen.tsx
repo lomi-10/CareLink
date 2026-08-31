@@ -23,6 +23,16 @@ import API_URL from '@/constants/api';
 import { useFeedback, type FeedbackAnswerDraft } from '@/hooks/shared/useFeedback';
 import { useCareBotOptional } from '@/contexts/CareBotContext';
 
+// Order and wording of the auto-filled rows. Keys match the seed codes in
+// backend/shared/feedback_questions_table.php.
+const AUTOFILL_LABELS: [string, string][] = [
+  ['dm_role', 'Role'],
+  ['dm_age', 'Age'],
+  ['dm_sex', 'Sex'],
+  ['dm_education', 'Education'],
+  ['dm_device', 'Device'],
+];
+
 export function FeedbackScreen({
   role, accent, messagesRoute,
 }: {
@@ -33,7 +43,7 @@ export function FeedbackScreen({
 }) {
   const router = useRouter();
   const careBot = useCareBotOptional();
-  const { loading, questions, answeredCount, totalCount, submitting, error, submit, refresh } = useFeedback(role);
+  const { loading, questions, answeredCount, totalCount, autofilled, submitting, error, submit, refresh } = useFeedback(role);
   const [draft, setDraft] = useState<Record<number, number | string>>({});
   const [done, setDone] = useState(false);
   const [contactBusy, setContactBusy] = useState(false);
@@ -185,6 +195,28 @@ export function FeedbackScreen({
         </View>
         <Text style={s.progressLabel}>{answeredCount + answeredHere} of {totalCount} answered</Text>
 
+        {/* What the system filled in for them.
+            Shown rather than silent: this is research data about the respondent,
+            and they should be able to see what was recorded without having to
+            re-type it. Derived from the account, the profile and the audit trail
+            — see backend/shared/feedback_autofill.php. */}
+        {Object.keys(autofilled).length > 0 && (
+          <View style={s.autoCard}>
+            <View style={s.autoHead}>
+              <Ionicons name="checkmark-circle" size={15} color={accent} />
+              <Text style={[s.autoTitle, { color: accent }]}>Filled in from your account</Text>
+            </View>
+            <View style={s.autoRows}>
+              {AUTOFILL_LABELS.filter(([k]) => autofilled[k]).map(([k, label]) => (
+                <View key={k} style={s.autoRow}>
+                  <Text style={s.autoKey}>{label}</Text>
+                  <Text style={s.autoVal}>{autofilled[k]}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {questions.map((q, i) => (
           <View key={q.question_id} style={s.qBlock}>
             <Text style={s.qLabel}>{i + 1}. {q.question_text}</Text>
@@ -277,6 +309,13 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff',
   },
   scaleDotText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#7A5C3E' },
+  autoCard: { backgroundColor: '#FFF8F0', borderWidth: 1, borderColor: '#F0DCC4', borderRadius: 14, padding: 14, marginBottom: 18 },
+  autoHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 9 },
+  autoTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5 },
+  autoRows: { gap: 5 },
+  autoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  autoKey: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: '#8A6B4A' },
+  autoVal: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: '#3A2415', flexShrink: 1, textAlign: 'right' },
   choiceWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   choiceChip: { borderWidth: 1.4, borderColor: '#E5D5C0', borderRadius: 999, paddingVertical: 9, paddingHorizontal: 15, backgroundColor: '#fff' },
   choiceChipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: '#5A3D22' },
