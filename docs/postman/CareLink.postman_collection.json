@@ -337,8 +337,59 @@
     },
     {
       "name": "3 · RA 10361 scope gate",
-      "description": "The job-post gate. A one-time task must be refused before a post exists.",
+      "description": "The job-post gate. A one-time task must be refused before a post exists.\n\nIMPORTANT: these run as the EMPLOYER. post_job.php checks ownership BEFORE the\nscope gate, so posting for employer_id while signed in as a helper is refused\nfor the wrong reason and never reaches the RA 10361 check. The first request\nhere signs in as the employer so the gate is actually exercised.",
       "item": [
+        {
+          "name": "Login as the employer (run first in this folder)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{employer_email}}\",\n  \"password\": \"{{employer_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login.php",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login.php"
+              ]
+            },
+            "description": "Swaps the active token to the employer account, so the ownership check in post_job.php passes and the scope gate is the thing being tested."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "if (j.success && j.user) {",
+                  "  pm.environment.set('auth_token', j.auth_token || '');",
+                  "  pm.environment.set('employer_id', j.user.user_id);",
+                  "  pm.test('signed in as an employer', () => pm.expect(j.user.user_type).to.eql('parent'));",
+                  "} else {",
+                  "  pm.test('employer login failed: ' + (j.message || '') + ' — set employer_email / employer_password', () => pm.expect(j.success).to.eql(true));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "Post job — engagement_type missing",
           "request": {
