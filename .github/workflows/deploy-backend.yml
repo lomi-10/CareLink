@@ -53,3 +53,35 @@ jobs:
             **/uploads/**
             **/test_*.php
             **/database/**
+
+      # New tables are created by ensure_*() helpers that run only when the
+      # feature needing them is first opened. That leaves a freshly deployed
+      # server with whatever schema its visitors happened to trigger — and any
+      # endpoint that reads a table without including its ensure_* file gets an
+      # "unknown table" error, which under PHP 8.1's throwing mysqli surfaces as
+      # a blank screen rather than a missing section.
+      #
+      # backend/migrate.php runs every one of them in a single pass, so the
+      # schema is complete when the deploy finishes instead of whenever someone
+      # clicks the right thing. It only ever CREATEs, so re-running is a no-op.
+      - name: 🗄️ Update database schema
+        env:
+          # Defaults to the live API; override with a repository secret only if
+          # the domain changes. MIGRATE_TOKEN must match the value in
+          # backend/config.local.php on the server, or the endpoint refuses.
+          MIGRATE_URL: ${{ secrets.MIGRATE_URL || 'https://carelink-ph.com/api/carelink_api' }}
+          MIGRATE_TOKEN: ${{ secrets.MIGRATE_TOKEN }}
+        run: |
+          if [ -z "$MIGRATE_TOKEN" ]; then
+            echo "::warning::MIGRATE_TOKEN secret is not set — schema was NOT updated."
+            echo "The file deploy succeeded. New tables will still appear lazily, the first"
+            echo "time someone opens the feature that needs them. To make it automatic, add"
+            echo "MIGRATE_TOKEN to your GitHub secrets and to backend/config.local.php."
+            exit 0
+          fi
+          echo "Running migrations against $MIGRATE_URL"
+          # --fail-with-body so a non-2xx still prints migrate.php's JSON, which
+          # names the migration that failed. A bare --fail would hide it.
+          curl --fail-with-body --silent --show-error --max-time 120 \
+            -X POST "$MIGRATE_URL/migrate.php" \
+            -H "X-CareLink-Migrate-Token: $MIGRATE_TOKEN"

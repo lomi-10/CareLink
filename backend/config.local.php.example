@@ -43,4 +43,15 @@ return [
     // these values change — no code edits:
     //   'MAIL_HOST' => 'smtp.hostinger.com', 'MAIL_PORT' => '465',
     //   'MAIL_USERNAME' => 'noreply@yourdomain.com', 'MAIL_PASSWORD' => '...',
+
+    // ---- Schema migrations -------------------------------------------------
+    // Shared secret that lets the deploy call backend/migrate.php, which runs
+    // every ensure_*() table helper in one pass so new tables exist the moment
+    // a deploy finishes instead of whenever a user first opens the feature.
+    //
+    // Put the SAME string in your GitHub repository secrets as MIGRATE_TOKEN
+    // (Settings > Secrets and variables > Actions). Any long random string is
+    // fine. Leave this out entirely and migrate.php refuses every request,
+    // including your own — it fails closed rather than defaulting to open.
+    'MIGRATE_TOKEN' => 'change-me-to-a-long-random-string',
 ];
