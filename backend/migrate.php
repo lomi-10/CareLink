@@ -115,6 +115,7 @@ $migrations = [
     'shared/revenue_tables.php'           => ['ensure_revenue_tables'],
     'shared/subscriptions_table.php'      => ['ensure_subscriptions_table'],
     'shared/system_feedback_table.php'    => ['ensure_system_feedback_table'],
+    'shared/task_checklist_table.php'     => ['ensure_task_checklist_items_table'],
     'peso/application_flags_table.php'    => ['carelink_ensure_application_flags_table'],
 ];
 
