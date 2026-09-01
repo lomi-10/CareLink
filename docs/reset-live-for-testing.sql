@@ -193,6 +193,81 @@ VALUES
    'Test household employer account for API testing.', 'Roman Catholic', 'Verified');
 
 
+
+-- ---------------------------------------------------------------------------
+-- STEP 2b. Sample records, so the API test run is fully green and repeatable
+-- ---------------------------------------------------------------------------
+-- Three PESO read endpoints fetch a specific record: a job post, an interview
+-- and a complaint. On a database with none of those they answer "not found" —
+-- correct behaviour, but it fails the test run for want of data rather than
+-- for any defect.
+--
+-- These four rows give each of them something real to read, on FIXED ids
+-- (job_post_id 1, application_id 1, interview_id 1, complaint_id 1) that the
+-- Postman environment already points at. A fresh import therefore produces the
+-- same green run every time, which is what you want when re-running it in
+-- front of a panel.
+--
+-- They are demonstration fixtures between the two test accounts. Delete them
+-- before real users arrive:
+--   DELETE FROM complaints          WHERE complaint_id = 1;
+--   DELETE FROM interview_schedules WHERE interview_id = 1;
+--   DELETE FROM job_applications    WHERE application_id = 1;
+--   DELETE FROM job_posts           WHERE job_post_id = 1;
+
+-- A verified, open job post by the employer (user 4).
+-- status 'Open' and verified_by 1 means PESO has already approved it, which is
+-- what makes it visible and what get_job_details.php expects to describe.
+INSERT INTO job_posts
+  (job_post_id, parent_id, category_id, title, description,
+   employment_type, work_schedule, salary_offered, salary_min, salary_max,
+   salary_period, province, municipality, barangay, latitude, longitude,
+   status, visibility, posted_at, verified_by, verified_at,
+   work_hours, contract_duration, provides_meals, provides_sss,
+   provides_philhealth, provides_pagibig, vacation_days)
+VALUES
+  (1, 4, 1, 'General Househelp for a family of four',
+   'Daily household upkeep for a family of four in Ormoc City: cleaning, laundry, marketing and simple meal preparation. Recurring household employment under RA 10361. Rest day every Sunday, and the 13th month pay and SSS, PhilHealth and Pag-IBIG contributions required by the Batas Kasambahay are provided.',
+   'Stay-out', 'Full-time', 8000.00, 8000.00, 9000.00,
+   'Monthly', 'Leyte', 'Ormoc', 'Cogon', 11.0064000, 124.6075000,
+   'Open', 'public', NOW(), 1, NOW(),
+   '8 hours', '1 year', 1, 1,
+   1, 1, 5);
+
+-- The helper (user 3) applied to it, and has been moved to interview stage.
+INSERT INTO job_applications
+  (application_id, job_post_id, helper_id, cover_letter, status, applied_at, reviewed_at)
+VALUES
+  (1, 1, 3,
+   'Good day po. I have three years of experience in general househelp and laundry, and I live in Ormoc. I am available to start immediately.',
+   'Interview Scheduled', NOW(), NOW());
+
+-- A scheduled interview on that application. Both sides confirmed, result
+-- still Pending, which is the state the PESO interview tracker is built to show.
+INSERT INTO interview_schedules
+  (interview_id, application_id, interview_date, interview_type,
+   location_or_link, parent_confirmed, helper_confirmed, status, result, created_at)
+VALUES
+  (1, 1, DATE_ADD(NOW(), INTERVAL 3 DAY), 'In-person',
+   'PESO Office, Ormoc City Hall', 1, 1, 'Confirmed', 'Pending', NOW());
+
+-- An open complaint, helper against employer, at the PESO escalation stage.
+-- Left unresolved on purpose: the collection's "safety flag on an unresolved
+-- case must be refused" test needs a case that is genuinely still open.
+INSERT INTO complaints
+  (complaint_id, complainant_id, complainant_role, respondent_id,
+   subject, description, incident_at, incident_location,
+   incident_barangay, incident_municipality, incident_province,
+   category, status, escalation_stage, created_at)
+VALUES
+  (1, 3, 'helper', 4,
+   'Salary paid late for two consecutive months',
+   'Sample record for API testing. The agreed salary was not paid on the agreed date in two consecutive months, and the delay was about two weeks each time. Raised here so the complaint tracker has a case to display.',
+   DATE_SUB(NOW(), INTERVAL 10 DAY), 'Employer residence, Cogon, Ormoc City',
+   'Cogon', 'Ormoc', 'Leyte',
+   'Non-Payment', 'Under Review', 'peso', DATE_SUB(NOW(), INTERVAL 9 DAY));
+
+
 -- ---------------------------------------------------------------------------
 -- STEP 3 — Confirm it worked
 -- ---------------------------------------------------------------------------

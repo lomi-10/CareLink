@@ -95,28 +95,28 @@ supports.
 
 ---
 
-## The three that fail on a fresh database
+## Expect 61 of 61
 
-A freshly seeded database has accounts but no job posts, interviews or
-complaints. Exactly three requests need a record to read, and they fail for
-lack of data — **not** a defect.
+Three PESO requests read a specific record — a job post, an interview and a
+complaint. The seed scripts create one of each on fixed ids (`1`, `1`, `1`),
+and the live environment already points at them, so a fresh import gives the
+same fully green run every time. That repeatability is the point: you can
+re-run it in front of a panel.
 
-| Request | Needs |
-|---|---|
-| `4 · Job details (staff)` | `job_post_id` |
-| `4 · Interview detail` | `interview_id` |
-| `4 · Complaint case file` | `complaint_id` |
+Every environment variable is pre-filled except the two passwords and the two
+the Login request writes for itself.
 
-Everything else passes on an empty database, including the requests that
-*mention* those ids — they are refusal tests, and a refusal does not depend on
-the record existing.
+`other_user_id` is `4`, the employer — a different account from the helper who
+logs in, which is what the IDOR check needs.
 
-`other_user_id` is pre-filled with `4`, the employer — a different account from
-the helper who logs in, which is what the IDOR check needs.
+The sample records are demonstration fixtures between the two test accounts.
+The seed file lists the four DELETE statements that remove them when real users
+arrive.
 
-To get a fully green run: in the app, log in as the employer, post a recurring
-job, then paste its id into `job_post_id`. Repeat for an interview and a
-complaint if you want all three.
+**If those three fail with `success = true | expected false to deeply equal
+true`,** the ids are empty or the records were not created — re-import the seed
+and check `job_post_id`, `interview_id` and `complaint_id` are all `1`. That is
+missing data, not a defect in the endpoint.
 
 ## Both test accounts must be PESO-verified
 
