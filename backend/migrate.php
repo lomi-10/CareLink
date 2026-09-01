@@ -179,6 +179,12 @@ $known = [
 // imported once by hand; nothing in a deploy will ever create them.
 $stillMissing = array_values(array_diff($known, $after));
 
+// Tables on the server that this file does not know about. Not an error —
+// usually a leftover from an older schema or a hand-made backup copy — but
+// worth surfacing, because the only other clue is a table_count that does
+// not match the length of the list above, which is easy to misread.
+$unexpected = array_values(array_diff($after, $known));
+
 $ok = empty($failed) && empty($stillMissing);
 http_response_code($ok ? 200 : 500);
 
@@ -192,4 +198,5 @@ echo json_encode([
     'table_count'        => count($after),
     'failed'             => $failed,
     'still_missing'      => $stillMissing,
+    'unexpected_tables'  => $unexpected,
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
