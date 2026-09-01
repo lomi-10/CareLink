@@ -1318,7 +1318,7 @@ VALUES
   (3, '1996-04-12', 'Female', 'Single', 'Roman Catholic',
    'Leyte', 'Ormoc', 'Cogon', 11.0064000, 124.6075000, 'Cogon, Ormoc, Leyte',
    'Test helper account for API testing.', 'High School Grad', 3,
-   'Stay-out', 'Full-time', 6000.00, 'Monthly', 'Pending');
+   'Stay-out', 'Full-time', 6000.00, 'Monthly', 'Verified');
 
 INSERT INTO parent_profiles
   (user_id, province, municipality, barangay,
@@ -1326,7 +1326,7 @@ INSERT INTO parent_profiles
 VALUES
   (4, 'Leyte', 'Ormoc', 'Punta',
    11.0092018, 124.6003072, 'Punta, Ormoc, Leyte',
-   'Test household employer account for API testing.', 'Roman Catholic', 'Pending');
+   'Test household employer account for API testing.', 'Roman Catholic', 'Verified');
 
 SET FOREIGN_KEY_CHECKS = 1;
 

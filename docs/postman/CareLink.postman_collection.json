@@ -435,7 +435,10 @@
                   "});",
                   "pm.test('refusal explains itself', () => {",
                   "  pm.expect(body && body.message, 'no message in the refusal').to.be.a('string').and.not.empty;",
-                  "});"
+                  "});",
+                  "pm.test('asks for the engagement type, not something else', () =>",
+                  "  pm.expect(pm.response.json().message, 'refused for a different reason — the scope gate never ran')",
+                  "    .to.include('recurring'));"
                 ]
               }
             }
@@ -538,7 +541,10 @@
                   "});",
                   "pm.test('refusal explains itself', () => {",
                   "  pm.expect(body && body.message, 'no message in the refusal').to.be.a('string').and.not.empty;",
-                  "});"
+                  "});",
+                  "pm.test('cites the salary floor, not something else', () =>",
+                  "  pm.expect(pm.response.json().message, 'refused for a different reason — the salary check never ran')",
+                  "    .to.include('7,000'));"
                 ]
               }
             }

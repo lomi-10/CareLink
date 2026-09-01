@@ -154,9 +154,17 @@ VALUES
 -- being asked by hand. Ormoc so the "within Ormoc vs beyond" report has
 -- something on the inside of the line.
 --
--- verification_status is 'Pending' so you have something for the PESO portal
--- to approve. To skip that and start already verified:
---   UPDATE helper_profiles SET verification_status = 'Verified' WHERE user_id = 3;
+-- verification_status is 'Verified' for BOTH test accounts, and it has to be.
+--
+-- post_job.php, apply_job.php, invite_helper.php, send_message.php and
+-- create_direct_hire_offer.php all refuse an unverified account, and they
+-- refuse it BEFORE checking anything else — correctly, since authorisation
+-- comes before business rules. Seeding these as 'Pending' therefore blocks
+-- almost every API test behind "Your account is still being verified", and
+-- the RA 10361 scope gate never even runs.
+--
+-- To demo the PESO approval queue instead, put ONE of them back afterwards:
+--   UPDATE helper_profiles SET verification_status = 'Pending' WHERE user_id = 3;
 
 -- Neither profile table carries a phone number any more — that column was
 -- dropped and the number lives on users.phone alone, set in Step 2.
@@ -170,7 +178,7 @@ VALUES
   (3, '1996-04-12', 'Female', 'Single', 'Roman Catholic',
    'Leyte', 'Ormoc', 'Cogon', 11.0064000, 124.6075000, 'Cogon, Ormoc, Leyte',
    'Test helper account for API testing.', 'High School Grad', 3,
-   'Stay-out', 'Full-time', 6000.00, 'Monthly', 'Pending');
+   'Stay-out', 'Full-time', 6000.00, 'Monthly', 'Verified');
 
 
 -- Household employer profile. province is NOT NULL and defaults to 'Leyte',
@@ -182,7 +190,7 @@ INSERT INTO parent_profiles
 VALUES
   (4, 'Leyte', 'Ormoc', 'Punta',
    11.0092018, 124.6003072, 'Punta, Ormoc, Leyte',
-   'Test household employer account for API testing.', 'Roman Catholic', 'Pending');
+   'Test household employer account for API testing.', 'Roman Catholic', 'Verified');
 
 
 -- ---------------------------------------------------------------------------

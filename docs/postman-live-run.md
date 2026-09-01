@@ -95,27 +95,44 @@ supports.
 
 ---
 
-## Requests that need existing records
+## The three that fail on a fresh database
 
 A freshly seeded database has accounts but no job posts, interviews or
-complaints. These will fail for lack of data, which is **not** a defect —
-fill in the environment variable once the record exists, or note it as out of
-scope for the run.
+complaints. Exactly three requests need a record to read, and they fail for
+lack of data — **not** a defect.
 
 | Request | Needs |
 |---|---|
-| `2 · Staff-only endpoint without staff id` | `job_post_id` |
 | `4 · Job details (staff)` | `job_post_id` |
 | `4 · Interview detail` | `interview_id` |
 | `4 · Complaint case file` | `complaint_id` |
-| `4 · Safety flag on an unresolved case` | `complaint_id` |
-| `6 · Delete a respondent` | a submitted System Evaluation response |
+
+Everything else passes on an empty database, including the requests that
+*mention* those ids — they are refusal tests, and a refusal does not depend on
+the record existing.
 
 `other_user_id` is pre-filled with `4`, the employer — a different account from
-the helper who logs in, which is exactly what the IDOR check needs.
+the helper who logs in, which is what the IDOR check needs.
 
-To get a full green run, do this first in the app: log in as the employer, post
-a recurring job, then paste its id into `job_post_id`.
+To get a fully green run: in the app, log in as the employer, post a recurring
+job, then paste its id into `job_post_id`. Repeat for an interview and a
+complaint if you want all three.
+
+## Both test accounts must be PESO-verified
+
+`post_job.php`, `apply_job.php`, `invite_helper.php`, `send_message.php` and
+`create_direct_hire_offer.php` all refuse an unverified account — and they
+refuse **before** checking anything else, which is the right order:
+authorisation precedes business rules.
+
+So a helper or employer seeded as `Pending` fails almost every test with "Your
+account is still being verified", and the RA 10361 scope gate never runs at
+all. Both seed scripts set `verification_status = 'Verified'` for this reason.
+
+This matters for how you read a run. The scope-gate tests assert on the
+specific rule each refusal cites — `recurring`, `10361`, `7,000` — precisely so
+that being blocked by the verification guard cannot masquerade as the scope
+gate working.
 
 **`6 · Delete a respondent` is destructive.** It really deletes. Leave it
 unchecked in the runner unless you have a throwaway response to spend.
