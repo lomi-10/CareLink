@@ -66,10 +66,12 @@ jobs:
       # clicks the right thing. It only ever CREATEs, so re-running is a no-op.
       - name: 🗄️ Update database schema
         env:
-          # Defaults to the live API; override with a repository secret only if
-          # the domain changes. MIGRATE_TOKEN must match the value in
-          # backend/config.local.php on the server, or the endpoint refuses.
-          MIGRATE_URL: ${{ secrets.MIGRATE_URL || 'https://carelink-ph.com/api/carelink_api' }}
+          # NOTE: NOT derivable from server-dir above. That is a filesystem
+          # path; api.carelink-ph.com is a subdomain mapped onto .../public_html/api/,
+          # so the public URL has no /api/ segment. Deriving it from the path 404s.
+          # Override with a repository secret if the domain moves. MIGRATE_TOKEN
+          # must match backend/config.local.php on the server, or this is refused.
+          MIGRATE_URL: ${{ secrets.MIGRATE_URL || 'https://api.carelink-ph.com/carelink_api' }}
           MIGRATE_TOKEN: ${{ secrets.MIGRATE_TOKEN }}
         run: |
           if [ -z "$MIGRATE_TOKEN" ]; then
