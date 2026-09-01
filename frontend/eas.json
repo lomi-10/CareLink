@@ -6,7 +6,7 @@
       "android": { "buildType": "apk" },
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-DOMAIN/carelink_api"
+        "EXPO_PUBLIC_API_URL": "https://api.carelink-ph.com/carelink_api"
       }
     },
     "development": {
@@ -19,7 +19,7 @@
       "//": "Play Store submission bundle (.aab). Not installable directly on a phone.",
       "android": { "buildType": "app-bundle" },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-DOMAIN/carelink_api"
+        "EXPO_PUBLIC_API_URL": "https://api.carelink-ph.com/carelink_api"
       }
     }
   },
