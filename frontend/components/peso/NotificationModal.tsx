@@ -1,7 +1,7 @@
 // components/peso/NotificationModal.tsx
 // Reusable Notification Modal for PESO Admin (better than alerts for web)
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Modal,
   StyleSheet,
@@ -34,10 +34,18 @@ export default function NotificationModal({
   autoClose = false,
   autoCloseDelay = 3000,
 }: NotificationModalProps) {
-  const fadeAnim = new Animated.Value(0);
+  // useRef, NOT a bare `new Animated.Value(0)`.
+  //
+  // A value constructed inline is rebuilt on every render, and the entrance
+  // animation only runs from the `visible` effect. So any re-render while the
+  // modal was open -- a parent calling setProcessing(true), say -- handed the
+  // overlay a brand new value pinned at 0, and the modal went fully
+  // transparent while still mounted and still swallowing every click.
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
+      fadeAnim.setValue(0);
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 300,
@@ -129,7 +137,25 @@ export default function NotificationModal({
               <TouchableOpacity
                 style={[styles.button, styles.actionButton, { backgroundColor: config.color }]}
                 onPress={() => {
-                  void Promise.resolve(onAction()).finally(() => handleClose());
+                  // Close FIRST, synchronously, then run the action.
+                  //
+                  // This used to await the action and close afterwards:
+                  //   Promise.resolve(onAction()).finally(handleClose)
+                  //
+                  // Every confirm handler in the PESO portal is async and opens
+                  // a follow-up modal -- "Missing required document", "Approved!",
+                  // an error. That modal opened, and the trailing finally() then
+                  // tore it straight back down. Approving a user with a missing
+                  // Valid ID was therefore impossible: the "Approve anyway"
+                  // prompt was destroyed in the same tick it appeared, so the
+                  // officer saw a button that did nothing, however many times
+                  // they pressed it.
+                  //
+                  // Closing synchronously (no fade -- a fade's completion
+                  // callback reintroduces the same race 200ms later) leaves the
+                  // action in sole control of what is on screen when it ends.
+                  onClose();
+                  onAction();
                 }}
               >
                 <Text style={styles.actionButtonText}>{actionLabel}</Text>

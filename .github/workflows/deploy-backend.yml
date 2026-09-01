@@ -41,9 +41,15 @@ jobs:
           # server — losing it takes the whole API down. uploads/ is
           # user-submitted documents and photos, which exist nowhere else.
           # test_*.php are throwaway diagnostics that must never ship.
+          # database/ is SQL dumps — current.sql alone carries every real
+          # email and bcrypt hash in the system, and local-dir is the web
+          # root, so uploading it published them at /database/current.sql
+          # to anyone who guessed the name. Nothing on the server reads
+          # these files; they are local development artifacts.
           exclude: |
             **/.git*
             **/.git*/**
             **/config.local.php
             **/uploads/**
             **/test_*.php
+            **/database/**
