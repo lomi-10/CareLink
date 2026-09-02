@@ -12,7 +12,7 @@
 // and no native video SDK can be loaded, so the link is opened externally
 // there. That is a platform limit, not a preference — see
 // backend/shared/create_call_room.php.
-import React, { useState } from 'react';
+import React, { createElement, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Platform, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FontFamily } from '@/constants/GlobalStyles';
@@ -55,6 +55,25 @@ export default function VideoCallTab({
           >
             In a call with {partnerName}
           </Text>
+          {/* An escape hatch that is always visible. If the embed ever comes up
+              blank — a browser extension blocking frames, a provider adding
+              frame-ancestors, a slow load — the user has somewhere to go
+              instead of staring at an empty box deciding the button is broken.
+              That is exactly how the zero-height bug was experienced. */}
+          <TouchableOpacity
+            onPress={() => Linking.openURL(roomUrl)}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
+              borderWidth: 1, borderColor: ORANGE,
+            }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="open-outline" size={16} color={ORANGE} />
+            <Text style={{ fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: ORANGE }}>
+              Open in new tab
+            </Text>
+          </TouchableOpacity>
           {/* Leaving unmounts the iframe, which releases the camera and
               microphone. Without this the only way out was to switch tabs,
               and the webcam light stayed on. */}
@@ -73,14 +92,23 @@ export default function VideoCallTab({
           </TouchableOpacity>
         </View>
 
-        <iframe
-          src={roomUrl}
-          title={`Video call with ${partnerName}`}
+        {/* createElement, and minHeight, both deliberately — this matches the
+            contract-PDF iframe in ChatPanel, which is the pattern proven to
+            work here.
+
+            The first attempt used JSX with `flex: 1, height: '100%'`. Inside
+            this flex column nothing bounds the height, so the iframe computed
+            to ZERO pixels: the call connected, the camera turned on, and the
+            user saw an unchanged screen and reported the button as dead.
+            minHeight is what guarantees it is actually on screen. */}
+        {createElement('iframe', {
+          title: `Video call with ${partnerName}`,
+          src: roomUrl,
           // Without this allow list the browser blocks the camera and mic and
           // the call loads to a black frame with no error.
-          allow="camera; microphone; fullscreen; speaker; display-capture; autoplay"
-          style={{ flex: 1, width: '100%', height: '100%', border: 'none', borderRadius: 12 }}
-        />
+          allow: 'camera; microphone; fullscreen; display-capture; autoplay',
+          style: { flex: 1, width: '100%', border: 'none', minHeight: 420, borderRadius: 12 },
+        } as Record<string, unknown>)}
       </View>
     );
   }
