@@ -127,6 +127,8 @@ $config = [
     'DB_DATABASE'    => diag_key('DB_DATABASE'),
     'MIGRATE_TOKEN'  => diag_key('MIGRATE_TOKEN'),
     'DAILY_API_KEY'  => diag_key('DAILY_API_KEY'),
+    'VIDEO_PROVIDER' => ['value' => (string) carelink_cfg('VIDEO_PROVIDER', '(auto)')],
+    'JITSI_HOST'     => ['value' => (string) carelink_cfg('JITSI_HOST', 'meet.jit.si')],
     'GEMINI_API_KEY' => diag_key('GEMINI_API_KEY'),
     'MAIL_USERNAME'  => diag_key('MAIL_USERNAME'),
     'MAIL_PASSWORD'  => diag_key('MAIL_PASSWORD'),
@@ -135,6 +137,10 @@ $config = [
 $outbound = [
     'api.daily.co'                    => diag_reach('https://api.daily.co/v1/'),
     'generativelanguage.googleapis.com' => diag_reach('https://generativelanguage.googleapis.com/'),
+    // Reachability from THIS server is only indicative for Jitsi — the call is
+    // made by the two browsers, not by the server. A failure here is worth
+    // knowing about but does not by itself mean calls will not connect.
+    'jitsi_host' => diag_reach('https://' . preg_replace('#^https?://#', '', (string) carelink_cfg('JITSI_HOST', 'meet.jit.si')) . '/'),
 ];
 
 // Plain-language conclusions, so the answer does not have to be inferred.
@@ -142,15 +148,30 @@ $findings = [];
 if (!$php['curl']) {
     $findings[] = 'The cURL extension is missing. Video calling and Gemini document scanning cannot work at all until it is enabled.';
 }
-if (!$config['DAILY_API_KEY']['set']) {
-    $findings[] = 'DAILY_API_KEY is not set in config.local.php on this server, so every video call is refused before it starts.';
-} elseif ($config['DAILY_API_KEY']['length'] < 32) {
-    $findings[] = 'DAILY_API_KEY is set but is only ' . $config['DAILY_API_KEY']['length']
-        . ' characters, which is shorter than a Daily key. It may have been truncated when pasted.';
-}
-if (empty($outbound['api.daily.co']['reachable'])) {
-    $findings[] = 'This server cannot reach api.daily.co (' . ($outbound['api.daily.co']['meaning'] ?? 'unknown')
-        . '). Video calling will fail no matter how the API key is configured — this is a hosting restriction, not a code or key problem.';
+// Which provider will actually be used, by the same rule create_call_room.php applies.
+// This is context, not a fault, so it goes in its own list — appending it to
+// $findings would make "no problems found" unreachable forever.
+$notes = [];
+$videoProvider = strtolower(trim((string) carelink_cfg('VIDEO_PROVIDER', '')));
+if ($videoProvider === '') $videoProvider = $config['DAILY_API_KEY']['set'] ? 'daily' : 'jitsi';
+$notes[] = 'Video calls will use: ' . $videoProvider
+    . ($videoProvider === 'jitsi'
+        ? ' (' . carelink_cfg('JITSI_HOST', 'meet.jit.si') . ') — no account or API key needed.'
+        : ' — requires a payment method on the Daily account before anyone can join.');
+
+if ($videoProvider === 'daily') {
+    if ($config['DAILY_API_KEY']['length'] > 0 && $config['DAILY_API_KEY']['length'] < 32) {
+        $findings[] = 'DAILY_API_KEY is only ' . $config['DAILY_API_KEY']['length']
+            . ' characters, shorter than a Daily key. It may have been truncated when pasted.';
+    }
+    if (!$config['DAILY_API_KEY']['set']) {
+        $findings[] = 'VIDEO_PROVIDER is set to daily but DAILY_API_KEY is missing, so every call is refused.';
+    }
+    if (empty($outbound['api.daily.co']['reachable'])) {
+        $findings[] = 'This server cannot reach api.daily.co (' . ($outbound['api.daily.co']['meaning'] ?? 'unknown')
+            . '). Daily calls will fail regardless of the API key — a hosting restriction, not a code or key problem.'
+            . ' Setting VIDEO_PROVIDER to jitsi avoids the outbound call entirely.';
+    }
 }
 if (!$config['GEMINI_API_KEY']['set']) {
     $findings[] = 'GEMINI_API_KEY is not set, so AI document scanning is inert on this server.';
@@ -158,8 +179,9 @@ if (!$config['GEMINI_API_KEY']['set']) {
 if (!$config['MAIL_PASSWORD']['set']) {
     $findings[] = 'MAIL_PASSWORD is not set, so email verification codes cannot be sent — new signups will not be able to verify.';
 }
-if (!$findings) {
-    $findings[] = 'No problems found. Every checked key is present and every outbound service is reachable.';
+$ok = empty($findings);
+if ($ok) {
+    $findings[] = 'No problems found. Every required key is present and every outbound service is reachable.';
 }
 
 echo json_encode([
@@ -168,5 +190,7 @@ echo json_encode([
     'php'       => $php,
     'config'    => $config,
     'outbound'  => $outbound,
+    'healthy'   => $ok,
     'findings'  => $findings,
+    'notes'     => $notes,
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);

@@ -4,20 +4,32 @@
  *
  * POST { user_id, requester_id, partner_id } -> { success, url }
  *
- * WHY NOT JITSI ANY MORE: the app used https://meet.jit.si/<room>, which is
- * Jitsi's FREE PUBLIC server. Since 2023 it requires the first participant to
- * authenticate with a Google/Facebook/GitHub account before anyone can join,
- * and it rate-limits and drops calls under load. Testers hit a broken free
- * service, not broken code — so the fix is a provider swap, not a rewrite.
+ * TWO PROVIDERS, because they fail in opposite ways:
+ *
+ *   jitsi (default)  A URL on a public Jitsi server. No account, no API key,
+ *                    no card, and no outbound API call from this server — so
+ *                    it cannot be broken by a blocked port or a missing key.
+ *                    In exchange there is no server-side expiry, and public
+ *                    instances have at times demanded the first participant
+ *                    sign in with Google/Facebook/GitHub.
+ *
+ *   daily            A real provisioned room with a two-hour expiry, created
+ *                    through Daily's API. Needs DAILY_API_KEY, and Daily now
+ *                    requires a payment method on the account before anyone
+ *                    can join — free minutes included, but a card on file.
+ *
+ * Set VIDEO_PROVIDER in config.local.php to force one. With nothing set, a
+ * server that has a Daily key uses Daily and every other server uses Jitsi,
+ * so video calling works out of the box rather than reporting itself unset.
  *
  * WHY STILL A PLAIN URL, now that eas.json exists: no EAS build has actually
  * been produced, so the app still runs under Expo Go, where no native video
  * SDK can be used. Opening a room URL is what lets this work on web and on a
  * phone today with no native rebuild, and it keeps working afterwards.
  *
- * REQUIRES DAILY_API_KEY in config.local.php. Without it this endpoint refuses
- * every call, and the feature is inert on that server while looking complete
- * in the code. See config.local.php.example.
+ * Rooms are named carelink-<lowerUserId>-<higherUserId>-<random>. The pair
+ * identifies the conversation; the random suffix is what stops anyone deriving
+ * a colleague's room name, and on Jitsi it is the ONLY access control there is.
  *
  * Rooms expire (`exp`), so a link posted in a chat cannot be rejoined weeks
  * later by anyone who scrolls back to it.
@@ -52,16 +64,49 @@ try {
     if ($user_id <= 0 || $partner_id <= 0) room_out(false, 'user_id and partner_id are required.');
     carelink_require_self($requester_id, $user_id, 'You are not allowed to start a call as this account.');
 
-    $key = trim((string) carelink_cfg('DAILY_API_KEY', ''));
-    if ($key === '') {
-        room_out(false, 'Video calling is not set up on this server yet.');
-    }
-
     // Deterministic-ish but unguessable: the pair identifies the conversation,
     // the random suffix stops anyone deriving a colleague's room name.
     $lo   = min($user_id, $partner_id);
     $hi   = max($user_id, $partner_id);
     $name = 'carelink-' . $lo . '-' . $hi . '-' . bin2hex(random_bytes(4));
+
+    $key = trim((string) carelink_cfg('DAILY_API_KEY', ''));
+
+    // Provider choice, in order: an explicit VIDEO_PROVIDER, else Daily when a
+    // key exists, else Jitsi. The default has to be the one needing no account,
+    // because a server with nothing configured should still be able to place a
+    // call rather than fail with 'not set up yet' and no way forward.
+    $provider = strtolower(trim((string) carelink_cfg('VIDEO_PROVIDER', '')));
+    if ($provider === '') $provider = $key !== '' ? 'daily' : 'jitsi';
+
+    if ($provider === 'jitsi') {
+        // No API call, no key, no account, no card. The room springs into
+        // existence when the first person opens the URL.
+        //
+        // HONEST LIMITS, so nobody discovers these during a demo:
+        //  - There is no server-side expiry. A Daily room dies after two hours;
+        //    a Jitsi link stays valid forever, so anyone who scrolls the chat
+        //    back can reopen that room. The unguessable name is the only
+        //    control, which is why the random suffix is not optional here.
+        //  - meet.jit.si has at times required the FIRST participant to sign in
+        //    with Google/Facebook/GitHub before others may join. Test the link
+        //    before relying on it, and point JITSI_HOST at another instance or
+        //    your own if that behaviour is back.
+        $host = trim((string) carelink_cfg('JITSI_HOST', 'meet.jit.si'));
+        $host = preg_replace('#^https?://#', '', $host);
+        $host = rtrim((string) $host, '/');
+        if ($host === '') $host = 'meet.jit.si';
+
+        room_out(true, 'ok', [
+            'url'        => 'https://' . $host . '/' . rawurlencode($name),
+            'provider'   => 'jitsi',
+            'expires_in' => null, // Jitsi rooms do not expire; see above.
+        ]);
+    }
+
+    if ($key === '') {
+        room_out(false, 'Video calling is set to Daily on this server, but DAILY_API_KEY is missing from config.local.php.');
+    }
 
     $payload = json_encode([
         'name'       => $name,
@@ -110,7 +155,7 @@ try {
         room_out(false, 'Could not start the call. Please try again in a moment.');
     }
 
-    room_out(true, 'ok', ['url' => (string) $body['url'], 'expires_in' => CALL_ROOM_TTL_SECONDS]);
+    room_out(true, 'ok', ['url' => (string) $body['url'], 'provider' => 'daily', 'expires_in' => CALL_ROOM_TTL_SECONDS]);
 } catch (Throwable $e) {
     error_log('create_call_room.php: ' . $e->getMessage());
     room_out(false, 'Could not start the call.');

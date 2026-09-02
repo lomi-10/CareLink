@@ -45,17 +45,26 @@ return [
     //   'MAIL_USERNAME' => 'noreply@yourdomain.com', 'MAIL_PASSWORD' => '...',
 
     // ---- Video calling -----------------------------------------------------
-    // Daily.co API key. Without it, shared/create_call_room.php refuses every
-    // call with "Video calling is not set up on this server yet." — so the
-    // feature is fully built and simply inert on a server that lacks this line.
+    // ALL OF THIS IS OPTIONAL. With none of it set, calls run on a public Jitsi
+    // server: no account, no key, no card, and no outbound API call from this
+    // server, so nothing here can be broken by a blocked port or a missing key.
     //
-    // Get one free at https://dashboard.daily.co > Developers > API keys.
-    // The free tier covers far more than a capstone demo needs.
+    // 'jitsi' or 'daily'. Leave blank to choose automatically: Daily when a key
+    // is present below, Jitsi otherwise.
+    // 'VIDEO_PROVIDER' => 'jitsi',
     //
-    // Jitsi's free public server was used before and is NOT a fallback: since
-    // 2023 it makes the first participant sign in with Google/Facebook/GitHub
-    // before anyone can join, which testers read as the app being broken.
-    'DAILY_API_KEY' => 'your_daily_api_key_here',
+    // Which Jitsi server to use. Defaults to meet.jit.si. Point this at another
+    // public instance, or your own, if meet.jit.si starts asking the first
+    // participant to sign in with Google/Facebook/GitHub — it has done so
+    // before, and testers read that as the app being broken.
+    // 'JITSI_HOST' => 'meet.jit.si',
+    //
+    // Daily.co gives real provisioned rooms that expire after two hours, which
+    // Jitsi links do not. Free minutes are generous, but Daily requires a
+    // PAYMENT METHOD on the account before anyone can join a room — a card on
+    // file even when nothing is charged. Only set this if that is acceptable.
+    // Key: https://dashboard.daily.co > Developers > API keys.
+    // 'DAILY_API_KEY' => 'your_daily_api_key_here',
 
     // ---- Schema migrations -------------------------------------------------
     // Shared secret that lets the deploy call backend/migrate.php, which runs
