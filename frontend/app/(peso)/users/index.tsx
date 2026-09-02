@@ -134,7 +134,7 @@ export default function UserVerification() {
           <StatRow>
             <StatTile label="Pending" value={pendingHelpers + pendingParents} tone="warn" sub="awaiting review" delay={0} />
             <StatTile label="Helpers" value={helperCount} tone="accent" sub="total" delay={60} />
-            <StatTile label="Parents" value={parentCount} tone="info" sub="total" delay={120} />
+            <StatTile label="Household Employers" value={parentCount} tone="info" sub="total" delay={120} />
           </StatRow>
         )}
 
