@@ -4,7 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, FlatList, TouchableOpacity,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Linking, Platform,
   ActivityIndicator, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -140,6 +140,9 @@ export default function ChatPanel({
 
   useEffect(() => {
     if (isHired) setActiveTab(prev => prev === 'interview' ? 'messages' : prev);
+    // A blank pane is never an acceptable resting state: if the video tab is
+    // selected while it cannot render, fall back rather than show nothing.
+    else setActiveTab(prev => prev === 'videocall' ? 'messages' : prev);
   }, [isHired]);
 
   // Surface a blocked send (e.g. messaging a helper who is already hired elsewhere).
@@ -186,10 +189,20 @@ export default function ChatPanel({
 
   // Take a photo instead of choosing one. Chat previously offered gallery only,
   // which is the wrong default here: most things sent in a hiring chat (a
-  // document, a room, an ID) are photographed in the moment. Camera is
-  // unavailable in a browser, so web falls back to the gallery.
+  // document, a room, an ID) are photographed in the moment.
+  //
+  // This used to redirect to the gallery on web, on the belief that browsers
+  // have no camera. They do: expo-image-picker's web build implements
+  // launchCameraAsync by setting the `capture` attribute on a file input, so
+  // a phone browser opens the camera directly. Desktop ignores `capture` and
+  // shows a file picker — which is what happened before anyway, so removing
+  // the redirect costs desktop nothing and gives phone users a real camera.
+  //
+  // That matters more than it looks: UAT runs in the phone browser rather
+  // than an installed app, and photographing a barangay clearance on the spot
+  // is the whole point of the button. The redirect also made the camera and
+  // gallery buttons behave identically, with nothing said about why.
   const handleTakePhoto = async () => {
-    if (Platform.OS === 'web') { void handlePickImage(); return; }
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) { showChatNotif('Allow camera access to take a photo.', 'warning'); return; }
     const result = await ImagePicker.launchCameraAsync({
@@ -477,10 +490,13 @@ export default function ChatPanel({
         partnerName={partnerName}
         onScheduleInterview={() => setHelperScheduleModal(true)}
         onConfirmStartVideo={async () => {
-          // Route through the tab rather than opening a call here, so the
-          // embedded and external paths never diverge.
           setCallModal(false);
-          setActiveTab('videocall');
+          // The Video Call TAB only exists once this is a hire, so switching
+          // to it before then lands on a tab that renders nothing. Pre-hire
+          // the call still has to work, so open it directly instead.
+          if (isHired) { setActiveTab('videocall'); return; }
+          const url = await sendVideoCall(myUserId, jobPostId);
+          if (url) Linking.openURL(url);
         }}
       />
       <HelperInterviewRequestModal
