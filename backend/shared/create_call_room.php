@@ -10,11 +10,14 @@
  * and it rate-limits and drops calls under load. Testers hit a broken free
  * service, not broken code — so the fix is a provider swap, not a rewrite.
  *
- * WHY DAILY, AND WHY STILL A PLAIN URL: the app has no EAS dev build (there is
- * no eas.json), so it runs under Expo Go, where no native video SDK can be
- * used at all. Keeping the "open a room URL" approach is what lets this work
- * on web and on a phone today without a native rebuild. Daily supplies that
- * URL from a real service instead of a shared free one.
+ * WHY STILL A PLAIN URL, now that eas.json exists: no EAS build has actually
+ * been produced, so the app still runs under Expo Go, where no native video
+ * SDK can be used. Opening a room URL is what lets this work on web and on a
+ * phone today with no native rebuild, and it keeps working afterwards.
+ *
+ * REQUIRES DAILY_API_KEY in config.local.php. Without it this endpoint refuses
+ * every call, and the feature is inert on that server while looking complete
+ * in the code. See config.local.php.example.
  *
  * Rooms expire (`exp`), so a link posted in a chat cannot be rejoined weeks
  * later by anyone who scrolls back to it.

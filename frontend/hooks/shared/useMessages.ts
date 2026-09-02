@@ -262,11 +262,32 @@ export function useChat(partnerId: number) {
         body: JSON.stringify({ user_id: myId, requester_id: myId, partner_id: partnerId }),
       });
       const data = await res.json();
-      if (!data?.success || !data?.url) return null;
+
+      // Every failure below used to `return null`, and both call sites do
+      // `if (url) Linking.openURL(url)` — so a missing DAILY_API_KEY on the
+      // server, or Daily being unreachable, showed the user nothing at all:
+      // the button spun, stopped, and no call opened and no reason appeared.
+      // Routing it through sendError reuses the banner the chat already has.
+      if (!data?.success || !data?.url) {
+        setSendError(
+          typeof data?.message === 'string' && data.message
+            ? data.message
+            : 'Could not start the video call. Please try again.',
+        );
+        return null;
+      }
 
       const sent = await sendMessage(String(data.url), jobPostId, 'video_call');
-      return sent ? String(data.url) : null;
+      if (!sent) {
+        // The room exists but the link never reached the chat, so the other
+        // side has no way to join. Opening it alone would look like a dead call.
+        setSendError('The call was created but the link could not be sent. Please try again.');
+        return null;
+      }
+      setSendError(null);
+      return String(data.url);
     } catch {
+      setSendError('Could not reach the video service. Check your connection and try again.');
       return null;
     }
   }, [partnerId, sendMessage]);

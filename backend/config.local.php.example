@@ -44,6 +44,19 @@ return [
     //   'MAIL_HOST' => 'smtp.hostinger.com', 'MAIL_PORT' => '465',
     //   'MAIL_USERNAME' => 'noreply@yourdomain.com', 'MAIL_PASSWORD' => '...',
 
+    // ---- Video calling -----------------------------------------------------
+    // Daily.co API key. Without it, shared/create_call_room.php refuses every
+    // call with "Video calling is not set up on this server yet." — so the
+    // feature is fully built and simply inert on a server that lacks this line.
+    //
+    // Get one free at https://dashboard.daily.co > Developers > API keys.
+    // The free tier covers far more than a capstone demo needs.
+    //
+    // Jitsi's free public server was used before and is NOT a fallback: since
+    // 2023 it makes the first participant sign in with Google/Facebook/GitHub
+    // before anyone can join, which testers read as the app being broken.
+    'DAILY_API_KEY' => 'your_daily_api_key_here',
+
     // ---- Schema migrations -------------------------------------------------
     // Shared secret that lets the deploy call backend/migrate.php, which runs
     // every ensure_*() table helper in one pass so new tables exist the moment
