@@ -126,7 +126,17 @@ try {
         LEFT JOIN saved_jobs sj ON jp.job_post_id = sj.job_post_id AND sj.helper_id = ?
         LEFT JOIN job_applications myapp ON myapp.job_post_id = jp.job_post_id AND myapp.helper_id = ?
         WHERE jp.status = 'Open' AND jp.visibility = 'public' AND (jp.expires_at IS NULL OR jp.expires_at >= NOW())
-        ORDER BY jp.posted_at DESC
+        -- Boosted posts first, then newest.
+        --
+        -- The query used to order by posted_at alone, so a featured post got a
+        -- badge in the list and nothing else. That is the difference between
+        -- selling visibility and selling a sticker: CareLink Plus charges for
+        -- featured placement, so the placement has to be real.
+        --
+        -- Expired boosts fall back naturally, since the comparison is against
+        -- NOW() rather than merely whether featured_until is set.
+        ORDER BY (jp.featured_until IS NOT NULL AND jp.featured_until > NOW()) DESC,
+                 jp.posted_at DESC
     ";
 
     $stmt = $conn->prepare($jobQuery);

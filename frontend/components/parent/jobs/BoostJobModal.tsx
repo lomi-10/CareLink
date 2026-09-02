@@ -1,5 +1,6 @@
 // components/parent/jobs/BoostJobModal.tsx
-// Stream 1 — Featured Job Post Placement (₱99, 7 days).
+// Featured Job Post Placement (7 days) — included with CareLink Plus.
+// Not sold standalone: see backend/parent/boost_job_post.php.
 //
 // The copy here is deliberately plain about what the money does and does not
 // buy. Boosting moves a post up the list; it does not change how well a helper
@@ -117,9 +118,15 @@ export function BoostJobModal({
               </Text>
             </View>
           ) : (
+            /* Featured posts are a CareLink Plus benefit, not a separate
+               product. This used to offer a standalone ₱99 purchase, which
+               contradicted the documented model and gave an employer needing
+               one boost no reason to subscribe. The backend refuses the
+               standalone path now, so offering it here would only produce a
+               dead button. */
             <View style={s.priceRow}>
-              <Text style={s.price}>₱99</Text>
-              <Text style={s.priceNote}>one-time · 7 days</Text>
+              <Text style={s.price}>₱149</Text>
+              <Text style={s.priceNote}>per month · CareLink Plus</Text>
             </View>
           )}
 
@@ -128,6 +135,7 @@ export function BoostJobModal({
             <Row icon="eye-outline" text="Helpers see a small “Boosted” tag, so it is clear the position was paid for." />
             <Row icon="shield-checkmark-outline" text="Your match score does not change — helpers still see how well they fit." />
             <Row icon="time-outline" text="PESO review is unaffected. Boosting never skips verification." />
+            <Row icon="star-outline" text="CareLink Plus includes 3 boosts every month, plus 20% off the placement fee." />
           </View>
 
           {!!error && <Text style={s.error}>{error}</Text>}
@@ -135,9 +143,9 @@ export function BoostJobModal({
           <TouchableOpacity style={[s.primary, busy && { opacity: 0.6 }]} onPress={start} disabled={busy} activeOpacity={0.88}>
             {busy ? <ActivityIndicator color="#fff" /> : (
               <>
-                <Ionicons name={usesCredit ? 'star' : 'card-outline'} size={18} color="#fff" />
+                <Ionicons name={usesCredit ? 'star' : 'star-outline'} size={18} color="#fff" />
                 <Text style={s.primaryText}>
-                  {usesCredit ? 'Use 1 Plus boost' : 'Continue to payment'}
+                  {usesCredit ? 'Use 1 Plus boost' : 'Subscribe to CareLink Plus'}
                 </Text>
               </>
             )}

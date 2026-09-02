@@ -95,6 +95,30 @@ try {
         ]);
     }
 
+    // Boosting is a CareLink Plus benefit, not a separate product.
+    //
+    // It used to be sold standalone at ₱99 as well, which contradicted the
+    // documented model: Chapter 3 describes featured posts as bundled into the
+    // ₱149 subscription. Two prices for the same thing also undercuts Plus —
+    // an employer needing one boost had no reason to subscribe.
+    //
+    // A subscriber reaching here has already used all 3 monthly credits, since
+    // carelink_spend_featured_credit() above returns true while any remain.
+    //
+    // To sell it standalone again, delete this block: the PayMongo checkout
+    // below still works and PRICE_FEATURED_BOOST is unchanged.
+    require_once __DIR__ . '/../shared/is_plus_subscriber.php';
+    if (carelink_is_plus_subscriber($conn, $parent_id)) {
+        boost_out(false,
+            'You have used all 3 featured-post credits for this month. '
+            . 'They reset on your next billing date.',
+            ['out_of_credits' => true]);
+    }
+    boost_out(false,
+        'Featured job posts are included with CareLink Plus, which gives you 3 boosts '
+        . 'every month. Subscribe from Settings to use them.',
+        ['requires_plus' => true]);
+
     if (!carelink_paymongo_configured()) {
         boost_out(false, 'Payments are not set up on this server yet.');
     }

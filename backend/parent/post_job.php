@@ -48,6 +48,14 @@ try {
     // now it would have created the post. Verification is the thing that makes
     // a CareLink job trustworthy to a helper, so it has to be enforced here,
     // where the post is actually created.
+    // Free-tier post cap. Off unless REVENUE_GATES_ENABLED is set, so UAT
+    // measures the product rather than the paywall — but WIRED, which it was
+    // not: the gate existed and nothing called it, so the flag did nothing at
+    // all and "unlimited posts" was not a Plus benefit in any sense.
+    require_once __DIR__ . '/../shared/revenue_gates.php';
+    $postGate = carelink_can_post_job($conn, $parent_id);
+    if (!$postGate['allowed']) throw new Exception((string) $postGate['reason']);
+
     require_once __DIR__ . '/../shared/verification_guard.php';
     if (!carelink_is_verified($conn, $parent_id)) {
         throw new Exception('Your account is still being verified by PESO. Once you are verified you can post jobs. Finish your profile and documents to move the review along.');

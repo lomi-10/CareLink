@@ -5,8 +5,10 @@
  * The distinction that matters:
  *   • Purchase screens (boost, CareLink Plus, placement fee) are ALWAYS live.
  *     The revenue model is real and demonstrable at any time.
- *   • The restrictions Plus lifts (3-post cap, 6-month history, payroll export)
- *     are OFF by default and only apply when this returns true.
+ *   • The restrictions Plus lifts (3-post cap, 6-month history) are OFF by
+ *     default and only apply when this returns true. Both are now actually
+ *     called — post_job.php and placement_history.php — which they were not
+ *     when this file was first written.
  *
  * Why: UAT should measure the product, not the paywall. Acceptance scores
  * collected against artificial friction would say more about the business model
@@ -85,11 +87,16 @@ if (!function_exists('carelink_revenue_gates_enabled')) {
         return date('Y-m-d H:i:s', strtotime('-' . FREE_TIER_HISTORY_MONTHS . ' months'));
     }
 
-    /** Payroll export (PDF/CSV) is a Plus feature; viewing payroll never is. */
-    function carelink_can_export_payroll(mysqli $conn, int $parent_id): bool
-    {
-        if (!carelink_revenue_gates_enabled()) return true;
-        require_once __DIR__ . '/is_plus_subscriber.php';
-        return carelink_is_plus_subscriber($conn, $parent_id);
-    }
+    /*
+     * carelink_can_export_payroll() was here, gating a payroll EXPORT that does
+     * not exist: v1/applications/payroll.php returns payroll for viewing and
+     * there is no CSV or PDF path anywhere in the app.
+     *
+     * A gate for an unbuilt feature is worse than no gate. It read as evidence
+     * the feature shipped, and "payroll export" reached the written
+     * documentation on the strength of this function alone.
+     *
+     * If payroll export is built later, restore it and CALL it from the export
+     * endpoint — the two gates above went unused for exactly this reason.
+     */
 }

@@ -59,9 +59,26 @@ try {
         LIMIT 100
     ";
 
+    // Free accounts see a limited window of history; Plus sees everything.
+    // Off unless REVENUE_GATES_ENABLED is set. Filtering on the same expression
+    // the ORDER BY uses keeps the boundary consistent with the sort, so a row
+    // cannot sit just inside the sort and just outside the filter.
+    require_once __DIR__ . '/../shared/revenue_gates.php';
+    $cutoff = carelink_history_cutoff($conn, $parent_id);
+    if ($cutoff !== null) {
+        $sql = str_replace(
+            'ORDER BY COALESCE(ja.termination_last_day, co.employment_end_date, ja.updated_at) DESC',
+            'AND COALESCE(ja.termination_last_day, co.employment_end_date, ja.updated_at) >= ?'
+            . "
+        ORDER BY COALESCE(ja.termination_last_day, co.employment_end_date, ja.updated_at) DESC",
+            $sql
+        );
+    }
+
     $st = $conn->prepare($sql);
     if (!$st) throw new Exception('Prepare failed: ' . $conn->error);
-    $st->bind_param('i', $parent_id);
+    if ($cutoff !== null) $st->bind_param('is', $parent_id, $cutoff);
+    else $st->bind_param('i', $parent_id);
     $st->execute();
     $res = $st->get_result();
 
