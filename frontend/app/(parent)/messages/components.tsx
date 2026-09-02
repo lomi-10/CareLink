@@ -107,6 +107,7 @@ export function ImageViewer({ uri, onClose }: { uri: string; onClose: () => void
 export function Bubble({
   msg, isMine, onLongPress, onImagePress, onEditPress,
   onAcceptInvite, onDeclineInvite, onOpenInviteJob, inviteBusy,
+  onOpenVideoCall,
 }: {
   msg: Message;
   isMine: boolean;
@@ -116,6 +117,8 @@ export function Bubble({
   onAcceptInvite?: () => void;
   onDeclineInvite?: () => void;
   onOpenInviteJob?: () => void;
+  /** Opens a call inside the app. Without it the bubble leaves for a new tab. */
+  onOpenVideoCall?: (url: string) => void;
   inviteBusy?: boolean;
 }) {
   const isVideoCall = msg.message_type === 'video_call';
@@ -190,7 +193,11 @@ export function Bubble({
       <View style={[s.bubbleWrap, isMine ? s.bubbleWrapRight : s.bubbleWrapLeft]}>
         <TouchableOpacity
           style={[s.videoCard, isMine && s.videoCardMine]}
-          onPress={() => Linking.openURL(msg.message_text)}
+          // Prefer the in-app pane. Linking is the fallback for native, where
+          // there is no iframe to host the call.
+          onPress={() => (onOpenVideoCall
+            ? onOpenVideoCall(msg.message_text)
+            : Linking.openURL(msg.message_text))}
           activeOpacity={0.8}
         >
           <View style={[s.videoCardIcon, isMine && { backgroundColor: 'rgba(255,255,255,0.25)' }]}>

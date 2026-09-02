@@ -16,7 +16,7 @@ import { Bubble, EditModal, ImageViewer } from './components';
 export default function MessagesTab({
   messages, myUserId, sending, partnerName, flatRef,
   text, setText, handleSend, handlePickImage, handleTakePhoto,
-  editTarget, setEditTarget, viewerUri, setViewerUri, editMessage, insets,
+  editTarget, setEditTarget, viewerUri, setViewerUri, editMessage, insets, onOpenVideoCall,
 }: {
   messages: Message[];
   myUserId: number;
@@ -33,6 +33,8 @@ export default function MessagesTab({
   viewerUri: string | null;
   setViewerUri: (uri: string | null) => void;
   editMessage: (messageId: number, newText: string) => Promise<boolean>;
+  /** Passed down so a call opens in the app rather than a new tab. */
+  onOpenVideoCall?: (url: string) => void;
   insets: EdgeInsets;
 }) {
   return (
@@ -61,6 +63,7 @@ export default function MessagesTab({
                 onLongPress={() => setEditTarget(item)}
                 onEditPress={item.message_type === 'text' && isMine ? () => setEditTarget(item) : undefined}
                 onImagePress={uri => setViewerUri(uri)}
+                onOpenVideoCall={onOpenVideoCall}
               />
             </>
           );

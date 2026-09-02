@@ -59,6 +59,11 @@ export default function ChatPanel({
   const [disagreeModalVisible, setDisagreeModalVisible] = useState(false);
   const [disagreeBusy, setDisagreeBusy] = useState(false);
   const [activeTab, setActiveTab] = useState<'messages' | 'contract' | 'interview' | 'videocall'>('messages');
+  // An active call, shown as a pane over the whole conversation. Held here
+  // rather than inside VideoCallTab because that tab only exists once the
+  // application is a hire — and the call people most need is the interview,
+  // which happens before there is a hire at all.
+  const [callUrl, setCallUrl] = useState<string | null>(null);
   const [cancelInterviewConfirmVisible, setCancelInterviewConfirmVisible] = useState(false);
   const [interviewActionLoading, setInterviewActionLoading] = useState(false);
   const [chatNotif, setChatNotif] = useState<{
@@ -202,6 +207,18 @@ export default function ChatPanel({
   // than an installed app, and photographing a barangay clearance on the spot
   // is the whole point of the button. The redirect also made the camera and
   // gallery buttons behave identically, with nothing said about why.
+  /** Show a call in the app. Native has no iframe, so it opens outside. */
+  const openCall = (url: string) => {
+    if (Platform.OS === 'web') setCallUrl(url);
+    else Linking.openURL(url);
+  };
+
+  /** Create the room, post the link into the chat, then open it. */
+  const startCall = async () => {
+    const url = await sendVideoCall(myUserId, jobPostId);
+    if (url) openCall(url);   // a failure already surfaced via sendError
+  };
+
   const handleTakePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) { showChatNotif('Allow camera access to take a photo.', 'warning'); return; }
@@ -425,6 +442,7 @@ export default function ChatPanel({
 
       {activeTab === 'messages' && (
         <MessagesTab
+          onOpenVideoCall={openCall}
           messages={messages}
           myUserId={myUserId}
           sending={sending}
@@ -479,7 +497,7 @@ export default function ChatPanel({
       {activeTab === 'videocall' && isHired && (
         <VideoCallTab
           partnerName={partnerName}
-          onStartCall={() => sendVideoCall(myUserId, jobPostId)}
+          onStartCall={startCall}
         />
       )}
 
@@ -491,12 +509,7 @@ export default function ChatPanel({
         onScheduleInterview={() => setHelperScheduleModal(true)}
         onConfirmStartVideo={async () => {
           setCallModal(false);
-          // The Video Call TAB only exists once this is a hire, so switching
-          // to it before then lands on a tab that renders nothing. Pre-hire
-          // the call still has to work, so open it directly instead.
-          if (isHired) { setActiveTab('videocall'); return; }
-          const url = await sendVideoCall(myUserId, jobPostId);
-          if (url) Linking.openURL(url);
+          await startCall();
         }}
       />
       <HelperInterviewRequestModal
@@ -590,6 +603,47 @@ export default function ChatPanel({
         autoClose={chatNotif.type !== 'warning'}
         duration={4200}
       />
+      {/* Covers the whole conversation, so it works on any tab and whether or
+          not this is a hire yet. Unmounting on Leave is what releases the
+          camera and microphone — switching tabs alone would not. */}
+      {callUrl && Platform.OS === 'web' && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#111', zIndex: 50 }}>
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#1B1B1B',
+          }}>
+            <Ionicons name="videocam" size={18} color="#fff" />
+            <Text numberOfLines={1} style={{ flex: 1, color: '#fff', fontWeight: '700', fontSize: 14 }}>
+              In a call with {partnerName}
+            </Text>
+            {/* An escape hatch that is always visible: a blank embed and a
+                broken button look identical from the outside. */}
+            <TouchableOpacity
+              onPress={() => Linking.openURL(callUrl)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#555' }}
+            >
+              <Ionicons name="open-outline" size={15} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>New tab</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setCallUrl(null)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#D64545', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 }}
+            >
+              <Ionicons name="exit-outline" size={15} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Leave call</Text>
+            </TouchableOpacity>
+          </View>
+          {/* createElement with an explicit minHeight, matching the contract
+              PDF viewer below. `flex: 1` alone computes to zero height here,
+              which mounts the call invisibly. */}
+          {createElement('iframe', {
+            title: `Video call with ${partnerName}`,
+            src: callUrl,
+            allow: 'camera; microphone; fullscreen; display-capture; autoplay',
+            style: { flex: 1, width: '100%', border: 'none', minHeight: 420 },
+          } as Record<string, unknown>)}
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
