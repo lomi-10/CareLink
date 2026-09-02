@@ -53,11 +53,17 @@ return [
     // is present below, Jitsi otherwise.
     // 'VIDEO_PROVIDER' => 'jitsi',
     //
-    // Which Jitsi server to use. Defaults to meet.jit.si. Point this at another
-    // public instance, or your own, if meet.jit.si starts asking the first
-    // participant to sign in with Google/Facebook/GitHub — it has done so
-    // before, and testers read that as the app being broken.
-    // 'JITSI_HOST' => 'meet.jit.si',
+    // Which Jitsi server to use. Defaults to meet.guifi.net, which admits
+    // everyone straight into the room.
+    //
+    // NOT meet.jit.si: it requires the first participant to sign in with a
+    // Google/Facebook/GitHub account before anyone else can join, which reads
+    // as the app being broken. Verified September 2026.
+    //
+    // meet.guifi.net is volunteer-run (guifi.net / eXO) and owes us no uptime.
+    // Five of eight public instances checked were already dead, so re-test the
+    // link before it matters and change this if it stops answering.
+    // 'JITSI_HOST' => 'meet.guifi.net',
     //
     // Daily.co gives real provisioned rooms that expire after two hours, which
     // Jitsi links do not. Free minutes are generous, but Daily requires a

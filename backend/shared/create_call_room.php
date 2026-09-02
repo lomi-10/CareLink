@@ -88,17 +88,38 @@ try {
         //    a Jitsi link stays valid forever, so anyone who scrolls the chat
         //    back can reopen that room. The unguessable name is the only
         //    control, which is why the random suffix is not optional here.
-        //  - meet.jit.si has at times required the FIRST participant to sign in
-        //    with Google/Facebook/GitHub before others may join. Test the link
-        //    before relying on it, and point JITSI_HOST at another instance or
-        //    your own if that behaviour is back.
-        $host = trim((string) carelink_cfg('JITSI_HOST', 'meet.jit.si'));
+        //  - meet.jit.si REQUIRES the first participant to sign in with a
+        //    Google/Facebook/GitHub account before anyone can join. Verified
+        //    Sept 2026: it answers "no moderators have yet arrived" and offers
+        //    a Log-in button. That makes it unusable here, so it is not the
+        //    default. meet.guifi.net admits everyone straight into the room.
+        //
+        //    meet.guifi.net is run by VOLUNTEERS (guifi.net / eXO, Catalonia)
+        //    and asks for donations on its own page. It owes us no uptime.
+        //    Of eight public instances checked, five were already dead — so
+        //    treat this as something to re-test before it matters, and change
+        //    JITSI_HOST if it stops answering.
+        $host = trim((string) carelink_cfg('JITSI_HOST', 'meet.guifi.net'));
         $host = preg_replace('#^https?://#', '', $host);
         $host = rtrim((string) $host, '/');
-        if ($host === '') $host = 'meet.jit.si';
+        if ($host === '') $host = 'meet.guifi.net';
+
+        // Jitsi reads overrides from the URL fragment, as JSON values — which
+        // is why the language is quoted and the quotes are percent-encoded.
+        //
+        //  defaultLanguage     meet.guifi.net is a Catalan community server and
+        //                      renders its UI in Catalan by default. Filipino
+        //                      helpers and employers cannot be asked to work out
+        //                      "Ara sou el moderador".
+        //  disableDeepLinking  Without it a phone browser interrupts the call to
+        //                      push the Jitsi app from the store. UAT runs in the
+        //                      phone browser, so that prompt would land in front
+        //                      of every helper at the worst moment.
+        $fragment = '#config.defaultLanguage=' . rawurlencode('"en"')
+                  . '&config.disableDeepLinking=true';
 
         room_out(true, 'ok', [
-            'url'        => 'https://' . $host . '/' . rawurlencode($name),
+            'url'        => 'https://' . $host . '/' . rawurlencode($name) . $fragment,
             'provider'   => 'jitsi',
             'expires_in' => null, // Jitsi rooms do not expire; see above.
         ]);
