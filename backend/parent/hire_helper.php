@@ -160,10 +160,11 @@ try {
     if ($confirmed_salary === null || $confirmed_salary <= 0) {
         throw new Exception('Confirmed salary is required.');
     }
-    // See parent/post_job.php for why this is framed as a platform standard,
-    // not a direct restatement of the Region VIII statutory minimum.
-    if (!$isPartTime && $confirmed_salary < 7000) {
-        throw new Exception('Confirmed salary must be at least ₱7,000/month (CareLink platform standard).');
+    // Regional minimum wage. See shared/wage_floor.php for the wage order and
+    // why no message here may attribute the figure to RA 10361.
+    require_once __DIR__ . '/../shared/wage_floor.php';
+    if (!$isPartTime && $confirmed_salary < CARELINK_WAGE_FLOOR) {
+        throw new Exception(carelink_wage_floor_message());
     }
 
     $startDtCompare = null;

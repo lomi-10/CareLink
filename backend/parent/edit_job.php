@@ -39,9 +39,10 @@ try {
     $salary_max = isset($data['salary_max']) && $data['salary_max'] !== null ? floatval($data['salary_max']) : null;
     $salary = $salary_min;
 
-    // See parent/post_job.php for why this is framed as a platform standard,
-    // not a direct restatement of the Region VIII statutory minimum.
-    if ($salary < 7000) throw new Exception('CareLink enforces a minimum salary of ₱7,000/month as a platform standard to promote fair compensation.');
+    // Regional minimum wage. See shared/wage_floor.php for the wage order and
+    // why no message here may attribute the figure to RA 10361.
+    require_once __DIR__ . '/../shared/wage_floor.php';
+    if ($salary < CARELINK_WAGE_FLOOR) throw new Exception(carelink_wage_floor_message());
 
     $job_ids_json = json_encode(is_array($data['job_ids'] ?? null) ? $data['job_ids'] : []);
     $skill_ids_json = json_encode(is_array($data['skill_ids'] ?? null) ? $data['skill_ids'] : []);

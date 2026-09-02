@@ -40,8 +40,9 @@ require_once __DIR__ . '/../shared/create_notification.php';
 require_once __DIR__ . '/../shared/job_invites_table.php';
 require_once __DIR__ . '/../shared/direct_hire.php';
 
-/** CareLink's fair-pay floor, above the regional kasambahay minimum. */
-const DIRECT_HIRE_MIN_MONTHLY = 7000;
+/** The regional kasambahay minimum. Single source of truth: shared/wage_floor.php. */
+require_once __DIR__ . '/../shared/wage_floor.php';
+const DIRECT_HIRE_MIN_MONTHLY = CARELINK_WAGE_FLOOR;
 
 function dh_out(bool $ok, string $msg, array $extra = []): void
 {

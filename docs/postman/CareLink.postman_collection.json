@@ -497,7 +497,7 @@
           ]
         },
         {
-          "name": "Post job — salary below the floor",
+          "name": "Post job — salary below the floor (₱6,400)",
           "request": {
             "method": "POST",
             "header": [
@@ -544,7 +544,7 @@
                   "});",
                   "pm.test('cites the salary floor, not something else', () =>",
                   "  pm.expect(pm.response.json().message, 'refused for a different reason — the salary check never ran')",
-                  "    .to.include('7,000'));"
+                  "    .to.include('6,400'));"
                 ]
               }
             }

@@ -120,7 +120,8 @@ $signals = [];
 $sig = function ($level, $text) use (&$signals) { $signals[] = ['level' => $level, 'text' => $text]; };
 
 $jobMonthly = ($r['salary_period'] === 'Daily') ? (float) $r['salary_offered'] * 26 : (float) $r['salary_offered'];
-if ($jobMonthly > 0 && $jobMonthly < 7000) $sig('high', 'Offered salary (₱' . number_format($jobMonthly) . '/mo) is below the ₱7,000 platform minimum.');
+require_once __DIR__ . '/../shared/wage_floor.php';
+if ($jobMonthly > 0 && $jobMonthly < CARELINK_WAGE_FLOOR) $sig('high', 'Offered salary (₱' . number_format($jobMonthly) . '/mo) is below the ₱' . number_format(CARELINK_WAGE_FLOOR) . ' regional minimum wage.');
 if ($age !== null && $age < 18) $sig('high', "Applicant is a minor (age {$age}) — RA 10361 protections and parental consent apply.");
 if ($age !== null && $age >= 15 && $age <= 17) $sig('high', 'Applicant is 15–17: employment of minors as kasambahay is tightly restricted.');
 if (($r['verification_status'] ?? '') !== 'Verified') $sig('warn', 'Helper is not PESO-verified yet.');

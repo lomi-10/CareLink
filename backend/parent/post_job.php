@@ -57,12 +57,14 @@ try {
     $salary_max = isset($data['salary_max']) && $data['salary_max'] !== null ? floatval($data['salary_max']) : null;
     $salary = $salary_min; // backward compat: salary_offered = salary_min
 
-    // ₱7,000 is a CareLink platform standard to promote fair compensation — it is
-    // set above the actual Region VIII kasambahay minimum wage (Wage Order
-    // VIII-DW-06: ₱6,400/mo for chartered cities & 1st-class municipalities,
-    // ₱5,800/mo elsewhere). RA 10361 establishes that minimum wages are set by
-    // regional wage boards; it does not itself mandate this specific figure.
-    if ($salary < 7000) throw new Exception('CareLink enforces a minimum salary of ₱7,000/month as a platform standard to promote fair compensation.');
+    // The floor is the REGIONAL minimum, not a CareLink invention: ₱6,400 under
+    // Wage Order VIII-DW-06, confirmed by PESO Ormoc. RA 10361 establishes that
+    // minimums are set by regional wage boards; it names no peso figure, so no
+    // message here may cite it for one. The number lives in shared/wage_floor.php
+    // because it was previously written out by hand in seven files, two of which
+    // described it wrongly. ₱7,000 is now an advisory, not a refusal.
+    require_once __DIR__ . '/../shared/wage_floor.php';
+    if ($salary < CARELINK_WAGE_FLOOR) throw new Exception(carelink_wage_floor_message());
 
     // ── RA 10361 scope gate ─────────────────────────────────────────────────
     //

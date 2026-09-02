@@ -6,6 +6,12 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-nativ
 import { BROWN, CARAMEL, ICON_BG, DARK, MUTED, DIVIDER } from '../home/parentWarmTheme';
 import { SALARY_PERIODS, payoutBreakdown, peso, type SalaryPeriod } from '@/lib/salary';
 
+// Mirrors backend/shared/wage_floor.php. WAGE_FLOOR is what the server refuses
+// below; WAGE_ENCOURAGED is only ever a suggestion. Keep both in step with the
+// backend — the server is the authority, this is the courtesy warning.
+const WAGE_FLOOR = 6400;
+const WAGE_ENCOURAGED = 7000;
+
 // Suggested monthly salary range per category (PHP), keyed by ref_categories.category_id
 const SUGGESTED_RANGES: Record<string, { min: number; max: number }> = {
   '1': { min: 7000, max: 10000 }, // General Househelp
@@ -51,6 +57,9 @@ export function SalaryInputCard({
   disabled,
 }: SalaryInputCardProps) {
   const suggested = getSuggestedRange(categoryIds);
+  const enteredMin = Number(String(salaryMin).replace(/[^0-9.]/g, ''));
+  const lowButLegal =
+    Number.isFinite(enteredMin) && enteredMin >= WAGE_FLOOR && enteredMin < WAGE_ENCOURAGED;
   const minNum = Number(String(salaryMin).replace(/[^0-9.]/g, '')) || 0;
   const maxNum = Number(String(salaryMax).replace(/[^0-9.]/g, '')) || 0;
 
@@ -104,8 +113,16 @@ export function SalaryInputCard({
       </View>
 
       <Text style={styles.minimumNote}>
-        Minimum ₱7,000 / month — CareLink’s fair-pay standard, set above the legal kasambahay minimum. SSS, PhilHealth &amp; Pag-IBIG are added on top (required by law).
+        Minimum ₱{WAGE_FLOOR.toLocaleString()} / month, set by the regional wage board (Wage Order VIII-DW-06). SSS, PhilHealth &amp; Pag-IBIG are added on top (required by law).
       </Text>
+      {/* Advisory only. ₱6,400 is a lawful wage and is accepted — saying so plainly
+          matters, because the previous copy called ₱7,000 the minimum, which it
+          is not, and the server rejected legal offers to match. */}
+      {lowButLegal && (
+        <Text style={styles.nudgeText}>
+          Meets the legal minimum. Offers of ₱{WAGE_ENCOURAGED.toLocaleString()} or more attract noticeably more applicants.
+        </Text>
+      )}
       {suggested && (
         <Text style={styles.suggestedText}>
           Suggested range for this role: ₱{suggested.min.toLocaleString()} - ₱{suggested.max.toLocaleString()} / month
@@ -268,6 +285,11 @@ const styles = StyleSheet.create({
     color: MUTED,
     marginTop: 6,
     fontStyle: 'italic',
+  },
+  nudgeText: {
+    fontSize: 12,
+    color: BROWN,
+    marginTop: 4,
   },
   suggestedText: {
     fontSize: 12,

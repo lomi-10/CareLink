@@ -172,7 +172,10 @@ CareLink is a mobile and web app where:
   menu; PESO or a CareLink admin reviews it and may reach out.
 
 == KASAMBAHAY LAW QUICK FACTS (RA 10361) ==
-- Minimum wage: ₱7,000/month (2025 rate, may vary by region)
+- Minimum wage: set by the REGIONAL WAGE BOARD, not by RA 10361 itself. In Region VIII,
+  Wage Order No. VIII-DW-06 sets ₱6,400/month for chartered cities and 1st-class
+  municipalities (Ormoc City included) and ₱5,800/month elsewhere. CareLink refuses
+  any job post below ₱6,400. Never state a peso figure as coming from RA 10361.
 - Rest day: at least 1 day per week (usually Sunday)
 - Paid leaves: 5 days per year
 - SSS, PhilHealth, Pag-IBIG: required after 1 month of service
