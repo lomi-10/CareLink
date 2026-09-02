@@ -1,6 +1,19 @@
 // app/(parent)/messages/VideoCallTab.tsx
+//
+// The call used to open in a new browser tab, which took the user out of
+// CareLink entirely — they lost the chat, the contract and the interview
+// details mid-call, and on a phone they landed in a browser with no way back.
+//
+// On web the room is now embedded in this tab. Daily serves a complete call UI
+// at the room URL, so an iframe with the right `allow` list is the whole
+// integration; no SDK, and nothing that needs a native rebuild.
+//
+// On a phone the app still runs under Expo Go, where an iframe does not exist
+// and no native video SDK can be loaded, so the link is opened externally
+// there. That is a platform limit, not a preference — see
+// backend/shared/create_call_room.php.
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Platform, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { DARK, MUTED } from '@/components/parent/home/parentWarmTheme';
@@ -11,15 +24,69 @@ export default function VideoCallTab({
   onStartCall,
 }: {
   partnerName: string;
-  onStartCall: () => Promise<void>;
+  /** Creates the room and posts the link into the chat. Returns the room URL. */
+  onStartCall: () => Promise<string | null>;
 }) {
   const [calling, setCalling] = useState(false);
+  const [roomUrl, setRoomUrl] = useState<string | null>(null);
 
   const handleStart = async () => {
     setCalling(true);
-    try { await onStartCall(); } finally { setCalling(false); }
+    try {
+      const url = await onStartCall();
+      if (!url) return; // the hook already surfaced why through the chat banner
+      if (Platform.OS === 'web') setRoomUrl(url);
+      else Linking.openURL(url);
+    } finally {
+      setCalling(false);
+    }
   };
 
+  // ── In-call, on web ────────────────────────────────────────────────────────
+  if (roomUrl && Platform.OS === 'web') {
+    return (
+      <View style={{ flex: 1 }}>
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+          paddingHorizontal: 14, paddingVertical: 10, gap: 12,
+        }}>
+          <Text
+            numberOfLines={1}
+            style={{ fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK, flex: 1 }}
+          >
+            In a call with {partnerName}
+          </Text>
+          {/* Leaving unmounts the iframe, which releases the camera and
+              microphone. Without this the only way out was to switch tabs,
+              and the webcam light stayed on. */}
+          <TouchableOpacity
+            onPress={() => setRoomUrl(null)}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              backgroundColor: '#D64545', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
+            }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="exit-outline" size={16} color="#fff" />
+            <Text style={{ fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: '#fff' }}>
+              Leave call
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <iframe
+          src={roomUrl}
+          title={`Video call with ${partnerName}`}
+          // Without this allow list the browser blocks the camera and mic and
+          // the call loads to a black frame with no error.
+          allow="camera; microphone; fullscreen; speaker; display-capture; autoplay"
+          style={{ flex: 1, width: '100%', height: '100%', border: 'none', borderRadius: 12 }}
+        />
+      </View>
+    );
+  }
+
+  // ── Not in a call ──────────────────────────────────────────────────────────
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
       <View style={{
@@ -36,7 +103,9 @@ export default function VideoCallTab({
         fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: MUTED,
         textAlign: 'center', marginBottom: 32, lineHeight: 20,
       }}>
-        Start a live video call with {partnerName}. A link will be sent in chat so both of you can join.
+        {Platform.OS === 'web'
+          ? `Start a live video call with ${partnerName}. It opens here, and the link is sent in chat so they can join.`
+          : `Start a live video call with ${partnerName}. A link will be sent in chat so both of you can join.`}
       </Text>
       <TouchableOpacity
         style={{

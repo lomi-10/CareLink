@@ -6,7 +6,6 @@ import {
   View, Text, FlatList, TouchableOpacity,
   KeyboardAvoidingView, Platform,
   ActivityIndicator, Modal,
-  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -467,10 +466,7 @@ export default function ChatPanel({
       {activeTab === 'videocall' && isHired && (
         <VideoCallTab
           partnerName={partnerName}
-          onStartCall={async () => {
-            const url = await sendVideoCall(myUserId, jobPostId);
-            if (url) Linking.openURL(url);
-          }}
+          onStartCall={() => sendVideoCall(myUserId, jobPostId)}
         />
       )}
 
@@ -481,8 +477,10 @@ export default function ChatPanel({
         partnerName={partnerName}
         onScheduleInterview={() => setHelperScheduleModal(true)}
         onConfirmStartVideo={async () => {
-          const url = await sendVideoCall(myUserId, jobPostId);
-          if (url) Linking.openURL(url);
+          // Route through the tab rather than opening a call here, so the
+          // embedded and external paths never diverge.
+          setCallModal(false);
+          setActiveTab('videocall');
         }}
       />
       <HelperInterviewRequestModal
