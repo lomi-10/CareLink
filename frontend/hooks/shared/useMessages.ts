@@ -287,7 +287,11 @@ export function useChat(partnerId: number) {
       setSendError(null);
       return String(data.url);
     } catch {
-      setSendError('Could not reach the video service. Check your connection and try again.');
+      // Distinct wording from the SERVER's message on purpose. Both used the
+      // same sentence, so the modal could not tell you whether your phone
+      // failed to reach CareLink or CareLink failed to reach Daily — which
+      // are different problems with different fixes.
+      setSendError('Could not reach CareLink. Check your internet connection and try again.');
       return null;
     }
   }, [partnerId, sendMessage]);

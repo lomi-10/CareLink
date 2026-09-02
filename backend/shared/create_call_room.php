@@ -86,13 +86,22 @@ try {
             'Authorization: Bearer ' . $key,
         ],
     ]);
-    $res  = curl_exec($ch);
-    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_errno($ch);
+    $res     = curl_exec($ch);
+    $code    = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err     = curl_errno($ch);
+    $errText = curl_error($ch);
     curl_close($ch);
 
     if ($err !== 0 || !is_string($res)) {
-        room_out(false, 'Could not reach the video service. Check your connection and try again.');
+        // The cURL error used to be thrown away, leaving an unfixable message:
+        // "check your connection" is wrong advice when it is the SERVER that
+        // cannot reach Daily. errno 6 is DNS, 7 is a blocked outbound port,
+        // 28 is a timeout, 60 is a missing CA bundle — four different fixes.
+        error_log(sprintf('create_call_room.php: cURL errno=%d %s', $err, $errText));
+        room_out(false,
+            'The server could not reach the video service (error ' . $err . '). '
+            . 'This is a server-side problem, not your connection. Run diagnostics.php.',
+            ['curl_errno' => $err]);
     }
 
     $body = json_decode($res, true);
