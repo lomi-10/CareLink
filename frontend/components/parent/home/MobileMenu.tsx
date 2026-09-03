@@ -178,7 +178,7 @@ export function MobileMenu({
             <CareLinkLogoMark size={40} />
             <View style={{ flex: 1 }}>
               <Text style={styles.brandTitle}>CareLink</Text>
-              <Text style={styles.brandSub}>Parent Portal</Text>
+              <Text style={styles.brandSub}>Employer Portal</Text>
             </View>
           </View>
 

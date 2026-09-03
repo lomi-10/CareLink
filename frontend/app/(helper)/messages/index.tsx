@@ -110,7 +110,7 @@ function HelperMessagesContent() {
           <Ionicons name="chatbubbles-outline" size={52} color={SUBTLE} />
           <Text style={s.emptyTitle}>{convSearch ? 'No matches' : 'No messages yet'}</Text>
           <Text style={s.emptySub}>
-            {convSearch ? 'Try a different name.' : 'Apply to a job and start chatting with a parent.'}
+            {convSearch ? 'Try a different name.' : 'Apply to a job and start chatting with a household employer.'}
           </Text>
         </View>
       ) : (

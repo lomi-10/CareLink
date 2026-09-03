@@ -66,7 +66,7 @@ export function ParentTopNav({
         <CareLinkLogoMark size={44} />
         <View>
           <Text style={s.logoName}>Care<Text style={{ color: pt.accent }}>Link</Text></Text>
-          <Text style={s.logoSub}>Parent Portal</Text>
+          <Text style={s.logoSub}>Employer Portal</Text>
         </View>
       </Pressable>
 

@@ -157,7 +157,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
         <CareLinkLogoMark size={44} />
         <View>
           <Text style={styles.logoText}>CareLink</Text>
-          <Text style={styles.logoSubtext}>Parent Portal</Text>
+          <Text style={styles.logoSubtext}>Employer Portal</Text>
         </View>
       </View>
 

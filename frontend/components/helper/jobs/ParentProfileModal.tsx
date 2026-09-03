@@ -81,8 +81,12 @@ function InfoRow({ icon, label, value, last = false }: {
 }
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
-function OverviewTab({ profile, household, children, elderly, documents, setDocViewing, credentials, safetyFlag }: {
-  profile: any; household: any; children: any[]; elderly: any[];
+// householdChildren, not `children`: React reserves that prop name for nested
+// JSX. Passing household children through it worked only because nothing was
+// ever nested inside this component — the first person to write
+// <OverviewTab>...</OverviewTab> would have silently wiped the family data.
+function OverviewTab({ profile, household, householdChildren, elderly, documents, setDocViewing, credentials, safetyFlag }: {
+  profile: any; household: any; householdChildren: any[]; elderly: any[];
   documents: any[]; setDocViewing: (v: { title: string; url: string } | null) => void;
   credentials?: any[]; safetyFlag?: any;
 }) {
@@ -136,10 +140,10 @@ function OverviewTab({ profile, household, children, elderly, documents, setDocV
             />
           </View>
 
-          {children.length > 0 && (
+          {householdChildren.length > 0 && (
             <View style={{ marginTop: 12 }}>
-              <Text style={ot.subLabel}>Children ({children.length})</Text>
-              {children.map((child: any, i: number) => (
+              <Text style={ot.subLabel}>Children ({householdChildren.length})</Text>
+              {householdChildren.map((child: any, i: number) => (
                 <View key={child.child_id ?? i} style={ot.memberCard}>
                   <View style={ot.memberAvatar}>
                     <Ionicons name="happy-outline" size={15} color={DARK} />
@@ -475,7 +479,7 @@ export function ParentProfileModal({
                   <OverviewTab
                     profile={profile}
                     household={household}
-                    children={children}
+                    householdChildren={children}
                     elderly={elderly}
                     documents={documents}
                     setDocViewing={setDocViewing}

@@ -50,12 +50,12 @@ export function ParentSettingsWeb({ userName, avatar, verified, onLogout }: { us
       <ScrollView style={{ flex: 1 }} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.inner}>
           <Text style={s.pageTitle}>Settings</Text>
-          <Text style={s.pageSub}>Parent Portal — appearance &amp; account</Text>
+          <Text style={s.pageSub}>Employer Portal — appearance &amp; account</Text>
 
           {/* CareLink palette */}
           <View style={s.section}>
             <Text style={s.secTitle}>CareLink Palette</Text>
-            <Text style={s.secHint}>Pick a color story. This changes backgrounds, cards, and accents in the parent portal only. Saved on this device.</Text>
+            <Text style={s.secHint}>Pick a color story. This changes backgrounds, cards, and accents in the employer portal only. Saved on this device.</Text>
             <View style={s.themeGrid}>
               {PARENT_THEME_OPTIONS.map((opt) => {
                 const on = themeId === opt.id;

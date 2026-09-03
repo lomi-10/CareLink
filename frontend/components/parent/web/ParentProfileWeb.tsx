@@ -358,7 +358,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
           <View style={s.avaCam}>{photoBusy ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="camera" size={13} color="#fff" />}</View>
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={s.pcardName} numberOfLines={2}>{fullName || 'Parent'}</Text>
+          <Text style={s.pcardName} numberOfLines={2}>{fullName || 'Household Employer'}</Text>
           <View style={[s.verPill, !verified && s.verPillOff]}>
             <Ionicons name={verified ? 'shield-checkmark' : 'time-outline'} size={12} color={verified ? pt.green : pt.amber} />
             <Text style={[s.verPillText, !verified && { color: pt.amber }]}>{verified ? 'PESO Verified Employer' : badge.text}</Text>

@@ -34,7 +34,7 @@ export function HowItWorks() {
       <SectionHeading label="How CareLink Works" />
       <View style={s.stepsRow}>
         <View style={s.stepsBox}>
-          <StepColumn label="For Parents" badgeColor={ORANGE} steps={PARENT_STEPS} />
+          <StepColumn label="For Household Employers" badgeColor={ORANGE} steps={PARENT_STEPS} />
         </View>
         <View style={s.stepsBox}>
           <StepColumn label="For Helpers" badgeColor={GOLDEN} steps={HELPER_STEPS} />

@@ -95,7 +95,7 @@ export default function SettingsScreen() {
         <Text style={ss.sectionTitle}>CareLink palette</Text>
         <Text style={ss.sectionHint}>
           Pick a color story (default, warm, sage, night, etc.). This changes backgrounds, cards, and accent colors
-          in the parent portal only. Saved on this device.
+          in the employer portal only. Saved on this device.
         </Text>
         <View style={ss.themeRow}>
           {PARENT_THEME_OPTIONS.map((opt) => {

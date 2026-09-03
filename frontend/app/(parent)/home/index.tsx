@@ -338,7 +338,7 @@ export default function ParentHome() {
     <SafeAreaView style={h.container}>
       <MobileHeader
         onMenuPress={() => setIsMobileMenuOpen(true)}
-        subtitle={isWorkMode ? 'Work Mode' : 'Parent Portal'}
+        subtitle={isWorkMode ? 'Work Mode' : 'Employer Portal'}
         notificationCount={unreadCount}
         onNotificationPress={() => router.push('/(parent)/notifications')}
       />

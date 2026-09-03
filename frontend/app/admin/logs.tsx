@@ -112,7 +112,7 @@ export default function AdminLogsScreen() {
     <AdminShell active="logs" title="Audit Trail" subtitle={`${getProcessedLogs().length} records found`} headerRight={headerRight} scroll={false}>
       <View style={s.filterRow}>
         <FilterChip label="All" value="all" />
-        <FilterChip label="Parents" value="parent" />
+        <FilterChip label="Household Employers" value="parent" />
         <FilterChip label="Helpers" value="helper" />
         <FilterChip label="Admins" value="admin" />
       </View>

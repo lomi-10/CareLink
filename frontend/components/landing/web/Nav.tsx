@@ -28,7 +28,7 @@ export function Nav({
           </View>
 
           <View style={s.navLinks}>
-            <NavLink label="For Parents" onPress={() => onNavigate("howItWorks")} />
+            <NavLink label="For Employers" onPress={() => onNavigate("howItWorks")} />
             <NavLink label="For Helpers" onPress={() => onNavigate("howItWorks")} />
             <NavLink label="How It Works" onPress={() => onNavigate("howItWorks")} chevron={false} />
             <NavLink label="Resources" onPress={() => onNavigate("management")} />

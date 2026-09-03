@@ -253,7 +253,7 @@ try {
         $conn,
         'peso_queue_job',
         'New job post pending verification',
-        'A parent submitted "' . $final_title . '" for PESO approval.',
+        'A household employer submitted "' . $final_title . '" for PESO approval.',
         'job',
         $new_job_id
     );

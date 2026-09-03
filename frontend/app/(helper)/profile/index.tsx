@@ -488,7 +488,7 @@ function ProfileViewersModal({
           <View style={vm.header}>
             <View style={{ flex: 1 }}>
               <Text style={vm.title}>Who Viewed Your Profile</Text>
-              <Text style={vm.subtitle}>Parents who viewed you in the last 7 days</Text>
+              <Text style={vm.subtitle}>Household employers who viewed you in the last 7 days</Text>
             </View>
             <TouchableOpacity style={vm.closeBtn} onPress={onClose} hitSlop={8}>
               <Ionicons name="close" size={18} color="#7A5C3E" />
@@ -501,7 +501,7 @@ function ProfileViewersModal({
               <View style={vm.empty}>
                 <Ionicons name="eye-off-outline" size={36} color="#7A5C3E" />
                 <Text style={vm.emptyTitle}>No views yet</Text>
-                <Text style={vm.emptySub}>Parents who browse your profile will appear here.</Text>
+                <Text style={vm.emptySub}>Household employers who browse your profile will appear here.</Text>
               </View>
             ) : (
               <View style={vm.list}>

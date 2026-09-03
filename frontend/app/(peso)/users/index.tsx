@@ -72,6 +72,10 @@ export default function UserVerification() {
 
   const helperCount = useMemo(() => users.filter((u) => u.user_type === "helper").length, [users]);
   const parentCount = useMemo(() => users.filter((u) => u.user_type === "parent").length, [users]);
+  // activeRole holds the API value ("parent"). Never render it directly:
+  // every place that did produced "parents" in the interface.
+  const roleLabel = activeRole === "helper" ? "helpers" : "household employers";
+
   const pendingHelpers = useMemo(() => users.filter((u) => u.user_type === "helper" && u.verification_status === "Pending").length, [users]);
   const pendingParents = useMemo(() => users.filter((u) => u.user_type === "parent" && u.verification_status === "Pending").length, [users]);
   const countFor = (status: string) => users.filter((u) => u.user_type === activeRole && u.verification_status === status).length;
@@ -126,7 +130,7 @@ export default function UserVerification() {
   const leftColumn = (
     <View style={twoPane ? layout.leftPane : layout.flex1}>
       <ScreenHeader eyebrow="Verification & Management" title="User Verification"
-        subtitle={loading ? "Loading…" : `${users.length} total account${users.length !== 1 ? "s" : ""} · reviewing ${activeRole}s`}
+        subtitle={loading ? "Loading…" : `${users.length} total account${users.length !== 1 ? "s" : ""} · reviewing ${roleLabel}`}
         right={<IconButton icon="refresh" tone="accent" onPress={fetchUsers} />} />
 
       <View style={{ paddingHorizontal: space.xl, paddingTop: space.md }}>
@@ -148,7 +152,7 @@ export default function UserVerification() {
                 style={({ hovered }: any) => [{ flex: 1, maxWidth: 220, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 11, borderRadius: radius.md, transitionDuration: "140ms",
                   backgroundColor: active ? c.accentSoft : hovered ? c.raise : c.surface, borderWidth: 1.4, borderColor: active ? c.accent : hovered ? c.accent : c.line } as any]}>
                 <Ionicons name={role === "helper" ? "briefcase-outline" : "people-outline"} size={17} color={active ? c.accent : c.muted} />
-                <Text style={{ fontFamily: font.semibold, fontSize: 13.5, color: active ? c.accentInk : c.muted }}>{role === "helper" ? "Helpers" : "Parents"}</Text>
+                <Text style={{ fontFamily: font.semibold, fontSize: 13.5, color: active ? c.accentInk : c.muted }}>{role === "helper" ? "Helpers" : "Household Employers"}</Text>
                 {pending > 0 && <View style={{ minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 10, backgroundColor: active ? c.accent : c.sunken, alignItems: "center", justifyContent: "center" }}>
                   <Text style={{ color: active ? "#fff" : c.muted, fontSize: 11, fontFamily: font.semibold }}>{pending}</Text></View>}
               </Pressable>
@@ -160,7 +164,7 @@ export default function UserVerification() {
         <AnimateIn delay={215} style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, borderRadius: radius.md, paddingHorizontal: 13, paddingVertical: 10, marginTop: space.md }}>
           <Ionicons name="search" size={16} color={c.subtle} />
           <TextInput style={{ flex: 1, fontFamily: font.regular, fontSize: 14, color: c.ink, ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}) }}
-            placeholder={`Search ${activeRole}s by name or email…`} placeholderTextColor={c.subtle} value={searchQuery} onChangeText={setSearchQuery} />
+            placeholder={`Search ${roleLabel} by name or email…`} placeholderTextColor={c.subtle} value={searchQuery} onChangeText={setSearchQuery} />
           {!!searchQuery && <Pressable onPress={() => setSearchQuery("")} hitSlop={10}><Ionicons name="close-circle" size={16} color={c.subtle} /></Pressable>}
         </AnimateIn>
 
@@ -203,8 +207,8 @@ export default function UserVerification() {
       {loading ? (
         <ActivityIndicator size="large" color={c.accent} style={{ marginTop: 50 }} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={activeRole === "helper" ? "briefcase-outline" : "people-outline"} title={`No ${activeRole}s ${filterStatus !== "All" ? `with "${filterStatus}" status` : "found"}`}
-          sub={searchQuery ? "Try a different search or clear filters." : `No ${activeRole}s are waiting for review right now.`} />
+        <EmptyState icon={activeRole === "helper" ? "briefcase-outline" : "people-outline"} title={`No ${roleLabel} ${filterStatus !== "All" ? `with "${filterStatus}" status` : "found"}`}
+          sub={searchQuery ? "Try a different search or clear filters." : `No ${roleLabel} are waiting for review right now.`} />
       ) : (
         <FlatList style={layout.flex1} data={filtered} keyExtractor={(i) => String(i.user_id)} renderItem={renderCard}
           contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.md, paddingBottom: 40, gap: 10 }}
