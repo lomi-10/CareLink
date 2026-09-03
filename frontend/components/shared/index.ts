@@ -7,6 +7,7 @@ export type { CredentialState } from './CredentialBadge';
 export { SelectField, type SelectOption } from './SelectField';
 export { BottomSheetModal } from './BottomSheetModal';
 export { LoadingSpinner } from './LoadingSpinner';
+export { WorkHoursSummary } from './WorkHoursSummary';
 export { ConfirmationModal } from './ConfirmationModal';
 export { EndEmploymentModal } from './EndEmploymentModal';
 export { FormModalLayout } from './FormModalLayout';

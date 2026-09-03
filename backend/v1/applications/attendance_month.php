@@ -56,12 +56,23 @@ try {
     $monthDays = carelink_attendance_merge_month($conn, $application_id, $year, $month, $extras);
     $tasksMap = carelink_attendance_tasks_completed_by_date($conn, $application_id, $first, $last);
 
+    require_once __DIR__ . '/../lib/work_hours.php';
+
     foreach ($monthDays as $i => $d) {
         $dt = $d['date'] ?? '';
         $monthDays[$i]['tasks_completed'] = isset($tasksMap[$dt]) ? (int) $tasksMap[$dt] : 0;
         $monthDays[$i]['checked_in_at'] = $d['check_in_at'] ?? null;
         $monthDays[$i]['checked_out_at'] = $d['check_out_at'] ?? null;
+
+        // Hours worked that day, and any overtime past the 8-hour normal day.
+        // The timestamps were always here; nothing ever subtracted them.
+        $monthDays[$i]['hours'] = carelink_work_hours(
+            $monthDays[$i]['checked_in_at'],
+            $monthDays[$i]['checked_out_at']
+        );
     }
+
+    $hoursTotals = carelink_work_hours_totals($monthDays);
 
     $lb = carelink_attendance_leave_balance($conn, $application_id, $year, $extras['vacation_days']);
     $summary = carelink_attendance_month_summary($monthDays);
@@ -83,6 +94,7 @@ try {
             'remaining' => $lb['remaining'],
         ],
         'summary' => $summary,
+        'hours_totals' => $hoursTotals,
         'days' => $monthDays,
     ]);
 } catch (Exception $e) {

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth, useResponsive } from '@/hooks/shared';
+import { WorkHoursSummary } from '@/components/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { WorkModeShell } from '@/components/helper/work';
 import { ORANGE } from '@/components/helper/home/helperWarmTheme';
@@ -78,6 +79,19 @@ export default function WorkHistoryScreen() {
       refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
       contentContainerStyle={[styles.scroll, !isDesktop && { paddingBottom: 24 }]}
     >
+      {/* Hours before the week grid: a helper checking this screen wants the
+          month's total and any overtime first — the per-day dots are detail. */}
+      {activeHire && helperId ? (
+        <View style={{ marginBottom: 18 }}>
+          <WorkHoursSummary
+            applicationId={activeHire.application_id}
+            userId={helperId}
+            userType="helper"
+            accent={ORANGE}
+          />
+        </View>
+      ) : null}
+
       {loading && weeks.length === 0 ? (
         <ActivityIndicator color={ORANGE} style={{ marginTop: 24 }} />
       ) : (

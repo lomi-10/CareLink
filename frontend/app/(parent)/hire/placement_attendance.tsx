@@ -37,7 +37,7 @@ import { monthOverlapsContract } from '@/lib/contractAttendanceNav';
 import { addDaysYmd, mondayOfWeekContaining, ymdLocal } from '@/lib/helperWorkApi';
 import { attendanceDayCellType, attendanceCalendarCellStyle } from '@/lib/attendanceUi';
 import { AttendanceCalendarGrid } from '@/components/shared/AttendanceCalendarGrid';
-import { ConfirmationModal, NotificationModal } from '@/components/shared';
+import { ConfirmationModal, NotificationModal, WorkHoursSummary } from '@/components/shared';
 import { LeaveRequestsPanel } from '@/components/parent/LeaveRequestsPanel';
 
 export default function PlacementAttendanceScreen() {
@@ -456,6 +456,20 @@ export default function PlacementAttendanceScreen() {
       refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
       contentContainerStyle={styles.scrollContent}
     >
+      {/* Hours above leave requests: the employer's first question on this
+          screen is what was worked, and overtime is the part with a cost
+          attached. Leave requests are an action queue and can follow. */}
+      {applicationId && parentId ? (
+        <View style={{ marginBottom: 16 }}>
+          <WorkHoursSummary
+            applicationId={applicationId}
+            userId={parentId}
+            userType="parent"
+            accent={theme.color.parent}
+          />
+        </View>
+      ) : null}
+
       {applicationId && parentId ? (
         <LeaveRequestsPanel
           applicationId={applicationId}

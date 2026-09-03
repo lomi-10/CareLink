@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../../dbcon.php';
+require_once __DIR__ . '/../lib/work_hours.php';
 require_once __DIR__ . '/../lib/hire_access.php';
 require_once __DIR__ . '/../lib/attendance_rest_day.php';
 require_once __DIR__ . '/../lib/attendance_calendar.php';
@@ -92,6 +93,12 @@ try {
             'status' => $row ? ($row['status'] ?? null) : null,
             'log_id' => $row ? (int) $row['id'] : null,
             'expected_shift_end_at' => $expected_shift_end_at,
+            // Null while still checked in: an unfinished day has no total,
+            // and filling one in from the current time would inflate it.
+            'hours' => carelink_work_hours(
+                $row ? ($row['checked_in_at'] ?? null) : null,
+                $row ? ($row['checked_out_at'] ?? null) : null
+            ),
         ],
     ]);
 } catch (Exception $e) {
