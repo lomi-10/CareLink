@@ -4,11 +4,12 @@
 // new-peso-ormoc-smoke.png to restyle.
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { FontFamily } from "@/constants/GlobalStyles";
-import { CARD_GLASS, CARD_GLASS_BORDER, ORANGE, TEXT_LIGHT, TEXT_LIGHT_MUTED, PHOTO_BG, layout } from "./theme";
+import { layout } from "./theme";
+import { useLandingTheme, type LandingPalette } from "./landingTheme";
 
 const ITEMS: { icon?: keyof typeof Ionicons.glyphMap; logo?: boolean; title: string; sub: string }[] = [
   { logo: true, title: "PESO Ormoc Partnership", sub: "Working with PESO Ormoc for verified placements." },
@@ -18,6 +19,9 @@ const ITEMS: { icon?: keyof typeof Ionicons.glyphMap; logo?: boolean; title: str
 ];
 
 export function BuiltOnTrust() {
+  const { c } = useLandingTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
+
   return (
     <View style={s.trustWrap}>
       <Image source={require("@/assets/landing/trust-photo.png")} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -33,7 +37,7 @@ export function BuiltOnTrust() {
                   {it.logo ? (
                     <Image source={require("@/assets/landing/large-peso-ormoc-logo.png")} style={s.trustLogoImg} contentFit="contain" />
                   ) : (
-                    <Ionicons name={it.icon!} size={20} color={ORANGE} />
+                    <Ionicons name={it.icon!} size={20} color={c.accent} />
                   )}
                 </View>
                 <Text style={s.trustItemTitle}>{it.title}</Text>
@@ -53,21 +57,21 @@ export function BuiltOnTrust() {
   );
 }
 
-const s = StyleSheet.create({
-  trustWrap: { position: "relative", overflow: "hidden", backgroundColor: PHOTO_BG },
+const makeStyles = (c: LandingPalette) => StyleSheet.create({
+  trustWrap: { position: "relative", overflow: "hidden", backgroundColor: c.bg2 },
   trustOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(15,9,4,0.85)" },
   trustInner: { flexDirection: "row", alignItems: "center", gap: 48 },
   trustLeft: { flex: 1 },
-  trustTitle: { fontSize: 28, fontFamily: FontFamily.fredokaSemiBold, color: TEXT_LIGHT, letterSpacing: -0.5, marginBottom: 32, maxWidth: 420 },
+  trustTitle: { fontSize: 28, fontFamily: FontFamily.fredokaSemiBold, color: c.text, letterSpacing: -0.5, marginBottom: 32, maxWidth: 420 },
   trustGrid: { flexDirection: "row", flexWrap: "wrap", gap: 24 },
   trustItem: { width: "45%", minWidth: 200 },
   trustIconWrap: {
-    width: 44, height: 44, borderRadius: 14, backgroundColor: CARD_GLASS, borderWidth: 1, borderColor: CARD_GLASS_BORDER,
+    width: 44, height: 44, borderRadius: 14, backgroundColor: c.card, borderWidth: 1, borderColor: c.cardBorder,
     alignItems: "center", justifyContent: "center", marginBottom: 10, overflow: "hidden",
   },
   trustLogoImg: { width: 30, height: 30 },
-  trustItemTitle: { fontSize: 13, fontFamily: FontFamily.fredokaSemiBold, color: TEXT_LIGHT, marginBottom: 3 },
-  trustItemSub: { fontSize: 12, fontFamily: FontFamily.fredokaRegular, color: TEXT_LIGHT_MUTED, lineHeight: 17 },
+  trustItemTitle: { fontSize: 13, fontFamily: FontFamily.fredokaSemiBold, color: c.text, marginBottom: 3 },
+  trustItemSub: { fontSize: 12, fontFamily: FontFamily.fredokaRegular, color: c.textMuted, lineHeight: 17 },
   trustRight: { width: 280, alignItems: "center", justifyContent: "center" },
   pesoSeal: {
     width: 220, height: 220, borderRadius: 110, backgroundColor: "rgba(255,255,255,0.06)",

@@ -2,12 +2,13 @@
 // "All-in-One Employment Management" glass card grid. Edit MANAGEMENT_ITEMS
 // to add/remove/rename feature cards.
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { FontFamily } from "@/constants/GlobalStyles";
 import { SectionHeading } from "./SectionHeading";
-import { CARD_GLASS, CARD_GLASS_BORDER, ORANGE, TEXT_LIGHT, TEXT_LIGHT_MUTED, layout } from "./theme";
+import { layout } from "./theme";
+import { useLandingTheme, type LandingPalette } from "./landingTheme";
 
 type ManagementItem = { icon: keyof typeof Ionicons.glyphMap; title: string; sub: string };
 
@@ -21,6 +22,9 @@ const MANAGEMENT_ITEMS: ManagementItem[] = [
 ];
 
 export function EmploymentManagement() {
+  const { c } = useLandingTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
+
   return (
     <View style={[layout.container, layout.section]}>
       <SectionHeading label="All-in-One Employment Management" centered />
@@ -28,7 +32,7 @@ export function EmploymentManagement() {
         {MANAGEMENT_ITEMS.map((it) => (
           <View key={it.title} style={s.managementCard}>
             <View style={s.managementIconWrap}>
-              <Ionicons name={it.icon} size={20} color={ORANGE} />
+              <Ionicons name={it.icon} size={20} color={c.accent} />
             </View>
             <Text style={s.managementTitle}>{it.title}</Text>
             <Text style={s.managementSub}>{it.sub}</Text>
@@ -40,14 +44,14 @@ export function EmploymentManagement() {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (c: LandingPalette) => StyleSheet.create({
   managementGrid: { flexDirection: "row", flexWrap: "wrap", gap: 18, paddingHorizontal: 4 },
   managementCard: {
-    width: "31%", minWidth: 240, backgroundColor: CARD_GLASS, borderRadius: 18,
-    borderWidth: 1, borderColor: CARD_GLASS_BORDER, padding: 20,
+    width: "31%", minWidth: 240, backgroundColor: c.card, borderRadius: 18,
+    borderWidth: 1, borderColor: c.cardBorder, padding: 20,
   },
   managementIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(234,111,42,0.18)", alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  managementTitle: { fontSize: 15, fontFamily: FontFamily.fredokaSemiBold, color: TEXT_LIGHT, marginBottom: 5 },
-  managementSub: { fontSize: 12, fontFamily: FontFamily.fredokaRegular, color: TEXT_LIGHT_MUTED, lineHeight: 17, marginBottom: 12 },
-  managementLearnMore: { fontSize: 12, fontFamily: FontFamily.fredokaSemiBold, color: ORANGE },
+  managementTitle: { fontSize: 15, fontFamily: FontFamily.fredokaSemiBold, color: c.text, marginBottom: 5 },
+  managementSub: { fontSize: 12, fontFamily: FontFamily.fredokaRegular, color: c.textMuted, lineHeight: 17, marginBottom: 12 },
+  managementLearnMore: { fontSize: 12, fontFamily: FontFamily.fredokaSemiBold, color: c.accent },
 });

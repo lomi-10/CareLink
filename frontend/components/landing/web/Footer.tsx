@@ -2,14 +2,18 @@
 // Dark footer — brand, link row, social icons, copyright.
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import { FontFamily } from "@/constants/GlobalStyles";
-import { BG_DARK_2, CARD_GLASS_BORDER, TEXT_LIGHT, TEXT_LIGHT_MUTED, TEXT_LIGHT_SUBTLE, layout } from "./theme";
+import { layout } from "./theme";
+import { useLandingTheme, type LandingPalette } from "./landingTheme";
 
 export function Footer() {
+  const { c } = useLandingTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
+
   const router = useRouter();
 
   return (
@@ -29,8 +33,8 @@ export function Footer() {
           <Text style={s.footerLink}>Contact Us</Text>
         </View>
         <View style={s.footerSocial}>
-          <Ionicons name="logo-facebook" size={18} color={TEXT_LIGHT_SUBTLE} />
-          <Ionicons name="logo-instagram" size={18} color={TEXT_LIGHT_SUBTLE} />
+          <Ionicons name="logo-facebook" size={18} color={c.textSubtle} />
+          <Ionicons name="logo-instagram" size={18} color={c.textSubtle} />
         </View>
       </View>
       <View style={layout.container}>
@@ -40,13 +44,13 @@ export function Footer() {
   );
 }
 
-const s = StyleSheet.create({
-  footer: { backgroundColor: BG_DARK_2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: CARD_GLASS_BORDER, paddingVertical: 28 },
+const makeStyles = (c: LandingPalette) => StyleSheet.create({
+  footer: { backgroundColor: c.bg2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.cardBorder, paddingVertical: 28 },
   footerInner: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 14 },
   brand: { flexDirection: "row", alignItems: "center", gap: 9 },
-  footerBrand: { fontSize: 16, fontFamily: FontFamily.fredokaSemiBold, color: TEXT_LIGHT },
+  footerBrand: { fontSize: 16, fontFamily: FontFamily.fredokaSemiBold, color: c.text },
   footerLinks: { flexDirection: "row", gap: 20, flexWrap: "wrap" },
-  footerLink: { fontSize: 13, fontFamily: FontFamily.fredokaRegular, color: TEXT_LIGHT_MUTED },
+  footerLink: { fontSize: 13, fontFamily: FontFamily.fredokaRegular, color: c.textMuted },
   footerSocial: { flexDirection: "row", gap: 14 },
-  footerCopy: { fontSize: 12, fontFamily: FontFamily.fredokaRegular, color: TEXT_LIGHT_SUBTLE },
+  footerCopy: { fontSize: 12, fontFamily: FontFamily.fredokaRegular, color: c.textSubtle },
 });

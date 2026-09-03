@@ -2,15 +2,13 @@
 // "For Parents" / "For Helpers" — two glass boxes side by side, each with a
 // numbered step row. Edit PARENT_STEPS / HELPER_STEPS to change the content.
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { FontFamily } from "@/constants/GlobalStyles";
 import { SectionHeading } from "./SectionHeading";
-import {
-  BG_DARK, CARD_GLASS, CARD_GLASS_BORDER, DARK, GOLDEN, ORANGE, TEXT_LIGHT, TEXT_LIGHT_MUTED,
-  layout,
-} from "./theme";
+import { layout } from "./theme";
+import { useLandingTheme, type LandingPalette } from "./landingTheme";
 
 type Step = { icon: keyof typeof Ionicons.glyphMap; title: string; body: string };
 
@@ -29,15 +27,18 @@ const HELPER_STEPS: Step[] = [
 ];
 
 export function HowItWorks() {
+  const { c } = useLandingTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
+
   return (
     <View style={[layout.container, layout.section]}>
       <SectionHeading label="How CareLink Works" />
       <View style={s.stepsRow}>
         <View style={s.stepsBox}>
-          <StepColumn label="For Household Employers" badgeColor={ORANGE} steps={PARENT_STEPS} />
+          <StepColumn label="For Household Employers" badgeColor={c.accent} steps={PARENT_STEPS} />
         </View>
         <View style={s.stepsBox}>
-          <StepColumn label="For Helpers" badgeColor={GOLDEN} steps={HELPER_STEPS} />
+          <StepColumn label="For Helpers" badgeColor={c.gold} steps={HELPER_STEPS} />
         </View>
       </View>
     </View>
@@ -45,6 +46,9 @@ export function HowItWorks() {
 }
 
 function StepColumn({ label, badgeColor, steps }: { label: string; badgeColor: string; steps: Step[] }) {
+  const { c } = useLandingTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
+
   return (
     <View style={s.stepsCol}>
       <View style={[s.stepsColBadge, { backgroundColor: badgeColor + "26" }]}>
@@ -72,11 +76,11 @@ function StepColumn({ label, badgeColor, steps }: { label: string; badgeColor: s
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (c: LandingPalette) => StyleSheet.create({
   stepsRow: { flexDirection: "row", gap: 28 },
   stepsBox: {
-    flex: 1, backgroundColor: CARD_GLASS, borderRadius: 24,
-    borderWidth: 1, borderColor: CARD_GLASS_BORDER, padding: 30,
+    flex: 1, backgroundColor: c.card, borderRadius: 24,
+    borderWidth: 1, borderColor: c.cardBorder, padding: 30,
   },
   stepsCol: { flex: 1 },
   stepsColBadge: {
@@ -90,10 +94,10 @@ const s = StyleSheet.create({
   stepIconWrap: { width: 60, height: 60, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   stepNumBadge: {
     position: "absolute", bottom: -6, right: -6, width: 22, height: 22, borderRadius: 11,
-    alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: BG_DARK,
+    alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: c.bg,
   },
-  stepNumTxt: { fontSize: 11, fontFamily: FontFamily.fredokaSemiBold, color: DARK },
+  stepNumTxt: { fontSize: 11, fontFamily: FontFamily.fredokaSemiBold, color: c.invText },
   stepConnector: { position: "absolute", top: 30, left: "100%", width: 32, height: 2 },
-  stepTitle: { fontSize: 13, fontFamily: FontFamily.fredokaSemiBold, color: TEXT_LIGHT, textAlign: "center", marginBottom: 4 },
-  stepBody: { fontSize: 11, fontFamily: FontFamily.fredokaRegular, color: TEXT_LIGHT_MUTED, textAlign: "center", lineHeight: 16 },
+  stepTitle: { fontSize: 13, fontFamily: FontFamily.fredokaSemiBold, color: c.text, textAlign: "center", marginBottom: 4 },
+  stepBody: { fontSize: 11, fontFamily: FontFamily.fredokaRegular, color: c.textMuted, textAlign: "center", lineHeight: 16 },
 });
