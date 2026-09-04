@@ -17,11 +17,9 @@ import {
 import { AnimatedBackdrop } from './web/AnimatedBackdrop';
 import { BottomCta } from './web/BottomCta';
 import { BuiltOnTrust } from './web/BuiltOnTrust';
-import { EmploymentManagement } from './web/EmploymentManagement';
 import { Footer } from './web/Footer';
 import { Hero } from './web/Hero';
 import { LandingSplash } from './web/LandingSplash';
-import { StatsBand } from './web/StatsBand';
 import { WhatWeOffer } from './web/WhatWeOffer';
 import { StickyNav, NAV_HEIGHT } from './web/StickyNav';
 import { Team } from './web/Team';
@@ -38,7 +36,7 @@ function LandingBody() {
   const scrollRef = useRef<ScrollView>(null);
 
   const sectionY = useRef<Record<SectionKey, number>>({
-    offer: 0, management: 0, trust: 0, team: 0,
+    offer: 0, trust: 0, team: 0,
   });
 
   const [active, setActive] = useState<SectionKey | null>(null);
@@ -94,11 +92,9 @@ function LandingBody() {
         <Hero router={router} onNavigate={scrollToSection} />
 
         <View onLayout={captureY('offer')}><WhatWeOffer /></View>
-        <View onLayout={captureY('management')}><EmploymentManagement /></View>
         <View onLayout={captureY('trust')}><BuiltOnTrust /></View>
         <View onLayout={captureY('team')}><Team /></View>
 
-        <StatsBand />
         <BottomCta router={router} />
         <Footer />
       </ScrollView>

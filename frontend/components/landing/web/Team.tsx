@@ -25,11 +25,11 @@ type Member = {
   photo?: number;
 };
 
+// Three members. ⚠ The two placeholder names below still need replacing.
 const TEAM: Member[] = [
   { name: 'Jess David Almeñe', role: 'Lead Developer' },
-  { name: 'Team Member', role: 'Documentation' },
-  { name: 'Team Member', role: 'Quality Assurance' },
-  { name: 'Team Member', role: 'Research' },
+  { name: 'Team Member 2', role: 'Documentation' },
+  { name: 'Team Member 3', role: 'Quality Assurance' },
 ];
 
 const ADVISER: Member | null = { name: 'Capstone Adviser', role: 'Adviser' };
@@ -86,7 +86,7 @@ export function Team() {
           Batas Kasambahay and the way hiring actually happens here.
         </Text>
 
-        <View style={[s.grid, { flexWrap: wide ? 'nowrap' : 'wrap' }]}>
+        <View style={[s.grid, { flexWrap: wide ? 'nowrap' : 'wrap', maxWidth: wide ? 760 : undefined }]}>
           {TEAM.map((m) => <Card key={m.name + m.role} m={m} wide={wide} />)}
         </View>
 

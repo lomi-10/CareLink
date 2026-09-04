@@ -1,17 +1,90 @@
 // components/landing/web/Hero.tsx
-// Full-bleed hero photo with a dark left-to-right scrim so the transparent
-// nav + headline stay readable. Swap assets/landing/hero-photo.png to restyle.
+//
+// Full-viewport hero: photograph left, role choice right.
+//
+// TWO PROBLEMS THIS SOLVES
+//
+// Height. The hero used to size itself to its content, so on a tall window the
+// photograph stopped partway down and the page's flat background showed
+// underneath it as a dark band. A hero has to own the first screen — it is the
+// only element whose job is to be the whole of what you see first.
+//
+// The separate role-selection screen. Choosing "I am hiring" or "I am looking
+// for work" was a whole extra page on desktop, which is a click and a page load
+// to answer a question that fits beside the headline. The choice now lives
+// here. Mobile keeps its own route: two large cards side by side is a desktop
+// shape, and stacking them on a phone just rebuilds the screen that already
+// exists.
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import type { useRouter } from "expo-router";
-import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useMemo, useState } from "react";
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { FontFamily } from "@/constants/GlobalStyles";
-import { layout } from "./theme";
-import { useLandingTheme, type LandingPalette, type SectionKey } from "./landingTheme";
+import { CONTAINER_MAX, useLandingTheme, type LandingPalette, type SectionKey } from "./landingTheme";
+
+type Role = "parent" | "helper";
+
+const ROLES: { role: Role; icon: keyof typeof Ionicons.glyphMap; title: string; body: string }[] = [
+  {
+    role: "parent",
+    icon: "home-outline",
+    title: "I'm hiring",
+    body: "Post the work, meet verified helpers, and hire on a Kasambahay-compliant contract.",
+  },
+  {
+    role: "helper",
+    icon: "briefcase-outline",
+    title: "I'm looking for work",
+    body: "Build a profile, get PESO-verified, and apply to households near you. Always free.",
+  },
+];
+
+function RoleCard({
+  item, router,
+}: {
+  item: (typeof ROLES)[number];
+  router: ReturnType<typeof useRouter>;
+}) {
+  const { c } = useLandingTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
+  const [hover, setHover] = useState(false);
+
+  return (
+    <Pressable
+      onHoverIn={() => setHover(true)}
+      onHoverOut={() => setHover(false)}
+      onPress={() => router.push({ pathname: "/(auth)/signup", params: { role: item.role } })}
+      style={[
+        s.roleCard,
+        {
+          borderColor: hover ? c.accent : c.glassBorder,
+          backgroundColor: hover ? c.accentSoft : c.glass,
+          ...(Platform.OS === "web"
+            ? ({
+                transition: "transform 200ms ease, border-color 200ms ease, background-color 200ms ease",
+                cursor: "pointer",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+              } as object)
+            : null),
+          transform: [{ translateY: hover ? -4 : 0 }],
+        },
+      ]}
+    >
+      <View style={[s.roleIcon, { backgroundColor: hover ? c.accent : c.accentSoft }]}>
+        <Ionicons name={item.icon} size={20} color={hover ? "#fff" : c.accent} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.roleTitle}>{item.title}</Text>
+        <Text style={s.roleBody}>{item.body}</Text>
+      </View>
+      <Ionicons name="arrow-forward" size={17} color={hover ? c.accent : c.textSubtle} />
+    </Pressable>
+  );
+}
 
 export function Hero({
   router,
@@ -22,62 +95,63 @@ export function Hero({
 }) {
   const { c } = useLandingTheme();
   const s = useMemo(() => makeStyles(c), [c]);
+  const { height, width } = useWindowDimensions();
+
+  // Fill the window, with a floor so a short laptop window does not crush the
+  // headline, and a ceiling so a very tall monitor does not strand the next
+  // section a full screen below the fold.
+  const heroHeight = Math.max(660, Math.min(height || 800, 920));
+  const stack = width < 1100;
 
   return (
-    <View style={s.heroWrap}>
+    <View style={[s.heroWrap, { minHeight: heroHeight }]}>
       <Image source={require("@/assets/landing/hero-photo.png")} style={StyleSheet.absoluteFill} contentFit="cover" />
-      <LinearGradient colors={c.heroOverlay} start={{ x: 10, y: 10 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
+      <LinearGradient
+        colors={c.heroOverlay}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.4 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* A second wash from the bottom so the hero meets the section below it
+          instead of ending on a hard horizontal edge across the photograph. */}
+      <LinearGradient
+        colors={["transparent", "transparent", c.bg]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
 
-      <SafeAreaView edges={["top"]}>
-      </SafeAreaView>
-
-      <View style={[layout.container, s.heroContent]}>
-        <View style={s.badge}>
-          <Ionicons name="shield-checkmark" size={13} color={c.gold} />
-          <Text style={s.badgeTxt}>PESO-VERIFIED PLATFORM</Text>
-        </View>
-
-        <Text style={s.heroTitle}>
-          Trusted Connections,{"\n"}
-          <Text style={{ color: c.accent }}>Better Lives.</Text>
-        </Text>
-
-        <Text style={s.heroSub}>
-          CareLink connects Filipino families with verified domestic helpers through PESO
-          oversight, DOLE-ready contracts, and smart employment management.
-        </Text>
-
-        <View style={s.heroCtas}>
-          <Pressable
-            style={s.ctaPrimary}
-            onPress={() => router.push({ pathname: "/(auth)/signup", params: { role: "parent" } })}
-          >
-            <Ionicons name="people" size={17} color="#fff" />
-            <Text style={s.ctaPrimaryTxt}>Find Helpers</Text>
-          </Pressable>
-          <Pressable
-            style={s.ctaSecondary}
-            onPress={() => router.push({ pathname: "/(auth)/signup", params: { role: "helper" } })}
-          >
-            <Ionicons name="briefcase-outline" size={17} color={c.text} />
-            <Text style={s.ctaSecondaryTxt}>Join as Helper</Text>
-          </Pressable>
-        </View>
-
-        <View style={s.trustRow}>
-          <View style={s.avatarStack}>
-            {[
-              require("@/assets/landing/parentprofile.png"),
-              require("@/assets/landing/helperprofile.png"),
-              require("@/assets/landing/parentprofile2.png"),
-              require("@/assets/landing/helperprofile2.png"),
-            ].map((src, i) => (
-              <View key={i} style={[s.avatarDot, { marginLeft: i === 0 ? 0 : -10, zIndex: 10 - i }]}>
-                <Image source={src} style={s.avatarImg} contentFit="cover" />
-              </View>
-            ))}
+      <View style={[s.container, s.row, { flexDirection: stack ? "column" : "row" }]}>
+        <View style={[s.left, { maxWidth: stack ? 640 : 560 }]}>
+          <View style={s.badge}>
+            <Ionicons name="shield-checkmark" size={13} color={c.gold} />
+            <Text style={s.badgeTxt}>PESO-VERIFIED PLATFORM</Text>
           </View>
-          <Text style={s.trustRowTxt}>Verified by PESO Ormoc · Contracts under RA 10361</Text>
+
+          <Text style={s.heroTitle}>
+            Trusted Connections,{"\n"}
+            <Text style={{ color: c.accent }}>Better Lives.</Text>
+          </Text>
+
+          <Text style={s.heroSub}>
+            CareLink connects Ormoc households with PESO-verified kasambahay — on contracts
+            written to the Batas Kasambahay, with the whole placement kept on the record.
+          </Text>
+
+          <Pressable style={s.learnRow} onPress={() => onNavigate("offer")}>
+            <Text style={s.learnTxt}>See what we offer</Text>
+            <Ionicons name="arrow-down" size={15} color={c.accent} />
+          </Pressable>
+        </View>
+
+        <View style={[s.right, { maxWidth: stack ? 640 : 430, marginTop: stack ? 34 : 0 }]}>
+          <Text style={s.rolePrompt}>Get started</Text>
+          {ROLES.map((r) => <RoleCard key={r.role} item={r} router={router} />)}
+
+          <Pressable style={s.loginRow} onPress={() => router.push("/(auth)/login")}>
+            <Text style={s.loginTxt}>
+              Already have an account? <Text style={{ color: c.accent, fontFamily: FontFamily.fredokaSemiBold }}>Log in</Text>
+            </Text>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -85,8 +159,17 @@ export function Hero({
 }
 
 const makeStyles = (c: LandingPalette) => StyleSheet.create({
-  heroWrap: { position: "relative", overflow: "hidden", backgroundColor: c.bg2, paddingBottom: 64 },
-  heroContent: { maxWidth: 620, paddingTop: 48, paddingBottom: 96 },
+  heroWrap: {
+    position: "relative", overflow: "hidden", backgroundColor: c.bg2,
+    justifyContent: "center",
+  },
+  container: {
+    width: "100%", maxWidth: CONTAINER_MAX, alignSelf: "center",
+    paddingHorizontal: 32, paddingTop: 96, paddingBottom: 56,
+  },
+  row: { alignItems: "center", gap: 56, justifyContent: "space-between" },
+  left: { flex: 1 },
+  right: { flex: 1, width: "100%", gap: 12 },
 
   badge: {
     flexDirection: "row", alignItems: "center", gap: 7,
@@ -96,25 +179,24 @@ const makeStyles = (c: LandingPalette) => StyleSheet.create({
   },
   badgeTxt: { fontSize: 11, fontFamily: FontFamily.fredokaSemiBold, color: c.gold, letterSpacing: 0.6 },
 
-  heroTitle: { fontSize: 46, fontFamily: FontFamily.fredokaSemiBold, color: c.text, lineHeight: 54, letterSpacing: -1, marginBottom: 18 },
-  heroSub: { fontSize: 16, fontFamily: FontFamily.fredokaRegular, color: c.textMuted, lineHeight: 25, marginBottom: 30, maxWidth: 480 },
+  heroTitle: { fontSize: 48, fontFamily: FontFamily.fredokaSemiBold, color: c.text, lineHeight: 56, letterSpacing: -1, marginBottom: 18 },
+  heroSub: { fontSize: 16, fontFamily: FontFamily.fredokaRegular, color: c.textMuted, lineHeight: 26, marginBottom: 26, maxWidth: 500 },
 
-  heroCtas: { flexDirection: "row", gap: 14, marginBottom: 28, flexWrap: "wrap" },
-  ctaPrimary: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: c.accent, borderRadius: 14, paddingHorizontal: 22, paddingVertical: 14,
-  },
-  ctaPrimaryTxt: { fontSize: 15, fontFamily: FontFamily.fredokaSemiBold, color: "#fff" },
-  ctaSecondary: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    borderRadius: 14, paddingHorizontal: 22, paddingVertical: 14,
-    borderWidth: 1.5, borderColor: "rgba(255,255,255,0.3)",
-  },
-  ctaSecondaryTxt: { fontSize: 15, fontFamily: FontFamily.fredokaSemiBold, color: c.text },
+  learnRow: { flexDirection: "row", alignItems: "center", gap: 7, alignSelf: "flex-start" },
+  learnTxt: { fontSize: 14.5, fontFamily: FontFamily.fredokaSemiBold, color: c.accent },
 
-  trustRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  avatarStack: { flexDirection: "row" },
-  avatarDot: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: c.bg, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  avatarImg: { width: "100%", height: "100%" },
-  trustRowTxt: { fontSize: 13, fontFamily: FontFamily.fredokaRegular, color: c.textMuted },
+  rolePrompt: {
+    fontSize: 11.5, fontFamily: FontFamily.fredokaSemiBold, color: c.textSubtle,
+    letterSpacing: 1.6, marginBottom: 4,
+  },
+  roleCard: {
+    flexDirection: "row", alignItems: "center", gap: 15,
+    borderWidth: 1, borderRadius: 17, padding: 19,
+  },
+  roleIcon: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  roleTitle: { fontSize: 16.5, fontFamily: FontFamily.fredokaSemiBold, color: c.text, marginBottom: 4 },
+  roleBody: { fontSize: 13.5, fontFamily: FontFamily.fredokaRegular, color: c.textMuted, lineHeight: 20 },
+
+  loginRow: { alignSelf: "flex-start", marginTop: 6 },
+  loginTxt: { fontSize: 13.5, fontFamily: FontFamily.fredokaRegular, color: c.textMuted },
 });

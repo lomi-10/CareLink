@@ -158,7 +158,6 @@ export const CONTAINER_MAX = 1180;
 /** Sections the nav tracks. Order matters: scroll position is matched against it. */
 export const SECTIONS = [
   { key: 'offer', label: 'What We Offer' },
-  { key: 'management', label: 'Work Mode' },
   { key: 'trust', label: 'Trust & Safety' },
   { key: 'team', label: 'Team' },
 ] as const;
