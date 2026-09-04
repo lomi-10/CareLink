@@ -141,7 +141,13 @@ export function WhatWeOffer() {
 }
 
 const makeStyles = (c: LandingPalette) => StyleSheet.create({
-  section: { paddingVertical: 80 },
+  // Padding, not a forced viewport height. Pinning every section to 100vh
+  // sounds tidy and reads badly: a short section gets stranded in dead space
+  // and a tall one gets clipped, and the page turns into a slideshow that
+  // fights being read. Only the hero owns a full screen, because being the
+  // whole of the first view is its actual job. Everything else is sized by
+  // its content, with a floor so nothing reads as a strip.
+  section: { paddingVertical: 96, minHeight: 640, justifyContent: 'center' },
   container: { width: '100%', maxWidth: CONTAINER_MAX, alignSelf: 'center', paddingHorizontal: 32 },
   head: { alignItems: 'center', marginBottom: 44 },
   eyebrow: {

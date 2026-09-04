@@ -58,7 +58,7 @@ export function BuiltOnTrust() {
 }
 
 const makeStyles = (c: LandingPalette) => StyleSheet.create({
-  trustWrap: { position: "relative", overflow: "hidden", backgroundColor: c.bg2 },
+  trustWrap: { position: "relative", overflow: "hidden", backgroundColor: c.bg2, minHeight: 620, justifyContent: "center" },
   trustOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(15,9,4,0.85)" },
   trustInner: { flexDirection: "row", alignItems: "center", gap: 48 },
   trustLeft: { flex: 1 },

@@ -79,12 +79,32 @@ export function Team() {
   return (
     <View style={s.section}>
       <View style={s.container}>
-        <Text style={[s.eyebrow, { color: c.accent }]}>THE TEAM</Text>
-        <Text style={[s.heading, { color: c.text }]}>Built by students, for Ormoc</Text>
-        <Text style={[s.sub, { color: c.textMuted }]}>
-          CareLink is a BSIT capstone project developed with PESO Ormoc, built around the
-          Batas Kasambahay and the way hiring actually happens here.
-        </Text>
+        <View style={[s.headRow, { flexDirection: wide ? 'row' : 'column' }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.eyebrow, { color: c.accent }]}>THE TEAM</Text>
+            <Text style={[s.heading, { color: c.text }]}>Built by students, for Ormoc</Text>
+            <Text style={[s.sub, { color: c.textMuted }]}>
+              CareLink is a BSIT capstone project developed with PESO Ormoc, built around the
+              Batas Kasambahay and the way hiring actually happens here.
+            </Text>
+          </View>
+
+          {/* The partnership is the most credible thing on this page, so it gets
+              a panel rather than a line of text. */}
+          <View style={[s.pesoPanel, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+            <Image
+              source={require("@/assets/landing/large-peso-ormoc-logo.png")}
+              style={s.pesoLogo}
+              contentFit="contain"
+            />
+            <Text style={[s.pesoTxt, { color: c.textMuted }]}>
+              Developed with the{' '}
+              <Text style={{ color: c.text, fontFamily: FontFamily.fredokaSemiBold }}>
+                Public Employment Service Office, Ormoc City
+              </Text>
+            </Text>
+          </View>
+        </View>
 
         <View style={[s.grid, { flexWrap: wide ? 'nowrap' : 'wrap', maxWidth: wide ? 760 : undefined }]}>
           {TEAM.map((m) => <Card key={m.name + m.role} m={m} wide={wide} />)}
@@ -105,11 +125,18 @@ export function Team() {
 }
 
 const s = StyleSheet.create({
-  section: { paddingVertical: 72 },
+  section: { paddingVertical: 96, minHeight: 620, justifyContent: 'center' },
   container: { width: '100%', maxWidth: CONTAINER_MAX, alignSelf: 'center', paddingHorizontal: 32 },
   eyebrow: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, letterSpacing: 1.6, marginBottom: 10 },
   heading: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 34, letterSpacing: -0.5, marginBottom: 10 },
-  sub: { fontFamily: FontFamily.fredokaRegular, fontSize: 15, lineHeight: 24, maxWidth: 620, marginBottom: 34 },
+  sub: { fontFamily: FontFamily.fredokaRegular, fontSize: 15, lineHeight: 24, maxWidth: 560 },
+  headRow: { gap: 32, alignItems: 'center', marginBottom: 40 },
+  pesoPanel: {
+    borderWidth: 1, borderRadius: 20, padding: 22, alignItems: 'center', gap: 14,
+    width: 260, alignSelf: 'flex-start',
+  },
+  pesoLogo: { width: 96, height: 96 },
+  pesoTxt: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, lineHeight: 19, textAlign: 'center' },
   grid: { flexDirection: 'row', gap: 16 },
   card: { borderRadius: 18, borderWidth: 1, padding: 20, alignItems: 'center', gap: 4 },
   photo: { width: 76, height: 76, borderRadius: 38, marginBottom: 12 },

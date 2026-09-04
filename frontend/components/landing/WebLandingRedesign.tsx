@@ -48,8 +48,12 @@ function LandingBody() {
   };
 
   const scrollToSection = useCallback((key: SectionKey) => {
-    // Land the section title just below the nav rather than under it.
-    scrollRef.current?.scrollTo({ y: Math.max(0, sectionY.current[key] - NAV_HEIGHT - 12), animated: true });
+    // Land on the section boundary EXACTLY. Subtracting the nav height here
+    // scrolled short by that much, which left a strip of the previous section
+    // showing above — the hero peeking under the nav on the first jump. Each
+    // section carries its own top padding, so the boundary landing at the
+    // viewport top already puts the heading clear of the nav.
+    scrollRef.current?.scrollTo({ y: Math.max(0, sectionY.current[key]), animated: true });
   }, []);
 
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {

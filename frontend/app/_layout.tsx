@@ -45,7 +45,9 @@ function RootLayoutInner() {
     <ThemeProvider value={navigationTheme}>
       <Stack>
         {/* 1. The Landing Page (No folder, sits at app/index.tsx) */}
-        <Stack.Screen name="index" options={{ headerShown: false }} />
+        {/* title is the browser tab. Without it the tab fell back to the
+            hostname, so a bookmarked CareLink read "carelink-ph.com". */}
+        <Stack.Screen name="index" options={{ headerShown: false, title: "CareLink — Kasambahay hiring, verified by PESO Ormoc" }} />
 
         {/* 2. The Auth Group (Login, Signup, Welcome) */}
         {/* This covers: app/(auth)/login.tsx, app/(auth)/signup.tsx */}

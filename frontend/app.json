@@ -26,7 +26,12 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "CareLink",
+      "shortName": "CareLink",
+      "description": "PESO-verified kasambahay hiring for Ormoc, on contracts written to the Batas Kasambahay.",
+      "themeColor": "#EA6F2A",
+      "backgroundColor": "#140B04"
     },
     "plugins": [
       "expo-router",
