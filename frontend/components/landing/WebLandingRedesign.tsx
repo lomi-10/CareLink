@@ -20,6 +20,7 @@ import { BuiltOnTrust } from './web/BuiltOnTrust';
 import { Footer } from './web/Footer';
 import { Hero } from './web/Hero';
 import { LandingSplash } from './web/LandingSplash';
+import { RoleSelection } from './web/RoleSelection';
 import { WhatWeOffer } from './web/WhatWeOffer';
 import { StickyNav, NAV_HEIGHT } from './web/StickyNav';
 import { Team } from './web/Team';
@@ -36,7 +37,7 @@ function LandingBody() {
   const scrollRef = useRef<ScrollView>(null);
 
   const sectionY = useRef<Record<SectionKey, number>>({
-    offer: 0, trust: 0, team: 0,
+    roles: 0, offer: 0, trust: 0, team: 0,
   });
 
   const [active, setActive] = useState<SectionKey | null>(null);
@@ -95,6 +96,7 @@ function LandingBody() {
       >
         <Hero router={router} onNavigate={scrollToSection} />
 
+        <View onLayout={captureY('roles')}><RoleSelection router={router} /></View>
         <View onLayout={captureY('offer')}><WhatWeOffer /></View>
         <View onLayout={captureY('trust')}><BuiltOnTrust /></View>
         <View onLayout={captureY('team')}><Team /></View>

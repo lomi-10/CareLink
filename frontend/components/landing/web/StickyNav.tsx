@@ -110,15 +110,14 @@ export function StickyNav({
               <Ionicons name={mode === 'dark' ? 'sunny-outline' : 'moon-outline'} size={16} color={c.text} />
             </Pressable>
 
-            <Pressable onPress={() => router.push('/(auth)/login')} style={s.ghostBtn}>
-              <Text style={[s.ghostTxt, { color: c.textMuted }]}>Log in</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => router.push('/(auth)/role-selection')}
-              style={[s.cta, { backgroundColor: c.accent }]}
-            >
-              <Text style={s.ctaTxt}>Get started</Text>
+            {/* Get started used to sit here and now lives at the bottom centre
+                of the hero. Three controls in one corner — a theme switch, a
+                log in and a sign up — split the same glance three ways; the
+                hero button gets the whole of it. Once the visitor scrolls past
+                the hero, the Get Started nav link scrolls them back to the
+                role cards, so the path is never more than one click away. */}
+            <Pressable onPress={() => router.push('/(auth)/login')} style={[s.cta, { backgroundColor: c.accent }]}>
+              <Text style={s.ctaTxt}>Log in</Text>
             </Pressable>
           </View>
         </View>

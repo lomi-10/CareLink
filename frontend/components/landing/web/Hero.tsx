@@ -1,20 +1,17 @@
 // components/landing/web/Hero.tsx
 //
-// Full-viewport hero: photograph left, role choice right.
+// Full-viewport hero: one centred statement, one action.
 //
-// TWO PROBLEMS THIS SOLVES
+// The action sits at the BOTTOM CENTRE rather than in the top-right nav. Up
+// there it competed with Log in and the theme switch for the same glance; here
+// the eye finishes the headline and lands on it. It does not leave the page —
+// it scrolls to the role section directly below, so choosing between hiring
+// and looking for work costs a scroll instead of a page load.
 //
-// Height. The hero used to size itself to its content, so on a tall window the
-// photograph stopped partway down and the page's flat background showed
-// underneath it as a dark band. A hero has to own the first screen — it is the
-// only element whose job is to be the whole of what you see first.
-//
-// The separate role-selection screen. Choosing "I am hiring" or "I am looking
-// for work" was a whole extra page on desktop, which is a click and a page load
-// to answer a question that fits beside the headline. The choice now lives
-// here. Mobile keeps its own route: two large cards side by side is a desktop
-// shape, and stacking them on a phone just rebuilds the screen that already
-// exists.
+// Height is floored and capped rather than left to the content: sized to its
+// text, the photograph stopped partway down a tall window and the page ground
+// showed underneath it as a dark band.
+
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,68 +20,7 @@ import React, { useMemo, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { FontFamily } from "@/constants/GlobalStyles";
-import { CONTAINER_MAX, useLandingTheme, type LandingPalette, type SectionKey } from "./landingTheme";
-
-type Role = "parent" | "helper";
-
-const ROLES: { role: Role; icon: keyof typeof Ionicons.glyphMap; title: string; body: string }[] = [
-  {
-    role: "parent",
-    icon: "home-outline",
-    title: "I'm hiring",
-    body: "Post the work, meet verified helpers, and hire on a Kasambahay-compliant contract.",
-  },
-  {
-    role: "helper",
-    icon: "briefcase-outline",
-    title: "I'm looking for work",
-    body: "Build a profile, get PESO-verified, and apply to households near you. Always free.",
-  },
-];
-
-function RoleCard({
-  item, router,
-}: {
-  item: (typeof ROLES)[number];
-  router: ReturnType<typeof useRouter>;
-}) {
-  const { c } = useLandingTheme();
-  const s = useMemo(() => makeStyles(c), [c]);
-  const [hover, setHover] = useState(false);
-
-  return (
-    <Pressable
-      onHoverIn={() => setHover(true)}
-      onHoverOut={() => setHover(false)}
-      onPress={() => router.push({ pathname: "/(auth)/signup", params: { role: item.role } })}
-      style={[
-        s.roleCard,
-        {
-          borderColor: hover ? c.accent : c.glassBorder,
-          backgroundColor: hover ? c.accentSoft : c.glass,
-          ...(Platform.OS === "web"
-            ? ({
-                transition: "transform 200ms ease, border-color 200ms ease, background-color 200ms ease",
-                cursor: "pointer",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-              } as object)
-            : null),
-          transform: [{ translateY: hover ? -4 : 0 }],
-        },
-      ]}
-    >
-      <View style={[s.roleIcon, { backgroundColor: hover ? c.accent : c.accentSoft }]}>
-        <Ionicons name={item.icon} size={20} color={hover ? "#fff" : c.accent} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={s.roleTitle}>{item.title}</Text>
-        <Text style={s.roleBody}>{item.body}</Text>
-      </View>
-      <Ionicons name="arrow-forward" size={17} color={hover ? c.accent : c.textSubtle} />
-    </Pressable>
-  );
-}
+import { useLandingTheme, type LandingPalette, type SectionKey } from "./landingTheme";
 
 export function Hero({
   router,
@@ -95,108 +31,89 @@ export function Hero({
 }) {
   const { c } = useLandingTheme();
   const s = useMemo(() => makeStyles(c), [c]);
-  const { height, width } = useWindowDimensions();
+  const { height } = useWindowDimensions();
+  const [hover, setHover] = useState(false);
 
-  // Fill the window, with a floor so a short laptop window does not crush the
-  // headline, and a ceiling so a very tall monitor does not strand the next
-  // section a full screen below the fold.
+  // Fill the window, floored so a short laptop cannot crush the headline and
+  // capped so a tall monitor does not strand the next section a screen below.
   const heroHeight = Math.max(660, Math.min(height || 800, 920));
-  const stack = width < 1100;
 
   return (
     <View style={[s.heroWrap, { minHeight: heroHeight }]}>
       <Image source={require("@/assets/landing/hero-photo.png")} style={StyleSheet.absoluteFill} contentFit="cover" />
-      <LinearGradient
-        colors={c.heroOverlay}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.4 }}
-        style={StyleSheet.absoluteFill}
-      />
-      {/* A second wash from the bottom so the hero meets the section below it
-          instead of ending on a hard horizontal edge across the photograph. */}
-      <LinearGradient
-        colors={["transparent", "transparent", c.bg]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
+      <LinearGradient colors={c.heroOverlay} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }} style={StyleSheet.absoluteFill} />
+      {/* A second wash from the bottom so the photograph meets the section
+          below it instead of ending on a hard horizontal edge. */}
+      <LinearGradient colors={["transparent", "transparent", c.bg]} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
-      <View style={[s.container, s.row, { flexDirection: stack ? "column" : "row" }]}>
-        <View style={[s.left, { maxWidth: stack ? 640 : 560 }]}>
-          <View style={s.badge}>
-            <Ionicons name="shield-checkmark" size={13} color={c.gold} />
-            <Text style={s.badgeTxt}>PESO-VERIFIED PLATFORM</Text>
-          </View>
-
-          <Text style={s.heroTitle}>
-            Trusted Connections,{"\n"}
-            <Text style={{ color: c.accent }}>Better Lives.</Text>
-          </Text>
-
-          <Text style={s.heroSub}>
-            CareLink connects Ormoc households with PESO-verified kasambahay — on contracts
-            written to the Batas Kasambahay, with the whole placement kept on the record.
-          </Text>
-
-          <Pressable style={s.learnRow} onPress={() => onNavigate("offer")}>
-            <Text style={s.learnTxt}>See what we offer</Text>
-            <Ionicons name="arrow-down" size={15} color={c.accent} />
-          </Pressable>
+      <View style={s.center}>
+        <View style={s.badge}>
+          <Ionicons name="shield-checkmark" size={13} color={c.gold} />
+          <Text style={s.badgeTxt}>PESO-VERIFIED PLATFORM</Text>
         </View>
 
-        <View style={[s.right, { maxWidth: stack ? 640 : 430, marginTop: stack ? 34 : 0 }]}>
-          <Text style={s.rolePrompt}>Get started</Text>
-          {ROLES.map((r) => <RoleCard key={r.role} item={r} router={router} />)}
+        <Text style={s.heroTitle}>
+          Trusted Connections,{"\n"}
+          <Text style={{ color: c.accent }}>Better Lives.</Text>
+        </Text>
 
-          <Pressable style={s.loginRow} onPress={() => router.push("/(auth)/login")}>
-            <Text style={s.loginTxt}>
-              Already have an account? <Text style={{ color: c.accent, fontFamily: FontFamily.fredokaSemiBold }}>Log in</Text>
-            </Text>
-          </Pressable>
-        </View>
+        <Text style={s.heroSub}>
+          CareLink connects Ormoc households with PESO-verified kasambahay — on contracts
+          written to the Batas Kasambahay, with the whole placement kept on the record.
+        </Text>
       </View>
+
+      {/* Bottom centre, deliberately. It is the only action in the hero, and
+          putting it here means the eye finishes the headline and lands on it —
+          rather than hunting the top-right corner, where it used to live and
+          competed with Log in and the theme switch for the same glance. */}
+      <Pressable
+        onHoverIn={() => setHover(true)}
+        onHoverOut={() => setHover(false)}
+        onPress={() => onNavigate("roles")}
+        style={[
+          s.getStarted,
+          {
+            backgroundColor: c.accent,
+            ...(Platform.OS === "web"
+              ? ({ transition: "transform 200ms ease, box-shadow 200ms ease", cursor: "pointer",
+                   boxShadow: hover ? `0 16px 40px -14px ${c.accent}` : "none" } as object)
+              : null),
+            transform: [{ translateY: hover ? -3 : 0 }],
+          },
+        ]}
+      >
+        <Text style={s.getStartedTxt}>Get started</Text>
+        <Ionicons name="arrow-down" size={17} color="#fff" />
+      </Pressable>
     </View>
   );
 }
 
 const makeStyles = (c: LandingPalette) => StyleSheet.create({
-  heroWrap: {
-    position: "relative", overflow: "hidden", backgroundColor: c.bg2,
-    justifyContent: "center",
-  },
-  container: {
-    width: "100%", maxWidth: CONTAINER_MAX, alignSelf: "center",
-    paddingHorizontal: 32, paddingTop: 96, paddingBottom: 56,
-  },
-  row: { alignItems: "center", gap: 56, justifyContent: "space-between" },
-  left: { flex: 1 },
-  right: { flex: 1, width: "100%", gap: 12 },
+  heroWrap: { position: "relative", overflow: "hidden", backgroundColor: c.bg2, justifyContent: "center", alignItems: "center" },
+  center: { width: "100%", maxWidth: 760, paddingHorizontal: 32, alignItems: "center", paddingBottom: 40 },
 
   badge: {
     flexDirection: "row", alignItems: "center", gap: 7,
     backgroundColor: "rgba(246,196,83,0.15)", borderWidth: 1, borderColor: "rgba(246,196,83,0.4)",
-    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,
-    alignSelf: "flex-start", marginBottom: 18,
+    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 22,
   },
   badgeTxt: { fontSize: 11, fontFamily: FontFamily.fredokaSemiBold, color: c.gold, letterSpacing: 0.6 },
 
-  heroTitle: { fontSize: 48, fontFamily: FontFamily.fredokaSemiBold, color: c.text, lineHeight: 56, letterSpacing: -1, marginBottom: 18 },
-  heroSub: { fontSize: 16, fontFamily: FontFamily.fredokaRegular, color: c.textMuted, lineHeight: 26, marginBottom: 26, maxWidth: 500 },
-
-  learnRow: { flexDirection: "row", alignItems: "center", gap: 7, alignSelf: "flex-start" },
-  learnTxt: { fontSize: 14.5, fontFamily: FontFamily.fredokaSemiBold, color: c.accent },
-
-  rolePrompt: {
-    fontSize: 11.5, fontFamily: FontFamily.fredokaSemiBold, color: c.textSubtle,
-    letterSpacing: 1.6, marginBottom: 4,
+  heroTitle: {
+    fontSize: 56, fontFamily: FontFamily.fredokaSemiBold, color: c.text,
+    lineHeight: 64, letterSpacing: -1.4, marginBottom: 20, textAlign: "center",
   },
-  roleCard: {
-    flexDirection: "row", alignItems: "center", gap: 15,
-    borderWidth: 1, borderRadius: 17, padding: 19,
+  heroSub: {
+    fontSize: 17, fontFamily: FontFamily.fredokaRegular, color: c.textMuted,
+    lineHeight: 28, textAlign: "center", maxWidth: 620,
   },
-  roleIcon: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center" },
-  roleTitle: { fontSize: 16.5, fontFamily: FontFamily.fredokaSemiBold, color: c.text, marginBottom: 4 },
-  roleBody: { fontSize: 13.5, fontFamily: FontFamily.fredokaRegular, color: c.textMuted, lineHeight: 20 },
 
-  loginRow: { alignSelf: "flex-start", marginTop: 6 },
-  loginTxt: { fontSize: 13.5, fontFamily: FontFamily.fredokaRegular, color: c.textMuted },
+  getStarted: {
+    position: "absolute", bottom: 52, alignSelf: "center",
+    flexDirection: "row", alignItems: "center", gap: 10,
+    borderRadius: 15, paddingHorizontal: 30, paddingVertical: 16,
+  },
+  getStartedTxt: { fontSize: 16, fontFamily: FontFamily.fredokaSemiBold, color: "#fff" },
 });
