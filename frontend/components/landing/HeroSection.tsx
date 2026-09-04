@@ -37,9 +37,9 @@ const FrameComponent = () => {
         {/* Item 2 */}
         <View style={[styles.verifiedContainer, styles.frameParentFlexBox]}>
           <F7person3 width={Width.width_40} height={Height.height_40} />
-          <Text style={[styles.verifiedHelpers, styles.helpersFlexBox]}>Trusted by Families</Text>
+          <Text style={[styles.verifiedHelpers, styles.helpersFlexBox]}>Free for Helpers</Text>
           <Text style={[styles.allHelpersAre, styles.findOrHireTypo]}>
-            Thousand of families hire with confidence.
+            Helpers are never charged, at any stage.
           </Text>
         </View>
 

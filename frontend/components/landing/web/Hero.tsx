@@ -77,7 +77,7 @@ export function Hero({
               </View>
             ))}
           </View>
-          <Text style={s.trustRowTxt}>Thousands of families and helpers trust CareLink</Text>
+          <Text style={s.trustRowTxt}>Verified by PESO Ormoc · Contracts under RA 10361</Text>
         </View>
       </View>
     </View>

@@ -32,9 +32,12 @@ export function BottomCta({ router }: { router: ReturnType<typeof useRouter> }) 
             pointerEvents="none"
           />
           <Text style={s.ctaBandTitle}>Ready to find trusted help?</Text>
+          {/* Was "Join thousands of Filipino families and domestic helpers" on a
+              system with no users yet. The invitation works without the crowd —
+              and what replaces it is a claim that survives being questioned. */}
           <Text style={s.ctaBandSub}>
-            Join thousands of Filipino families and domestic helpers using CareLink — the
-            PESO-verified platform.
+            Hire a kasambahay through PESO Ormoc, on a contract that follows the
+            Batas Kasambahay from the first day to the last.
           </Text>
           <View style={s.ctaBandBtns}>
             <Pressable

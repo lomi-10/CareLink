@@ -108,7 +108,7 @@ const LandingPage = () => {
               <View style={styles.features}>
                 <Feature icon="shield-checkmark" title="Verified Helpers" desc="All helpers are PESO-verified and DOLE-ready." />
                 <View style={styles.featureDivider} />
-                <Feature icon="people" title="Trusted by Families" desc="Thousands of families hire with confidence." />
+                <Feature icon="people" title="Free for Helpers" desc="Helpers are never charged, at any stage." />
                 <View style={styles.featureDivider} />
                 <Feature icon="time" title="Fast & Easy" desc="Simple steps to find the right match." />
               </View>
