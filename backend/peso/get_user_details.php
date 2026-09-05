@@ -343,6 +343,19 @@ try {
     }
     $documentsStmt->close();
 
+    // Manual clearance checks — what an officer reported seeing on the NBI or
+    // PNP portal. Read-only here; recorded by peso/record_clearance_check.php.
+    // Attached after the loop so it costs one query for the whole set rather
+    // than one per document.
+    require_once __DIR__ . '/../shared/clearance_checks_table.php';
+    $clearanceChecks = carelink_latest_clearance_checks(
+        $conn,
+        array_map(static fn($d) => $d['document_id'], $documents)
+    );
+    foreach ($documents as $i => $d) {
+        $documents[$i]['clearance_check'] = $clearanceChecks[$d['document_id']] ?? null;
+    }
+
     error_log("Found " . count($documents) . " documents for user $user_id");
 
     // ========================================================================

@@ -17,6 +17,7 @@ import NotificationModal from "./NotificationModal";
 import API_URL from "@/constants/api";
 import { CredentialBadge, CredentialWall, credentialStateFor } from "../shared/CredentialBadge";
 import { DocumentViewerModal } from "./DocumentViewerModal";
+import { ClearanceVerification, isClearanceDocument } from "./ClearanceVerification";
 import { credentialSpec } from "@/constants/credentials";
 import { usePesoTheme, radius, type PesoColors } from "@/contexts/PesoThemeContext";
 import { formatParentHouseholdType } from "@/constants/parentHousehold";
@@ -493,6 +494,34 @@ export default function UserDetailPanel({
                         <Text key={i} style={st.warnBoxText}>• {w}</Text>
                       ))}
                     </View>
+                  )}
+
+                  {/* Manual portal check, for the two clearances CareLink cannot
+                      authenticate itself. Sits ABOVE the decision row on purpose:
+                      it is evidence the officer weighs before approving, not an
+                      action that competes with Approve and Reject. */}
+                  {isClearanceDocument(doc.document_type) && (
+                    <ClearanceVerification
+                      documentId={doc.document_id}
+                      documentType={doc.document_type}
+                      aiFields={doc.ai_fields}
+                      existing={doc.clearance_check ?? null}
+                      staffUserId={verifierId}
+                      onRecorded={(check) => {
+                        // Patch just this document in place. Refetching would
+                        // rebuild the whole panel and throw away the officer's
+                        // scroll position mid-review.
+                        setUserData((prev: any) => {
+                          if (!prev?.documents) return prev;
+                          return {
+                            ...prev,
+                            documents: prev.documents.map((d: any) =>
+                              d.document_id === doc.document_id ? { ...d, clearance_check: check } : d
+                            ),
+                          };
+                        });
+                      }}
+                    />
                   )}
 
                   <View style={st.docActions}>

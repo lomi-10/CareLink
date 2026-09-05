@@ -116,6 +116,7 @@ $migrations = [
     'shared/subscriptions_table.php'      => ['ensure_subscriptions_table'],
     'shared/system_feedback_table.php'    => ['ensure_system_feedback_table'],
     'shared/task_checklist_table.php'     => ['ensure_task_checklist_items_table'],
+    'shared/clearance_checks_table.php'   => ['ensure_clearance_checks_table'],
     'peso/application_flags_table.php'    => ['carelink_ensure_application_flags_table'],
 ];
 
@@ -159,7 +160,7 @@ $created = array_values(array_diff($after, $before));
 $known = [
     'application_document_shares', 'application_flags', 'application_tasks', 'attendance_logs',
     'auth_codes', 'auth_tokens', 'complaint_actions', 'complaints',
-    'contract_signatures', 'contracts', 'credential_flags', 'feedback_answers',
+    'clearance_checks', 'contract_signatures', 'contracts', 'credential_flags', 'feedback_answers',
     'feedback_questions', 'helper_jobs', 'helper_languages', 'helper_profiles',
     'helper_skills', 'helper_work_history', 'interview_feedback', 'interview_notes',
     'interview_reviews', 'interview_schedules', 'job_applications', 'job_invites',
