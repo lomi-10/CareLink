@@ -28,11 +28,11 @@ type Member = {
 // Three members. ⚠ The two placeholder names below still need replacing.
 const TEAM: Member[] = [
   { name: 'Jess David Almeñe', role: 'Lead Developer' },
-  { name: 'Team Member 2', role: 'Documentation' },
-  { name: 'Team Member 3', role: 'Quality Assurance' },
+  { name: 'Sean Howie Eulogio', role: 'Documentation' },
+  { name: 'Kirby L. Calderon', role: 'Quality Assurance' },
 ];
 
-const ADVISER: Member | null = { name: 'Capstone Adviser', role: 'Adviser' };
+const ADVISER: Member | null = { name: 'Mr. Joscoro Cantero', role: 'Adviser' };
 
 function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
