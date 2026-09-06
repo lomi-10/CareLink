@@ -4,7 +4,6 @@
 // Web:    centered form on dark background, same theming
 
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -437,6 +436,7 @@ export default function SignUpScreen() {
                       <TextInput
                         style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
                         placeholder="Juan" placeholderTextColor={t.placeholder}
+                        autoComplete="given-name"
                         value={form.first_name} onChangeText={(v) => handleChange('first_name', v)}
                       />
                     </View>
@@ -445,25 +445,29 @@ export default function SignUpScreen() {
                       <TextInput
                         style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
                         placeholder="Dela Cruz" placeholderTextColor={t.placeholder}
+                        autoComplete="family-name"
                         value={form.last_name} onChangeText={(v) => handleChange('last_name', v)}
                       />
                     </View>
                   </View>
 
-                  <Text style={[d.fieldLabel, { color: t.label, marginTop: 14 }]}>Middle name <Text style={{ color: t.optional }}>(optional)</Text></Text>
-                  <TextInput
-                    style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText, marginBottom: 16 }]}
-                    placeholder="Optional" placeholderTextColor={t.placeholder}
-                    value={form.middle_name} onChangeText={(v) => handleChange('middle_name', v)}
-                  />
+                  <View style={d.field}>
+                    <Text style={[d.fieldLabel, { color: t.label }]}>Middle name <Text style={{ color: t.optional }}>(optional)</Text></Text>
+                    <TextInput
+                      style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
+                      placeholder="Optional" placeholderTextColor={t.placeholder}
+                      autoComplete="additional-name"
+                      value={form.middle_name} onChangeText={(v) => handleChange('middle_name', v)}
+                    />
+                  </View>
 
-                  <View style={d.gridRow}>
+                  <View style={[d.gridRow, d.gridRowWithHint]}>
                     <View style={d.col}>
                       <Text style={[d.fieldLabel, { color: t.label }]}>Email <Text style={{ color: t.required }}>*</Text></Text>
                       <TextInput
                         style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
                         placeholder="you@email.com" placeholderTextColor={t.placeholder}
-                        keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
+                        keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email"
                         value={form.email} onChangeText={(v) => handleChange('email', v)}
                       />
                     </View>
@@ -472,20 +476,21 @@ export default function SignUpScreen() {
                       <TextInput
                         style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
                         placeholder="0917 123 4567" placeholderTextColor={t.placeholder}
-                        keyboardType="phone-pad" autoCapitalize="none" autoCorrect={false} maxLength={16}
+                        keyboardType="phone-pad" autoCapitalize="none" autoCorrect={false} maxLength={16} autoComplete="tel"
                         value={form.phone} onChangeText={(v) => handleChange('phone', v)}
                       />
                     </View>
                   </View>
                   <Text style={[d.hint, { color: t.placeholder }]}>You can sign in with either your email or mobile number.</Text>
 
-                  <View style={d.gridRow}>
+                  <View style={[d.gridRow, d.gridRowWithHint]}>
                     <View style={d.col}>
                       <Text style={[d.fieldLabel, { color: t.label }]}>Password <Text style={{ color: t.required }}>*</Text></Text>
                       <View style={[d.pwRow, { backgroundColor: t.inputBg, borderColor: t.inputBorder }]}>
                         <TextInput
                           style={[d.pwInput, { color: t.inputText }]}
                           placeholder="Create a password" placeholderTextColor={t.placeholder}
+                          autoComplete="new-password"
                           secureTextEntry={!showPassword}
                           value={form.password} onChangeText={(v) => handleChange('password', v)}
                         />
@@ -500,6 +505,7 @@ export default function SignUpScreen() {
                         <TextInput
                           style={[d.pwInput, { color: t.inputText }]}
                           placeholder="Repeat password" placeholderTextColor={t.placeholder}
+                          autoComplete="new-password"
                           secureTextEntry={!showConfirmPassword}
                           value={form.confirmpass} onChangeText={(v) => handleChange('confirmpass', v)}
                         />

@@ -5,6 +5,10 @@
 import { Platform, StyleSheet } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
 
+// One number for the space between fields, so the form has a rhythm instead
+// of a collection of individual opinions.
+const FIELD_GAP = 16;
+
 export const s = StyleSheet.create({
 
   // ── Page header (dark background area) ──────────────────────────────────────
@@ -259,8 +263,22 @@ export const d = StyleSheet.create({
   },
   pillText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13 },
 
-  // Two-column field grid — each row is either one 2-col pair or one full row.
-  gridRow: { flexDirection: 'row', gap: 14 },
+  // Two-column field grid.
+  //
+  // ONE SOURCE OF VERTICAL RHYTHM. Rows used to carry no bottom margin, so the
+  // gap between them was whatever inline marginBottom happened to be pasted on
+  // an individual input — 16 on the middle name, nothing on the others. Fields
+  // therefore sat at different distances depending on which row they were in.
+  // The gap belongs to the row, not to the input inside it.
+  gridRow: { flexDirection: 'row', gap: 14, marginBottom: FIELD_GAP },
+
+  // A row whose explanation sits underneath it: the hint supplies the gap
+  // instead, so the two are one block rather than two floating apart.
+  gridRowWithHint: { marginBottom: 6 },
+
+  // Full-width field. Same rhythm as a row, without the columns.
+  field: { marginBottom: FIELD_GAP },
+
   col: { flex: 1, minWidth: 0 },
 
   fieldLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, marginBottom: 7 },
@@ -274,12 +292,19 @@ export const d = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 12, gap: 8,
   },
   pwInput: { fontFamily: FontFamily.fredokaRegular, flex: 1, fontSize: 14.5, padding: 0, outlineStyle: 'none' as any },
-  hint: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, marginTop: -10, marginBottom: 14 },
+  // marginTop was -10, which pulled this line UP into the row above it — the
+  // hint literally overlapped the bottom edge of the Mobile input. Negative
+  // margin is how you fix spacing you do not control; the row owns its gap
+  // now, so the hint just needs a little air of its own.
+  hint: {
+    fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, lineHeight: 16,
+    marginTop: 0, marginBottom: FIELD_GAP,
+  },
 
   // Compact inline password-requirement chips (replaces the tall mobile block).
   // Deliberately small: five chips have to sit on one or two tidy rows inside a
   // 620px card, and at the previous size the fifth orphaned onto its own line.
-  pwReqsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 16, marginTop: 2 },
+  pwReqsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: FIELD_GAP, marginTop: 4 },
   pwReqChip: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4,
