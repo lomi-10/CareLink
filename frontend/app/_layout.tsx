@@ -68,6 +68,12 @@ function RootLayoutInner() {
         {/* PESO staff (web-first; routes under app/(peso)/) */}
         <Stack.Screen name="(peso)" options={{ headerShown: false }} />
 
+        {/* Privacy policy. headerShown: false because the screen draws its own
+            header with a back arrow — unregistered, it fell through to the
+            default Stack header and the page showed TWO back arrows stacked,
+            the upper one labelled with the raw route name "privacy-policy". */}
+        <Stack.Screen name="privacy-policy" options={{ headerShown: false, title: "Privacy Policy — CareLink" }} />
+
         {/* 6. Utility Screens */}
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         
