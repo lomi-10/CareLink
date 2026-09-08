@@ -117,33 +117,65 @@ if (!function_exists('carelink_nsrp_build_html')) {
 
         // ── Section IX technical skills. Ticked only where the helper actually
         //    listed the matching skill; everything else stays open. ──
+        // Matched on a STEM, not the whole word. CareLink's skills are named for
+        // the person doing the job and NSRP's for the activity: the catalogue says
+        // "Cook" and "Family Driver" where the form says "Cooking" and "Driving".
+        // A plain str_contains of the form's label found neither, so a helper who
+        // had listed cooking got an empty Section IX.
         $skills = array_map('strtolower', $arr('technical_skills'));
-        $has = static function (string $needle) use ($skills): ?bool {
+        $techList = [
+            'Carpentry' => 'carpent', 'Masonry' => 'mason', 'Welding' => 'weld',
+            'Auto Mechanic' => 'mechanic', 'Plumbing' => 'plumb', 'Driving' => 'driv',
+            'Gardening' => 'garden', 'Tailoring' => 'tailor', 'Photography' => 'photograph',
+            'Hairdressing' => 'hairdress', 'Cooking' => 'cook', 'Baking' => 'bak',
+        ];
+        $has = static function (string $stem) use ($skills): ?bool {
             if (!$skills) return null;
             foreach ($skills as $s) {
-                if (str_contains($s, $needle)) return true;
+                if (str_contains($s, $stem)) return true;
             }
             return false;
         };
-        $techList = ['Carpentry', 'Masonry', 'Welding', 'Auto Mechanic', 'Plumbing', 'Driving',
-                     'Gardening', 'Tailoring', 'Photography', 'Hairdressing', 'Cooking', 'Baking'];
         $techBoxes = '';
-        foreach ($techList as $t) {
-            $techBoxes .= '<span class="cell3">' . nsrp_box($has(strtolower($t)), $t) . '</span>';
+        foreach ($techList as $label => $stem) {
+            $techBoxes .= '<span class="cell3">' . nsrp_box($has($stem), $label) . '</span>';
         }
 
         // ── Dialects ───────────────────────────────────────────────────────
-        $dialects = array_map('strtolower', $arr('dialects'));
-        $dHas = static function (string $n) use ($dialects): ?bool {
-            if (!$dialects) return null;
-            return in_array($n, $dialects, true) ? true : false;
+        // Same stem problem, plus a local one: the catalogue says "Bicolano"
+        // where the form says "Bikol", and an exact match ticked neither.
+        //
+        // Ormoc speaks Cebuano and Waray, and NEITHER is on the form's four
+        // boxes — so for most helpers here the real answer lives in Others.
+        // That box is ticked when there is something to put in it, rather than
+        // printing a filled-in line beside an empty checkbox.
+        $dialectStems = ['Tagalog' => ['tagalog'], 'Ilocano' => ['ilocano', 'ilokano'],
+                         'Ilonggo' => ['ilonggo', 'hiligaynon'], 'Bikol' => ['bikol', 'bicol']];
+        $dialects = $arr('dialects');
+        $dLower = array_map('strtolower', $dialects);
+        $dHas = static function (array $stems) use ($dLower): ?bool {
+            if (!$dLower) return null;
+            foreach ($dLower as $d) {
+                foreach ($stems as $stem) if (str_contains($d, $stem)) return true;
+            }
+            return false;
         };
-        $dialectBoxes = nsrp_box($dHas('tagalog'), 'Tagalog')
-                      . nsrp_box($dHas('ilocano'), 'Ilocano')
-                      . nsrp_box($dHas('ilonggo'), 'Ilonggo')
-                      . nsrp_box($dHas('bikol'), 'Bikol')
-                      . nsrp_box(null, 'Others: ' . implode(', ', array_filter($arr('dialects'), static fn($x) =>
-                            !in_array(strtolower($x), ['tagalog', 'ilocano', 'ilonggo', 'bikol'], true))));
+        $listed = [];
+        $others = [];
+        foreach ($dialects as $d) {
+            $matched = false;
+            foreach ($dialectStems as $stems) {
+                foreach ($stems as $stem) if (str_contains(strtolower($d), $stem)) { $matched = true; break 2; }
+            }
+            if (!$matched) $others[] = $d;
+        }
+        unset($listed);
+        $dialectBoxes = '';
+        foreach ($dialectStems as $label => $stems) {
+            $dialectBoxes .= nsrp_box($dHas($stems), $label);
+        }
+        $dialectBoxes .= nsrp_box($others ? true : null,
+            'Others: ' . ($others ? implode(', ', $others) : '________________'));
 
         // ── Job preference rows ────────────────────────────────────────────
         $occ = $arr('preferred_occupations');
