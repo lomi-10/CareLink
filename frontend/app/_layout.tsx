@@ -3,6 +3,7 @@ import { installAuthFetch } from '@/lib/authFetch';
 import { createCareLinkNavigationTheme } from '@/constants/careNavigationTheme';
 import { CareBotProvider } from '@/contexts/CareBotContext';
 import { GuideProvider } from '@/contexts/GuideContext';
+import { LocaleProvider } from '@/contexts/LocaleContext';
 import {
     ColorSchemePreferenceProvider,
     useColorSchemePreference,
@@ -101,6 +102,8 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ActionSheetProvider>
+        {/* Outermost, because everything below may translate. */}
+        <LocaleProvider>
         <ColorSchemePreferenceProvider>
           <CareBotProvider>
             <GuideProvider>
@@ -112,6 +115,7 @@ export default function RootLayout() {
             </GuideProvider>
           </CareBotProvider>
         </ColorSchemePreferenceProvider>
+        </LocaleProvider>
       </ActionSheetProvider>
     </GestureHandlerRootView>
   );

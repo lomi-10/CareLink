@@ -19,7 +19,7 @@ import { useAuth, useResponsive } from '@/hooks/shared';
 import { WorkModeTabBar } from '@/components/helper/work';
 import { Sidebar, MobileMenu, HelperTabBar } from '@/components/helper/home';
 import { PARENT_THEME_OPTIONS, type ParentThemeId } from '@/constants/parentThemePalettes';
-import { ConfirmationModal, NotificationModal } from '@/components/shared';
+import { ConfirmationModal, NotificationModal, LanguagePicker } from '@/components/shared';
 import { useHelperWarm } from '@/components/helper/home/helperWarmTheme';
 
 import { createHelperSettingsStyles } from './settings.styles';
@@ -85,6 +85,16 @@ export default function HelperSettingsScreen() {
       ]}
       showsVerticalScrollIndicator={false}
     >
+      <LanguagePicker
+        accent={accent}
+        surface={SURFACE}
+        border={DIVIDER}
+        text={DARK}
+        muted={MUTED}
+        selectedBg={ICON_BG}
+        style={{ marginBottom: 26 }}
+      />
+
       <Text style={[styles.sectionLabel, { color: MUTED }]}>CareLink palette</Text>
       <Text style={[styles.sectionSub, { color: navTheme.colors.text }]}>
         Choose a color story (default, warm, sage, night, and more). This updates surfaces and accents in the helper

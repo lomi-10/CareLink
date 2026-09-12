@@ -1,0 +1,206 @@
+// lib/i18n/locales/fil.ts — Filipino (Tagalog).
+//
+// The national language. Useful for helpers and employers who are not Cebuano
+// speakers, and the register most Philippine government material is written in.
+//
+// Same rules as the Cebuano file: everyday spoken register, and the proper names
+// of offices and documents stay in their official form — "PESO", "TESDA",
+// "Barangay Clearance", "Valid ID", "RA 10361" — because those are the words a
+// person has to say at the counter.
+//
+// ⚠ NEEDS A NATIVE REVIEW before the defense, same as Cebuano.
+export default {
+  common: {
+    save: 'I-save',
+    cancel: 'Kanselahin',
+    close: 'Isara',
+    back: 'Bumalik',
+    next: 'Susunod',
+    submit: 'Ipasa',
+    confirm: 'Kumpirmahin',
+    delete: 'Burahin',
+    edit: 'Baguhin',
+    retry: 'Subukan ulit',
+    loading: 'Naglo-load…',
+    search: 'Maghanap',
+    filter: 'Salain',
+    all: 'Lahat',
+    yes: 'Oo',
+    no: 'Hindi',
+    optional: 'opsyonal',
+    required: 'kailangan',
+    today: 'Ngayon',
+    yesterday: 'Kahapon',
+    somethingWentWrong: 'May nangyaring mali',
+    checkConnection: 'Pakisuri ang iyong koneksyon at subukan ulit.',
+    noResults: 'Wala pang maipakita.',
+  },
+
+  roles: {
+    helper: 'Katulong',
+    employer: 'Amo sa Bahay',
+    peso: 'Opisyal ng PESO',
+    admin: 'System Administrator',
+  },
+
+  auth: {
+    login: {
+      title: 'Maligayang pagbabalik',
+      subtitle: 'Mag-sign in para magpatuloy.',
+      emailOrMobile: 'Email o numero ng cellphone',
+      password: 'Password',
+      signIn: 'Mag-sign in',
+      forgot: 'Nakalimutan ang password?',
+      noAccount: 'Wala ka pang account?',
+      createOne: 'Gumawa ng isa',
+      wrongCredentials: 'Pakilagay ang tamang email/numero at password.',
+      pending: 'Hinihintay pa ang pag-apruba ng iyong account.',
+      verifyEmail:
+        'Pakiverify ang iyong email para magpatuloy. Tingnan ang 6 na numerong code sa iyong inbox.',
+    },
+    signup: {
+      helperTitle: 'Pagrerehistro bilang Katulong',
+      employerTitle: 'Pagrerehistro bilang Amo sa Bahay',
+      subtitle: 'Gumawa ng account para makapagsimula.',
+      firstName: 'Pangalan',
+      lastName: 'Apelyido',
+      middleName: 'Gitnang pangalan',
+      email: 'Email',
+      mobile: 'Numero ng cellphone',
+      signInHint: 'Puwede kang mag-sign in gamit ang email o numero ng cellphone.',
+      password: 'Password',
+      confirm: 'Kumpirmahin',
+      repeatPassword: 'Ulitin ang password',
+      createAccount: 'Gumawa ng account',
+      creating: 'Ginagawa ang iyong account…',
+      haveAccount: 'May account ka na?',
+      logIn: 'Mag-sign in',
+      needTitle: 'Pakilagay ng maikling pamagat.',
+      consent:
+        'Pumapayag ako na kolektahin at gamitin ng CareLink ang aking personal na impormasyon para sa paghahanap ng trabaho, alinsunod sa',
+      pwAtLeast8: 'Hindi bababa sa 8 karakter',
+      pwLower: '1 maliit na letra',
+      pwUpper: '1 malaking letra',
+      pwNumber: '1 numero',
+      pwSpecial: '1 espesyal na karakter',
+    },
+    roleSelect: {
+      title: 'Paano mo gagamitin ang CareLink?',
+      hiring: 'Naghahanap ako ng kasambahay',
+      lookingForWork: 'Naghahanap ako ng trabaho',
+    },
+  },
+
+  nav: {
+    dashboard: 'Dashboard',
+    findJobs: 'Maghanap ng Trabaho',
+    browseHelpers: 'Tingnan ang mga Katulong',
+    myApplications: 'Aking mga Aplikasyon',
+    jobPosts: 'Mga Trabaho',
+    applications: 'Mga Aplikasyon',
+    messages: 'Mga Mensahe',
+    notifications: 'Mga Abiso',
+    profile: 'Profile',
+    settings: 'Setting',
+    work: 'Trabaho',
+    logOut: 'Mag-log out',
+  },
+
+  verification: {
+    pesoVerified: 'PESO Verified',
+    pending: 'Hinihintay',
+    unverified: 'Hindi pa na-verify',
+    rejected: 'Tinanggihan',
+    underReview: 'Sinusuri pa ng PESO ang iyong account.',
+    validId: 'Valid ID',
+    barangayClearance: 'Barangay Clearance',
+    policeClearance: 'Police Clearance',
+    tesda: 'TESDA NC II',
+    uploadDocs: 'I-upload ang iyong mga dokumento',
+    docsHint:
+      'Sinusuri ng PESO ang Valid ID at Barangay Clearance. Opsyonal ang iba.',
+  },
+
+  jobs: {
+    postJob: 'Mag-post ng trabaho',
+    salary: 'Sahod',
+    perMonth: 'kada buwan',
+    stayIn: 'Stay-in',
+    stayOut: 'Stay-out',
+    fullTime: 'Full-time',
+    partTime: 'Part-time',
+    apply: 'Mag-apply',
+    applied: 'Nag-apply na',
+    saveJob: 'I-save ang trabaho',
+    match: 'Bagay',
+    minimumSalary:
+      'Hindi bababa sa ₱6,400 kada buwan, itinakda ng regional wage board (Wage Order VIII-DW-06).',
+  },
+
+  application: {
+    pending: 'Hinihintay',
+    reviewed: 'Nasuri na',
+    shortlisted: 'Napili para sa susunod na hakbang',
+    interviewScheduled: 'May nakaiskedyul na interview',
+    hired: 'Natanggap sa trabaho',
+    rejected: 'Hindi napili',
+    withdrawn: 'Binawi',
+  },
+
+  work: {
+    checkIn: 'Time in',
+    checkOut: 'Time out',
+    checkedIn: 'Naka-time in',
+    checkedOut: 'Naka-time out',
+    restDay: 'Araw ng pahinga',
+    tasks: 'Mga gawain',
+    attendance: 'Attendance',
+    leave: 'Leave',
+    payroll: 'Sahod',
+    hoursThisMonth: 'Mga oras ngayong buwan',
+    totalHours: 'Kabuuang oras',
+    daysWorked: 'Araw na nagtrabaho',
+    regular: 'Regular',
+    overtime: 'Overtime',
+    daysWithOvertime: 'Mga araw na may overtime',
+    overCeilingWarning:
+      'lumampas sa 12 oras na nakatakda sa kontrata. Ayon sa RA 10361, ang normal na trabaho kada araw ay 8 oras, at overtime ang lahat ng lampas dito.',
+    notCheckedOut: 'hindi pa naka-time out, kaya hindi pa kasama.',
+    noCompletedDays:
+      'Wala pang natapos na araw ngayong buwan. Lalabas ang mga oras kapag naka-time out na.',
+  },
+
+  complaint: {
+    report: 'I-report ang problema',
+    category: 'Uri',
+    shortTitle: 'Maikling pamagat',
+    whatHappened: 'Ano ang nangyari?',
+    whenHappened: 'Kailan ito nangyari?',
+    whereHappened: 'Saan ito nangyari?',
+    submitted: 'Naipadala ang iyong report sa system administrator ng CareLink.',
+    goesToAdmin: 'Pupunta ito sa system administrator para suriin.',
+    catConduct: 'Pag-uugali / pagtrato',
+    catPayment: 'Sahod o bayad',
+    catContract: 'Kontrata o gawain',
+    catUnsafe: 'Delikadong kondisyon sa trabaho',
+    catAbuse: 'Pang-aabuso o masamang pagtrato',
+    catHarassment: 'Panghaharas',
+    catTheft: 'Nakaw / nawawalang gamit',
+    catDamage: 'Nasirang gamit',
+    catAbandonment: 'Umalis sa trabaho nang walang paalam',
+    catFraud: 'Pekeng profile o panloloko',
+    catTechnical: 'Problema sa app',
+    catOther: 'Iba pa',
+  },
+
+  settings: {
+    title: 'Setting',
+    language: 'Wika',
+    languageHint: 'Magbabago ang app sa device na ito.',
+    appearance: 'Hitsura',
+    account: 'Account',
+    privacyPolicy: 'Privacy Policy',
+    logOut: 'Mag-log out',
+    logOutConfirm: 'Sigurado ka bang gusto mong mag-log out?',
+  },
+} as const;

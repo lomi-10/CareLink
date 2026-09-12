@@ -19,7 +19,7 @@ import { useAuth, useResponsive } from '@/hooks/shared';
 import { useParentProfile, usePlusStatus } from '@/hooks/parent';
 import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
 import { ParentSettingsWeb } from '@/components/parent/web/ParentSettingsWeb';
-import { ConfirmationModal, NotificationModal } from '@/components/shared';
+import { ConfirmationModal, NotificationModal, LanguagePicker } from '@/components/shared';
 
 const APPEARANCE_OPTIONS: {
   value: ColorSchemePreference;
@@ -90,6 +90,18 @@ export default function SettingsScreen() {
       contentContainerStyle={{ paddingBottom: isDesktop ? 32 : 16 }}
       showsVerticalScrollIndicator={false}
     >
+      {/* ── Language ── */}
+      <View style={ss.section}>
+        <LanguagePicker
+          accent={BROWN}
+          surface={SURFACE}
+          border={DIVIDER}
+          text={DARK}
+          muted={MUTED}
+          selectedBg={ICON_BG}
+        />
+      </View>
+
       {/* ── CareLink palette ── */}
       <View style={ss.section}>
         <Text style={ss.sectionTitle}>CareLink palette</Text>
