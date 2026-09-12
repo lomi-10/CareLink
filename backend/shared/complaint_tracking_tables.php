@@ -40,6 +40,28 @@ if (!function_exists('ensure_complaint_tracking_tables')) {
             if (!isset($cols[$col])) $conn->query("ALTER TABLE complaints {$clause}");
         }
 
+        // Two categories the original enum had no room for.
+        //
+        // 'Theft or Missing Property' — the enum had Property Damage, which is
+        // something broken, not something taken. PESO triages those differently
+        // and a helper accused of one is not accused of the other.
+        //
+        // 'Technical Issue' — nothing described the app itself being broken. A
+        // user with a bug to report had to file it as a complaint against a
+        // person, which put a case on somebody's record for a crash.
+        //
+        // MODIFY rather than a guarded ADD: an enum is one column, so this
+        // restates the whole list. Every existing value is preserved in place,
+        // so stored rows keep their meaning and re-running changes nothing.
+        $conn->query(
+            "ALTER TABLE complaints MODIFY category ENUM(" .
+            "'Misconduct','Fraud / Fake Profile','Non-Payment','Abandonment of Work'," .
+            "'Harassment','Property Damage','Theft or Missing Property'," .
+            "'Unsafe Working Conditions','Abuse or Mistreatment','Contract Dispute'," .
+            "'Technical Issue','Other'" .
+            ") DEFAULT 'Other'"
+        );
+
         // The tracker. One row per thing that happened to the case.
         $conn->query(
             "CREATE TABLE IF NOT EXISTS complaint_actions (

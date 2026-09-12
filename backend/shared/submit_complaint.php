@@ -54,7 +54,19 @@ try {
     $inc_barangay     = isset($input['incident_barangay']) ? trim((string) $input['incident_barangay']) : '';
     $inc_municipality = isset($input['incident_municipality']) ? trim((string) $input['incident_municipality']) : '';
     $inc_province     = isset($input['incident_province']) ? trim((string) $input['incident_province']) : '';
-    $incident_at_val      = $incident_at !== '' ? date('Y-m-d H:i:s', strtotime($incident_at)) : null;
+    // strtotime() returns FALSE on anything it cannot read, and date() turns
+    // false into 1 January 1970. "15 March 2026, around 3pm" is exactly the sort
+    // of thing a person writes and strtotime refuses, so complaints were
+    // reaching PESO dated 1970 — which reads as a real answer rather than a
+    // missing one, and is worse than no date at all.
+    //
+    // An unreadable date is now NULL, and the text the reporter actually typed
+    // is kept in incident_location so the 'when' is not simply discarded.
+    $parsed = $incident_at !== '' ? strtotime($incident_at) : false;
+    $incident_at_val = $parsed !== false ? date('Y-m-d H:i:s', $parsed) : null;
+    if ($incident_at !== '' && $parsed === false) {
+        $inc_location = trim('Reported time: ' . $incident_at . '. ' . $inc_location);
+    }
     $inc_location_val     = $inc_location !== '' ? $inc_location : null;
     $inc_barangay_val     = $inc_barangay !== '' ? $inc_barangay : null;
     $inc_municipality_val = $inc_municipality !== '' ? $inc_municipality : null;

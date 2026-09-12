@@ -37,12 +37,24 @@ type Props = {
   onSubmitted?: () => void;
 };
 
+// Ordered by how often they are picked, not alphabetically — the common ones
+// should be reachable without reading the whole list.
+//
+// 'technical' is last and deliberately worded as a problem with the app: it is
+// the only option here that names no person. Before it existed, somebody with
+// a crash to report had to file it against whoever they were talking to.
 const CATEGORIES: { value: ComplaintCategory; label: string }[] = [
   { value: 'conduct', label: 'Conduct / treatment' },
   { value: 'payment', label: 'Wages or payment' },
+  { value: 'contract', label: 'Contract or duties' },
   { value: 'unsafe_conditions', label: 'Unsafe working conditions' },
   { value: 'abuse_or_mistreatment', label: 'Abuse or mistreatment' },
-  { value: 'contract', label: 'Contract or duties' },
+  { value: 'harassment', label: 'Harassment' },
+  { value: 'theft', label: 'Theft / missing property' },
+  { value: 'property_damage', label: 'Property damage' },
+  { value: 'abandonment', label: 'Left work without notice' },
+  { value: 'fraud', label: 'Fake profile or fraud' },
+  { value: 'technical', label: 'Problem with the app' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -57,6 +69,10 @@ export function SubmitComplaintModal({
 }: Props) {
   const [category, setCategory] = useState<ComplaintCategory>('other');
   const [subject, setSubject] = useState('');
+  // When and where. PESO asks for both on any case they may act on, and the
+  // columns have existed since the case-file work — nothing ever filled them.
+  const [incidentAt, setIncidentAt] = useState('');
+  const [incidentLocation, setIncidentLocation] = useState('');
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   // Inline, per-field errors — these used to be Alert.alert() calls, which are a
@@ -112,6 +128,8 @@ export function SubmitComplaintModal({
         subject: subject.trim(),
         description: body.trim(),
         category,
+        incident_at: incidentAt.trim(),
+        incident_location: incidentLocation.trim(),
       });
       if (!res.success) {
         setNotice({ visible: true, title: 'Could not submit', message: res.message || 'Your report was not sent. Please try again in a moment.', type: 'error' });
@@ -194,6 +212,32 @@ export function SubmitComplaintModal({
                 <Ionicons name="alert-circle" size={14} color={theme.color.danger} />
                 <Text style={styles.errText}>{errors.subject}</Text>
               </View>
+            )}
+
+            {/* Hidden for an app problem: a crash has no incident address, and
+                asking for one implies this is a dispute with a person. */}
+            {category !== 'technical' && (
+              <>
+                <Text style={styles.label}>When did it happen?</Text>
+                <TextInput
+                  style={styles.input}
+                  value={incidentAt}
+                  onChangeText={setIncidentAt}
+                  placeholder="e.g. 15 March 2026, around 3pm"
+                  placeholderTextColor={theme.color.subtle}
+                  maxLength={120}
+                />
+
+                <Text style={styles.label}>Where did it happen?</Text>
+                <TextInput
+                  style={styles.input}
+                  value={incidentLocation}
+                  onChangeText={setIncidentLocation}
+                  placeholder="e.g. Employer's house, Brgy. Cogon, Ormoc City"
+                  placeholderTextColor={theme.color.subtle}
+                  maxLength={200}
+                />
+              </>
             )}
 
             <Text style={styles.label}>What happened? <Text style={styles.req}>*</Text></Text>

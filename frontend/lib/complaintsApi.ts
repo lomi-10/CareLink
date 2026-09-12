@@ -1,6 +1,22 @@
 import API_URL from '@/constants/api';
 
-export type ComplaintCategory = 'conduct' | 'payment' | 'unsafe_conditions' | 'abuse_or_mistreatment' | 'contract' | 'other';
+// Keep in step with carelink_map_complaint_category() in
+// backend/shared/placement_dispute_helpers.php — a key that is not in the map
+// silently files as 'Other', which is the one failure nobody notices.
+export type ComplaintCategory =
+  | 'conduct'
+  | 'payment'
+  | 'unsafe_conditions'
+  | 'abuse_or_mistreatment'
+  | 'harassment'
+  | 'theft'
+  | 'property_damage'
+  | 'abandonment'
+  | 'fraud'
+  | 'contract'
+  /** The app itself is broken. Not a complaint against a person. */
+  | 'technical'
+  | 'other';
 
 export async function submitComplaint(body: {
   // Pass application_id for a complaint tied to a hire/placement, OR respondent_id
@@ -12,6 +28,10 @@ export async function submitComplaint(body: {
   subject: string;
   description: string;
   category?: ComplaintCategory | string;
+  /** When it happened, ISO-ish. The server normalises it. */
+  incident_at?: string;
+  /** Where it happened, in the reporter's own words. */
+  incident_location?: string;
 }) {
   const res = await fetch(`${API_URL}/shared/submit_complaint.php`, {
     method: 'POST',
@@ -24,6 +44,10 @@ export async function submitComplaint(body: {
       subject: body.subject,
       body: body.description,
       category: body.category ?? 'other',
+      // The columns have existed since the case-file work; nothing was ever
+      // sending them, so every complaint reached PESO with no when and no where.
+      incident_at: body.incident_at ?? '',
+      incident_location: body.incident_location ?? '',
     }),
   });
   return res.json() as Promise<{ success: boolean; message?: string; complaint_id?: number }>;

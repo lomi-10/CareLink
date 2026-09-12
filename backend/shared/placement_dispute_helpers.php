@@ -182,6 +182,14 @@ function carelink_map_complaint_category(string $cat): string
         'contract' => 'Contract Dispute',
         'harassment' => 'Harassment',
         'fraud' => 'Fraud / Fake Profile',
+        // Taken and broken are different accusations, triaged differently and
+        // weighed differently against the person named.
+        'theft' => 'Theft or Missing Property',
+        'property_damage' => 'Property Damage',
+        'abandonment' => 'Abandonment of Work',
+        // A bug report. Goes to the System Administrator and stops there —
+        // there is no person to answer for it and nothing for PESO to mediate.
+        'technical' => 'Technical Issue',
         'other' => 'Other',
     ];
 

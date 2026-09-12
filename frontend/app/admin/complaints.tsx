@@ -27,6 +27,8 @@ export default function AdminComplaintsScreen() {
   const [loading, setLoading] = useState(true);
   const [adminId, setAdminId] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [catFilter, setCatFilter] = useState<string>("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Open" | "Closed">("Open");
   const [forwardOpen, setForwardOpen] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -76,6 +78,28 @@ export default function AdminComplaintsScreen() {
 
   const openCount = rows.filter((r) => r.status === "Pending").length;
 
+  // Filter by what the report IS, not only by whether it is open. With one
+  // undifferentiated list the only way to find every theft report was to open
+  // every case — and the categories were already stored, just never used for
+  // anything but a pill on the detail pane.
+  const categories = useMemo(() => {
+    const seen = new Map();
+    for (const r of rows) {
+      const key = r.category || "Other";
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    }
+    // Commonest first: a category with nine cases is likelier to be the one
+    // being looked for than one with a single case.
+    return [...seen.entries()].sort((a, b) => b[1] - a[1]);
+  }, [rows]);
+
+  const visible = useMemo(() => rows.filter((r) => {
+    if (catFilter !== "All" && (r.category || "Other") !== catFilter) return false;
+    if (statusFilter === "Open" && r.status !== "Pending") return false;
+    if (statusFilter === "Closed" && r.status === "Pending") return false;
+    return true;
+  }), [rows, catFilter, statusFilter]);
+
   return (
     <AdminShell active="complaints" title="Complaints" subtitle="Review reports and forward serious cases to PESO" complaintsBadge={openCount} scroll={false} contentMaxWidth={1280}>
       {loading ? (
@@ -86,8 +110,44 @@ export default function AdminComplaintsScreen() {
         <View style={s.split}>
           {/* ── List pane ── */}
           <View style={s.listPane}>
+            <View style={s.filterBar}>
+              {(["Open", "All", "Closed"] as const).map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  style={[s.filterChip, statusFilter === f && s.filterChipOn]}
+                  onPress={() => setStatusFilter(f)}
+                >
+                  <Text style={[s.filterChipTxt, statusFilter === f && s.filterChipTxtOn]}>{f}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={s.filterBar}>
+              <TouchableOpacity
+                style={[s.filterChip, catFilter === "All" && s.filterChipOn]}
+                onPress={() => setCatFilter("All")}
+              >
+                <Text style={[s.filterChipTxt, catFilter === "All" && s.filterChipTxtOn]}>
+                  All types ({rows.length})
+                </Text>
+              </TouchableOpacity>
+              {categories.map(([cat, n]) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[s.filterChip, catFilter === cat && s.filterChipOn]}
+                  onPress={() => setCatFilter(cat)}
+                >
+                  <Text style={[s.filterChipTxt, catFilter === cat && s.filterChipTxtOn]}>{cat} ({n})</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {visible.length === 0 && (
+              <Text style={s.empty}>Nothing matches this filter.</Text>
+            )}
+
             <FlatList
-              data={rows}
+              data={visible}
               keyExtractor={(item) => String(item.complaint_id)}
               contentContainerStyle={{ paddingBottom: 24 }}
               style={{ flex: 1 }}
@@ -220,6 +280,14 @@ export default function AdminComplaintsScreen() {
 }
 
 const makeStyles = (c: AdminPalette) => StyleSheet.create({
+  filterBar: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 },
+  filterChip: {
+    borderWidth: 1, borderColor: c.border, borderRadius: 999,
+    paddingHorizontal: 10, paddingVertical: 5, backgroundColor: c.rowAlt,
+  },
+  filterChipOn: { backgroundColor: c.accentSoft, borderColor: c.accent },
+  filterChipTxt: { fontSize: 11.5, fontWeight: "700", color: c.muted },
+  filterChipTxtOn: { color: c.accent },
   empty: { textAlign: "center", color: c.muted, marginTop: 40 },
 
   split: { flex: 1, flexDirection: 'row', gap: 16 },
