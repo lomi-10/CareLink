@@ -127,7 +127,7 @@ export default function AdminDashboard() {
     <AdminShell
       active="dashboard"
       title={`Welcome back, ${adminName}! 👋`}
-      subtitle="Super Administrator Dashboard Overview"
+      subtitle="System Administrator Dashboard Overview"
       complaintsBadge={stats.complaintsOpen}
       headerRight={datePill}
     >

@@ -1,4 +1,4 @@
-// components/peso/staffTheme.ts — the design tokens for the PESO and Super Admin
+// components/peso/staffTheme.ts — the design tokens for the PESO and System Administrator
 // portals.
 //
 // These two portals previously had NO theme file: every colour was hand-typed in

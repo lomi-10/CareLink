@@ -1,7 +1,7 @@
 <?php
 /**
  * POST JSON: application_id, user_id, user_type (parent|helper), subject, body, category? (optional)
- * Inserts into `complaints` (matches current.sql). Notifies all super admins (user_type = admin).
+ * Inserts into `complaints` (matches current.sql). Notifies all system administrators (user_type = admin).
  */
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -186,7 +186,7 @@ try {
         $cid,
     );
 
-    out(true, 'Complaint submitted. A super admin will review it.', ['complaint_id' => $cid]);
+    out(true, 'Complaint submitted. The system administrator will review it.', ['complaint_id' => $cid]);
 } catch (Exception $e) {
     out(false, $e->getMessage());
 }

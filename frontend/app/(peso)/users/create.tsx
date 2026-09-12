@@ -111,12 +111,12 @@ export default function CreatePESOUser() {
             <Ionicons name="information-circle" size={22} color={c.accent} />
             {/* States the ceiling as well as the grant. An officer creating an
                 account should know they are handing over their own level of
-                access and no more — Super Admin accounts come from the Admin
+                access and no more — System Administrator accounts come from the Admin
                 Portal, not from here. */}
             <Text style={s.infoText}>
               This creates a PESO Officer account with the same access you have: user verification, job verification,
               applications, interviews, contracts and reports. It is active as soon as you create it.
-              Super Admin accounts are created in the Admin Portal instead.
+              System Administrator accounts are created in the Admin Portal instead.
             </Text>
           </AnimateIn>
 

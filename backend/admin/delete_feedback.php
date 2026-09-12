@@ -6,7 +6,7 @@
  * leaving them in would corrupt the Chapter 4 weighted means with data that was
  * never given by a real respondent. Deleting research data is a real action, so:
  *
- *   - super admin only;
+ *   - system administrator only;
  *   - every deletion writes an audit row naming what was removed;
  *   - three explicit scopes, no "delete everything" convenience.
  *

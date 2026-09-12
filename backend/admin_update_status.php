@@ -1,6 +1,6 @@
 <?php
 // carelink_api/admin_update_status.php
-// Super Admin approves / suspends a user account from the User Verification screen.
+// System Administrator approves / suspends a user account from the User Verification screen.
 //
 // Companion to admin_get_users.php — also referenced by the frontend but never
 // created. Sets the ACCOUNT status (users.status). It deliberately does NOT touch
@@ -32,7 +32,7 @@ $stmt->bind_param("si", $newStatus, $target);
 $ok = $stmt->execute();
 
 if ($ok) {
-    // Audit trail so the Super Admin's actions are recorded like every other.
+    // Audit trail so the System Administrator's actions are recorded like every other.
     $action = "ADMIN_SET_STATUS_" . strtoupper($newStatus);
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
     $device = "Admin action" . ($adminId ? " by user #$adminId" : "");

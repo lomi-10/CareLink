@@ -58,7 +58,7 @@ try {
     $password = $data['password'];
     $user_type = strtolower(trim($data['user_type'])); // "parent", "helper", etc.
 
-    // Public self-service registration: parent & helper only (PESO / super admin are created elsewhere)
+    // Public self-service registration: parent & helper only (PESO / system administrator are created elsewhere)
     if (!in_array($user_type, ['parent', 'helper'], true)) {
         echo json_encode(["success" => false, "message" => "Invalid account type for self-registration."]);
         exit();

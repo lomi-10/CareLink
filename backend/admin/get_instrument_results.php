@@ -10,7 +10,7 @@
  * The weighted mean is computed here rather than in a spreadsheet so the number
  * in the defense slides and the number in the app can never disagree.
  *
- * GET ?admin_user_id=..  (super admin only — contains respondent identities)
+ * GET ?admin_user_id=..  (system administrator only — contains respondent identities)
  */
 header('Content-Type: application/json; charset=UTF-8');
 header('Access-Control-Allow-Origin: *');

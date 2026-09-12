@@ -5,7 +5,7 @@
  * STAFF ONLY, AND THAT IS THE POINT. PESO decided (Aug 2026) that ratings are
  * public and written reviews are not: a helper and an employer each see the
  * other's star rating, but neither ever reads what the other wrote. Only PESO
- * and super admin do.
+ * and system administrator do.
  *
  * The reasoning is worth keeping: a review the subject can read is not a candid
  * review. A kasambahay writing honestly about a household they may still be

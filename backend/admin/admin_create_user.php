@@ -1,7 +1,7 @@
 <?php
 // carelink_api/admin_create_user.php
 // Create Admin or PESO user accounts
-// SECURITY: Should be called from authenticated super admin only
+// SECURITY: Should be called from authenticated system administrator only
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -171,7 +171,7 @@ try {
         mysqli_commit($conn);
 
         // Success response
-        $role_name = $user_type === 'admin' ? 'Super Admin' : 'PESO Officer';
+        $role_name = $user_type === 'admin' ? 'System Administrator' : 'PESO Officer';
         
         sendResponse(true, "$role_name account created successfully!", [
             'user_id' => $user_id,

@@ -139,7 +139,7 @@ const KB: KbEntry[] = [
   {
     keys: ['support', 'help', 'complaint', 'report a problem', 'peso office', 'dispute'],
     answer:
-      'For account or verification help, your local PESO office is the main contact — CareLink partners with them for verification and disputes. In the app you can also file a report from a helper’s or employer’s profile, or from an active placement; a CareLink super admin reviews it first and forwards serious cases to PESO.',
+      'For account or verification help, your local PESO office is the main contact — CareLink partners with them for verification and disputes. In the app you can also file a report from a helper’s or employer’s profile, or from an active placement; the CareLink system administrator reviews it first and forwards serious cases to PESO.',
   },
   {
     keys: ['kasambahay', 'batas', 'ra 10361', 'r.a. 10361', 'law', 'rights'],

@@ -1,6 +1,6 @@
 <?php
 /**
- * shared/get_support_contact.php — which Super Admin an ordinary helper or
+ * shared/get_support_contact.php — which System Administrator an ordinary helper or
  * parent should message for support.
  *
  * GET -> { success, admin: { user_id, name } | null }

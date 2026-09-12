@@ -1,6 +1,6 @@
 <?php
 /**
- * Shared guard for super-admin-only endpoints.
+ * Shared guard for system-administrator-only endpoints.
  * Mirrors peso/peso_auth.php's pattern, for user_type = 'admin'.
  */
 declare(strict_types=1);

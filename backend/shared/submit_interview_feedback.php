@@ -6,7 +6,7 @@
  *
  * WHO SEES WHAT:
  *   rating  — PESO tallies it; it does not appear on the other party's profile.
- *   comment — PESO and super admin ONLY. The other party never sees it, on any
+ *   comment — PESO and system administrator ONLY. The other party never sees it, on any
  *             screen or in any notification. That is the whole reason people
  *             answer honestly, and for a kasambahay reporting an employer it is
  *             the difference between a candid answer and a safe one.

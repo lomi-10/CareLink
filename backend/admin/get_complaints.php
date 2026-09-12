@@ -1,7 +1,7 @@
 <?php
 /**
  * GET: admin_user_id
- * Lists rows from `complaints` for the super admin dashboard.
+ * Lists rows from `complaints` for the system administrator dashboard.
  */
 
 header('Content-Type: application/json; charset=UTF-8');

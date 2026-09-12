@@ -1,5 +1,5 @@
 // components/admin/AdminShell.tsx
-// The single frame every Super Admin screen renders inside: a themeable dark
+// The single frame every System Administrator screen renders inside: a themeable dark
 // sidebar (identical on every screen — previously only the dashboard had one, the
 // rest had ad-hoc back-button headers) plus a header bar with the page title, a
 // notification bell that always routes to Complaints, a navy<->brown theme toggle,
@@ -25,7 +25,7 @@ const NAV: { key: AdminNavKey; icon: keyof typeof Ionicons.glyphMap; label: stri
   { key: 'accounts', icon: 'person-add', label: 'Admin & PESO Accounts', route: '/admin/create_admin_user', group: 'USER & ADMIN' },
   { key: 'messages', icon: 'chatbubbles', label: 'Messages', route: '/admin/messages', group: 'COMMUNICATION' },
   // Peer reviews between helpers and households. Ratings are public on
-  // profiles; the written text is readable only by PESO and super admin.
+  // profiles; the written text is readable only by PESO and system administrator.
   { key: 'reviews', icon: 'chatbox-ellipses', label: 'Peer Reviews', route: '/admin/reviews', group: 'COMMUNICATION' },
   // The Chapter 4 instrument, grouped by ISO/IEC 25010 characteristic.
   { key: 'evaluation', icon: 'bar-chart', label: 'System Evaluation', route: '/admin/evaluation', group: 'SYSTEM' },
@@ -100,7 +100,7 @@ export function AdminShell({
         <CareLinkLogoMark size={34} containerStyle={{ marginRight: 10 }} />
         <View>
           <Text style={{ fontSize: 18, fontWeight: '900', color: c.text }}>CareLink</Text>
-          <Text style={{ fontSize: 10, color: c.muted, fontWeight: '700', letterSpacing: 0.5, marginTop: 1 }}>Super Admin Portal</Text>
+          <Text style={{ fontSize: 10, color: c.muted, fontWeight: '700', letterSpacing: 0.5, marginTop: 1 }}>System Administrator Portal</Text>
         </View>
       </View>
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>

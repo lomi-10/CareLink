@@ -2,7 +2,7 @@
 //
 // This screen exists because the written reviews had nowhere to be read. PESO's
 // rule (Aug 2026): the star RATING each party gives the other is public on
-// profiles, but the WRITTEN review is private — only PESO and super admin see
+// profiles, but the WRITTEN review is private — only PESO and system administrator see
 // it. Without this screen that policy meant the text was collected and never
 // looked at by anyone.
 //
@@ -97,7 +97,7 @@ export default function PesoReviewsScreen() {
         <AnimateIn delay={200} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, backgroundColor: c.accentSoft, borderRadius: radius.md, padding: 12, marginTop: space.lg }}>
           <Ionicons name="lock-closed" size={15} color={c.accentInk} />
           <Text style={{ flex: 1, fontFamily: font.regular, fontSize: 12, color: c.accentInk, lineHeight: 17 }}>
-            Written reviews are visible to PESO and super admin only. Helpers and households see each other's star rating,
+            Written reviews are visible to PESO and the system administrator only. Helpers and households see each other's star rating,
             never the words. Do not quote this text back to either party.
           </Text>
         </AnimateIn>

@@ -123,7 +123,7 @@ export function SubmitComplaintModal({
       setNotice({
         visible: true,
         title: 'Report submitted',
-        message: 'Your report was sent to CareLink super admins. If it needs government follow-up, it will be forwarded to PESO and you will be notified.',
+        message: 'Your report was sent to the CareLink system administrator. If it needs government follow-up, it will be forwarded to PESO and you will be notified.',
         type: 'success',
       });
     } catch (e: any) {
@@ -158,7 +158,7 @@ export function SubmitComplaintModal({
             </TouchableOpacity>
           </View>
           <Text style={styles.hint}>
-            This goes to <Text style={styles.hintBold}>super admins</Text> first. Serious cases can be forwarded to{' '}
+            This goes to <Text style={styles.hintBold}>the system administrator</Text> first. Serious cases can be forwarded to{' '}
             <Text style={styles.hintBold}>PESO</Text> with notice to you and the other party.
             {counterpartyLabel ? ` Regarding: ${counterpartyLabel}.` : ''}
           </Text>
@@ -219,7 +219,7 @@ export function SubmitComplaintModal({
             <View style={styles.privacyRow}>
               <Ionicons name="lock-closed-outline" size={14} color={theme.color.muted} />
               <Text style={styles.privacyText}>
-                Only CareLink super admins can read this. The other party is not notified unless the case is escalated.
+                Only the CareLink system administrator can read this. The other party is not notified unless the case is escalated.
               </Text>
             </View>
 
@@ -238,7 +238,7 @@ export function SubmitComplaintModal({
                 </>
               )}
             </TouchableOpacity>
-            <Text style={styles.submitNote}>Goes to super admins for review.</Text>
+            <Text style={styles.submitNote}>Goes to the system administrator for review.</Text>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>

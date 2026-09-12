@@ -27,7 +27,7 @@ require_once __DIR__ . '/../admin/admin_auth.php';
 
 try {
     if (!$conn) throw new Exception('Database connection failed');
-    // Readable by PESO staff OR super admin — both are named in the privacy
+    // Readable by PESO staff OR system administrator — both are named in the privacy
     // rule, so both authenticate here rather than duplicating the query in an
     // admin-only copy that would drift.
     $adminId = isset($_GET["admin_user_id"]) ? (int) $_GET["admin_user_id"] : 0;

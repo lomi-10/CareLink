@@ -64,7 +64,7 @@ export default function CreateAdminUserScreen() {
             <View style={s.pickerWrap}>
               <Picker selectedValue={form.user_type} onValueChange={(v) => setForm((f) => ({ ...f, user_type: v }))} style={s.picker} dropdownIconColor={c.text}>
                 <Picker.Item label="PESO Officer" value="peso" />
-                <Picker.Item label="Super Admin" value="admin" />
+                <Picker.Item label="System Administrator" value="admin" />
               </Picker>
             </View>
           </Field>

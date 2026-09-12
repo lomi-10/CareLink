@@ -69,7 +69,7 @@ export default function UserManagementScreen() {
     return (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q);
   });
 
-  const roleLabel = (t: string) => t === 'admin' ? 'SUPER ADMIN' : t === 'peso' ? 'PESO OFFICER' : (t || '').toUpperCase();
+  const roleLabel = (t: string) => t === 'admin' ? 'SYSTEM ADMIN' : t === 'peso' ? 'PESO OFFICER' : (t || '').toUpperCase();
   const statusStyle = (st: string) => st === 'approved' ? { bg: c.accentSoft, fg: c.green } : st === 'pending' ? { bg: 'rgba(232,163,61,0.16)', fg: c.amber } : { bg: c.redSoft, fg: c.red };
 
   const renderUserCard = ({ item }: { item: any }) => {
@@ -96,8 +96,8 @@ export default function UserManagementScreen() {
           </View>
         </View>
 
-        {/* Actions. Super Admin does NOT approve helpers/parents — that verification
-            is PESO's job (they review the documents). The Super Admin's power over
+        {/* Actions. System Administrator does NOT approve helpers/parents — that verification
+            is PESO's job (they review the documents). The System Administrator's power over
             those accounts is enforcement: suspend a bad actor, or lift a suspension.
             Only staff (PESO/admin) accounts can be approved here. */}
         <View style={s.actionRow}>

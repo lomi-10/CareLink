@@ -147,7 +147,7 @@ try {
     //
     // RATINGS ARE PUBLIC, WRITTEN REVIEWS ARE NOT. PESO's decision (Aug 2026):
     // the star rating each party gives the other is published, but the written
-    // review stays between the reviewer and PESO. Only PESO and super admin can
+    // review stays between the reviewer and PESO. Only PESO and system administrator can
     // read the text — see peso/get_user_reviews.php.
     //
     // review_text is deliberately NOT selected here. Leaving it out of the query

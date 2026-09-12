@@ -1,6 +1,6 @@
 <?php
 // carelink_api/admin_get_users.php
-// Lists users for the Super Admin "User Verification" screen.
+// Lists users for the System Administrator "User Verification" screen.
 //
 // This endpoint was referenced by the frontend (app/admin/user_management.tsx and
 // the admin dashboard's Total Users stat) but never existed on disk, so the screen

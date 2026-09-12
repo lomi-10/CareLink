@@ -5,7 +5,7 @@ export const styles = StyleSheet.create({
 });
 
 /**
- * Centred content columns for the Super Admin screens.
+ * Centred content columns for the System Administrator screens.
  *
  * WHY: these screens were written mobile-first (SafeAreaView + full-width inputs)
  * and never given a desktop layout, so every one of them rendered edge-to-edge on

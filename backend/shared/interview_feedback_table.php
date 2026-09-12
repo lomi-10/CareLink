@@ -24,7 +24,7 @@ if (!function_exists('ensure_interview_feedback_table')) {
                 role          VARCHAR(16) NOT NULL,
                 /* 1-5. The number PESO tallies. */
                 rating        TINYINT NOT NULL,
-                /* Their words. PESO and super admin only. */
+                /* Their words. PESO and system administrator only. */
                 comment       TEXT NULL,
                 /* Did the other side turn up? Answers the no-show question
                    without PESO having to phone anyone. */

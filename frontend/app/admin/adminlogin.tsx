@@ -83,7 +83,7 @@ export default function AdminLoginScreen() {
           await AsyncStorage.setItem("user_token", data.user.user_id.toString());
           await AsyncStorage.setItem("user_data", JSON.stringify(data.user));
 
-          setModalTitle(data.user_type === "admin" ? "Welcome Super Admin" : "Welcome PESO Admin");
+          setModalTitle(data.user_type === "admin" ? "Welcome, System Administrator" : "Welcome PESO Admin");
           setModalMessage("Access Granted.");
           setModalVisible(true);
 

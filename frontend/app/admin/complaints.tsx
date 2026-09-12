@@ -38,7 +38,7 @@ export default function AdminComplaintsScreen() {
       if (!raw) { setRows([]); return; }
       const u = JSON.parse(raw) as { user_id?: string; user_type?: string };
       const id = Number(u.user_id);
-      if (u.user_type !== "admin" || !id) { notify("Access denied", "Super admin only."); router.back(); return; }
+      if (u.user_type !== "admin" || !id) { notify("Access denied", "System administrator only."); router.back(); return; }
       setAdminId(id);
       const res = await fetchAdminComplaints(id);
       const list = res.success && res.complaints ? res.complaints : [];

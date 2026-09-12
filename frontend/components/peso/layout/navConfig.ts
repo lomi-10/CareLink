@@ -45,7 +45,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { icon: 'chatbubbles', label: 'Messages', path: '/(peso)/messages' },
       { icon: 'alert-circle', label: 'Complaints', path: '/(peso)/complaints', badgeKey: 'complaints' },
       // Peer reviews between helpers and households. Ratings are public on
-      // profiles; the written text is readable only here and by super admin.
+      // profiles; the written text is readable only here and by system administrator.
       { icon: 'star', label: 'Reviews', path: '/(peso)/reviews' },
       { icon: 'bar-chart', label: 'Reports & Analytics', path: '/(peso)/reports' },
     ],

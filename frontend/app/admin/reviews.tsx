@@ -1,9 +1,9 @@
-// app/admin/reviews.tsx — super admin view of peer reviews.
+// app/admin/reviews.tsx — system administrator view of peer reviews.
 //
 // Same data and same privacy rule as the PESO Reviews screen: helpers and
 // households see each other's star RATING on profiles; the written text is
-// readable only by PESO and super admin. This screen is the super-admin half of
-// "only PESO or super admin should be able to see it".
+// readable only by PESO and system administrator. This screen is the system-administrator half of
+// "only PESO or system administrator should be able to see it".
 //
 // PHP: peso/list_reviews.php (accepts admin_user_id as well as staff_user_id)
 
@@ -67,7 +67,7 @@ export default function AdminReviews() {
         <View style={s.privacy}>
           <Ionicons name="lock-closed" size={15} color={c.accent} />
           <Text style={s.privacyText}>
-            Written reviews are visible to PESO and super admin only. Helpers and households see each
+            Written reviews are visible to PESO and the system administrator only. Helpers and households see each
             other's star rating, never the words. Do not quote this text back to either party.
           </Text>
         </View>

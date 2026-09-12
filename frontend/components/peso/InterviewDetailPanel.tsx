@@ -294,7 +294,7 @@ export function InterviewDetailPanel({
         </View>
         <Text style={s.privateSub}>
           Both parties are asked to rate the interview once the date has passed. Ratings and comments here are read by
-          PESO and super admin only — neither party sees what the other wrote.
+          PESO and the system administrator only — neither party sees what the other wrote.
         </Text>
 
         {partyFeedback.length === 0 ? (

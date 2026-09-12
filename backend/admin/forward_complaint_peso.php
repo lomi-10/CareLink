@@ -119,7 +119,7 @@ try {
     $pid = (int) ($c['placement_id'] ?? 0);
     $refLabel = $app_id > 0 ? ('application #' . $app_id) : ($pid > 0 ? 'placement #' . $pid : 'a reported profile');
     $pesoTitle = 'PESO review required';
-    $pesoMsg = 'Super Admin escalated a complaint regarding ' . $refLabel . ': ' . $subj;
+    $pesoMsg = 'The System Administrator escalated a complaint regarding ' . $refLabel . ': ' . $subj;
     $st2 = $conn->prepare("SELECT user_id FROM users WHERE user_type = 'peso'");
     $st2->execute();
     $r2 = $st2->get_result();

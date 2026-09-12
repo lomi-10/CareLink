@@ -1,5 +1,5 @@
 // app/admin/messages.tsx
-// Super admin messaging — helpers, employers AND PESO staff.
+// System Administrator messaging — helpers, employers AND PESO staff.
 //
 // Same shared StaffMessenger the PESO portal uses, so the two never drift
 // apart; only the palette and the allowed contact types differ. The wider reach
