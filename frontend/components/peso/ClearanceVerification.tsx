@@ -37,7 +37,7 @@ const PORTALS: Record<string, { label: string; url: string; agency: string }> = 
   // means nothing — so this one points at the PNP's own system instead.
   "Police Clearance": {
     label: "Verify on PNP Portal",
-    url: "https://pnpclearance.ph/",
+    url: "https://pnpclearance.ph/#call-to-action",
     agency: "PNP",
   },
 };
