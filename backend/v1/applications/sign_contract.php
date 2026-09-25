@@ -264,6 +264,7 @@ try {
         }
 
         carelink_notify_rejected_after_fill($conn, $job_post_id, $application_id, $jobTitle);
+        carelink_notify_competing_helper_applications($conn, $helper_id, $application_id);
     }
 
     $st3 = $conn->prepare('SELECT status, employer_signed_at, helper_signed_at FROM job_applications WHERE application_id = ? LIMIT 1');

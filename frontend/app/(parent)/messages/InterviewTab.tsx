@@ -20,6 +20,8 @@ export default function InterviewTab({
   onCancel: () => void;
 }) {
   const [guideOpen, setGuideOpen] = useState(false);
+  const helperUnavailable = resolvedApp?.status === 'Rejected'
+    && resolvedApp.parent_notes === 'Helper is already employed by another employer.';
   return (
     <ScrollView style={s.contractTabBody} contentContainerStyle={{ paddingBottom: 24 }}>
       <View style={s.contractHeaderRow}>
@@ -29,8 +31,18 @@ export default function InterviewTab({
         </View>
       </View>
 
+      {helperUnavailable ? (
+        <View style={s.contractEmptyState}>
+          <View style={s.contractEmptyIconWrap}>
+            <Ionicons name="person-remove-outline" size={32} color={DANGER} />
+          </View>
+          <Text style={s.contractEmptyTitle}>Helper no longer available</Text>
+          <Text style={s.contractEmptySub}>This helper is already employed by another employer, so this interview is no longer available.</Text>
+        </View>
+      ) : null}
+
       {/* Interview guide — questions to ask, saved answers pre-fill the contract. */}
-      {!!resolvedApp?.application_id && (
+      {!helperUnavailable && resolvedApp?.application_id ? (
         <TouchableOpacity
           onPress={() => setGuideOpen(true)}
           activeOpacity={0.85}
@@ -43,7 +55,7 @@ export default function InterviewTab({
           </View>
           <Ionicons name="chevron-forward" size={18} color={BROWN} />
         </TouchableOpacity>
-      )}
+      ) : null}
 
       <InterviewGuideModal
         visible={guideOpen}
@@ -52,7 +64,7 @@ export default function InterviewTab({
         onClose={() => setGuideOpen(false)}
       />
 
-      {!resolvedApp?.interview_id ? (
+      {!helperUnavailable && !resolvedApp?.interview_id ? (
         <View style={s.contractEmptyState}>
           <View style={s.contractEmptyIconWrap}>
             <Ionicons name="calendar-outline" size={32} color={MUTED} />
@@ -65,7 +77,7 @@ export default function InterviewTab({
             </TouchableOpacity>
           </View>
         </View>
-      ) : (
+      ) : !helperUnavailable ? (
         <>
           <View style={s.contractSummaryCard}>
             <ContractRow label="Date" value={fmtLongDate(resolvedApp.interview_date)} />
@@ -111,7 +123,7 @@ export default function InterviewTab({
             )}
           </View>
         </>
-      )}
+      ) : null}
     </ScrollView>
   );
 }

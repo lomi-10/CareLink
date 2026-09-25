@@ -64,6 +64,7 @@ export type ResolvedApplication = {
   helper_signed_at?: string | null;
   helper_decline_reason?: string | null;
   helper_decline_at?: string | null;
+  parent_notes?: string | null;
   contract_generated_at?: string | null;
   confirmed_salary?: number | null;
   work_hours?: string | null;

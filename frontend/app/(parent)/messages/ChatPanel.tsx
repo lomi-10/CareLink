@@ -104,6 +104,7 @@ export default function ChatPanel({
           helper_signed_at: match.helper_signed_at ?? null,
           helper_decline_reason: match.helper_decline_reason ?? null,
           helper_decline_at: match.helper_decline_at ?? null,
+          parent_notes: match.parent_notes ?? null,
           contract_generated_at: match.contract_generated_at ?? null,
           confirmed_salary: match.confirmed_salary !== null && match.confirmed_salary !== undefined
             ? Number(match.confirmed_salary) : null,

@@ -46,6 +46,24 @@ try {
         throw new Exception('Only the parent who owns this job can schedule this interview');
     }
 
+    $availabilityStmt = $conn->prepare(
+        "SELECT 1
+         FROM job_applications
+         WHERE helper_id = ?
+           AND status IN ('hired', 'Accepted', 'termination_pending')
+           AND application_id != ?
+           AND employer_signed_at IS NOT NULL
+           AND helper_signed_at IS NOT NULL
+         LIMIT 1"
+    );
+    $availabilityStmt->bind_param('ii', $helper_id, $application_id);
+    $availabilityStmt->execute();
+    $alreadyEmployed = (bool) $availabilityStmt->get_result()->fetch_assoc();
+    $availabilityStmt->close();
+    if ($alreadyEmployed) {
+        throw new Exception('This helper is already employed by another employer and is no longer available for interviews.');
+    }
+
     $loc      = $location_or_link !== '' ? $location_or_link : '';
     $notesVal = $notes !== '' ? $notes : '';
 

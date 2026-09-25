@@ -91,7 +91,7 @@ try {
                 'success' => false,
                 'code'    => 'helper_unavailable',
                 'message' => $senderType === 'parent'
-                    ? 'This helper has already been hired and is no longer available to message. Browse other available helpers to hire.'
+                    ? 'This helper is already employed by another employer and is no longer available. Browse other available helpers to hire.'
                     : 'You are currently hired. You can only message your current employer here.',
             ]);
             exit();

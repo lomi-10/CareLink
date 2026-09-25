@@ -67,7 +67,7 @@ try {
     }
     $query = "
         SELECT
-            a.application_id, a.job_post_id, a.helper_id, a.status, a.applied_at, a.cover_letter,
+            a.application_id, a.job_post_id, a.helper_id, a.status, a.applied_at, a.cover_letter, a.parent_notes,
             a.employer_signed_at, a.helper_signed_at, a.contract_generated_at,
             c.helper_decline_reason, c.helper_decline_at,
             c.confirmed_salary, c.work_hours, c.rest_days,
@@ -195,6 +195,7 @@ try {
             'job_post_id'    => (string)$row['job_post_id'],
             'helper_id'      => (string)$row['helper_id'],
             'status'         => $row['status'],
+            'parent_notes'   => $row['parent_notes'] ?? null,
             'employer_signed_at' => $row['employer_signed_at'] ?? null,
             'helper_signed_at' => $row['helper_signed_at'] ?? null,
             'contract_generated_at' => $row['contract_generated_at'] ?? null,
