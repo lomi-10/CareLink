@@ -84,7 +84,7 @@ export function Team() {
             <Text style={[s.eyebrow, { color: c.accent }]}>THE TEAM</Text>
             <Text style={[s.heading, { color: c.text }]}>Built by students, for Ormoc</Text>
             <Text style={[s.sub, { color: c.textMuted }]}>
-              CareLink is a BSIT capstone project developed with PESO Ormoc, built around the
+              CareLink is a BSCS capstone project developed with PESO Ormoc, built around the
               Batas Kasambahay and the way hiring actually happens here.
             </Text>
           </View>

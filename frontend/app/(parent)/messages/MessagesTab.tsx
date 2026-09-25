@@ -17,6 +17,7 @@ export default function MessagesTab({
   messages, myUserId, sending, partnerName, flatRef,
   text, setText, handleSend, handlePickImage, handleTakePhoto,
   editTarget, setEditTarget, viewerUri, setViewerUri, editMessage, insets, onOpenVideoCall,
+  unavailableNotice,
 }: {
   messages: Message[];
   myUserId: number;
@@ -36,9 +37,16 @@ export default function MessagesTab({
   /** Passed down so a call opens in the app rather than a new tab. */
   onOpenVideoCall?: (url: string) => void;
   insets: EdgeInsets;
+  unavailableNotice?: string | null;
 }) {
   return (
     <>
+      {unavailableNotice && (
+        <View style={{ margin: 14, marginBottom: 0, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#E8B6A8', backgroundColor: '#FFF1EC', flexDirection: 'row', gap: 10 }}>
+          <Ionicons name="person-remove-outline" size={22} color="#B94A36" />
+          <Text style={{ flex: 1, color: '#7A3024', fontWeight: '700', lineHeight: 19 }}>{unavailableNotice}</Text>
+        </View>
+      )}
       {/* Messages */}
       <FlatList
         ref={flatRef}
@@ -78,7 +86,7 @@ export default function MessagesTab({
       />
 
       {/* Input bar */}
-      <View style={[s.inputRow, Platform.OS === 'android' && insets.bottom > 0 && { paddingBottom: insets.bottom + 10 }]}>
+      <View style={[s.inputRow, Platform.OS === 'android' && insets.bottom > 0 && { paddingBottom: insets.bottom + 10 }, unavailableNotice && { opacity: 0.5 }]}>
         <TouchableOpacity style={s.inputIcon} onPress={handlePickImage}>
           <Ionicons name="image-outline" size={22} color={MUTED} />
         </TouchableOpacity>
@@ -100,7 +108,7 @@ export default function MessagesTab({
         <TouchableOpacity
           style={[s.sendBtn, (!text.trim() || sending) && s.sendBtnDisabled]}
           onPress={handleSend}
-          disabled={!text.trim() || sending}
+          disabled={!text.trim() || sending || !!unavailableNotice}
         >
           {sending
             ? <ActivityIndicator size="small" color="#fff" />

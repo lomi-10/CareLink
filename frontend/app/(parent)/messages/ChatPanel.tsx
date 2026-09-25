@@ -16,7 +16,7 @@ import { ConfirmationModal, NotificationModal, PasswordConfirmModal } from '@/co
 import { ChatCallOptionsModal } from '@/components/shared/ChatCallOptionsModal';
 import { InterviewModal, type InterviewInfo } from '@/components/shared/InterviewModal';
 import API_URL from '@/constants/api';
-import { applicationContractPdfUrl, applicationSignContractUrl } from '@/constants/applications';
+import { applicationContractPdfUrl, applicationSignContractUrl, deleteContractUrl } from '@/constants/applications';
 import { HireJobPickerModal, HireContractTermsModal } from '@/components/parent/hire';
 import { CARAMEL, DARK, MUTED } from '@/components/parent/home/parentWarmTheme';
 import { s, ACCENT } from './messages.styles';
@@ -59,6 +59,7 @@ export default function ChatPanel({
   const [contractPdfUri, setContractPdfUri] = useState<string | null>(null);
   const [signConfirmVisible, setSignConfirmVisible] = useState(false);
   const [signPasswordVisible, setSignPasswordVisible] = useState(false);
+  const [deleteContractConfirmVisible, setDeleteContractConfirmVisible] = useState(false);
   const [chatNotif, setChatNotif] = useState<{
     visible: boolean;
     message: string;
@@ -360,6 +361,31 @@ export default function ChatPanel({
     }
   };
 
+  const executeDeleteContract = async () => {
+    if (!resolvedApp) return;
+    setDeleteContractConfirmVisible(false);
+    setHiringAction(true);
+    try {
+      const raw = await AsyncStorage.getItem('user_data');
+      const user = raw ? JSON.parse(raw) : null;
+      if (!user?.user_id) throw new Error('Not logged in');
+      const res = await fetch(deleteContractUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ application_id: resolvedApp.application_id, parent_id: user.user_id, requester_id: user.user_id }),
+      });
+      const data = await res.json() as { success?: boolean; message?: string };
+      if (!data.success) throw new Error(data.message || 'Could not delete contract');
+      await loadResolvedApp();
+      fetchMessages();
+      showChatNotif('Pending contract deleted.', 'success');
+    } catch (e: any) {
+      showChatNotif(e.message ?? 'Could not delete contract', 'error');
+    } finally {
+      setHiringAction(false);
+    }
+  };
+
   const {
     contractFlowMode,
     hirePickVisible, setHirePickVisible,
@@ -482,6 +508,8 @@ export default function ChatPanel({
           setViewerUri={setViewerUri}
           editMessage={editMessage}
           insets={insets}
+          unavailableNotice={resolvedApp?.status === 'Rejected' && resolvedApp.parent_notes === 'Helper is already employed by another employer.'
+            ? 'You cannot hire this helper because they are already hired by another employer.' : null}
         />
       )}
 
@@ -494,6 +522,7 @@ export default function ChatPanel({
           onHire={beginHireFlow}
           onReject={openRejectConfirm}
           onAgree={() => setSignConfirmVisible(true)}
+          onDelete={() => setDeleteContractConfirmVisible(true)}
         />
       )}
 
@@ -630,6 +659,16 @@ export default function ChatPanel({
           setSignPasswordVisible(true);
         }}
         onCancel={() => setSignConfirmVisible(false)}
+      />
+      <ConfirmationModal
+        visible={deleteContractConfirmVisible}
+        title="Delete pending contract?"
+        message="This removes the draft contract and returns the application to shortlisted. The helper will be notified."
+        confirmText="Delete Contract"
+        cancelText="Keep Contract"
+        type="danger"
+        onConfirm={() => { void executeDeleteContract(); }}
+        onCancel={() => setDeleteContractConfirmVisible(false)}
       />
       <PasswordConfirmModal
         visible={signPasswordVisible}

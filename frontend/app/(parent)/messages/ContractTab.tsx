@@ -9,7 +9,7 @@ import { fmtDate, ResolvedApplication } from './helpers';
 import { ContractRow } from './components';
 
 export default function ContractTab({
-  resolvedApp, hiringAction, onReviewContract, onEditTerms, onHire, onReject, onAgree,
+  resolvedApp, hiringAction, onReviewContract, onEditTerms, onHire, onReject, onAgree, onDelete,
 }: {
   resolvedApp: ResolvedApplication | null;
   hiringAction: boolean;
@@ -18,7 +18,10 @@ export default function ContractTab({
   onHire: () => void | Promise<void>;
   onReject: () => void;
   onAgree: () => void;
+  onDelete: () => void;
 }) {
+  const helperUnavailable = resolvedApp?.status === 'Rejected'
+    && resolvedApp.parent_notes === 'Helper is already employed by another employer.';
   return (
     <ScrollView style={s.contractTabBody} contentContainerStyle={{ paddingBottom: 24 }}>
       {!resolvedApp ? (
@@ -34,8 +37,10 @@ export default function ContractTab({
           <View style={s.contractEmptyIconWrap}>
             <Ionicons name="document-text-outline" size={32} color={MUTED} />
           </View>
-          <Text style={s.contractEmptyTitle}>No contract</Text>
-          <Text style={s.contractEmptySub}>This application is {resolvedApp.status.toLowerCase()}.</Text>
+          <Text style={s.contractEmptyTitle}>{helperUnavailable ? 'Helper unavailable' : 'No contract'}</Text>
+          <Text style={s.contractEmptySub}>{helperUnavailable
+            ? 'You cannot hire this helper because they are already hired by another employer.'
+            : `This application is ${resolvedApp.status.toLowerCase()}.`}</Text>
         </View>
       ) : resolvedApp.status === 'contract_pending' ? (
         <>
@@ -111,6 +116,15 @@ export default function ContractTab({
                 : <Text style={s.contractPrimaryBtnTxt}>I Agree</Text>
               }
             </TouchableOpacity>
+            {!resolvedApp.helper_signed_at && (
+              <TouchableOpacity
+                style={s.contractDangerOutlineBtn}
+                onPress={onDelete}
+                disabled={hiringAction}
+              >
+                <Text style={s.contractDangerOutlineBtnTxt}>Delete Contract</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </>
       ) : resolvedApp.status === 'hired' || resolvedApp.status === 'Accepted' ? (

@@ -47,6 +47,9 @@ export const getContractTermsUrl = () => `${API_URL}/parent/get_contract_terms.p
 /** POST JSON: application_id, job_post_id, parent_id, helper_id + contract term fields — regenerates the pending contract */
 export const editContractUrl = () => `${API_URL}/parent/edit_contract.php`;
 
+/** POST JSON: application_id, parent_id, requester_id — deletes an unsigned pending contract */
+export const deleteContractUrl = () => `${API_URL}/parent/delete_contract.php`;
+
 /** POST JSON: application_id, helper_id, reason — helper "Disagree" with pending contract */
 export const requestContractChangesUrl = () =>
   `${API_URL}/v1/applications/request_contract_changes.php`;

@@ -36,8 +36,8 @@ export default function InterviewTab({
           <View style={s.contractEmptyIconWrap}>
             <Ionicons name="person-remove-outline" size={32} color={DANGER} />
           </View>
-          <Text style={s.contractEmptyTitle}>Helper no longer available</Text>
-          <Text style={s.contractEmptySub}>This helper is already employed by another employer, so this interview is no longer available.</Text>
+          <Text style={s.contractEmptyTitle}>Helper unavailable</Text>
+          <Text style={s.contractEmptySub}>You cannot hire this helper because they are already hired by another employer.</Text>
         </View>
       ) : null}
 

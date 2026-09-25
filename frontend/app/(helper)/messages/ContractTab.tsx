@@ -34,8 +34,10 @@ export default function ContractTab({
           <View style={s.contractEmptyIconWrap}>
             <Ionicons name="document-text-outline" size={36} color={SUBTLE} />
           </View>
-          <Text style={s.contractEmptyTitle}>No contract</Text>
-          <Text style={s.contractEmptySub}>This application is {resolvedApp.status}.</Text>
+          <Text style={s.contractEmptyTitle}>{resolvedApp.parent_notes === 'Helper is already employed by another employer.' ? 'Opportunity unavailable' : 'No contract'}</Text>
+          <Text style={s.contractEmptySub}>{resolvedApp.parent_notes === 'Helper is already employed by another employer.'
+            ? 'You cannot continue this opportunity because you are already hired by another employer.'
+            : `This application is ${resolvedApp.status}.`}</Text>
         </View>
       ) : resolvedApp.status === 'contract_pending' ? (
         <>

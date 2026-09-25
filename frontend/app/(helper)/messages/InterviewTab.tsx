@@ -20,6 +20,8 @@ export default function InterviewTab({
   onCancel: () => void;
 }) {
   const { s } = useMessagesAppearance();
+  const unavailable = resolvedApp?.status === 'Rejected'
+    && resolvedApp.parent_notes === 'Helper is already employed by another employer.';
 
   return (
     <ScrollView style={s.contractTabBody} contentContainerStyle={{ paddingBottom: 24 }}>
@@ -30,7 +32,15 @@ export default function InterviewTab({
         </View>
       </View>
 
-      {!resolvedApp?.interview_id ? (
+      {unavailable ? (
+        <View style={s.contractEmptyState}>
+          <View style={s.contractEmptyIconWrap}>
+            <Ionicons name="person-remove-outline" size={36} color={DANGER} />
+          </View>
+          <Text style={s.contractEmptyTitle}>Opportunity unavailable</Text>
+          <Text style={s.contractEmptySub}>You cannot continue this opportunity because you are already hired by another employer.</Text>
+        </View>
+      ) : !resolvedApp?.interview_id ? (
         <View style={s.contractEmptyState}>
           <View style={s.contractEmptyIconWrap}>
             <Ionicons name="calendar-outline" size={36} color={ORANGE} />
