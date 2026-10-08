@@ -1,16 +1,4 @@
 // components/landing/web/Team.tsx
-//
-// The people who built CareLink.
-//
-// ⚠ REPLACE THE PLACEHOLDER NAMES BELOW before the defense. They are marked
-// rather than invented — putting made-up names on a page a panel will read is
-// worse than an obvious gap, because a gap gets fixed and a plausible fiction
-// does not.
-//
-// Photographs are optional. A member with no `photo` falls back to their
-// initials on the brand accent, which is deliberate: a grid where some cards
-// have a face and others have a grey silhouette looks broken, whereas initials
-// look like a choice.
 import React from 'react';
 import { Image } from 'expo-image';
 import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -21,15 +9,25 @@ import { CONTAINER_MAX, useLandingTheme } from './landingTheme';
 type Member = {
   name: string;
   role: string;
-  /** e.g. require('@/assets/team/jess.jpg') */
-  photo?: number;
+  photo?: any;
 };
 
-// Three members. ⚠ The two placeholder names below still need replacing.
 const TEAM: Member[] = [
-  { name: 'Jess David Almeñe', role: 'Lead Developer' },
-  { name: 'Sean Howie Eulogio', role: 'Documentation' },
-  { name: 'Kirby L. Calderon', role: 'Quality Assurance' },
+  { 
+    name: 'Jess David Almeñe', 
+    role: 'Lead Developer', 
+    photo: require('@/assets/team/jess.png') 
+  },
+  { 
+    name: 'Sean Howie Eulogio', 
+    role: 'Documentation', 
+    photo: require('@/assets/team/sean.png') 
+  },
+  { 
+    name: 'Kirby L. Calderon', 
+    role: 'Quality Assurance', 
+    photo: require('@/assets/team/kirby.png') 
+  },
 ];
 
 const ADVISER: Member | null = { name: 'Mr. Joscoro Cantero', role: 'Adviser' };
@@ -47,26 +45,33 @@ function Card({ m, wide }: { m: Member; wide: boolean }) {
         {
           backgroundColor: c.card,
           borderColor: c.cardBorder,
-          // Desktop fits four across; below that they wrap two-up rather than
-          // shrinking to a size where the names stop being readable.
           flexBasis: wide ? 0 : '46%',
           flexGrow: 1,
-          minWidth: wide ? 0 : 190,
+          minWidth: wide ? 0 : 220,
           ...(Platform.OS === 'web'
             ? ({ transition: 'transform 200ms ease, border-color 200ms ease' } as object)
             : null),
         },
       ]}
     >
-      {m.photo ? (
-        <Image source={m.photo} style={s.photo} contentFit="cover" />
-      ) : (
-        <View style={[s.photo, s.fallback, { backgroundColor: c.accentSoft, borderColor: c.accent }]}>
-          <Text style={[s.initials, { color: c.accent }]}>{initials(m.name)}</Text>
+      {/* Top Full-Bleed Image Container */}
+      <View style={s.imageContainer}>
+        {m.photo ? (
+          <Image source={m.photo} style={s.photo} contentFit="cover" />
+        ) : (
+          <View style={[s.photo, s.fallback, { backgroundColor: c.accentSoft }]}>
+            <Text style={[s.initials, { color: c.accent }]}>{initials(m.name)}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Bottom Information Panel */}
+      <View style={s.infoSection}>
+        <Text style={[s.name, { color: c.text }]} numberOfLines={2}>{m.name}</Text>
+        <View style={[s.roleBadge, { backgroundColor: c.accentSoft }]}>
+          <Text style={[s.roleText, { color: c.accent }]}>{m.role}</Text>
         </View>
-      )}
-      <Text style={[s.name, { color: c.text }]} numberOfLines={2}>{m.name}</Text>
-      <Text style={[s.role, { color: c.textMuted }]} numberOfLines={1}>{m.role}</Text>
+      </View>
     </View>
   );
 }
@@ -89,8 +94,6 @@ export function Team() {
             </Text>
           </View>
 
-          {/* The partnership is the most credible thing on this page, so it gets
-              a panel rather than a line of text. */}
           <View style={[s.pesoPanel, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
             <Image
               source={require("@/assets/landing/large-peso-ormoc-logo.png")}
@@ -106,7 +109,7 @@ export function Team() {
           </View>
         </View>
 
-        <View style={[s.grid, { flexWrap: wide ? 'nowrap' : 'wrap', maxWidth: wide ? 760 : undefined }]}>
+        <View style={[s.grid, { flexWrap: wide ? 'nowrap' : 'wrap', maxWidth: wide ? 820 : undefined }]}>
           {TEAM.map((m) => <Card key={m.name + m.role} m={m} wide={wide} />)}
         </View>
 
@@ -137,16 +140,34 @@ const s = StyleSheet.create({
   },
   pesoLogo: { width: 96, height: 96 },
   pesoTxt: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, lineHeight: 19, textAlign: 'center' },
-  grid: { flexDirection: 'row', gap: 16 },
-  card: { borderRadius: 18, borderWidth: 1, padding: 20, alignItems: 'center', gap: 4 },
-  photo: { width: 76, height: 76, borderRadius: 38, marginBottom: 12 },
-  fallback: { alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  initials: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 24 },
-  name: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15.5, textAlign: 'center' },
-  role: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, textAlign: 'center' },
+  grid: { flexDirection: 'row', gap: 20, marginTop: 10},
+  card: { 
+    borderRadius: 20, 
+    borderWidth: 1, 
+    overflow: 'hidden', // Clips photo to top corners of card
+  },
+  imageContainer: {
+    width: '100%',
+    height: 210, // Full top image height
+  },
+  photo: { width: '100%', height: '100%' },
+  fallback: { alignItems: 'center', justifyContent: 'center' },
+  initials: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 36 },
+  infoSection: {
+    padding: 18,
+    alignItems: 'center',
+    gap: 8,
+  },
+  name: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, textAlign: 'center' },
+  roleBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  roleText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, textAlign: 'center' },
   adviser: {
     flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'flex-start',
-    marginTop: 22, paddingVertical: 11, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1,
+    marginTop: 28, paddingVertical: 11, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1,
   },
   adviserDot: { width: 7, height: 7, borderRadius: 4 },
   adviserTxt: { fontFamily: FontFamily.fredokaRegular, fontSize: 13.5 },

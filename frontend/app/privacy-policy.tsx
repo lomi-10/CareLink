@@ -95,7 +95,7 @@ export default function PrivacyPolicyScreen() {
           <Section title="Who is responsible for your data">
             <Text style={s.body}>
               CareLink is the personal information controller for the data described here. It is
-              operated as a capstone project by BSIT students of Western Leyte College, in coordination
+              operated as a capstone project by BSCS students of Western Leyte College, in coordination
               with PESO Ormoc. Verification decisions are made by PESO officers acting in their official
               capacity.
             </Text>

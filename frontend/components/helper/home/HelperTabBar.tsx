@@ -33,7 +33,7 @@ type TabDef = {
 
 const TABS: TabDef[] = [
   { path: '/(helper)/home',         label: 'Home',      icon: 'home-outline',           iconActive: 'home' },
-  { path: '/(helper)/browse',       label: 'Find Jobs',  icon: 'search-outline',         iconActive: 'search' },
+  { path: '/(helper)/browse',       label: 'Browse',  icon: 'search-outline',         iconActive: 'search' },
   { path: '/(helper)/applications', label: 'Apply',      icon: 'briefcase-outline',      iconActive: 'briefcase',  isCenter: true },
   { path: '/(helper)/messages',     label: 'Messages',   icon: 'chatbubbles-outline',    iconActive: 'chatbubbles' },
   { path: '/(helper)/profile',      label: 'Profile',    icon: 'person-outline',         iconActive: 'person' },
