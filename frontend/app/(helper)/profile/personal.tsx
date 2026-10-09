@@ -15,11 +15,13 @@ import { HelperTabBar } from '@/components/helper/home';
 import EditHelperProfileModal from '@/components/helper/profile/profileEditModal/EditHelperProfileModal';
 import { useProfileTheme } from './profile.theme';
 import { createStyles } from './personal.styles';
+import { useT } from '@/contexts/LocaleContext';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
+  const { t: tr } = useT();
   const t = useProfileTheme();
   const { DARK, MUTED, ORANGE, GREEN } = t;
   const s = useMemo(() => createStyles(t), [t]);
@@ -53,20 +55,20 @@ export default function PersonalInfoScreen() {
   const helperAge = (profile?.age as number | undefined) ?? computeAge(profile?.date_of_birth ?? profile?.birth_date);
 
   const personalRows: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }[] = [
-    { icon: 'male',              label: 'Gender',          value: profile?.gender           || '—' },
-    { icon: 'calendar',          label: 'Date of Birth',   value: profile?.date_of_birth    || '—' },
-    { icon: 'person',            label: 'Age',             value: helperAge != null ? `${helperAge} years old` : '—' },
-    { icon: 'heart-outline',     label: 'Civil Status',    value: profile?.civil_status     || '—' },
-    { icon: 'business-outline',  label: 'Religion',        value: profile?.religion         || '—' },
-    { icon: 'school-outline',    label: 'Education Level', value: profile?.education_level  || '—' },
-    { icon: 'call-outline',      label: 'Contact Number',  value: profile?.contact_number   || '—' },
+    { icon: 'male',              label: tr('helper.setup.gender'),          value: profile?.gender           || '—' },
+    { icon: 'calendar',          label: tr('helper.setup.dateOfBirth'),      value: profile?.date_of_birth    || '—' },
+    { icon: 'person',            label: tr('helper.setup.age'),              value: helperAge != null ? tr('helper.setup.yearsOld', { count: helperAge }) : '—' },
+    { icon: 'heart-outline',     label: tr('helper.setup.civilStatus'),      value: profile?.civil_status     || '—' },
+    { icon: 'business-outline',  label: tr('helper.setup.religion'),         value: profile?.religion         || '—' },
+    { icon: 'school-outline',    label: tr('helper.setup.education'),        value: profile?.education_level  || '—' },
+    { icon: 'call-outline',      label: tr('helper.setup.contactNumber'),    value: profile?.contact_number   || '—' },
   ];
 
   const workRows: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }[] = [
-    { icon: 'briefcase-outline', label: 'Employment Type',  value: profile?.employment_type  || '—' },
-    { icon: 'time-outline',      label: 'Work Schedule',    value: profile?.work_schedule    || '—' },
-    { icon: 'trending-up',       label: 'Years Experience', value: profile?.years_experience ? `${profile.years_experience} years` : 'Entry level' },
-    { icon: 'cash-outline',      label: 'Expected Salary',  value: profile?.expected_salary  ? `₱${Number(profile.expected_salary).toLocaleString()} / ${profile.salary_period ?? 'month'}` : 'Negotiable' },
+    { icon: 'briefcase-outline', label: tr('helper.setup.employmentType'), value: profile?.employment_type || '—' },
+    { icon: 'time-outline',      label: tr('helper.setup.workSchedule'),   value: profile?.work_schedule || '—' },
+    { icon: 'trending-up',       label: tr('helper.profile.yearsExperience'), value: profile?.years_experience ? tr('helper.setup.years', { count: profile.years_experience }) : tr('helper.setup.entryLevel') },
+    { icon: 'cash-outline',      label: tr('helper.setup.expectedSalary'), value: profile?.expected_salary ? `₱${Number(profile.expected_salary).toLocaleString()} / ${profile.salary_period ?? 'month'}` : tr('helper.setup.negotiable') },
   ];
 
   return (
@@ -78,9 +80,9 @@ export default function PersonalInfoScreen() {
           <TouchableOpacity style={s.barBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color={DARK} />
           </TouchableOpacity>
-          <Text style={s.barTitle}>Personal Information</Text>
+          <Text style={s.barTitle}>{tr('helper.setup.personalTitle')}</Text>
           <TouchableOpacity style={s.editBtn} onPress={() => setEditOpen(true)}>
-            <Text style={s.editText}>Edit</Text>
+            <Text style={s.editText}>{tr('helper.setup.edit')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -92,8 +94,8 @@ export default function PersonalInfoScreen() {
               <Ionicons name="person-circle-outline" size={26} color={ORANGE} />
             </View>
             <View style={s.bannerText}>
-              <Text style={s.bannerTitle}>Your personal details</Text>
-              <Text style={s.bannerSub}>Keep your information updated for a better match.</Text>
+              <Text style={s.bannerTitle}>{tr('helper.setup.personalDetails')}</Text>
+              <Text style={s.bannerSub}>{tr('helper.setup.personalHint')}</Text>
             </View>
             {/* ============================================================
                 🖼️  DECORATIVE ILLUSTRATION
@@ -118,7 +120,7 @@ export default function PersonalInfoScreen() {
           </View>
 
           {/* Work Preferences */}
-          <Text style={s.groupLabel}>Work Preferences</Text>
+          <Text style={s.groupLabel}>{tr('helper.setup.workPreferences')}</Text>
           <View style={s.card}>
             {workRows.map((row, i) => (
               <React.Fragment key={row.label}>
@@ -134,8 +136,8 @@ export default function PersonalInfoScreen() {
               <Ionicons name="lock-closed" size={20} color={GREEN} />
             </View>
             <View>
-              <Text style={s.privacyTitle}>Your information is secure</Text>
-              <Text style={s.privacySub}>CareLink will never share your personal information without your consent.</Text>
+              <Text style={s.privacyTitle}>{tr('helper.setup.infoSecure')}</Text>
+              <Text style={s.privacySub}>{tr('helper.setup.privacyHint')}</Text>
             </View>
           </View>
         </ScrollView>

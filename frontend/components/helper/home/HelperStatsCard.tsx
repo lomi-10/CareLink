@@ -8,6 +8,7 @@ import React from 'react';
 import { useMemo } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { useT } from '@/contexts/LocaleContext';
 import { useHelperWarm, type HelperWarm } from './helperWarmTheme';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -40,32 +41,33 @@ export function HelperStatsCard({
   onApplied, onSaved, onViews, onStrength,
 }: HelperStatsCardProps) {
   const router = useRouter();
+  const { t } = useT();
   const w = useHelperWarm();
   const s = useMemo(() => makeStyles(w), [w]);
 
   const cols: StatCol[] = [
     {
       icon: 'briefcase', iconBg: w.ICON_BG, iconColor: w.ORANGE,
-      value: applied, label: 'Applied',
-      actionLabel: 'View all',
+      value: applied, label: t('helper.home.applied'),
+      actionLabel: t('helper.home.viewAll'),
       onAction: onApplied ?? (() => router.push('/(helper)/applications')),
     },
     {
       icon: 'bookmark', iconBg: w.ICON_BG, iconColor: w.ORANGE,
-      value: saved, label: 'Saved',
-      actionLabel: 'View all',
+      value: saved, label: t('helper.home.saved'),
+      actionLabel: t('helper.home.viewAll'),
       onAction: onSaved ?? (() => router.push('/(helper)/browse/saved_jobs')),
     },
     {
       icon: 'eye', iconBg: w.SUCCESS_BG, iconColor: w.GREEN,
-      value: profileViews, label: 'Profile Views',
-      actionLabel: 'View all',
+      value: profileViews, label: t('helper.home.profileViews'),
+      actionLabel: t('helper.home.viewAll'),
       onAction: onViews,
     },
     {
       icon: 'shield-checkmark', iconBg: w.ICON_BG, iconColor: w.ORANGE,
-      value: `${profileStrength}%`, label: 'Profile Strength',
-      actionLabel: profileStrength < 100 ? 'Improve' : 'Perfect!',
+      value: `${profileStrength}%`, label: t('helper.home.profileStrength'),
+      actionLabel: profileStrength < 100 ? t('helper.home.improve') : t('helper.home.perfect'),
       onAction: onStrength ?? (() => router.push('/(helper)/profile')),
     },
   ];

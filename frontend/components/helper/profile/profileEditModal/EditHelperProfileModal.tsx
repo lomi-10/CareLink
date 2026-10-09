@@ -22,6 +22,7 @@ import { NotificationModal, VerifyChangeModal } from '@/components/shared';
 import { isValidPhMobile, normalizePhMobile } from '@/lib/phone';
 import type { WorkHistoryEntry } from '@/hooks/helper';
 import { AddressSection, SelectionModal } from '.';
+import { useT } from '@/contexts/LocaleContext';
 
 // ─── Category icon map ────────────────────────────────────────────────────────
 // Maps PESO job category names → Ionicons icon + color theme for the card grid.
@@ -70,17 +71,17 @@ interface Props {
 
 const SECTIONS: {
   key:        SectionKey;
-  title:      string;
-  subtitle:   string;
+  titleKey:   string;
+  subtitleKey:string;
   icon:       keyof typeof Ionicons.glyphMap;
   iconBg:     string;
   iconColor:  string;
   totalSteps: number;
 }[] = [
-  { key: 'personal',    title: 'Personal Information', subtitle: 'Name, contact, birth date, education & address',    icon: 'person',       iconBg: '#DBEAFE', iconColor: '#2563EB', totalSteps: 4 },
-  { key: 'skills',      title: 'Skills & Expertise',   subtitle: 'Roles, skills and languages',                       icon: 'sparkles',     iconBg: '#EDE9FE', iconColor: '#7C3AED', totalSteps: 4 },
-  { key: 'preferences', title: 'Work Preferences',     subtitle: 'Work setup, schedule and expected salary',          icon: 'time-outline', iconBg: '#FEF3C7', iconColor: '#D97706', totalSteps: 1 },
-  { key: 'experience',  title: 'Experience',           subtitle: 'Bio, years of experience and past employers',       icon: 'briefcase',    iconBg: '#D1FAE5', iconColor: '#059669', totalSteps: 2 },
+  { key: 'personal',    titleKey: 'helper.setup.personalTitle', subtitleKey: 'helper.setup.personalSectionHint', icon: 'person',       iconBg: '#DBEAFE', iconColor: '#2563EB', totalSteps: 4 },
+  { key: 'skills',      titleKey: 'helper.setup.skillsTitle',   subtitleKey: 'helper.setup.skillsSectionHint',   icon: 'sparkles',     iconBg: '#EDE9FE', iconColor: '#7C3AED', totalSteps: 4 },
+  { key: 'preferences', titleKey: 'helper.setup.workPreferences', subtitleKey: 'helper.setup.preferencesSectionHint', icon: 'time-outline', iconBg: '#FEF3C7', iconColor: '#D97706', totalSteps: 1 },
+  { key: 'experience',  titleKey: 'helper.setup.experience', subtitleKey: 'helper.setup.experienceSectionHint', icon: 'briefcase',    iconBg: '#D1FAE5', iconColor: '#059669', totalSteps: 2 },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -107,6 +108,7 @@ const MUTED  = '#7A5C3E';
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess, onProfileUpdated, initialSection }: Props) {
+  const { t: tr } = useT();
 
   // ── Navigation state ────────────────────────────────────────────────────────
   const [view, setView] = useState<ModalView>({ type: 'chooser' });
@@ -218,12 +220,12 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
     setLoading(true);
     try {
       const raw  = await AsyncStorage.getItem('user_data');
-      if (!raw)  throw new Error('Not logged in');
+      if (!raw) throw new Error(tr('helper.setup.notLoggedIn'));
       const parsed = JSON.parse(raw);
       setUserId(parsed.user_id);
       const res  = await fetch(`${API_URL}/helper/get_profile.php?user_id=${parsed.user_id}&requester_id=${parsed.user_id}`);
       const data = JSON.parse(await res.text());
-      if (!data.success) throw new Error(data.message || 'Failed to load profile');
+      if (!data.success) throw new Error(data.message || tr('helper.setup.loadProfileFailed'));
 
       if (data.user) {
         setFirstName(data.user.first_name || '');
@@ -274,7 +276,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       setSelectedSkillIds(data.selected_skills || []);
       setSelectedLanguageIds(data.selected_languages || []);
     } catch (e: any) {
-      showNotif(e.message || 'Failed to load', 'error');
+      showNotif(e.message || tr('helper.setup.loadProfileFailed'), 'error');
     } finally {
       setLoading(false);
     }
@@ -417,7 +419,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       }
       const res  = await fetch(`${API_URL}/helper/update_profile.php`, { method: 'POST', body: fd });
       let data: any;
-      try { data = JSON.parse(await res.text()); } catch { throw new Error('Invalid server response'); }
+      try { data = JSON.parse(await res.text()); } catch { throw new Error(tr('helper.setup.invalidServerResponse')); }
       if (data.success) {
         showNotif(successMessage, 'success');
         const newPhoto = data.data?.profile_image ?? null;
@@ -435,7 +437,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
           onProfileUpdated?.();
         }
         onSuccess?.();
-      } else throw new Error(data.message || 'Save failed');
+      } else throw new Error(data.message || tr('helper.setup.saveFailed'));
     } catch (e: any) {
       showNotif(e.message, 'error');
     } finally {
@@ -448,32 +450,32 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   // photo is uploaded immediately instead of waiting for a section save.
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return showNotif('Photo library permission required', 'error');
+    if (status !== 'granted') return showNotif(tr('helper.setup.photoPermissionRequired'), 'error');
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.7 });
     if (result.canceled) return;
     const uri = result.assets[0].uri;
     setProfileImage(uri);
     setImageChanged(true);
-    await submitProfile('Profile photo updated!', undefined, uri);
+    await submitProfile(tr('helper.setup.profilePhotoUpdated'), undefined, uri);
   };
 
   // ── Validation per section ──────────────────────────────────────────────────
   const validateSection = (key: SectionKey): string | null => {
     switch (key) {
       case 'personal':
-        if (!firstName.trim()) return 'First name is required';
-        if (!lastName.trim())  return 'Last name is required';
+        if (!firstName.trim()) return tr('helper.setup.validationFirstName');
+        if (!lastName.trim())  return tr('helper.setup.validationLastName');
         // Contact number is optional — validate only if one was entered.
-        if (contactNumber.trim() && !isValidPhMobile(contactNumber)) return 'Enter a valid PH mobile number, like 0917 123 4567 — or leave it blank';
-        if (!birthDate) return 'Birth date is required';
-        if (!province || !municipality || !barangay) return 'Province, municipality and barangay are required';
+        if (contactNumber.trim() && !isValidPhMobile(contactNumber)) return tr('helper.setup.validationMobile');
+        if (!birthDate) return tr('helper.setup.validationBirthDate');
+        if (!province || !municipality || !barangay) return tr('helper.setup.validationAddress');
         return null;
       case 'skills':
-        if (!selectedCategoryIds.length) return 'Select at least one job category';
-        if (!selectedLanguageIds.length) return 'Select at least one language';
+        if (!selectedCategoryIds.length) return tr('helper.setup.validationCategory');
+        if (!selectedLanguageIds.length) return tr('helper.setup.validationLanguage');
         return null;
       case 'preferences':
-        if (!expectedSalary || parseFloat(expectedSalary) < 6000) return 'Minimum salary is ₱6,000';
+        if (!expectedSalary || parseFloat(expectedSalary) < 6000) return tr('helper.setup.validationSalary');
         return null;
       case 'experience':
         // Bio is optional — only validate length if the helper actually typed one.
@@ -490,7 +492,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
     Keyboard.dismiss();
     const err = validateSection(section);
     if (err) return showNotif(err, 'error');
-    await submitProfile('Changes saved!', () => {
+    await submitProfile(tr('helper.setup.changesSaved'), () => {
       setTimeout(() => { setView({ type: 'chooser' }); onSaveSuccess?.(); }, 1200);
     });
   };
@@ -510,17 +512,17 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const renderPersonalStep = (step: number) => {
     if (step === 1) return (
       <>
-        <Label>First name <Req /></Label>
-        <StyledInput value={firstName} onChangeText={setFirstName} placeholder="Juan" />
-        <Label>Last name <Req /></Label>
-        <StyledInput value={lastName} onChangeText={setLastName} placeholder="Dela Cruz" />
-        <Label>Middle name <OptTag /></Label>
-        <StyledInput value={middleName} onChangeText={setMiddleName} placeholder="Optional" />
+        <Label>{tr('helper.setup.firstName')} <Req /></Label>
+        <StyledInput value={firstName} onChangeText={setFirstName} placeholder={tr('helper.setup.firstNamePlaceholder')} />
+        <Label>{tr('helper.setup.lastName')} <Req /></Label>
+        <StyledInput value={lastName} onChangeText={setLastName} placeholder={tr('helper.setup.lastNamePlaceholder')} />
+        <Label>{tr('helper.setup.middleName')} <OptTag /></Label>
+        <StyledInput value={middleName} onChangeText={setMiddleName} placeholder={tr('helper.setup.middleNamePlaceholder')} />
       </>
     );
     if (step === 2) return (
       <>
-        <Label>Birth Date <Req /></Label>
+        <Label>{tr('helper.setup.dateOfBirth')} <Req /></Label>
         {Platform.OS === 'web' ? (
           React.createElement('input', {
             type: 'date', value: birthDate || '', min: '1940-01-01', max: toYmd(new Date()),
@@ -532,7 +534,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
             <TouchableOpacity style={s.dateBtn} onPress={() => setShowBirthPicker(true)} activeOpacity={0.85}>
               <Ionicons name="calendar-outline" size={18} color={ORANGE} />
               <Text style={[s.dateBtnText, !birthDate && { color: '#B8956A' }]}>
-                {birthDate ? new Date(birthDate + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Select birth date'}
+                {birthDate ? new Date(birthDate + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : tr('helper.setup.selectBirthDate')}
               </Text>
               <Ionicons name="chevron-down" size={16} color={MUTED} />
             </TouchableOpacity>
@@ -544,13 +546,13 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
             )}
           </>
         )}
-        <Label>Gender <Req /></Label>
+        <Label>{tr('helper.setup.gender')} <Req /></Label>
         <ToggleRow options={['Male', 'Female']} value={gender} onChange={v => setGender(v as any)} />
-        <Label>Civil Status <Req /></Label>
+        <Label>{tr('helper.setup.civilStatus')} <Req /></Label>
         <ToggleRow options={['Single', 'Married', 'Widowed', 'Separated']} value={civilStatus} onChange={setCivilStatus} />
-        <Label>Religion <OptTag /></Label>
-        <DropdownField value={religion} onChange={setReligion} options={RELIGION_OPTIONS} placeholder="Select religion" />
-        <Label>Educational Attainment <Req /></Label>
+        <Label>{tr('helper.setup.religion')} <OptTag /></Label>
+        <DropdownField value={religion} onChange={setReligion} options={RELIGION_OPTIONS} placeholder={tr('helper.setup.selectReligion')} />
+        <Label>{tr('helper.setup.educationalAttainment')} <Req /></Label>
         <ToggleRow
           options={['Elementary', 'High School Undergrad', 'High School Grad', 'College Undergrad', 'College Grad', 'Vocational']}
           value={educationLevel} onChange={setEducationLevel}
@@ -559,11 +561,11 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
     );
     if (step === 3) return (
       <>
-        <Label>Contact Number <OptTag /></Label>
+        <Label>{tr('helper.setup.contactNumber')} <OptTag /></Label>
         <StyledInput value={contactNumber} onChangeText={setContactNumber} placeholder="09XX XXX XXXX" keyboardType="phone-pad" />
-        <Label>Email Address</Label>
-        <VerifiedRow value={email || 'Not set'} onChange={() => setChangeField('email')} />
-        <Text style={s.verifiedNote}>For your security, changing your email needs a quick email verification.</Text>
+        <Label>{tr('helper.setup.emailAddress')}</Label>
+        <VerifiedRow value={email || tr('helper.setup.emailNotSet')} onChange={() => setChangeField('email')} />
+        <Text style={s.verifiedNote}>{tr('helper.setup.emailVerificationHint')}</Text>
       </>
     );
     if (step === 4) return (
@@ -635,16 +637,16 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const renderExperienceStep = (step: number) => {
     if (step === 1) return (
       <>
-        <Label>Tell employers about yourself <OptTag /></Label>
+        <Label>{tr('helper.setup.tellAboutYourself')} <OptTag /></Label>
         <TextInput
           style={[s.input, s.textArea]}
           multiline numberOfLines={4}
           value={bio} onChangeText={setBio}
-          placeholder="I am experienced in household chores, cooking and childcare..."
+          placeholder={tr('helper.setup.bioPlaceholder')}
           placeholderTextColor="#B8956A"
         />
-        <Text style={s.inputHint}>Optional — if you add a bio, keep it at least 15 characters.</Text>
-        <Label>Total Years of Experience</Label>
+        <Text style={s.inputHint}>{tr('helper.setup.bioHint')}</Text>
+        <Label>{tr('helper.setup.totalYearsExperience')}</Label>
         <ToggleRow
           options={['0', '1', '2', '3', '4', '5+']}
           value={experienceYears} onChange={setExperienceYears}
@@ -656,44 +658,44 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         <View style={s.infoBox}>
           <Ionicons name="briefcase-outline" size={18} color="#059669" />
           <Text style={s.infoBoxText}>
-            Add past employers to build trust with families. You can mark the ones happy to be contacted as a reference.
+            {tr('helper.setup.workHistoryHint')}
           </Text>
         </View>
 
         {workRows.map((w, i) => (
           <View key={i} style={s.workCard}>
             <View style={s.workCardTop}>
-              <Text style={s.workCardNum}>Job {i + 1}</Text>
+              <Text style={s.workCardNum}>{tr('helper.setup.jobNumber', { number: i + 1 })}</Text>
               <TouchableOpacity onPress={() => setWorkRows(r => r.filter((_, k) => k !== i))} hitSlop={8}>
                 <Ionicons name="trash-outline" size={18} color="#DC2626" />
               </TouchableOpacity>
             </View>
-            <Label>Employer / Family name</Label>
-            <StyledInput value={w.employer_name} onChangeText={(v: string) => patchWork(i, { employer_name: v })} placeholder="e.g. Dela Cruz Family" />
-            <Label>Your role</Label>
-            <StyledInput value={w.position} onChangeText={(v: string) => patchWork(i, { position: v })} placeholder="e.g. Yaya / Housekeeper" />
-            <Label>Start date</Label>
-            {renderWorkDateField(i, 'start_date', w.start_date, 'Select start date')}
+            <Label>{tr('helper.setup.employerFamilyName')}</Label>
+            <StyledInput value={w.employer_name} onChangeText={(v: string) => patchWork(i, { employer_name: v })} placeholder={tr('helper.setup.employerExample')} />
+            <Label>{tr('helper.setup.yourRole')}</Label>
+            <StyledInput value={w.position} onChangeText={(v: string) => patchWork(i, { position: v })} placeholder={tr('helper.setup.roleExampleInput')} />
+            <Label>{tr('helper.setup.startDate')}</Label>
+            {renderWorkDateField(i, 'start_date', w.start_date, tr('helper.setup.selectStartDate'))}
             {!isWorkCurrent(w) && (
               <>
-                <Label>End date</Label>
-                {renderWorkDateField(i, 'end_date', w.end_date ?? '', 'Select end date')}
+                <Label>{tr('helper.setup.endDate')}</Label>
+                {renderWorkDateField(i, 'end_date', w.end_date ?? '', tr('helper.setup.selectEndDate'))}
               </>
             )}
             <TouchableOpacity style={s.checkRow} onPress={() => patchWork(i, { end_date: isWorkCurrent(w) ? '' : null })} activeOpacity={0.8}>
               <Ionicons name={isWorkCurrent(w) ? 'checkbox' : 'square-outline'} size={20} color={isWorkCurrent(w) ? ORANGE : MUTED} />
-              <Text style={s.checkText}>I currently work here</Text>
+              <Text style={s.checkText}>{tr('helper.setup.currentlyWorkHere')}</Text>
             </TouchableOpacity>
-            <Label>Main duties <OptTag /></Label>
-            <StyledInput value={w.duties ?? ''} onChangeText={(v: string) => patchWork(i, { duties: v })} placeholder="Cooking, laundry, caring for kids" />
+            <Label>{tr('helper.setup.mainDuties')} <OptTag /></Label>
+            <StyledInput value={w.duties ?? ''} onChangeText={(v: string) => patchWork(i, { duties: v })} placeholder={tr('helper.setup.dutiesExample')} />
             <View style={s.refToggleRow}>
-              <Text style={s.refToggleText}>Can be contacted as a reference</Text>
+              <Text style={s.refToggleText}>{tr('helper.setup.contactAsReference')}</Text>
               <Switch value={!!w.can_contact} onValueChange={(v) => patchWork(i, { can_contact: v })} trackColor={{ true: ORANGE, false: '#D9C4A6' }} thumbColor="#fff" />
             </View>
             {w.can_contact && (
               <>
-                <Label>Employer contact number <OptTag /></Label>
-                <StyledInput value={w.employer_contact ?? ''} onChangeText={(v: string) => patchWork(i, { employer_contact: v })} placeholder="0917 123 4567" keyboardType="phone-pad" />
+                <Label>{tr('helper.setup.employerContact')} <OptTag /></Label>
+                <StyledInput value={w.employer_contact ?? ''} onChangeText={(v: string) => patchWork(i, { employer_contact: v })} placeholder={tr('helper.setup.phoneExample')} keyboardType="phone-pad" />
               </>
             )}
           </View>
@@ -705,7 +707,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
           activeOpacity={0.85}
         >
           <Ionicons name="add" size={18} color={ORANGE} />
-          <Text style={s.addWorkText}>Add a past job</Text>
+          <Text style={s.addWorkText}>{tr('helper.setup.addPastJob')}</Text>
         </TouchableOpacity>
       </>
     );
@@ -718,8 +720,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       <>
         <Text style={s.stepDesc}>
           {generalOn
-            ? 'General Househelp already covers every area, so the rest are switched off. Untick it to pick specific areas instead.'
-            : 'Select nature of work. You can select more than one.'}
+            ? tr('helper.setup.generalHelpAll')
+            : tr('helper.setup.selectWorkNature')}
         </Text>
         <View style={s.catGrid}>
           {availableCategories.map(c => {
@@ -763,11 +765,11 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
     // ── Steps 2–4: Badge pills ─────────────────────────────────────────────────
     if (step === 2) return (
       <>
-        <Text style={s.stepDesc}>Select specific job roles. Choose all that apply.</Text>
+        <Text style={s.stepDesc}>{tr('helper.setup.selectSpecificRoles')}</Text>
         {availableJobsForSelection.length === 0 ? (
           <View style={s.emptyHint}>
             <Ionicons name="alert-circle-outline" size={20} color={MUTED} />
-            <Text style={s.emptyHintText}>Select a nature of work in the previous step first.</Text>
+            <Text style={s.emptyHintText}>{tr('helper.setup.chooseCategoryFirst')}</Text>
           </View>
         ) : (
           // Group roles under their category so it's clear which roles belong to
@@ -791,8 +793,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
           })
         )}
         <CustomAdder
-          label="Don't see your role? Add your own."
-          placeholder="e.g. Pet caretaker"
+          label={tr('helper.setup.addRoleOwn')}
+          placeholder={tr('helper.setup.roleExample')}
           items={customJobs}
           onAdd={(v) => setCustomJobs([...customJobs, v])}
           onRemove={(v) => setCustomJobs(customJobs.filter(x => x !== v))}
@@ -801,11 +803,11 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
     );
     if (step === 3) return (
       <>
-        <Text style={s.stepDesc}>Skills are optional — pick any that apply to stand out, or skip and continue.</Text>
+        <Text style={s.stepDesc}>{tr('helper.setup.skillsOptionalStep')}</Text>
         {availableSkillsForSelection.length === 0 ? (
           <View style={s.emptyHint}>
             <Ionicons name="alert-circle-outline" size={20} color={MUTED} />
-            <Text style={s.emptyHintText}>Select job roles in the previous step to see related skills.</Text>
+            <Text style={s.emptyHintText}>{tr('helper.setup.selectRolesForSkills')}</Text>
           </View>
         ) : (
           <BadgePillGrid
@@ -815,8 +817,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
           />
         )}
         <CustomAdder
-          label="Have a skill that's not listed? Add your own."
-          placeholder="e.g. Basic first aid"
+          label={tr('helper.setup.addSkillOwn')}
+          placeholder={tr('helper.setup.skillExample')}
           items={customSkills}
           onAdd={(v) => setCustomSkills([...customSkills, v])}
           onRemove={(v) => setCustomSkills(customSkills.filter(x => x !== v))}
@@ -825,7 +827,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
     );
     if (step === 4) return (
       <>
-        <Text style={s.stepDesc}>Languages you can speak. Choose all that apply.</Text>
+        <Text style={s.stepDesc}>{tr('helper.setup.languagesInstruction')}</Text>
         <BadgePillGrid
           items={availableLanguages.map(l => ({ id: l.language_id, name: l.language_name }))}
           selectedIds={selectedLanguageIds}
@@ -838,9 +840,9 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
 
   const renderPreferencesStep = () => (
     <>
-      <Label>Stay Arrangement</Label>
+      <Label>{tr('helper.setup.stayArrangement')}</Label>
       <ToggleRow options={['Stay-in', 'Stay-out', 'Any']} value={employmentType} onChange={setEmploymentType} />
-      <Label>Work Hours</Label>
+      <Label>{tr('helper.setup.workHours')}</Label>
       <ToggleRow
         options={['Full-time', 'Part-time', 'Any']}
         value={workSchedule}
@@ -850,9 +852,9 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         }}
         disabledOptions={employmentType === 'Stay-in' ? ['Part-time', 'Any'] : []}
       />
-      <Label>Expected Salary (₱) <Req /></Label>
+      <Label>{tr('helper.setup.salaryLabel')} <Req /></Label>
       <StyledInput value={expectedSalary} onChangeText={setExpectedSalary} placeholder="6000" keyboardType="numeric" />
-      <Text style={s.inputHint}>Recommended minimum: ₱6,000/month</Text>
+      <Text style={s.inputHint}>{tr('helper.setup.expectedSalaryMinimum')}</Text>
     </>
   );
 
@@ -873,12 +875,12 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   };
 
   const getSaveLabel = () => {
-    if (view.type !== 'section') return 'Save';
+    if (view.type !== 'section') return tr('common.save');
     switch (view.key) {
-      case 'personal':    return 'Save Information';
-      case 'skills':      return 'Save & Continue';
-      case 'preferences': return 'Save Preferences';
-      case 'experience':  return 'Save Experience';
+      case 'personal':    return tr('helper.setup.saveInformation');
+      case 'skills':      return tr('helper.setup.saveContinue');
+      case 'preferences': return tr('helper.setup.savePreferences');
+      case 'experience':  return tr('helper.setup.saveExperience');
     }
   };
 
@@ -888,7 +890,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       {loading ? (
         <View style={s.loadingWrap}>
           <ActivityIndicator size="large" color={ORANGE} />
-          <Text style={s.loadingText}>Preparing your profile…</Text>
+          <Text style={s.loadingText}>{tr('helper.setup.preparingProfile')}</Text>
         </View>
       ) : view.type === 'chooser' ? (
         // ── CHOOSER ─────────────────────────────────────────────────────────
@@ -898,12 +900,12 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
             <TouchableOpacity style={s.headerClose} onPress={onClose} hitSlop={8}>
               <Ionicons name="close" size={22} color={DARK} />
             </TouchableOpacity>
-            <Text style={s.chooserTitle}>Edit Profile</Text>
+            <Text style={s.chooserTitle}>{tr('helper.setup.editProfile')}</Text>
             <View style={{ width: 36 }} />
           </View>
 
           <ScrollView contentContainerStyle={s.chooserScroll} showsVerticalScrollIndicator={false}>
-            <Text style={s.chooserSub}>Let's keep your profile complete and up to date.</Text>
+            <Text style={s.chooserSub}>{tr('helper.setup.keepProfileUpdated')}</Text>
 
             {/* ── Profile photo ── */}
             <View style={s.photoRow}>
@@ -926,8 +928,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
                 )}
               </TouchableOpacity>
               <View style={s.photoMeta}>
-                <Text style={s.photoMetaTitle}>Profile Photo</Text>
-                <Text style={s.photoMetaSub}>Tap your photo to change it.{'\n'}JPG or PNG, max 5MB.</Text>
+                <Text style={s.photoMetaTitle}>{tr('helper.setup.profilePhoto')}</Text>
+                <Text style={s.photoMetaSub}>{tr('helper.setup.changePhotoHint')}</Text>
               </View>
             </View>
 
@@ -947,20 +949,20 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
                   </View>
                   <View style={s.secInfo}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={s.secTitle}>{sec.title}</Text>
+                      <Text style={s.secTitle}>{tr(sec.titleKey)}</Text>
                       {done && <Ionicons name="checkmark-circle" size={15} color="#1A7F4B" />}
                     </View>
                     <Text style={[s.secSub, isNext && { color: '#C24E12', fontFamily: FontFamily.fredokaSemiBold }]}>
-                      {isNext ? '👉 Start here — do this next' : sec.subtitle}
+                      {isNext ? tr('helper.setup.startNext') : tr(sec.subtitleKey)}
                     </Text>
                   </View>
                   {isNext ? (
                     <View style={s.secStartBtn}>
-                      <Text style={s.secStartText}>Start here</Text>
+                      <Text style={s.secStartText}>{tr('helper.home.startHere')}</Text>
                     </View>
                   ) : (
                     <View style={s.secEditBtn}>
-                      <Text style={s.secEditText}>{done ? 'Edit' : 'Add'}</Text>
+                      <Text style={s.secEditText}>{done ? tr('helper.setup.edit') : tr('helper.setup.add')}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -971,8 +973,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
             <View style={s.tipsCard}>
               <Ionicons name="bulb-outline" size={22} color={ORANGE} />
               <View style={{ flex: 1 }}>
-                <Text style={s.tipsTitle}>Tips for a Strong Profile</Text>
-                <Text style={s.tipsSub}>A complete profile gets more job matches and trusted opportunities.</Text>
+                <Text style={s.tipsTitle}>{tr('helper.setup.tipsTitle')}</Text>
+                <Text style={s.tipsSub}>{tr('helper.setup.tipsHint')}</Text>
               </View>
             </View>
           </ScrollView>
@@ -989,9 +991,9 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
                   <Ionicons name="arrow-back" size={22} color={DARK} />
                 </TouchableOpacity>
                 <View style={s.sectionHeaderCenter}>
-                  <Text style={s.sectionHeaderTitle}>{sectionCfg.title}</Text>
+                  <Text style={s.sectionHeaderTitle}>{tr(sectionCfg.titleKey)}</Text>
                   <Text style={s.sectionHeaderStep}>
-                    Step {view.step} of {sectionCfg.totalSteps}
+                    {tr('helper.setup.stepOf', { step: view.step, total: sectionCfg.totalSteps })}
                   </Text>
                 </View>
                 <View style={{ width: 36 }} />
@@ -1013,11 +1015,11 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
               <View style={s.footer}>
                 {view.step > 1 ? (
                   <TouchableOpacity style={s.backBtn} onPress={goBack} activeOpacity={0.85}>
-                    <Text style={s.backBtnText}>Back</Text>
+                    <Text style={s.backBtnText}>{tr('common.back')}</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity style={s.cancelBtn} onPress={() => setView({ type: 'chooser' })} activeOpacity={0.85}>
-                    <Text style={s.cancelBtnText}>Cancel</Text>
+                    <Text style={s.cancelBtnText}>{tr('common.cancel')}</Text>
                   </TouchableOpacity>
                 )}
 
@@ -1039,7 +1041,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
                     onPress={() => goToStep(view.key, view.step + 1)}
                     activeOpacity={0.88}
                   >
-                    <Text style={s.nextBtnText}>Next</Text>
+                    <Text style={s.nextBtnText}>{tr('helper.setup.next')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -1068,26 +1070,26 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
 
       {/* Selection modals */}
       <SelectionModal
-        visible={jobModalVisible} onClose={() => setJobModalVisible(false)} title="Select Job Roles"
+        visible={jobModalVisible} onClose={() => setJobModalVisible(false)} title={tr('helper.setup.selectJobRoles')}
         subtitle={isGeneralHousehelpSelected
-          ? 'All-around — roles across every category'
+          ? tr('helper.setup.allAreasRoles')
           : selectedCategories.length
-            ? `Roles under: ${selectedCategories.map((c: any) => c.category_name).join(', ')}`
-            : 'Pick a category first'}
+            ? tr('helper.setup.rolesUnder', { categories: selectedCategories.map((c: any) => c.category_name).join(', ') })
+            : tr('helper.setup.chooseCategoryFirst')}
         data={filteredJobs} selectedIds={selectedJobIds} onToggle={toggleJob}
         searchValue={jobSearch} onSearchChange={setJobSearch} idKey="job_id" nameKey="job_title" showSearch
         customData={customJobs} onAddCustom={(j: string) => setCustomJobs([...customJobs, j])}
         onRemoveCustom={(j: string) => setCustomJobs(customJobs.filter(x => x !== j))}
       />
       <SelectionModal
-        visible={skillModalVisible} onClose={() => setSkillModalVisible(false)} title="Select Skills"
+        visible={skillModalVisible} onClose={() => setSkillModalVisible(false)} title={tr('helper.setup.selectSkills')}
         data={filteredSkills} selectedIds={selectedSkillIds} onToggle={toggleSkill}
         searchValue={skillSearch} onSearchChange={setSkillSearch} idKey="skill_id" nameKey="skill_name" showSearch
         customData={customSkills} onAddCustom={(s: string) => setCustomSkills([...customSkills, s])}
         onRemoveCustom={(s: string) => setCustomSkills(customSkills.filter(x => x !== s))}
       />
       <SelectionModal
-        visible={languageModalVisible} onClose={() => setLanguageModalVisible(false)} title="Languages"
+        visible={languageModalVisible} onClose={() => setLanguageModalVisible(false)} title={tr('helper.setup.languages')}
         data={filteredLangs} selectedIds={selectedLanguageIds} onToggle={toggleLanguage}
         searchValue={langSearch} onSearchChange={setLangSearch} idKey="language_id" nameKey="language_name"
       />
@@ -1105,7 +1107,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
           if (changeField === 'contact') setContactNumber(newValue); else setEmail(newValue);
           setChangeField(null);
           setNotifType('success');
-          setNotifMessage(changeField === 'contact' ? 'Contact number updated.' : 'Email updated.');
+          setNotifMessage(changeField === 'contact' ? tr('helper.setup.contactUpdated') : tr('helper.setup.emailUpdated'));
           setNotifVisible(true);
         }}
       />
@@ -1125,6 +1127,7 @@ function CustomAdder({ label, placeholder, items, onAdd, onRemove }: {
   label: string; placeholder: string; items: string[];
   onAdd: (v: string) => void; onRemove: (v: string) => void;
 }) {
+  const { t: tr } = useT();
   const [text, setText] = useState('');
   const add = () => {
     const v = text.trim();
@@ -1143,7 +1146,7 @@ function CustomAdder({ label, placeholder, items, onAdd, onRemove }: {
         />
         <TouchableOpacity style={s.customAddBtn} onPress={add} activeOpacity={0.85}>
           <Ionicons name="add" size={16} color={ORANGE} />
-          <Text style={s.customAddBtnText}>Add</Text>
+          <Text style={s.customAddBtnText}>{tr('helper.setup.add')}</Text>
         </TouchableOpacity>
       </View>
       {items.length > 0 && (
@@ -1169,6 +1172,7 @@ function BadgePillGrid({
   selectedIds: number[];
   onToggle:    (id: number) => void;
 }) {
+  const { t: tr } = useT();
   const [expanded, setExpanded] = React.useState(false);
   const INITIAL_COUNT = 12;
   const visible = expanded ? items : items.slice(0, INITIAL_COUNT);
@@ -1201,7 +1205,9 @@ function BadgePillGrid({
       {hasMore && (
         <TouchableOpacity style={s.showMoreBtn} onPress={() => setExpanded(v => !v)} activeOpacity={0.7}>
           <Text style={s.showMoreText}>
-            {expanded ? 'Show fewer' : `View more roles (${items.length - INITIAL_COUNT})`}
+            {expanded
+              ? tr('helper.setup.showFewer')
+              : tr('helper.setup.viewMoreRoles', { count: items.length - INITIAL_COUNT })}
           </Text>
           <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={14} color={ORANGE} />
         </TouchableOpacity>
@@ -1211,17 +1217,21 @@ function BadgePillGrid({
 }
 
 const Req = () => <Text style={{ color: ORANGE }}>*</Text>;
-const OptTag = () => <Text style={{ color: MUTED, fontFamily: FontFamily.fredokaRegular, fontSize: 12 }}> (optional)</Text>;
+const OptTag = () => {
+  const { t: tr } = useT();
+  return <Text style={{ color: MUTED, fontFamily: FontFamily.fredokaRegular, fontSize: 12 }}> {tr('helper.setup.yearsOptional')}</Text>;
+};
 
 // Read-only sensitive field (email / contact) with a Change button that opens the
 // verify-by-code flow — inline editing is intentionally disabled.
 function VerifiedRow({ value, onChange }: { value: string; onChange: () => void }) {
+  const { t: tr } = useT();
   return (
     <View style={s.verifiedRow}>
       <Text style={s.verifiedVal} numberOfLines={1}>{value}</Text>
       <TouchableOpacity style={s.verifiedBtn} onPress={onChange} activeOpacity={0.85}>
         <Ionicons name="shield-checkmark-outline" size={14} color={ORANGE} />
-        <Text style={s.verifiedBtnText}>Change</Text>
+        <Text style={s.verifiedBtnText}>{tr('helper.setup.change')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -1247,6 +1257,22 @@ function ToggleRow({ options, value, onChange, disabledOptions = [] }: {
   onChange:        (v: string) => void;
   disabledOptions?: string[];
 }) {
+  const { t: tr } = useT();
+  const optionKeys: Record<string, string> = {
+    Male: 'helper.profile.male',
+    Female: 'helper.profile.female',
+    'Stay-in': 'stayIn',
+    'Stay-out': 'stayOut',
+    'Full-time': 'fullTime',
+    'Part-time': 'partTime',
+    Any: 'any',
+  };
+  const civilStatusKeys: Record<string, string> = {
+    Single: 'single',
+    Married: 'married',
+    Widowed: 'widowed',
+    Separated: 'separated',
+  };
   return (
     <View style={s.toggleRow}>
       {options.map(opt => {
@@ -1260,7 +1286,13 @@ function ToggleRow({ options, value, onChange, disabledOptions = [] }: {
             activeOpacity={disabled ? 1 : 0.8}
           >
             <Text style={[s.toggleText, active && s.toggleTextActive, disabled && { opacity: 0.4 }]}>
-              {opt}
+              {optionKeys[opt]
+                ? tr(optionKeys[opt].startsWith('helper.') ? optionKeys[opt] : `helper.setup.${optionKeys[opt]}`)
+                : civilStatusKeys[opt]
+                  ? tr(`helper.setup.civil.${civilStatusKeys[opt]}`)
+                  : ['Elementary', 'High School Undergrad', 'High School Grad', 'College Undergrad', 'College Grad', 'Vocational'].includes(opt)
+                    ? tr(`helper.setup.educationOptions.${opt}`)
+                    : opt}
             </Text>
           </TouchableOpacity>
         );
@@ -1282,10 +1314,11 @@ function DropdownField({ value, onChange, options, placeholder }: {
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const { t: tr } = useT();
   return (
     <View>
       <TouchableOpacity style={[s.input, s.dropdownField]} onPress={() => setOpen(o => !o)} activeOpacity={0.8}>
-        <Text style={[s.dropdownValue, !value && { color: '#B8956A' }]}>{value || placeholder || 'Select'}</Text>
+        <Text style={[s.dropdownValue, !value && { color: '#B8956A' }]}>{value || placeholder || tr('helper.setup.select')}</Text>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={MUTED} />
       </TouchableOpacity>
       {open && (

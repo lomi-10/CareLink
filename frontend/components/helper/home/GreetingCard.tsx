@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { useT } from '@/contexts/LocaleContext';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -36,12 +37,13 @@ export function GreetingCard({
   verified = true,
 }: GreetingCardProps) {
   const router = useRouter();
+  const { t } = useT();
 
   const greeting = (() => {
     const h = new Date().getHours();
-    if (h < 12) return 'Good morning,';
-    if (h < 18) return 'Good afternoon,';
-    return 'Good evening,';
+    if (h < 12) return t('helper.home.morning');
+    if (h < 18) return t('helper.home.afternoon');
+    return t('helper.home.evening');
   })();
 
   return (
@@ -66,7 +68,7 @@ export function GreetingCard({
         <Text style={s.name} numberOfLines={2}>{userName} 👋</Text>
 
         <Text style={s.subtitle}>
-          Your next opportunity{'\n'}is just around the corner.
+          {t('helper.home.opportunity')}
         </Text>
 
         {/* Browse Jobs CTA */}
@@ -76,7 +78,7 @@ export function GreetingCard({
           activeOpacity={0.88}
         >
           <Ionicons name="briefcase-outline" size={14} color={BROWSE_TEXT} />
-          <Text style={s.browseTxt}>Browse Jobs</Text>
+          <Text style={s.browseTxt}>{t('helper.home.browseJobs')}</Text>
           <Ionicons name="chevron-forward" size={13} color={BROWSE_TEXT} />
         </TouchableOpacity>
       </View>

@@ -8,6 +8,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform }
 import { Ionicons } from '@expo/vector-icons';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { DocumentStatusTag, AiScanTag } from './DocumentStatusTag';
+import { useT } from '@/contexts/LocaleContext';
 
 type PaletteKey = 'helper' | 'parent';
 
@@ -37,6 +38,7 @@ export function ValidIdUploadCard({
   highlighted?: boolean;
 }) {
   const t = PALETTE[themeKey];
+  const { t: tr } = useT();
   const frontUp = !!doc?.file_url;
   const backUp  = !!doc?.file_url_back;
   const any  = frontUp || backUp;
@@ -62,7 +64,7 @@ export function ValidIdUploadCard({
           <Ionicons name="card-outline" size={22} color={any ? '#2563EB' : '#C2A988'} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[st.name, { color: t.ink }]}>Valid ID</Text>
+          <Text style={[st.name, { color: t.ink }]}>{tr('helper.setup.validId')}</Text>
           {any ? (
             <View style={st.statusLine}>
               {/* Names PESO explicitly — "Verified" alone read as if the app or
@@ -71,9 +73,9 @@ export function ValidIdUploadCard({
               <AiScanTag status={scan} compact />
             </View>
           ) : (
-            <Text style={[st.desc, { color: t.muted }]}>Government ID — upload the front and back separately.</Text>
+            <Text style={[st.desc, { color: t.muted }]}>{tr('helper.setup.validIdUploadHint')}</Text>
           )}
-          {any && uploadDate ? <Text style={[st.date, { color: t.subtle }]}>Uploaded {uploadDate}</Text> : null}
+          {any && uploadDate ? <Text style={[st.date, { color: t.subtle }]}>{tr('helper.setup.uploaded', { date: uploadDate })}</Text> : null}
         </View>
         {any ? <Ionicons name="chevron-forward" size={18} color={t.muted} /> : null}
       </TouchableOpacity>
@@ -85,7 +87,7 @@ export function ValidIdUploadCard({
           return (
             <View key={side} style={[st.sideRow, { backgroundColor: t.sideBg }]}>
               <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={done ? t.success : '#C2A988'} />
-              <Text style={[st.sideLabel, { color: t.ink }]}>{side === 'front' ? 'Front side' : 'Back side'}</Text>
+              <Text style={[st.sideLabel, { color: t.ink }]}>{tr(side === 'front' ? 'helper.setup.frontSide' : 'helper.setup.backSide')}</Text>
               <TouchableOpacity
                 onPress={() => onUploadSide(side)}
                 disabled={busy}
@@ -97,7 +99,7 @@ export function ValidIdUploadCard({
                 ) : (
                   <>
                     <Ionicons name="cloud-upload-outline" size={13} color={done ? t.muted : '#fff'} />
-                    <Text style={[st.sideBtnText, { color: done ? t.muted : '#fff' }]}>{done ? 'Replace' : 'Upload'}</Text>
+                    <Text style={[st.sideBtnText, { color: done ? t.muted : '#fff' }]}>{done ? tr('helper.setup.replace') : tr('helper.setup.upload')}</Text>
                   </>
                 )}
               </TouchableOpacity>

@@ -9,13 +9,14 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { useT } from '@/contexts/LocaleContext';
 import { useResponsive } from '@/hooks/shared';
 import { useHelperWarm, type HelperWarm } from './helperWarmTheme';
 
 type Step = {
   key: string;
-  title: string;
-  instruction: string;
+  titleKey: string;
+  instructionKey: string;
   icon: keyof typeof Ionicons.glyphMap;
   done: boolean;
   route: string;
@@ -23,6 +24,7 @@ type Step = {
 
 export function ProfileSetupGuide({ profileData, firstName }: { profileData: any; firstName?: string }) {
   const router = useRouter();
+  const { t } = useT();
   const { isDesktop } = useResponsive();
   const w = useHelperWarm();
   const s = useMemo(() => makeStyles(w), [w]);
@@ -41,23 +43,23 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
 
   const steps: Step[] = [
     {
-      key: 'personal', title: 'Add your personal details', icon: 'person', done: personalDone,
-      instruction: 'Your name, contact number, and complete address — so employers know who you are and can reach you.',
+      key: 'personal', titleKey: 'helper.home.personalStep', icon: 'person', done: personalDone,
+      instructionKey: 'helper.home.personalInstruction',
       route: '/(helper)/profile/personal?edit=1',
     },
     {
-      key: 'skills', title: 'Choose your work & skills', icon: 'sparkles', done: skillsDone,
-      instruction: 'Pick the kind of work you do (Yaya, Cook, Gardening…). Tip: choose “General Househelp” if you can do everything — it selects them all for you.',
+      key: 'skills', titleKey: 'helper.home.skillsStep', icon: 'sparkles', done: skillsDone,
+      instructionKey: 'helper.home.skillsInstruction',
       route: '/(helper)/profile/skills?edit=1',
     },
     {
-      key: 'experience', title: 'Add your work experience', icon: 'time', done: expDone,
-      instruction: 'List past employers and how long you worked — you can mark ones happy to be called as a reference. This builds trust with families.',
+      key: 'experience', titleKey: 'helper.home.experienceStep', icon: 'time', done: expDone,
+      instructionKey: 'helper.home.experienceInstruction',
       route: '/(helper)/profile/experience?edit=1',
     },
     {
-      key: 'docs', title: 'Upload your documents', icon: 'shield-checkmark', done: docsDone,
-      instruction: 'Upload your Valid ID (front and back) and Barangay Clearance. PESO reviews these to verify you.',
+      key: 'docs', titleKey: 'helper.home.documentsStep', icon: 'shield-checkmark', done: docsDone,
+      instructionKey: 'helper.home.documentsInstruction',
       route: '/(helper)/profile/documents',
     },
   ];
@@ -82,8 +84,8 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
       {/* Header + progress */}
       <View style={s.header}>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>Let’s finish your profile{firstName ? `, ${firstName}` : ''} 👋</Text>
-          <Text style={s.subtitle}>Just {steps.length - doneCount} step{steps.length - doneCount !== 1 ? 's' : ''} left — we’ll guide you.</Text>
+          <Text style={s.title}>{t('helper.home.setupTitle')}{firstName ? `, ${firstName}` : ''} 👋</Text>
+          <Text style={s.subtitle}>{t('helper.home.setupSubtitle', { count: steps.length - doneCount })}</Text>
         </View>
         <View style={s.progressPill}>
           <Text style={s.progressText}>{doneCount}/{steps.length}</Text>
@@ -108,14 +110,14 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
 
               <View style={{ flex: 1 }}>
                 <Text style={[s.stepTitle, step.done && { color: w.MUTED }, isFuture && { color: w.SUBTLE }]}>
-                  {step.title}{step.done ? ' ✓' : ''}
+                  {t(step.titleKey)}{step.done ? ' ✓' : ''}
                 </Text>
 
                 {isActive && (
                   <>
-                    <Text style={s.stepInstruction}>{step.instruction}</Text>
+                    <Text style={s.stepInstruction}>{t(step.instructionKey)}</Text>
                     <TouchableOpacity style={s.cta} onPress={() => go(step)} activeOpacity={0.88}>
-                      <Text style={s.ctaText}>{doneCount > 0 ? 'Continue' : 'Start here'}</Text>
+                      <Text style={s.ctaText}>{doneCount > 0 ? t('helper.home.continue') : t('helper.home.startHere')}</Text>
                       <Ionicons name="arrow-forward" size={16} color="#fff" />
                     </TouchableOpacity>
                   </>

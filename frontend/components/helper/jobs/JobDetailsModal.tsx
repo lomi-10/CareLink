@@ -9,6 +9,7 @@ import {
 import { FontFamily } from '@/constants/GlobalStyles';
 import { applicationStatusLabel } from '@/lib/applicationStatusLabel';
 import { applyByLabel } from '@/lib/jobExpiry';
+import { useT } from '@/contexts/LocaleContext';
 
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -34,11 +35,11 @@ interface JobDetailsModalProps {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const isTrue = (val: any) => val === 1 || val === '1' || val === true;
 
-function fmtPeriod(p: string) {
+function fmtPeriod(p: string, tr: (key: string) => string) {
   const l = (p ?? '').toLowerCase();
-  if (l.startsWith('month')) return 'Month';
-  if (l.startsWith('day'))   return 'Day';
-  if (l.startsWith('week'))  return 'Week';
+  if (l.startsWith('month')) return tr('helper.jobDetails.month');
+  if (l.startsWith('day'))   return tr('helper.jobDetails.day');
+  if (l.startsWith('week'))  return tr('helper.jobDetails.week');
   return p;
 }
 
@@ -59,17 +60,40 @@ function DetailItem({ icon, label, value }: { icon: React.ComponentProps<typeof 
 }
 
 // ── Perk pill ─────────────────────────────────────────────────────────────────
-function PerkPill({ icon, label }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string }) {
+function BenefitCard({ icon, label, required = false }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; required?: boolean }) {
   return (
-    <View style={s.perkPill}>
-      <Ionicons name={icon} size={12} color={MUTED} />
-      <Text style={s.perkText}>{label}</Text>
+    <View style={[s.benefitCard, required ? s.requiredBenefitCard : s.extraBenefitCard]}>
+      <View style={[s.benefitIconWrap, required ? s.requiredBenefitIconWrap : s.extraBenefitIconWrap]}>
+        <Ionicons name={icon} size={15} color={required ? '#047857' : ORANGE} />
+      </View>
+      <Text style={[s.benefitText, required ? s.requiredBenefitText : s.extraBenefitText]}>{label}</Text>
+      <Ionicons name="checkmark-circle" size={16} color={required ? '#059669' : ORANGE} />
+    </View>
+  );
+}
+
+function IntroCard({ icon, label, value, variant = 'category' }: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  value: string;
+  variant?: 'category' | 'title';
+}) {
+  return (
+    <View style={[s.introCard, variant === 'category' ? s.categoryCard : s.titleCard]}>
+      <View style={[s.introIcon, variant === 'category' ? s.categoryIcon : s.titleIcon]}>
+        <Ionicons name={icon} size={18} color={variant === 'category' ? '#fff' : ORANGE} />
+      </View>
+      <View style={s.introCopy}>
+        <Text style={[s.introLabel, variant === 'category' ? s.categoryLabel : s.titleLabel]}>{label}</Text>
+        <Text style={[s.introValue, variant === 'category' ? s.categoryValue : s.titleValue]}>{value}</Text>
+      </View>
     </View>
   );
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onReport, job }: JobDetailsModalProps) {
+  const { t: tr } = useT();
   if (!job) return null;
 
   const isSaved = !!job.is_saved;
@@ -82,17 +106,20 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
 
   const showMatchReasons = matchPct >= MATCH_THRESHOLD && matchReasonsList.length > 0;
 
-  const salary     = Number(job.salary_offered);
-  const salaryText = salary > 0 ? `₱${salary.toLocaleString()}` : '—';
+  const salary = Number(job.salary_offered);
+  const salaryText = Number.isFinite(salary) && salary > 0 ? `₱${salary.toLocaleString()}` : '—';
 
-  const perks: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; show: boolean }[] = [
-    { icon: 'restaurant',       label: 'Free Meals',    show: isTrue(job.provides_meals) },
-    { icon: 'home',             label: 'Accommodation', show: isTrue(job.provides_accommodation) },
-    { icon: 'checkmark-circle', label: 'SSS',           show: isTrue(job.provides_sss) },
-    { icon: 'checkmark-circle', label: 'PhilHealth',    show: isTrue(job.provides_philhealth) },
-    { icon: 'checkmark-circle', label: 'Pag-IBIG',      show: isTrue(job.provides_pagibig) },
+  const requiredBenefits: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; show: boolean }[] = [
+    { icon: 'shield-checkmark', label: tr('helper.jobDetails.sss'), show: isTrue(job.provides_sss) },
+    { icon: 'shield-checkmark', label: tr('helper.jobDetails.philHealth'), show: isTrue(job.provides_philhealth) },
+    { icon: 'shield-checkmark', label: tr('helper.jobDetails.pagIbig'), show: isTrue(job.provides_pagibig) },
   ];
-  const activePerks = perks.filter(p => p.show);
+  const activeRequiredBenefits = requiredBenefits.filter(p => p.show);
+  const extraBenefits: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; show: boolean }[] = [
+    { icon: 'restaurant', label: tr('helper.jobDetails.freeMeals'), show: isTrue(job.provides_meals) },
+    { icon: 'home', label: tr('helper.jobDetails.accommodation'), show: isTrue(job.provides_accommodation) },
+  ];
+  const activeExtraBenefits = extraBenefits.filter(p => p.show);
 
   const location = [job.municipality || job.parent_municipality, job.province || job.parent_province]
     .filter(Boolean).join(', ');
@@ -102,6 +129,18 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
     : (typeof job.skill_names === 'string' && job.skill_names.trim()
       ? job.skill_names.split(',').map((t: string) => t.trim()).filter(Boolean)
       : []);
+  const category = job.category_name || (Array.isArray(job.categories) ? job.categories.filter(Boolean).join(', ') : '') || tr('helper.jobDetails.generalCategory');
+  const jobNames: string[] = Array.isArray(job.job_names)
+    ? job.job_names.filter((name: unknown) => typeof name === 'string' && name.trim())
+    : [];
+  const minAge = Number(job.min_age);
+  const maxAge = Number(job.max_age);
+  const hasMinAge = Number.isFinite(minAge) && minAge > 0;
+  const hasMaxAge = Number.isFinite(maxAge) && maxAge > 0;
+  const minExperience = Number(job.min_experience_years);
+  const hasExperienceRequirement = Number.isFinite(minExperience) && minExperience > 0;
+  const hasRequirements = hasMinAge || hasMaxAge || hasExperienceRequirement
+    || isTrue(job.require_police_clearance) || isTrue(job.prefer_tesda_nc2);
 
   return (
     <>
@@ -136,65 +175,94 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
               )}
 
               {/* ── Job title ── */}
-              <Text style={s.jobTitle}>{job.title}</Text>
+              <IntroCard icon="grid-outline" label={tr('helper.jobDetails.category')} value={category} />
+              <IntroCard icon="briefcase-outline" label={tr('helper.jobDetails.jobTitle')} value={job.title || tr('helper.jobDetails.untitledJob')} variant="title" />
 
-              {/* Titles are concise (the category when several roles are picked) —
-                  the specific roles are listed here so nothing is lost. */}
-              {Array.isArray((job as any).job_names) && (job as any).job_names.length > 0 && (
-                <View style={jr.wrap}>
-                  {(job as any).job_names.map((r: string, i: number) => (
-                    <View key={i} style={jr.chip}><Text style={jr.chipText}>{r}</Text></View>
-                  ))}
+              {jobNames.length > 0 && (
+                <View style={s.section}>
+                  <Text style={s.sectionTitle}>{tr('helper.jobDetails.jobRoles')}</Text>
+                  <View style={s.skillsRow}>
+                    {jobNames.map((role, idx) => (
+                      <View key={`${role}-${idx}`} style={s.roleCard}>
+                        <Ionicons name="checkmark-circle" size={15} color={ORANGE} />
+                        <Text style={s.roleText}>{role}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {displaySkills.length > 0 && (
+                <View style={s.section}>
+                  <View style={s.knowHowHeader}>
+                    <Ionicons name="sparkles" size={17} color={ORANGE} />
+                    <Text style={s.sectionTitle}>{tr('helper.jobDetails.knowHow')}</Text>
+                  </View>
+                  <View style={s.skillsRow}>
+                    {displaySkills.map((skill, idx) => (
+                      <View key={`${skill}-${idx}`} style={s.skillCard}>
+                        <Ionicons name="checkmark" size={14} color="#047857" />
+                        <Text style={s.skillText}>{skill}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
               )}
 
               {/* ── Employer info (static) ── */}
               <View style={s.employerInfo}>
-                <Text style={s.employerName}>{job.parent_name || 'Verified Employer'}</Text>
+                <Text style={s.employerName}>{job.parent_name || tr('helper.jobDetails.verifiedEmployer')}</Text>
                 <View style={s.pesoBadge}>
                   <Ionicons name="shield-checkmark" size={11} color={GREEN} />
-                  <Text style={s.pesoBadgeText}>PESO Verified Employer</Text>
+                  <Text style={s.pesoBadgeText}>{tr('helper.jobDetails.pesoVerifiedEmployer')}</Text>
                 </View>
               </View>
 
               {/* ── Salary card (dark brown) ── */}
               <View style={s.salaryCard}>
-                <Text style={s.salaryCardLabel}>OFFERED SALARY</Text>
+                <Text style={s.salaryCardLabel}>{tr('helper.jobDetails.offeredSalary')}</Text>
                 <Text style={s.salaryCardAmount}>{salaryText}</Text>
-                <Text style={s.salaryCardPer}>per {fmtPeriod(job.salary_period)}</Text>
+                {job.salary_period ? <Text style={s.salaryCardPer}>{tr('helper.jobDetails.perPeriod', { period: fmtPeriod(job.salary_period, tr) })}</Text> : null}
               </View>
 
-              {/* ── Employment type ── */}
-              {job.employment_type && (
-                <View style={s.employmentRow}>
-                  <View style={s.employmentPill}>
-                    <Ionicons name="briefcase-outline" size={13} color={MUTED} />
-                    <Text style={s.employmentText}>{job.employment_type}</Text>
+              {/* ── Benefits ── */}
+              <View style={s.benefitsPanel}>
+                <View style={s.benefitPanelHeader}>
+                  <View style={s.benefitPanelIcon}>
+                    <Ionicons name="shield-checkmark" size={17} color="#fff" />
                   </View>
-                  {job.work_schedule && (
-                    <View style={s.employmentPill}>
-                      <Ionicons name="time-outline" size={13} color={MUTED} />
-                      <Text style={s.employmentText}>{job.work_schedule}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.benefitPanelTitle}>{tr('helper.jobDetails.benefitsTitle')}</Text>
+                    <Text style={s.benefitPanelSubtitle}>{tr('helper.jobDetails.requiredBenefits')}</Text>
+                  </View>
+                </View>
+                {activeRequiredBenefits.length > 0 ? (
+                  <View style={s.benefitsList}>
+                    {activeRequiredBenefits.map((benefit) => (
+                      <BenefitCard key={benefit.label} icon={benefit.icon} label={benefit.label} required />
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={s.noBenefitsText}>{tr('helper.jobDetails.noRequiredBenefitsListed')}</Text>
+                )}
+                {activeExtraBenefits.length > 0 && (
+                  <View style={s.extraBenefitsBlock}>
+                    <Text style={s.extraBenefitsTitle}>{tr('helper.jobDetails.additionalBenefits')}</Text>
+                    <View style={s.benefitsList}>
+                      {activeExtraBenefits.map((benefit) => (
+                        <BenefitCard key={benefit.label} icon={benefit.icon} label={benefit.label} />
+                      ))}
                     </View>
-                  )}
-                </View>
-              )}
-
-              {/* ── Perks strip ── */}
-              {activePerks.length > 0 && (
-                <View style={s.perksRow}>
-                  {activePerks.map((p, i) => (
-                    <PerkPill key={i} icon={p.icon} label={p.label} />
-                  ))}
-                </View>
-              )}
+                  </View>
+                )}
+              </View>
 
               {/* ── Why this job matches you (≥70% only) ── */}
               {showMatchReasons && (
                 <View style={s.matchBox}>
                   <View style={s.matchBoxHeader}>
                     <Ionicons name="sparkles" size={15} color={GREEN} />
-                    <Text style={s.matchBoxTitle}>Why this job matches you</Text>
+                    <Text style={s.matchBoxTitle}>{tr('helper.jobDetails.whyMatch')}</Text>
                   </View>
                   {matchReasonsList.slice(0, 5).map((reason, idx) => (
                     <View key={idx} style={s.matchReason}>
@@ -207,58 +275,44 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
 
               {/* ── Job Details ── */}
               <View style={s.section}>
-                <Text style={s.sectionTitle}>Job Details</Text>
+                <Text style={s.sectionTitle}>{tr('helper.jobDetails.jobDetails')}</Text>
                 <View style={s.detailGrid}>
-                  {location ? <DetailItem icon="location-outline" label="Location" value={`${location}${job.distance ? `  ·  ~${job.distance} km` : ''}`} /> : null}
-                  {job.work_schedule ? <DetailItem icon="time-outline"     label="Schedule"       value={job.work_schedule} /> : null}
-                  {job.start_date    ? <DetailItem icon="calendar-outline" label="Start Date"     value={job.start_date} /> : null}
-                  {job.employment_type ? <DetailItem icon="briefcase-outline" label="Employment" value={job.employment_type} /> : null}
-                  {job.work_hours    ? <DetailItem icon="alarm-outline"    label="Working Hours"  value={job.work_hours} /> : null}
-                  {applyByLabel(job.expires_at) ? <DetailItem icon="hourglass-outline" label="Deadline" value={applyByLabel(job.expires_at)!} /> : null}
+                  {location ? <DetailItem icon="location-outline" label={tr('helper.jobDetails.location')} value={`${location}${job.distance ? `  ·  ~${job.distance} km` : ''}`} /> : null}
+                  {job.employment_type ? <DetailItem icon="briefcase-outline" label={tr('helper.jobDetails.employmentType')} value={job.employment_type} /> : null}
+                  {job.work_schedule ? <DetailItem icon="time-outline" label={tr('helper.jobDetails.schedule')} value={job.work_schedule} /> : null}
+                  {job.start_date ? <DetailItem icon="calendar-outline" label={tr('helper.jobDetails.startDate')} value={job.start_date} /> : null}
+                  {job.work_hours ? <DetailItem icon="alarm-outline" label={tr('helper.jobDetails.workingHours')} value={job.work_hours} /> : null}
+                  {applyByLabel(job.expires_at) ? <DetailItem icon="hourglass-outline" label={tr('helper.jobDetails.deadline')} value={applyByLabel(job.expires_at)!} /> : null}
                 </View>
               </View>
 
               {/* ── Requirements ── */}
-              {(job.min_age || job.min_experience_years || isTrue(job.require_police_clearance) || isTrue(job.prefer_tesda_nc2)) && (
+              {hasRequirements && (
                 <View style={s.section}>
-                  <Text style={s.sectionTitle}>Requirements</Text>
+                  <Text style={s.sectionTitle}>{tr('helper.jobDetails.requirements')}</Text>
                   <View style={s.detailGrid}>
-                    {job.min_age && <DetailItem icon="person-outline" label="Age" value={job.max_age ? `${job.min_age}–${job.max_age} yrs` : `${job.min_age}+ yrs`} />}
-                    {job.min_experience_years && <DetailItem icon="star-outline" label="Experience" value={`At least ${job.min_experience_years} yr(s)`} />}
+                    {(hasMinAge || hasMaxAge) && <DetailItem icon="person-outline" label={tr('helper.jobDetails.age')} value={hasMinAge && hasMaxAge ? `${minAge}–${maxAge} ${tr('helper.jobDetails.years')}` : hasMinAge ? `${minAge}+ ${tr('helper.jobDetails.years')}` : `≤ ${maxAge} ${tr('helper.jobDetails.years')}`} />}
+                    {hasExperienceRequirement && <DetailItem icon="star-outline" label={tr('helper.jobDetails.experience')} value={tr('helper.jobDetails.atLeastYears', { count: minExperience })} />}
                   </View>
                   {isTrue(job.require_police_clearance) && (
                     <View style={s.reqBadge}>
                       <Ionicons name="shield-checkmark" size={14} color={GREEN} />
-                      <Text style={s.reqBadgeText}>Police Clearance Required</Text>
+                      <Text style={s.reqBadgeText}>{tr('helper.jobDetails.policeClearanceRequired')}</Text>
                     </View>
                   )}
                   {isTrue(job.prefer_tesda_nc2) && (
                     <View style={[s.reqBadge, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
                       <Ionicons name="school" size={14} color="#2563EB" />
-                      <Text style={[s.reqBadgeText, { color: '#2563EB' }]}>TESDA NC II Preferred</Text>
+                      <Text style={[s.reqBadgeText, { color: '#2563EB' }]}>{tr('helper.jobDetails.tesdaPreferred')}</Text>
                     </View>
                   )}
-                </View>
-              )}
-
-              {/* ── Skills ── */}
-              {displaySkills.length > 0 && (
-                <View style={s.section}>
-                  <Text style={s.sectionTitle}>Required Skills</Text>
-                  <View style={s.skillsRow}>
-                    {displaySkills.map((skill, i) => (
-                      <View key={i} style={s.skillPill}>
-                        <Text style={s.skillText}>{skill}</Text>
-                      </View>
-                    ))}
-                  </View>
                 </View>
               )}
 
               {/* ── Responsibilities / Description ── */}
               {job.description ? (
                 <View style={s.section}>
-                  <Text style={s.sectionTitle}>Responsibilities</Text>
+                  <Text style={s.sectionTitle}>{tr('helper.jobDetails.responsibilities')}</Text>
                   <Text style={s.bodyText}>{job.description}</Text>
                 </View>
               ) : null}
@@ -280,7 +334,7 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
               ) : (
                 <TouchableOpacity style={s.applyBtn} onPress={onApply} activeOpacity={0.85}>
                   <Ionicons name="paper-plane" size={18} color="#fff" />
-                  <Text style={s.applyBtnText}>Apply Now</Text>
+                  <Text style={s.applyBtnText}>{tr('helper.jobDetails.applyNow')}</Text>
                 </TouchableOpacity>
               )}
             </SafeAreaView>
@@ -318,9 +372,23 @@ const s = StyleSheet.create({
   matchBadge:     { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: '#ECFDF5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: GREEN + '44', marginBottom: 14 },
   matchBadgeText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: GREEN },
 
-  // title & employer
-  jobTitle:      { fontFamily: FontFamily.fredokaSemiBold, fontSize: 24, color: DARK, lineHeight: 30, marginBottom: 8 },
-  employerInfo:  { marginBottom: 18, gap: 6 },
+  // Reusable category/title callouts
+  introCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 16, marginBottom: 10, borderWidth: 1 },
+  categoryCard: { backgroundColor: '#7137C8', borderColor: '#5B2EA6' },
+  titleCard: { backgroundColor: '#FFF1E8', borderColor: '#F8C5A8' },
+  introIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  categoryIcon: { backgroundColor: 'rgba(255,255,255,0.18)' },
+  titleIcon: { backgroundColor: '#FFE0CF' },
+  introCopy: { flex: 1 },
+  introLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 3 },
+  categoryLabel: { color: 'rgba(255,255,255,0.78)' },
+  titleLabel: { color: ORANGE },
+  introValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 17, lineHeight: 22 },
+  categoryValue: { color: '#fff' },
+  titleValue: { color: DARK },
+
+  // employer
+  employerInfo:  { marginTop: 4, marginBottom: 16, gap: 6, backgroundColor: '#fff', borderRadius: 14, padding: 13, borderWidth: 1, borderColor: DIVIDER },
   employerName:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: MUTED },
   pesoBadge:     { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: GREEN + '44' },
   pesoBadgeText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: GREEN },
@@ -331,15 +399,25 @@ const s = StyleSheet.create({
   salaryCardAmount: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 34, color: '#fff', letterSpacing: -0.5 },
   salaryCardPer:    { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 4 },
 
-  // employment type row
-  employmentRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 10 },
-  employmentPill:{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: DIVIDER },
-  employmentText:{ fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: MUTED },
-
-  // perks
-  perksRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 },
-  perkPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#fff', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: DIVIDER },
-  perkText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },
+  // prominent required benefits and additional perks
+  benefitsPanel: { backgroundColor: '#DCFCE7', borderRadius: 18, padding: 15, marginBottom: 20, borderWidth: 1, borderColor: '#86EFAC' },
+  benefitPanelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  benefitPanelIcon: { width: 36, height: 36, borderRadius: 11, backgroundColor: '#059669', alignItems: 'center', justifyContent: 'center' },
+  benefitPanelTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: '#064E3B' },
+  benefitPanelSubtitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: '#047857', marginTop: 1 },
+  benefitsList: { gap: 8 },
+  benefitCard: { flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 12, paddingVertical: 9, paddingHorizontal: 10, borderWidth: 1 },
+  requiredBenefitCard: { backgroundColor: '#F0FDF4', borderColor: '#86EFAC' },
+  extraBenefitCard: { backgroundColor: '#FFF7ED', borderColor: '#FDBA74' },
+  benefitIconWrap: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  requiredBenefitIconWrap: { backgroundColor: '#DCFCE7' },
+  extraBenefitIconWrap: { backgroundColor: '#FFEDD5' },
+  benefitText: { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 13 },
+  requiredBenefitText: { color: '#065F46' },
+  extraBenefitText: { color: '#9A3412' },
+  noBenefitsText: { fontFamily: FontFamily.fredokaRegular, color: '#065F46', fontSize: 12, lineHeight: 18, backgroundColor: '#F0FDF4', borderRadius: 12, padding: 11 },
+  extraBenefitsBlock: { borderTopWidth: 1, borderTopColor: '#86EFAC', marginTop: 12, paddingTop: 12, gap: 8 },
+  extraBenefitsTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: '#9A3412', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   // match reasoning box
   matchBox:       { backgroundColor: '#ECFDF5', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: GREEN + '33' },
@@ -363,10 +441,13 @@ const s = StyleSheet.create({
   reqBadge:     { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#ECFDF5', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: GREEN + '44', marginTop: 8 },
   reqBadgeText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: GREEN },
 
-  // skills
+  // Roles and skills
   skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  skillPill: { backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: DIVIDER },
-  skillText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: MUTED },
+  knowHowHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 10 },
+  roleCard: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF1E8', paddingHorizontal: 11, paddingVertical: 8, borderRadius: 11, borderWidth: 1, borderColor: '#F8C5A8' },
+  roleText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: '#9A3412' },
+  skillCard: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ECFDF5', paddingHorizontal: 11, paddingVertical: 8, borderRadius: 11, borderWidth: 1, borderColor: '#A7F3D0' },
+  skillText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: '#065F46' },
 
   // body
   bodyText: { fontFamily: FontFamily.fredokaRegular, fontSize: 14, lineHeight: 22, color: MUTED },
@@ -377,11 +458,4 @@ const s = StyleSheet.create({
   applyBtnText: { fontFamily: FontFamily.fredokaSemiBold, color: '#fff', fontSize: 16 },
   appliedPill:     { backgroundColor: ICON_BG, paddingVertical: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   appliedPillText: { fontFamily: FontFamily.fredokaSemiBold, color: MUTED, fontSize: 15 },
-});
-
-// "Roles included" chips — the specifics behind a concise job title
-const jr = StyleSheet.create({
-  wrap:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  chip:     { backgroundColor: '#FEE2D5', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  chipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: ORANGE },
 });

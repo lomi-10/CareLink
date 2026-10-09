@@ -25,27 +25,30 @@ import { ValidIdUploadCard } from '@/components/shared/ValidIdUploadCard';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { useProfileTheme } from './profile.theme';
 import { createStyles } from './documents.styles';
+import { useT } from '@/contexts/LocaleContext';
 
 // ─── The four required documents (fixed order) ────────────────────────────────
 type DocSlot = {
   type: string;
+  titleKey: string;
+  descriptionKey: string;
   field: string; // upload_documents.php form field name
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
   bg: string;
-  desc: string;
 };
 
 const DOC_SLOTS: DocSlot[] = [
-  { type: 'Valid ID',           field: 'valid_id',           icon: 'card-outline',          color: '#2563EB', bg: '#DBEAFE', desc: 'Government ID — front & back' },
-  { type: 'Barangay Clearance', field: 'barangay_clearance', icon: 'document-text-outline', color: '#059669', bg: '#D1FAE5', desc: 'Issued by your barangay' },
-  { type: 'Police Clearance',   field: 'police_clearance',   icon: 'shield-outline',        color: '#7C3AED', bg: '#EDE9FE', desc: 'PNP police clearance' },
-  { type: 'TESDA NC2',          field: 'tesda_nc2',          icon: 'ribbon-outline',        color: '#E86019', bg: '#FEE2D5', desc: 'NC II certificate' },
+  { type: 'Valid ID', titleKey: 'validId', descriptionKey: 'validIdDescription', field: 'valid_id', icon: 'card-outline', color: '#2563EB', bg: '#DBEAFE' },
+  { type: 'Barangay Clearance', titleKey: 'barangayClearance', descriptionKey: 'barangayDescription', field: 'barangay_clearance', icon: 'document-text-outline', color: '#059669', bg: '#D1FAE5' },
+  { type: 'Police Clearance', titleKey: 'policeClearance', descriptionKey: 'policeDescription', field: 'police_clearance', icon: 'shield-outline', color: '#7C3AED', bg: '#EDE9FE' },
+  { type: 'TESDA NC2', titleKey: 'tesdaCertificate', descriptionKey: 'tesdaDescription', field: 'tesda_nc2', icon: 'ribbon-outline', color: '#E86019', bg: '#FEE2D5' },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function DocumentsScreen() {
   const router = useRouter();
+  const { t: tr } = useT();
   const t = useProfileTheme();
   const { resolvedColorScheme } = useColorSchemePreference();
   const { GREEN, MUTED, ORANGE, DARK } = t;
@@ -147,7 +150,7 @@ export default function DocumentsScreen() {
       setBusyType(slot.type);
       const userData = await AsyncStorage.getItem('user_data');
       const userId = String(JSON.parse(userData || '{}')?.user_id || '');
-      if (!userId) throw new Error('Please sign in again.');
+      if (!userId) throw new Error(tr('helper.setup.signInAgain'));
 
       const fd = new FormData();
       fd.append('user_id', userId);
@@ -156,17 +159,17 @@ export default function DocumentsScreen() {
 
       const res = await fetch(`${API_URL}/helper/upload_documents.php`, { method: 'POST', body: fd });
       const data = await res.json();
-      if (!data.success) throw new Error(data.message || 'Upload failed. Please try again.');
+      if (!data.success) throw new Error(data.message || tr('helper.setup.uploadFailed'));
 
       const newDoc = await fetchDocByType(userId, slot.type);
       refresh();
       if (newDoc) {
         goToDetail(newDoc, true); // proceed to details + start scanning immediately
       } else {
-        showNotice('Uploaded, but we could not open the scan screen. Please tap the card.', 'warning', 'Uploaded');
+        showNotice(tr('helper.setup.uploadedOpenScan'), 'warning', tr('helper.setup.uploadedTitle'));
       }
     } catch (e: any) {
-      showNotice(e?.message || 'Could not upload this document.', 'error');
+      showNotice(e?.message || tr('helper.setup.uploadDocumentError'), 'error');
     } finally {
       setBusyType(null);
     }
@@ -184,7 +187,7 @@ export default function DocumentsScreen() {
       setBusyType('Valid ID');
       const userData = await AsyncStorage.getItem('user_data');
       const userId = String(JSON.parse(userData || '{}')?.user_id || '');
-      if (!userId) throw new Error('Please sign in again.');
+      if (!userId) throw new Error(tr('helper.setup.signInAgain'));
 
       const fd = new FormData();
       fd.append('user_id', userId);
@@ -193,7 +196,7 @@ export default function DocumentsScreen() {
 
       const res = await fetch(`${API_URL}/helper/upload_documents.php`, { method: 'POST', body: fd });
       const data = await res.json();
-      if (!data.success) throw new Error(data.message || 'Upload failed. Please try again.');
+      if (!data.success) throw new Error(data.message || tr('helper.setup.uploadFailed'));
 
       const newDoc = await fetchDocByType(userId, 'Valid ID');
       refresh();
@@ -201,7 +204,7 @@ export default function DocumentsScreen() {
         goToDetail(newDoc, true, side); // scan the side that was just uploaded
       }
     } catch (e: any) {
-      showNotice(e?.message || 'Could not upload this document.', 'error');
+      showNotice(e?.message || tr('helper.setup.uploadDocumentError'), 'error');
     } finally {
       setBusyType(null);
     }
@@ -216,7 +219,7 @@ export default function DocumentsScreen() {
           <TouchableOpacity style={s.barBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color={DARK} />
           </TouchableOpacity>
-          <Text style={s.barTitle}>Documents & Verification</Text>
+          <Text style={s.barTitle}>{tr('helper.setup.documentsTitle')}</Text>
           <View style={[s.barShield, { backgroundColor: '#D1FAE5' }]}>
             <Ionicons name="shield-checkmark" size={18} color={GREEN} />
           </View>
@@ -230,8 +233,8 @@ export default function DocumentsScreen() {
               <Ionicons name="shield-checkmark" size={24} color={ORANGE} />
             </View>
             <View style={s.bannerText}>
-              <Text style={s.bannerTitle}>Your safety, our priority</Text>
-              <Text style={s.bannerSub}>All documents are encrypted and securely stored. We never share your documents without your consent.</Text>
+              <Text style={s.bannerTitle}>{tr('helper.setup.safetyTitle')}</Text>
+              <Text style={s.bannerSub}>{tr('helper.setup.safetyHint')}</Text>
             </View>
           </View>
 
@@ -243,7 +246,7 @@ export default function DocumentsScreen() {
             documents={documents}
             role="helper"
             dark={resolvedColorScheme === 'dark'}
-            title="Your PESO credentials"
+            title={tr('helper.setup.credentials')}
             style={{ marginBottom: 18 }}
           />
 
@@ -255,7 +258,7 @@ export default function DocumentsScreen() {
               activeOpacity={0.85}
             >
               <Text style={[s.tabText, activeTab === 'docs' && s.tabTextActive]}>
-                My Documents ({uploadedCount}/{DOC_SLOTS.length})
+                {tr('helper.setup.myDocuments', { uploaded: uploadedCount, total: DOC_SLOTS.length })}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -264,7 +267,7 @@ export default function DocumentsScreen() {
               activeOpacity={0.85}
             >
               <Text style={[s.tabText, activeTab === 'history' && s.tabTextActive]}>
-                Verification History
+                {tr('helper.setup.verificationHistory')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -314,7 +317,7 @@ export default function DocumentsScreen() {
 
                     {/* Info */}
                     <View style={c.info}>
-                      <Text style={c.name}>{slot.type}</Text>
+                      <Text style={c.name}>{tr(`helper.setup.${slot.titleKey}`)}</Text>
                       {uploaded ? (
                         <View style={c.statusLine}>
                           {/* Names PESO explicitly — "Verified" alone read as if
@@ -323,9 +326,9 @@ export default function DocumentsScreen() {
                           <AiScanTag status={scanStatus} compact />
                         </View>
                       ) : (
-                        <Text style={c.desc}>{slot.desc}</Text>
+                        <Text style={c.desc}>{tr(`helper.setup.${slot.descriptionKey}`)}</Text>
                       )}
-                      {uploaded && uploadDate ? <Text style={c.date}>Uploaded {uploadDate}</Text> : null}
+                      {uploaded && uploadDate ? <Text style={c.date}>{tr('helper.setup.uploaded', { date: uploadDate })}</Text> : null}
                     </View>
 
                     {/* Right: upload action OR open chevron */}
@@ -352,7 +355,7 @@ export default function DocumentsScreen() {
                         ) : (
                           <>
                             <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-                            <Text style={c.uploadBtnText}>Upload</Text>
+                            <Text style={c.uploadBtnText}>{tr('helper.setup.upload')}</Text>
                           </>
                         )}
                       </View>
@@ -364,7 +367,7 @@ export default function DocumentsScreen() {
               <View style={c.hint}>
                 <Ionicons name="sparkles-outline" size={15} color={MUTED} />
                 <Text style={c.hintText}>
-                  Upload an image or PDF (max 5MB). We’ll scan it with AI and PESO will verify it.
+                  {tr('helper.setup.uploadHint')}
                 </Text>
               </View>
             </View>

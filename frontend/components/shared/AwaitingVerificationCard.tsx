@@ -7,6 +7,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { useT } from '@/contexts/LocaleContext';
 
 const ACCENT: Record<'helper' | 'parent', string> = { helper: '#E86019', parent: '#C88B4A' };
 
@@ -18,6 +19,7 @@ export function AwaitingVerificationCard({
   themeKey?: 'helper' | 'parent';
 }) {
   const pct = completeness ?? 0;
+  const { t } = useT();
   const s = String(status ?? '');
   // Only when the profile is essentially complete AND still awaiting PESO.
   if (pct < 90) return null;
@@ -30,16 +32,15 @@ export function AwaitingVerificationCard({
           <Ionicons name="shield-checkmark" size={22} color="#059669" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={st.title}>Profile complete! 🎉</Text>
+          <Text style={st.title}>{t('helper.home.profileCompleteTitle')} 🎉</Text>
           <Text style={st.sub}>
-            You’re all set at {Math.min(100, Math.round(pct))}%. Your profile is now awaiting PESO verification — we’ll
-            notify you once an officer reviews your documents. This usually takes 1–3 working days.
+            {t('helper.home.awaitingVerificationDescription', { percent: Math.min(100, Math.round(pct)) })}
           </Text>
         </View>
       </View>
       <View style={st.badge}>
         <Ionicons name="time-outline" size={14} color={ACCENT[themeKey]} />
-        <Text style={[st.badgeText, { color: ACCENT[themeKey] }]}>Awaiting PESO verification</Text>
+        <Text style={[st.badgeText, { color: ACCENT[themeKey] }]}>{t('helper.home.awaitingVerification')}</Text>
       </View>
     </View>
   );

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import API_URL from '@/constants/api';
+import { useT } from '@/contexts/LocaleContext';
 
 // ─── Themes ─────────────────────────────────────────────────────────────────
 export type ScanThemeKey = 'helper' | 'parent';
@@ -54,21 +55,21 @@ export type ScanResult = {
 };
 
 const CHECKS = [
-  { key: 'edges', label: 'Detecting document edges', icon: 'scan-outline' as const },
-  { key: 'text', label: 'Extracting text & details', icon: 'text-outline' as const },
-  { key: 'auth', label: 'Checking authenticity', icon: 'shield-checkmark-outline' as const },
-  { key: 'clarity', label: 'Measuring clarity', icon: 'eye-outline' as const },
+  { key: 'edges', labelKey: 'scanCheckEdges', icon: 'scan-outline' as const },
+  { key: 'text', labelKey: 'scanCheckText', icon: 'text-outline' as const },
+  { key: 'auth', labelKey: 'scanCheckAuthenticity', icon: 'shield-checkmark-outline' as const },
+  { key: 'clarity', labelKey: 'scanCheckClarity', icon: 'eye-outline' as const },
 ];
 
-function scoreLabel(kind: 'legit' | 'clarity', v: number): { label: string; sub: string } {
+function scoreLabel(kind: 'legit' | 'clarity', v: number, tr: (key: string) => string): { label: string; sub: string } {
   if (kind === 'legit') {
-    if (v >= 90) return { label: 'Highly Legitimate', sub: 'No signs of tampering detected.' };
-    if (v >= 70) return { label: 'Likely Legitimate', sub: 'Minor checks flagged for review.' };
-    return { label: 'Needs Review', sub: 'Could not confirm authenticity.' };
+    if (v >= 90) return { label: tr('helper.setup.highlyLegitimate'), sub: tr('helper.setup.noTamperingDetected') };
+    if (v >= 70) return { label: tr('helper.setup.likelyLegitimate'), sub: tr('helper.setup.minorChecksReview') };
+    return { label: tr('helper.setup.needsReview'), sub: tr('helper.setup.couldNotConfirmAuthenticity') };
   }
-  if (v >= 85) return { label: 'Very Clear', sub: 'All details are readable.' };
-  if (v >= 60) return { label: 'Readable', sub: 'Details are mostly readable.' };
-  return { label: 'Low Clarity', sub: 'Consider a clearer photo.' };
+  if (v >= 85) return { label: tr('helper.setup.veryClear'), sub: tr('helper.setup.allDetailsReadable') };
+  if (v >= 60) return { label: tr('helper.setup.readable'), sub: tr('helper.setup.detailsMostlyReadable') };
+  return { label: tr('helper.setup.lowClarity'), sub: tr('helper.setup.considerClearerPhoto') };
 }
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -94,6 +95,7 @@ export function DocumentAIScan({
   onViewImage?: (uri: string) => void;
 }) {
   const t = THEMES[themeKey];
+  const { t: tr } = useT();
   // If we already have a stored scan, show it — never re-scan (that would drain
   // the AI). A fresh re-scan only happens after the user deletes and re-uploads.
   const hasStored = !!initialResult;
@@ -142,8 +144,8 @@ export function DocumentAIScan({
     try {
       const raw = await AsyncStorage.getItem('user_data');
       const userId = String(JSON.parse(raw || '{}')?.user_id || '');
-      if (!userId) throw new Error('Please sign in again.');
-      if (!doc?.document_id) throw new Error('This document is not uploaded yet.');
+      if (!userId) throw new Error(tr('helper.setup.signInAgain'));
+      if (!doc?.document_id) throw new Error(tr('helper.setup.documentNotUploaded'));
 
       const fetchPromise = (async () => {
         const res = await fetch(`${API_URL}/helper/scan_id.php`, {
@@ -159,7 +161,7 @@ export function DocumentAIScan({
       setStep(CHECKS.length);
 
       if (!data?.success) {
-        setErr(data?.message || 'The scan could not be completed.');
+        setErr(data?.message || tr('helper.setup.scanCouldNotComplete'));
         setPhase('error');
       } else {
         setResult(data);
@@ -169,7 +171,7 @@ export function DocumentAIScan({
       }
     } catch (e: any) {
       if (timer) clearInterval(timer);
-      setErr(e?.message || 'Scan failed. Please try again.');
+      setErr(e?.message || tr('helper.setup.scanFailed'));
       setPhase('error');
     }
   };
@@ -186,11 +188,11 @@ export function DocumentAIScan({
         <View style={[w.iconCircle, { backgroundColor: t.iconBg }]}>
           <Ionicons name="scan-outline" size={22} color={t.accent} />
         </View>
-        <Text style={[w.title, { color: t.ink }]}>AI Document Scan</Text>
-        <Text style={[w.sub, { color: t.muted }]}>Run an instant AI check to read and verify this document.</Text>
+        <Text style={[w.title, { color: t.ink }]}>{tr('helper.setup.aiScan')}</Text>
+        <Text style={[w.sub, { color: t.muted }]}>{tr('helper.setup.scanIdleHint')}</Text>
         <TouchableOpacity style={[w.btnFilled, { backgroundColor: t.accent }]} onPress={runScan} activeOpacity={0.88}>
           <Ionicons name="sparkles" size={16} color="#fff" />
-          <Text style={w.btnFilledText}>Start AI Scan</Text>
+          <Text style={w.btnFilledText}>{tr('helper.setup.startAiScan')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -221,12 +223,12 @@ export function DocumentAIScan({
           />
           <View style={w.scanTag}>
             <View style={[w.tagDot, { backgroundColor: t.accent }]} />
-            <Text style={w.scanTagText}>Scanning document…</Text>
+            <Text style={w.scanTagText}>{tr('helper.setup.scanningDocument')}</Text>
           </View>
         </View>
 
-        <Text style={[w.analyzing, { color: t.ink }]}>AI is analyzing your document</Text>
-        <Text style={[w.sub, { color: t.muted }]}>Please hold still and ensure good lighting.</Text>
+        <Text style={[w.analyzing, { color: t.ink }]}>{tr('helper.setup.aiAnalyzingDocument')}</Text>
+        <Text style={[w.sub, { color: t.muted }]}>{tr('helper.setup.scanLightingHint')}</Text>
 
         <View style={w.dotsRow}>
           {CHECKS.map((_, i) => (
@@ -241,7 +243,7 @@ export function DocumentAIScan({
             return (
               <View key={c.key} style={w.checkRow}>
                 <Ionicons name={c.icon} size={17} color={done ? t.success : active ? t.accent : t.muted} />
-                <Text style={[w.checkLabel, { color: t.ink }]}>{c.label}</Text>
+                <Text style={[w.checkLabel, { color: t.ink }]}>{tr(`helper.setup.${c.labelKey}`)}</Text>
                 {done ? (
                   <Ionicons name="checkmark-circle" size={17} color={t.success} />
                 ) : active ? (
@@ -264,11 +266,11 @@ export function DocumentAIScan({
         <View style={[w.iconCircle, { backgroundColor: '#FDECEA' }]}>
           <Ionicons name="alert-circle" size={24} color="#B42318" />
         </View>
-        <Text style={[w.title, { color: t.ink }]}>Scan didn’t complete</Text>
+        <Text style={[w.title, { color: t.ink }]}>{tr('helper.setup.scanDidNotComplete')}</Text>
         <Text style={[w.sub, { color: t.muted }]}>{err}</Text>
         <TouchableOpacity style={[w.btnFilled, { backgroundColor: t.accent }]} onPress={runScan} activeOpacity={0.88}>
           <Ionicons name="refresh" size={16} color="#fff" />
-          <Text style={w.btnFilledText}>Try again</Text>
+          <Text style={w.btnFilledText}>{tr('helper.setup.tryAgain')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -284,10 +286,10 @@ export function DocumentAIScan({
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[w.doneTitle, { color: t.ink }]}>
-            {passed ? 'Scan complete' : failed ? 'Needs a clearer copy' : 'Scan complete — for review'}
+            {passed ? tr('helper.setup.scanComplete') : failed ? tr('helper.setup.needsClearerCopy') : tr('helper.setup.scanCompleteReview')}
           </Text>
           <Text style={[w.sub, { color: t.muted, marginTop: 2, textAlign: 'left' }]}>
-            {failed ? 'The AI could not confirm this document.' : inlineResults ? 'AI read your document. See the details below.' : 'AI read your document. Tap below to review.'}
+            {failed ? tr('helper.setup.aiCouldNotConfirmDocument') : inlineResults ? tr('helper.setup.aiReadSeeDetails') : tr('helper.setup.aiReadTapReview')}
           </Text>
         </View>
       </View>
@@ -297,13 +299,13 @@ export function DocumentAIScan({
           {legit != null && (
             <View style={[w.miniScore, { backgroundColor: t.successBg }]}>
               <Text style={[w.miniBig, { color: t.ink }]}>{legit}%</Text>
-              <Text style={[w.miniLabel, { color: t.muted }]}>Legitimacy</Text>
+              <Text style={[w.miniLabel, { color: t.muted }]}>{tr('helper.setup.legitimacy')}</Text>
             </View>
           )}
           {clarity != null && (
             <View style={[w.miniScore, { backgroundColor: t.iconBg }]}>
               <Text style={[w.miniBig, { color: t.ink }]}>{clarity}%</Text>
-              <Text style={[w.miniLabel, { color: t.muted }]}>Clarity</Text>
+              <Text style={[w.miniLabel, { color: t.muted }]}>{tr('helper.setup.clarity')}</Text>
             </View>
           )}
         </View>
@@ -316,12 +318,12 @@ export function DocumentAIScan({
       ) : (
         <TouchableOpacity style={[w.btnFilled, { backgroundColor: t.accent }]} onPress={() => setShowResults(true)} activeOpacity={0.88}>
           <Ionicons name="reader-outline" size={16} color="#fff" />
-          <Text style={w.btnFilledText}>Scan Results</Text>
+          <Text style={w.btnFilledText}>{tr('helper.setup.scanResults')}</Text>
         </TouchableOpacity>
       )}
       {failed && (
         <Text style={[w.sub, { color: t.muted, textAlign: 'center', marginTop: 8 }]}>
-          To try again, delete this document and upload a clearer copy.
+          {tr('helper.setup.deleteAndUploadClearer')}
         </Text>
       )}
 
@@ -353,16 +355,19 @@ export function ScanResultsContent({
   elapsed: number | null;
   onViewImage?: (uri: string) => void;
 }) {
+  const { t: tr } = useT();
   const legit = result?.legitimacy_score != null ? Math.round(Number(result.legitimacy_score)) : null;
   const clarity = result?.quality_score != null ? Math.round(Number(result.quality_score)) : null;
   const passed = result?.ai_verification_status === 'Passed';
   const fields: ScanField[] = Array.isArray(result?.fields) ? (result!.fields as ScanField[]) : [];
-  const docLabel = result?.document_type || 'Document';
+  const docLabel = result?.document_type || tr('helper.setup.document');
   const warnings: string[] = Array.isArray(result?.warnings) ? (result!.warnings as string[]) : [];
 
   const confidence = legit != null && clarity != null ? Math.round((legit + clarity) / 2) : (legit ?? clarity ?? null);
   const confDots = confidence != null ? Math.max(1, Math.min(5, Math.round(confidence / 20))) : 0;
-  const confLabel = confidence == null ? '' : confidence >= 80 ? 'High Confidence' : confidence >= 55 ? 'Medium Confidence' : 'Low Confidence';
+  const confLabel = confidence == null ? '' : confidence >= 80
+    ? tr('helper.setup.highConfidence')
+    : confidence >= 55 ? tr('helper.setup.mediumConfidence') : tr('helper.setup.lowConfidence');
 
   return (
     <View>
@@ -371,10 +376,10 @@ export function ScanResultsContent({
         <Ionicons name={passed ? 'checkmark-circle' : 'information-circle'} size={22} color={t.success} />
         <View style={{ flex: 1 }}>
           <Text style={[r.bannerTitle, { color: t.success }]}>
-            {passed ? 'Document scanned successfully' : 'Scan complete — needs review'}
+            {passed ? tr('helper.setup.documentScannedSuccessfully') : tr('helper.setup.scanNeedsReview')}
           </Text>
           <Text style={[r.bannerSub, { color: t.muted }]}>
-            AI verification completed{elapsed != null ? ` in ${elapsed.toFixed(1)}s` : ''}.
+            {tr('helper.setup.aiVerificationCompleted')}{elapsed != null ? ` ${tr('helper.setup.elapsedSeconds', { seconds: elapsed.toFixed(1) })}` : '.'}
           </Text>
         </View>
         <View style={[r.shieldSm, { backgroundColor: t.success }]}>
@@ -405,10 +410,10 @@ export function ScanResultsContent({
                 <View style={[r.scoreIcon, { backgroundColor: t.success }]}>
                   <Ionicons name="shield-checkmark" size={14} color="#fff" />
                 </View>
-                <Text style={[r.scoreLabel, { color: t.muted }]}>Legitimacy Score</Text>
+                <Text style={[r.scoreLabel, { color: t.muted }]}>{tr('helper.setup.legitimacyScoreLabel')}</Text>
                 <Text style={[r.scoreBig, { color: t.ink }]}>{legit}%</Text>
-                <Text style={[r.scoreTag, { color: t.success }]}>{scoreLabel('legit', legit).label}</Text>
-                <Text style={[r.scoreSub, { color: t.muted }]}>{scoreLabel('legit', legit).sub}</Text>
+                <Text style={[r.scoreTag, { color: t.success }]}>{scoreLabel('legit', legit, tr).label}</Text>
+                <Text style={[r.scoreSub, { color: t.muted }]}>{scoreLabel('legit', legit, tr).sub}</Text>
               </View>
             )}
             {clarity != null && (
@@ -416,22 +421,22 @@ export function ScanResultsContent({
                 <View style={[r.scoreIcon, { backgroundColor: t.accent }]}>
                   <Ionicons name="sparkles" size={14} color="#fff" />
                 </View>
-                <Text style={[r.scoreLabel, { color: t.muted }]}>Clarity Score</Text>
+                <Text style={[r.scoreLabel, { color: t.muted }]}>{tr('helper.setup.clarityScoreLabel')}</Text>
                 <Text style={[r.scoreBig, { color: t.ink }]}>{clarity}%</Text>
-                <Text style={[r.scoreTag, { color: t.accentDeep }]}>{scoreLabel('clarity', clarity).label}</Text>
-                <Text style={[r.scoreSub, { color: t.muted }]}>{scoreLabel('clarity', clarity).sub}</Text>
+                <Text style={[r.scoreTag, { color: t.accentDeep }]}>{scoreLabel('clarity', clarity, tr).label}</Text>
+                <Text style={[r.scoreSub, { color: t.muted }]}>{scoreLabel('clarity', clarity, tr).sub}</Text>
               </View>
             )}
           </View>
 
           {/* RIGHT: extracted fields */}
           <View style={r.colRight}>
-            <DetailRow label="Document Type" value={docLabel} t={t} first />
+            <DetailRow label={tr('helper.setup.documentType')} value={docLabel} t={t} first />
             {fields.map((f, i) => (
               <DetailRow key={`${f.label}-${i}`} label={f.label} value={f.value} t={t} />
             ))}
             {fields.length === 0 && (
-              <Text style={[r.noFields, { color: t.muted }]}>No fields could be read from this document.</Text>
+              <Text style={[r.noFields, { color: t.muted }]}>{tr('helper.setup.noFieldsRead')}</Text>
             )}
           </View>
         </View>
@@ -442,7 +447,7 @@ export function ScanResultsContent({
         <View style={[r.warnCard, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}>
           <Ionicons name="warning-outline" size={18} color="#C2410C" />
           <View style={{ flex: 1 }}>
-            <Text style={[r.warnTitle, { color: '#9A3412' }]}>Flagged for review</Text>
+            <Text style={[r.warnTitle, { color: '#9A3412' }]}>{tr('helper.setup.flaggedForReview')}</Text>
             {warnings.map((wn, i) => (
               <Text key={i} style={[r.warnItem, { color: '#9A3412' }]}>• {wn}</Text>
             ))}
@@ -455,8 +460,10 @@ export function ScanResultsContent({
         <View style={[r.confRow, { backgroundColor: t.cardBg, borderColor: t.line }]}>
           <Ionicons name="information-circle" size={18} color={t.accent} />
           <View style={{ flex: 1 }}>
-            <Text style={[r.confTitle, { color: t.ink }]}>AI Confidence</Text>
-            <Text style={[r.confSub, { color: t.muted }]}>Our AI has {confidence >= 80 ? 'high' : confidence >= 55 ? 'medium' : 'low'} confidence in the extracted information.</Text>
+            <Text style={[r.confTitle, { color: t.ink }]}>{tr('helper.setup.aiConfidence')}</Text>
+            <Text style={[r.confSub, { color: t.muted }]}>{tr('helper.setup.confidenceDescription', {
+              level: confidence >= 80 ? tr('helper.setup.high') : confidence >= 55 ? tr('helper.setup.medium') : tr('helper.setup.low'),
+            })}</Text>
           </View>
           <View style={{ alignItems: 'flex-end', gap: 4 }}>
             <View style={{ flexDirection: 'row', gap: 3 }}>
@@ -484,6 +491,7 @@ function ScanResultsModal({
   elapsed: number | null;
   onViewImage?: (uri: string) => void;
 }) {
+  const { t: tr } = useT();
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
       <View style={[r.page, { backgroundColor: t.pageBg }]}>
@@ -493,12 +501,12 @@ function ScanResultsModal({
             <TouchableOpacity style={r.headerBtn} onPress={onClose} hitSlop={10}>
               <Ionicons name="arrow-back" size={22} color={t.ink} />
             </TouchableOpacity>
-            <Text style={[r.headerTitle, { color: t.ink }]}>Scan Results</Text>
+            <Text style={[r.headerTitle, { color: t.ink }]}>{tr('helper.setup.scanResults')}</Text>
             <View style={[r.shield, { backgroundColor: t.successBg }]}>
               <Ionicons name="shield-checkmark" size={18} color={t.success} />
             </View>
           </View>
-          <Text style={[r.headerSub, { color: t.muted }]}>AI scan complete. Please review the extracted details.</Text>
+          <Text style={[r.headerSub, { color: t.muted }]}>{tr('helper.setup.scanReviewExtractedDetails')}</Text>
 
           <ScrollView contentContainerStyle={r.scroll} showsVerticalScrollIndicator={false}>
             <ScanResultsContent t={t} result={result} imgUri={imgUri} elapsed={elapsed} onViewImage={onViewImage} />
@@ -506,7 +514,7 @@ function ScanResultsModal({
             {/* actions */}
             <View style={r.actions}>
               <TouchableOpacity style={[r.btnFilled, { backgroundColor: t.accent, flex: 1 }]} onPress={onClose} activeOpacity={0.88}>
-                <Text style={r.btnFilledText}>Continue</Text>
+                <Text style={r.btnFilledText}>{tr('helper.home.continue')}</Text>
                 <Ionicons name="arrow-forward" size={17} color="#fff" />
               </TouchableOpacity>
             </View>

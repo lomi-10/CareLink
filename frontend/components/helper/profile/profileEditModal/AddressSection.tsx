@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { styles, LabeledInput } from '.';
 import { LocationSearchInput, LocationResult } from '@/components/shared';
 import { theme } from '@/constants/theme';
+import { useT } from '@/contexts/LocaleContext';
 
 interface Props {
   isWeb: boolean;
@@ -24,6 +25,7 @@ export function AddressSection({
   landmark, setLandmark,
   setLatitude, setLongitude,
 }: Props) {
+  const { t } = useT();
 
   const handleLocationSelect = (result: LocationResult) => {
     setProvince(result.province);
@@ -39,7 +41,7 @@ export function AddressSection({
         <View style={[styles.sectionIconBg, { backgroundColor: '#FFF4E5' }]}>
           <Ionicons name="location" size={20} color="#FF9500" />
         </View>
-        <Text style={styles.sectionTitleText}>Current Address</Text>
+        <Text style={styles.sectionTitleText}>{t('helper.setup.currentAddress')}</Text>
       </View>
 
       {/* ── Location search (Nominatim / OpenStreetMap) ── */}
@@ -49,19 +51,19 @@ export function AddressSection({
         barangay={barangay}
         onSelect={handleLocationSelect}
         accentColor={theme.color.helper}
-        label="Search Location"
+        label={t('helper.setup.searchLocation')}
       />
 
       {/* ── Manual overrides if needed ── */}
       <View style={isWeb ? styles.webRow : undefined}>
         <View style={isWeb ? { flex: 1, paddingRight: 12 } : undefined}>
-          <LabeledInput label="Province" required value={province} onChangeText={v => { setProvince(v); setLatitude?.(null); setLongitude?.(null); }} placeholder="Leyte" />
-          <LabeledInput label="Municipality" required value={municipality} onChangeText={v => { setMunicipality(v); setLatitude?.(null); setLongitude?.(null); }} placeholder="Isabel" />
-          <LabeledInput label="Barangay" required value={barangay} onChangeText={v => { setBarangay(v); setLatitude?.(null); setLongitude?.(null); }} placeholder="San Jose" />
+          <LabeledInput label={t('helper.setup.province')} required value={province} onChangeText={v => { setProvince(v); setLatitude?.(null); setLongitude?.(null); }} placeholder="Leyte" />
+          <LabeledInput label={t('helper.setup.municipality')} required value={municipality} onChangeText={v => { setMunicipality(v); setLatitude?.(null); setLongitude?.(null); }} placeholder="Isabel" />
+          <LabeledInput label={t('helper.setup.barangay')} required value={barangay} onChangeText={v => { setBarangay(v); setLatitude?.(null); setLongitude?.(null); }} placeholder="San Jose" />
         </View>
       </View>
 
-      <LabeledInput label="Landmark / Street" value={landmark} onChangeText={setLandmark} placeholder="Near church / Street name" />
+      <LabeledInput label={t('helper.setup.landmarkStreet')} value={landmark} onChangeText={setLandmark} placeholder={t('helper.setup.locationHint')} />
     </View>
   );
 }

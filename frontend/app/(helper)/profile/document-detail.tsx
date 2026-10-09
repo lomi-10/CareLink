@@ -20,6 +20,7 @@ import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
 import { isPdfDocument } from '@/lib/documentType';
 import { useProfileTheme } from './profile.theme';
 import { createStyles } from './document-detail.styles';
+import { useT } from '@/contexts/LocaleContext';
 
 // Reconstruct a stored per-side scan result (front/back) with legacy fallback.
 function buildSideResult(
@@ -62,11 +63,11 @@ function buildSideResult(
 // of those final steps complete together.
 
 const STEPS = [
-  { label: 'Uploaded',     desc: 'Your document was submitted successfully.' },
-  { label: 'AI Scanned',   desc: 'Our AI checked this document for legitimacy and clarity.' },
-  { label: 'Under Review', desc: 'PESO staff are reviewing your document.' },
-  { label: 'Verified',     desc: 'PESO confirmed your document is valid.' },
-  { label: 'Active',       desc: 'This document is active and counted toward your verification.' },
+  { labelKey: 'uploadedTitle', descKey: 'documentSubmitted' },
+  { labelKey: 'aiScanned', descKey: 'aiCheckedDocument' },
+  { labelKey: 'underReview', descKey: 'pesoReviewingDocument' },
+  { labelKey: 'verified', descKey: 'pesoConfirmedDocument' },
+  { labelKey: 'active', descKey: 'documentActiveDescription' },
 ] as const;
 
 // currentStep = index of the furthest completed step (done = i <= currentStep).
@@ -82,6 +83,7 @@ function computeStep(status: string, scanned: boolean): number {
 
 export default function DocumentDetailScreen() {
   const router = useRouter();
+  const { t: tr } = useT();
   const t = useProfileTheme();
   const { GREEN, MUTED, ORANGE } = t;
   const s = useMemo(() => createStyles(t), [t]);
@@ -108,7 +110,7 @@ export default function DocumentDetailScreen() {
 
   const {
     document_id      = '',
-    document_type    = 'Document',
+    document_type    = '',
     file_url         = '',
     file_url_back    = '',
     file_path        = '',
@@ -157,7 +159,7 @@ export default function DocumentDetailScreen() {
     else if (res?.ai_verification_status) setAiStatus(res.ai_verification_status);
     if (res?.doc_status) setDocStatus(res.doc_status);
     if (res?.auto_rejected) {
-      setAiReason('Our AI could not confirm this is a genuine document, so it was not sent for PESO verification. Please re-upload a clear, authentic copy.');
+      setAiReason(tr('helper.setup.genuineDocumentReupload'));
     }
   };
 
@@ -166,6 +168,11 @@ export default function DocumentDetailScreen() {
   const isRejected = statusKey === 'rejected';
   const isPending  = !isVerified && !isRejected;
   const scanned    = !!aiStatus && aiStatus !== 'Unchecked';
+  const documentLabelKey = document_type === 'Valid ID' ? 'validId'
+    : document_type === 'Barangay Clearance' ? 'barangayClearance'
+      : document_type === 'Police Clearance' ? 'policeClearance'
+        : document_type === 'TESDA NC2' ? 'tesdaCertificate' : null;
+  const documentLabel = documentLabelKey ? tr(`helper.setup.${documentLabelKey}`) : document_type || tr('helper.setup.document');
 
   // Reconstruct the stored per-side scan results so each widget shows its result
   // directly instead of re-scanning (which would drain the AI). A re-scan only
@@ -209,17 +216,17 @@ export default function DocumentDetailScreen() {
   const handleDownload = () => {
     const openUrl = shownUrl || file_url;
     if (!openUrl) {
-      showNotice('This document has no file attached.', 'warning', 'No file');
+      showNotice(tr('helper.setup.missingFile'), 'warning', tr('helper.setup.noFile'));
       return;
     }
     Linking.openURL(openUrl).catch(() =>
-      showNotice('Could not open the document. Please try again.', 'error')
+      showNotice(tr('helper.setup.openDocumentError'), 'error')
     );
   };
 
   const handleDelete = () => {
     if (!document_id) {
-      showNotice('This document cannot be identified for deletion.', 'error');
+      showNotice(tr('helper.setup.unknownDocumentDeletion'), 'error');
       return;
     }
     setConfirmDelete(true);
@@ -240,20 +247,20 @@ export default function DocumentDetailScreen() {
         body: JSON.stringify({ document_id, user_id: user.user_id, requester_id: user.user_id }),
       });
       const data = await response.json();
-      if (!data.success) throw new Error(data.message || 'Failed to delete document');
+      if (!data.success) throw new Error(data.message || tr('helper.setup.deleteDocumentFailed'));
 
       if (data.verification_reverted) {
         setBackOnNoticeClose(true);
         showNotice(
-          'Deleting this document paused your PESO verification. Your profile is now hidden from families until you re-upload it and PESO re-verifies your account.',
+          tr('helper.setup.verificationPausedMessage'),
           'warning',
-          'Verification Paused'
+          tr('helper.setup.verificationPaused')
         );
       } else {
         router.back();
       }
     } catch (err: any) {
-      showNotice(err.message || 'Could not delete the document. Please try again.', 'error');
+      showNotice(err.message || tr('helper.setup.deleteDocumentErrorFallback'), 'error');
     } finally {
       setDeleting(false);
     }
@@ -268,7 +275,7 @@ export default function DocumentDetailScreen() {
           <TouchableOpacity style={s.barBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color="#2A1608" />
           </TouchableOpacity>
-          <Text style={s.barTitle}>Document Details</Text>
+          <Text style={s.barTitle}>{tr('helper.setup.documentDetails')}</Text>
           <View style={s.barSpacer} />
         </View>
 
@@ -288,14 +295,14 @@ export default function DocumentDetailScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.bannerTitle}>
-                {isVerified ? 'Verified by PESO' : isRejected ? 'Rejected by PESO' : 'Pending — Under Review'}
+                {isVerified ? tr('helper.setup.verifiedByPeso') : isRejected ? tr('helper.setup.rejectedByPeso') : tr('helper.setup.pendingUnderReview')}
               </Text>
               <Text style={s.bannerSub}>
                 {isVerified
-                  ? 'This document has been reviewed and verified by PESO.'
+                  ? tr('helper.setup.documentVerifiedByPeso')
                   : isRejected
-                    ? (rejectReason || 'This document was rejected. Please re-upload a corrected copy.')
-                    : 'This document is currently being reviewed by PESO.'}
+                    ? (rejectReason || tr('helper.setup.rejectedDocumentReupload'))
+                    : tr('helper.setup.documentUnderReview')}
               </Text>
             </View>
           </View>
@@ -329,14 +336,14 @@ export default function DocumentDetailScreen() {
                       fontFamily: FontFamily.fredokaSemiBold,
                       fontSize: 11, color: '#B8956A',
                     }}>
-                      {shownIsPdf ? 'PDF' : 'No preview'}
+                      {shownIsPdf ? 'PDF' : tr('helper.setup.noPreview')}
                     </Text>
                   </View>
                 )}
                 {hasBack ? (
                   <>
                     <View style={s.sideBadge}>
-                      <Text style={s.sideBadgeText}>{imgSide === 'back' ? 'Back' : 'Front'}</Text>
+                      <Text style={s.sideBadgeText}>{tr(imgSide === 'back' ? 'helper.setup.back' : 'helper.setup.front')}</Text>
                     </View>
                     <View style={s.flipBadge}>
                       <Ionicons name="sync-outline" size={13} color="#fff" />
@@ -347,24 +354,24 @@ export default function DocumentDetailScreen() {
 
               {/* Right: document details */}
               <View style={s.docDetails}>
-                <Text style={s.docName}>{document_type}</Text>
+                <Text style={s.docName}>{documentLabel}</Text>
 
                 <View>
-                  <Text style={s.detailLabel}>Document Type</Text>
-                  <Text style={s.detailValue}>{document_type}</Text>
+                  <Text style={s.detailLabel}>{tr('helper.setup.documentType')}</Text>
+                  <Text style={s.detailValue}>{documentLabel}</Text>
                 </View>
 
                 {(uploadedLabel || expiryLabel) ? (
                   <View style={s.datesRow}>
                     {uploadedLabel ? (
                       <View style={s.dateBlock}>
-                        <Text style={s.detailLabel}>Uploaded On</Text>
+                        <Text style={s.detailLabel}>{tr('helper.setup.uploadedOn')}</Text>
                         <Text style={s.detailValue}>{uploadedLabel}</Text>
                       </View>
                     ) : null}
                     {expiryLabel ? (
                       <View style={s.dateBlock}>
-                        <Text style={s.detailLabel}>Expiry Date</Text>
+                        <Text style={s.detailLabel}>{tr('helper.setup.expiryDate')}</Text>
                         <Text style={s.detailValue}>{expiryLabel}</Text>
                       </View>
                     ) : null}
@@ -372,9 +379,9 @@ export default function DocumentDetailScreen() {
                 ) : null}
 
                 <View>
-                  <Text style={s.detailLabel}>Status</Text>
+                  <Text style={s.detailLabel}>{tr('helper.setup.status')}</Text>
                   <Text style={[s.detailValue, { color: isVerified ? GREEN : isRejected ? '#DC2626' : '#D97706' }]}>
-                    {isVerified ? 'Verified by PESO' : isRejected ? 'Rejected by PESO' : 'Pending Review'}
+                    {isVerified ? tr('helper.setup.verifiedByPeso') : isRejected ? tr('helper.setup.rejectedByPeso') : tr('helper.setup.pendingReview')}
                   </Text>
                 </View>
               </View>
@@ -394,7 +401,7 @@ export default function DocumentDetailScreen() {
                     >
                       <Ionicons name={active ? 'card' : 'card-outline'} size={14} color={active ? '#fff' : MUTED} />
                       <Text style={[s.sideToggleText, active && s.sideToggleTextActive]}>
-                        {side === 'front' ? 'Front' : 'Back'}
+                        {tr(side === 'front' ? 'helper.setup.front' : 'helper.setup.back')}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -406,14 +413,14 @@ export default function DocumentDetailScreen() {
           {/* ── AI Document Scan (front & back scan independently) ── */}
           {document_id ? (
             <View style={s.statusSection}>
-              <Text style={s.statusTitle}>AI Document Scan</Text>
+              <Text style={s.statusTitle}>{tr('helper.setup.aiScan')}</Text>
               <View style={{ gap: 14 }}>
                 <DocumentAIScan
                   key={`${document_id}-front`}
                   doc={{ document_id, document_type, file_url: isPdf ? null : file_url, file_path }}
                   themeKey="helper"
                   side="front"
-                  title={file_url_back || document_type === 'Valid ID' ? 'Front side' : undefined}
+                  title={file_url_back || document_type === 'Valid ID' ? tr('helper.setup.frontSide') : undefined}
                   autoStart={false}
                   initialResult={frontInitial}
                   onScanned={handleScanned}
@@ -425,7 +432,7 @@ export default function DocumentDetailScreen() {
                     doc={{ document_id, document_type, file_url: file_url_back.toLowerCase().endsWith('.pdf') ? null : file_url_back, file_path: file_path_back }}
                     themeKey="helper"
                     side="back"
-                    title="Back side"
+                    title={tr('helper.setup.backSide')}
                     autoStart={false}
                     initialResult={backInitial}
                     onScanned={handleScanned}
@@ -438,7 +445,7 @@ export default function DocumentDetailScreen() {
 
           {/* ── Verification Details ── */}
           <View style={s.verifyCard}>
-            <Text style={s.verifyCardTitle}>Verification Details</Text>
+            <Text style={s.verifyCardTitle}>{tr('helper.setup.verificationDetails')}</Text>
             <View style={s.verifyRow}>
               <View style={[s.verifyCheck, isRejected && { backgroundColor: '#FECACA' }]}>
                 <Ionicons
@@ -450,15 +457,15 @@ export default function DocumentDetailScreen() {
               <View style={s.verifyText}>
                 <Text style={s.verifyBy}>
                   {isVerified
-                    ? `Verified by PESO${verified_by ? ` (${verified_by})` : ''}`
+                    ? `${tr('helper.setup.verifiedByPeso')}${verified_by ? ` (${verified_by})` : ''}`
                     : isRejected
-                      ? `Rejected by PESO${verified_by ? ` (${verified_by})` : ''}`
-                      : 'Pending PESO verification'}
+                      ? `${tr('helper.setup.rejectedByPeso')}${verified_by ? ` (${verified_by})` : ''}`
+                      : tr('helper.setup.pendingPesoVerification')}
                 </Text>
                 {isRejected && rejectReason ? (
                   <Text style={[s.verifyDate, { color: '#DC2626' }]}>{rejectReason}</Text>
                 ) : verifiedLabel ? (
-                  <Text style={s.verifyDate}>on {verifiedLabel}</Text>
+                  <Text style={s.verifyDate}>{tr('helper.setup.dateOn', { date: verifiedLabel })}</Text>
                 ) : null}
               </View>
               <View style={s.verifyBadge}>
@@ -473,14 +480,14 @@ export default function DocumentDetailScreen() {
 
           {/* ── Document Status progress ── */}
           <View style={s.statusSection}>
-            <Text style={s.statusTitle}>Document Status</Text>
+            <Text style={s.statusTitle}>{tr('helper.setup.documentStatus')}</Text>
             {isRejected ? (
               <View style={s.rejectedTrack}>
                 <View style={[s.progressCircle, { backgroundColor: '#DC2626' }]}>
                   <Ionicons name="close" size={16} color="#FFFFFF" />
                 </View>
                 <Text style={s.rejectedTrackText}>
-                  This document was rejected and is not part of the verification pipeline. Re-upload a corrected copy to restart the review.
+                  {tr('helper.setup.rejectedPipelineReupload')}
                 </Text>
               </View>
             ) : (
@@ -492,11 +499,11 @@ export default function DocumentDetailScreen() {
           <View style={s.actionsRow}>
             <TouchableOpacity style={s.downloadBtn} onPress={handleDownload} activeOpacity={0.85}>
               <Ionicons name="download-outline" size={18} color="#2A1608" />
-              <Text style={s.downloadText}>Download</Text>
+              <Text style={s.downloadText}>{tr('helper.setup.download')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.deleteBtn} onPress={handleDelete} activeOpacity={0.85}>
               <Ionicons name="trash-outline" size={18} color="#DC2626" />
-              <Text style={s.deleteText}>Delete Document</Text>
+              <Text style={s.deleteText}>{tr('helper.setup.deleteDocument')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -507,15 +514,15 @@ export default function DocumentDetailScreen() {
       <ImageZoomModal
         visible={!!zoomUri}
         uri={zoomUri}
-        title={`${document_type}${hasBack ? ` — ${imgSide === 'front' ? 'Front' : 'Back'}` : ''}`}
+        title={`${documentLabel}${hasBack ? ` — ${tr(imgSide === 'front' ? 'helper.setup.front' : 'helper.setup.back')}` : ''}`}
         isPdf={shownIsPdf}
         onClose={() => setZoomUri(null)}
       />
       <ConfirmationModal
         visible={confirmDelete}
-        title="Delete Document"
-        message={`Are you sure you want to delete "${document_type}"? This cannot be undone.`}
-        confirmText="Delete" cancelText="Cancel" type="danger"
+        title={tr('helper.setup.deleteDocumentTitle')}
+        message={tr('helper.setup.documentDeleteConfirm')}
+        confirmText={tr('helper.setup.delete')} cancelText={tr('helper.setup.cancel')} type="danger"
         onConfirm={executeDelete}
         onCancel={() => setConfirmDelete(false)}
       />
@@ -537,6 +544,7 @@ export default function DocumentDetailScreen() {
 
 function StatusProgress({ currentStep }: { currentStep: number }) {
   const t = useProfileTheme();
+  const { t: tr } = useT();
   const { GREEN } = t;
   const s = useMemo(() => createStyles(t), [t]);
   return (
@@ -545,7 +553,7 @@ function StatusProgress({ currentStep }: { currentStep: number }) {
         const done = i <= currentStep;
         const isLast = i === STEPS.length - 1;
         return (
-          <View key={step.label} style={s.trackRow}>
+          <View key={step.labelKey} style={s.trackRow}>
             {/* Icon + connecting line */}
             <View style={s.trackRail}>
               <View style={[s.progressCircle, { backgroundColor: done ? GREEN : '#E5E7EB' }]}>
@@ -561,8 +569,8 @@ function StatusProgress({ currentStep }: { currentStep: number }) {
             </View>
             {/* Label + description */}
             <View style={s.trackTextWrap}>
-              <Text style={[s.trackLabel, done && s.trackLabelDone]}>{step.label}</Text>
-              <Text style={s.trackDesc}>{step.desc}</Text>
+              <Text style={[s.trackLabel, done && s.trackLabelDone]}>{tr(`helper.setup.${step.labelKey}`)}</Text>
+              <Text style={s.trackDesc}>{tr(`helper.setup.${step.descKey}`)}</Text>
             </View>
           </View>
         );

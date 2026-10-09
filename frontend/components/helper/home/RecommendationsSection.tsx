@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { useT } from '@/contexts/LocaleContext';
 import { useRecommendations } from '@/hooks/helper';
 import { RecommendedJobCard } from './RecommendedJobCard';
 
@@ -14,6 +15,7 @@ import { RecommendedJobCard } from './RecommendedJobCard';
 
 export function RecommendationsSection() {
   const router = useRouter();
+  const { t } = useT();
   const { recommendations, loading, toggleSaveJob } = useRecommendations();
 
   if (loading) {
@@ -28,11 +30,11 @@ export function RecommendationsSection() {
     return (
       <View style={s.section}>
         <View style={s.header}>
-          <Text style={s.title}>Recommended for you</Text>
+          <Text style={s.title}>{t('helper.home.recommended')}</Text>
         </View>
         <View style={s.emptyWrap}>
           <Text style={s.emptyText}>
-            No strong matches yet. Try adding more skills or job roles to your profile, or broaden your salary range.
+            {t('helper.home.noRecommendations')}
           </Text>
         </View>
       </View>
@@ -44,13 +46,13 @@ export function RecommendationsSection() {
 
       {/* Header */}
       <View style={s.header}>
-        <Text style={s.title}>Recommended for you</Text>
+        <Text style={s.title}>{t('helper.home.recommended')}</Text>
         <TouchableOpacity
           style={s.seeAllBtn}
           onPress={() => router.push('/(helper)/browse')}
           activeOpacity={0.7}
         >
-          <Text style={s.seeAllText}>See all</Text>
+          <Text style={s.seeAllText}>{t('helper.home.seeAll')}</Text>
           <Ionicons name="chevron-forward" size={13} color="#E86019" />
         </TouchableOpacity>
       </View>

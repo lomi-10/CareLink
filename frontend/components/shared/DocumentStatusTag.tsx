@@ -11,36 +11,39 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { useT } from '@/contexts/LocaleContext';
 
 export type DocStatus = 'Verified' | 'Rejected' | 'Pending' | string;
 
 const MAP: Record<string, {
-  label: string; icon: keyof typeof Ionicons.glyphMap; fg: string; bg: string;
+  labelKey: string; icon: keyof typeof Ionicons.glyphMap; fg: string; bg: string;
 }> = {
-  Verified: { label: 'PESO Verified',   icon: 'shield-checkmark', fg: '#059669', bg: '#D1FAE5' },
-  Rejected: { label: 'Rejected by PESO', icon: 'close-circle',     fg: '#DC2626', bg: '#FECACA' },
-  Pending:  { label: 'Awaiting PESO',    icon: 'time-outline',     fg: '#B45309', bg: '#FEF3C7' },
+  Verified: { labelKey: 'helper.setup.verifiedByPeso', icon: 'shield-checkmark', fg: '#059669', bg: '#D1FAE5' },
+  Rejected: { labelKey: 'helper.setup.rejectedByPeso', icon: 'close-circle', fg: '#DC2626', bg: '#FECACA' },
+  Pending:  { labelKey: 'helper.setup.awaitingPeso', icon: 'time-outline', fg: '#B45309', bg: '#FEF3C7' },
 };
 
 export function DocumentStatusTag({ status, compact }: { status: DocStatus; compact?: boolean }) {
+  const { t } = useT();
   const cfg = MAP[status] ?? MAP.Pending;
   return (
     <View style={[s.tag, { backgroundColor: cfg.bg }, compact && s.tagCompact]}>
       <Ionicons name={cfg.icon} size={compact ? 10 : 12} color={cfg.fg} />
-      <Text style={[s.text, { color: cfg.fg }, compact && s.textCompact]}>{cfg.label}</Text>
+      <Text style={[s.text, { color: cfg.fg }, compact && s.textCompact]}>{t(cfg.labelKey)}</Text>
     </View>
   );
 }
 
 /** Separate marker for the AI pre-scan, so it is never mistaken for PESO's decision. */
 export function AiScanTag({ status, compact }: { status?: string | null; compact?: boolean }) {
+  const { t } = useT();
   if (!status || status === 'Unchecked') return null;
   const passed = status === 'Passed';
   return (
     <View style={[s.tag, { backgroundColor: '#FEE2D5' }, compact && s.tagCompact]}>
       <Ionicons name="sparkles" size={compact ? 10 : 11} color="#E86019" />
       <Text style={[s.text, { color: '#E86019' }, compact && s.textCompact]}>
-        AI pre-check {passed ? 'passed' : 'flagged'}
+        {t('helper.setup.aiPrecheck')} {passed ? t('helper.setup.passed') : t('helper.setup.flagged')}
       </Text>
     </View>
   );

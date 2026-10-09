@@ -16,6 +16,7 @@ import { HelperTabBar } from '@/components/helper/home';
 import EditHelperProfileModal from '@/components/helper/profile/profileEditModal/EditHelperProfileModal';
 import { useProfileTheme } from './profile.theme';
 import { createStyles } from './skills.styles';
+import { useT } from '@/contexts/LocaleContext';
 
 /** Roles shown before the list collapses behind a "Show all" toggle. */
 const ROLES_PREVIEW = 8;
@@ -24,6 +25,7 @@ const ROLES_PREVIEW = 8;
 
 export default function SkillsScreen() {
   const router = useRouter();
+  const { t: tr } = useT();
   const t = useProfileTheme();
   const { DARK, MUTED, ORANGE, GREEN } = t;
   const s = useMemo(() => createStyles(t), [t]);
@@ -73,9 +75,9 @@ export default function SkillsScreen() {
           <TouchableOpacity style={s.barBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color={DARK} />
           </TouchableOpacity>
-          <Text style={s.barTitle}>Skills & Specialties</Text>
+          <Text style={s.barTitle}>{tr('helper.setup.skillsTitle')}</Text>
           <TouchableOpacity style={s.editBtn} onPress={() => setEditOpen(true)}>
-            <Text style={s.editText}>Edit</Text>
+            <Text style={s.editText}>{tr('helper.setup.edit')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -87,8 +89,8 @@ export default function SkillsScreen() {
               <Ionicons name="sparkles" size={24} color="#7C3AED" />
             </View>
             <View style={s.bannerText}>
-              <Text style={s.bannerTitle}>Showcase your strengths</Text>
-              <Text style={s.bannerSub}>Add the roles and skills you&rsquo;re confident in.</Text>
+              <Text style={s.bannerTitle}>{tr('helper.setup.showcase')}</Text>
+              <Text style={s.bannerSub}>{tr('helper.setup.showcaseHint')}</Text>
             </View>
             {/* ============================================================
                 🖼️  DECORATIVE ILLUSTRATION — clipboard + checklist
@@ -104,15 +106,15 @@ export default function SkillsScreen() {
 
           {/* Categories first — this is what employers actually match on. */}
           <PillSection
-            title="Work Categories"
+            title={tr('helper.setup.workCategories')}
             count={categories.length}
             items={categories}
             checkmark
             accentColor="#7C3AED"
-            footnote="Employers match you on these. They come from the job roles you picked."
+            footnote={tr('helper.setup.categoriesHint')}
           />
           <PillSection
-            title="Job Roles"
+            title={tr('helper.setup.jobRoles')}
             count={jobs.length}
             items={showAllRoles ? jobs : jobs.slice(0, ROLES_PREVIEW)}
             highlightFirst
@@ -120,21 +122,21 @@ export default function SkillsScreen() {
             onToggleMore={jobs.length > ROLES_PREVIEW ? () => setShowAllRoles((v) => !v) : undefined}
             expanded={showAllRoles}
           />
-          <PillSection title="Skills"      count={skills.length}    items={skills}    checkmark accentColor={GREEN} />
-          <PillSection title="Languages"   count={languages.length} items={languages} checkmark accentColor="#0891B2" />
+          <PillSection title={tr('helper.setup.skills')} count={skills.length} items={skills} checkmark accentColor={GREEN} />
+          <PillSection title={tr('helper.setup.languages')} count={languages.length} items={languages} checkmark accentColor="#0891B2" />
 
           {/* Experience */}
-          <Text style={s.groupLabel}>Experience</Text>
+          <Text style={s.groupLabel}>{tr('helper.setup.experience')}</Text>
           <View style={s.expCard}>
             <View style={[s.expIcon, { backgroundColor: '#FEE2D5' }]}>
               <Ionicons name="time" size={22} color={ORANGE} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.expValue}>{exp ? `${exp} Years` : 'Entry level'}</Text>
-              <Text style={s.expLabel}>Total Experience</Text>
+              <Text style={s.expValue}>{exp ? tr('helper.setup.years', { count: exp }) : tr('helper.setup.entryLevel')}</Text>
+              <Text style={s.expLabel}>{tr('helper.setup.totalExperience')}</Text>
             </View>
             <TouchableOpacity onPress={() => setEditOpen(true)}>
-              <Text style={s.expEdit}>Update</Text>
+              <Text style={s.expEdit}>{tr('helper.setup.update')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -170,9 +172,10 @@ function PillSection({
   onToggleMore?:   () => void;
   expanded?:       boolean;
 }) {
-  const t = useProfileTheme();
-  const s = useMemo(() => createStyles(t), [t]);
-  const accent = accentColor ?? t.ORANGE;
+  const theme = useProfileTheme();
+  const { t: tr } = useT();
+  const s = useMemo(() => createStyles(theme), [theme]);
+  const accent = accentColor ?? theme.ORANGE;
   return (
     <View style={s.pillWrap}>
       <View style={s.pillHeader}>
@@ -183,7 +186,7 @@ function PillSection({
       </View>
       {!!footnote && items.length > 0 && <Text style={s.pillNote}>{footnote}</Text>}
       {items.length === 0 ? (
-        <Text style={s.pillEmpty}>Not specified — tap Edit to add.</Text>
+        <Text style={s.pillEmpty}>{tr('helper.setup.notSpecified')}</Text>
       ) : (
         <View style={s.pillsRow}>
           {items.map((item, i) => {
@@ -195,10 +198,10 @@ function PillSection({
                   s.pill,
                   highlighted
                     ? { backgroundColor: accent, borderColor: accent }
-                    : { backgroundColor: t.CARD_BG, borderColor: t.DIVIDER },
+                    : { backgroundColor: theme.CARD_BG, borderColor: theme.DIVIDER },
                 ]}
               >
-                <Text style={[s.pillText, { color: highlighted ? '#fff' : t.DARK }]}>
+                <Text style={[s.pillText, { color: highlighted ? '#fff' : theme.DARK }]}>
                   {item}
                 </Text>
                 {checkmark && !highlighted && (
@@ -216,7 +219,7 @@ function PillSection({
       {!!onToggleMore && (
         <TouchableOpacity style={s.pillMore} onPress={onToggleMore} activeOpacity={0.75}>
           <Text style={[s.pillMoreText, { color: accent }]}>
-            {expanded ? 'Show fewer' : `Show all ${count}`}
+            {expanded ? tr('helper.setup.showFewer') : tr('helper.setup.showAll', { count })}
           </Text>
           <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={14} color={accent} />
         </TouchableOpacity>

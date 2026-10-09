@@ -21,37 +21,39 @@ import { Sidebar, MobileMenu, HelperTabBar } from '@/components/helper/home';
 import { PARENT_THEME_OPTIONS, type ParentThemeId } from '@/constants/parentThemePalettes';
 import { ConfirmationModal, NotificationModal, LanguagePicker } from '@/components/shared';
 import { useHelperWarm } from '@/components/helper/home/helperWarmTheme';
+import { useT } from '@/contexts/LocaleContext';
 
 import { createHelperSettingsStyles } from './settings.styles';
 
 const OPTIONS: {
   value: ColorSchemePreference;
-  label: string;
-  hint: string;
+  labelKey: string;
+  hintKey: string;
   icon: React.ComponentProps<typeof Ionicons>['name'];
 }[] = [
   {
     value: 'system',
-    label: 'Match device',
-    hint: 'Use the same light or dark mode as your phone or computer (recommended).',
+    labelKey: 'helper.settings.matchDevice',
+    hintKey: 'helper.settings.matchDeviceHint',
     icon: 'phone-portrait-outline',
   },
   {
     value: 'light',
-    label: 'Always light',
-    hint: 'Bright chrome and readable contrast across navigation, dialogs, and all CareLink portals.',
+    labelKey: 'helper.settings.alwaysLight',
+    hintKey: 'helper.settings.alwaysLightHint',
     icon: 'sunny-outline',
   },
   {
     value: 'dark',
-    label: 'Always dark',
-    hint: 'Deep backgrounds across the entire app—including parent and helper. Independent of palette above.',
+    labelKey: 'helper.settings.alwaysDark',
+    hintKey: 'helper.settings.alwaysDarkHint',
     icon: 'moon-outline',
   },
 ];
 
 export default function HelperSettingsScreen() {
   const router = useRouter();
+  const { t } = useT();
   const navTheme = useTheme();
   const { preference, setPreference } = useColorSchemePreference();
   const { isDesktop } = useResponsive();
@@ -95,10 +97,9 @@ export default function HelperSettingsScreen() {
         style={{ marginBottom: 26 }}
       />
 
-      <Text style={[styles.sectionLabel, { color: MUTED }]}>CareLink palette</Text>
+      <Text style={[styles.sectionLabel, { color: MUTED }]}>{t('helper.settings.palette')}</Text>
       <Text style={[styles.sectionSub, { color: navTheme.colors.text }]}>
-        Choose a color story (default, warm, sage, night, and more). This updates surfaces and accents in the helper
-        portal. Saved on this device only.
+        {t('helper.settings.paletteHint')}
       </Text>
       <View style={styles.themeRow}>
         {PARENT_THEME_OPTIONS.map((opt) => {
@@ -132,10 +133,9 @@ export default function HelperSettingsScreen() {
         })}
       </View>
 
-      <Text style={[styles.sectionLabel, { color: MUTED, marginTop: 28 }]}>Interface brightness</Text>
+      <Text style={[styles.sectionLabel, { color: MUTED, marginTop: 28 }]}>{t('helper.settings.brightness')}</Text>
       <Text style={[styles.sectionSub, { color: navTheme.colors.text }]}>
-        Controls overall light or dark appearance for CareLink everywhere. This works together with the palette—you
-        can keep a warm palette in dark mode, for example.
+        {t('helper.settings.brightnessHint')}
       </Text>
 
       <View style={styles.options}>
@@ -159,8 +159,8 @@ export default function HelperSettingsScreen() {
                 <Ionicons name={opt.icon} size={22} color={accent} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.optionTitle, { color: navTheme.colors.text }]}>{opt.label}</Text>
-                <Text style={[styles.optionHint, { color: MUTED }]}>{opt.hint}</Text>
+                <Text style={[styles.optionTitle, { color: navTheme.colors.text }]}>{t(opt.labelKey)}</Text>
+                <Text style={[styles.optionHint, { color: MUTED }]}>{t(opt.hintKey)}</Text>
               </View>
               {selected ? (
                 <Ionicons name="checkmark-circle" size={24} color={accent} />
@@ -172,14 +172,14 @@ export default function HelperSettingsScreen() {
         })}
       </View>
 
-      <Text style={[styles.sectionLabel, { color: MUTED, marginTop: 28 }]}>Account</Text>
+      <Text style={[styles.sectionLabel, { color: MUTED, marginTop: 28 }]}>{t('helper.settings.account')}</Text>
       <TouchableOpacity
         style={[styles.linkRow, { backgroundColor: navTheme.colors.card, borderColor: navTheme.colors.border }]}
         onPress={() => router.push('/(helper)/profile')}
         activeOpacity={0.88}
       >
         <Ionicons name="person-outline" size={22} color={accent} />
-        <Text style={[styles.linkText, { color: navTheme.colors.text }]}>Profile & documents</Text>
+        <Text style={[styles.linkText, { color: navTheme.colors.text }]}>{t('helper.settings.profileDocuments')}</Text>
         <Ionicons name="chevron-forward" size={20} color={MUTED} />
       </TouchableOpacity>
 
@@ -190,10 +190,10 @@ export default function HelperSettingsScreen() {
     <>
       <ConfirmationModal
         visible={confirmLogout}
-        title="Log Out"
-        message="Are you sure you want to log out?"
-        confirmText="Log Out"
-        cancelText="Cancel"
+        title={t('helper.settings.logoutTitle')}
+        message={t('helper.settings.logoutConfirm')}
+        confirmText={t('nav.logOut')}
+        cancelText={t('common.cancel')}
         type="danger"
         onConfirm={() => {
           setConfirmLogout(false);
@@ -203,7 +203,7 @@ export default function HelperSettingsScreen() {
       />
       <NotificationModal
         visible={successLogout}
-        message="Logged Out Successfully!"
+        message={t('helper.settings.logoutSuccess')}
         type="success"
         autoClose
         duration={1500}
@@ -221,8 +221,8 @@ export default function HelperSettingsScreen() {
         <Sidebar onLogout={initiateLogout} />
         <ScrollView style={styles.desktopMain} contentContainerStyle={styles.desktopScroll} showsVerticalScrollIndicator={false}>
           <View style={styles.desktopTopBar}>
-            <Text style={styles.desktopPageTitle}>Settings</Text>
-            <Text style={styles.desktopPageSub}>Helper Portal — appearance &amp; account</Text>
+            <Text style={styles.desktopPageTitle}>{t('nav.settings')}</Text>
+            <Text style={styles.desktopPageSub}>{t('helper.settings.pageSubtitle')}</Text>
           </View>
           {content}
         </ScrollView>
@@ -237,7 +237,7 @@ export default function HelperSettingsScreen() {
         <TouchableOpacity onPress={() => setIsMobileMenuOpen(true)} style={styles.backBtn} hitSlop={12}>
           <Ionicons name="menu" size={24} color={accent} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: DARK }]}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: DARK }]}>{t('nav.settings')}</Text>
         <View style={{ width: 24 }} />
       </View>
       {content}

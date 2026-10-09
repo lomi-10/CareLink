@@ -4,12 +4,14 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles, LabeledInput } from '.';
+import { useT } from '@/contexts/LocaleContext';
 
 export function WorkPreferencesSection({
   employmentType, setEmploymentType,
   workSchedule, setWorkSchedule,
   expectedSalary, setExpectedSalary
 }: any) {
+  const { t } = useT();
   const isStayIn = employmentType === 'Stay-in';
 
   return (
@@ -18,10 +20,10 @@ export function WorkPreferencesSection({
         <View style={[styles.sectionIconBg, { backgroundColor: '#E1F5FE' }]}>
           <Ionicons name="briefcase" size={20} color="#0288D1" />
         </View>
-        <Text style={styles.sectionTitleText}>Work Preferences</Text>
+        <Text style={styles.sectionTitleText}>{t('helper.setup.workPreferences')}</Text>
       </View>
       
-      <Text style={styles.label}>Stay Arrangement</Text>
+      <Text style={styles.label}>{t('helper.setup.stayArrangement')}</Text>
       <View style={styles.row}>
         {['Stay-in', 'Stay-out', 'Any'].map(opt => (
           <TouchableOpacity 
@@ -30,13 +32,13 @@ export function WorkPreferencesSection({
             style={[styles.option, employmentType === opt && styles.optionActive]}
           >
             <Text style={[styles.optionText, employmentType === opt && styles.optionTextActive]}>
-              {opt}
+              {opt === 'Stay-in' ? t('helper.setup.stayIn') : opt === 'Stay-out' ? t('helper.setup.stayOut') : t('helper.setup.any')}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <Text style={styles.label}>Work Hours</Text>
+      <Text style={styles.label}>{t('helper.setup.workHours')}</Text>
       <View style={styles.row}>
         {['Full-time', 'Part-time', 'Any'].map(opt => {
           const disabled = isStayIn && (opt === 'Part-time' || opt === 'Any');
@@ -56,7 +58,7 @@ export function WorkPreferencesSection({
                 workSchedule === opt && styles.optionTextActive,
                 disabled && styles.optionTextDisabled
               ]}>
-                {opt}
+                {opt === 'Full-time' ? t('helper.setup.fullTime') : opt === 'Part-time' ? t('helper.setup.partTime') : t('helper.setup.any')}
               </Text>
             </TouchableOpacity>
           );
@@ -65,14 +67,14 @@ export function WorkPreferencesSection({
 
       <View style={styles.salaryContainer}>
         <LabeledInput 
-          label="Expected Salary (₱)" 
+          label={t('helper.setup.salaryLabel')}
           required
           value={expectedSalary} 
           onChangeText={setExpectedSalary} 
           keyboardType="numeric"
           placeholder="6000"
         />
-        <Text style={styles.salaryHint}>Recommended minimum: ₱6,000/month</Text>
+        <Text style={styles.salaryHint}>{t('helper.setup.expectedSalaryMinimum')}</Text>
       </View>
     </View>
   );

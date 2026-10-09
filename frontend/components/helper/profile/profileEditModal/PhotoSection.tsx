@@ -2,8 +2,10 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from '.';
+import { useT } from '@/contexts/LocaleContext';
 
 export function PhotoSection({ pickImage, profileImage }: any) {
+  const { t } = useT();
   return (
     <View style={styles.photoSection}>
       <TouchableOpacity onPress={pickImage} style={styles.photoWrapper}>
@@ -20,7 +22,7 @@ export function PhotoSection({ pickImage, profileImage }: any) {
           <Ionicons name="camera" size={18} color="#fff" />
         </View>
       </TouchableOpacity>
-      <Text style={styles.photoText}>Change Profile Photo</Text>
+      <Text style={styles.photoText}>{t('helper.setup.photoChange')}</Text>
     </View>
   );
 }

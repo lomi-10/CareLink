@@ -26,6 +26,7 @@ import { WorkModeTabBar } from '@/components/helper/work';
 import EditHelperProfileModal from '@/components/helper/profile/profileEditModal/EditHelperProfileModal';
 import { useProfileTheme } from './profile.theme';
 import { createStyles } from './index.styles';
+import { useT } from '@/contexts/LocaleContext';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,25 +39,26 @@ interface ProfileViewer {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: (key: string, params?: Record<string, unknown>) => string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins  = Math.floor(diff / 60000);
-  if (mins < 2)   return 'Just now';
-  if (mins < 60)  return `${mins}m ago`;
+  if (mins < 2)   return t('helper.profile.justNow');
+  if (mins < 60)  return t('helper.profile.minutesAgo', { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)   return `${hrs}h ago`;
+  if (hrs < 24)   return t('helper.profile.hoursAgo', { count: hrs });
   const days = Math.floor(hrs / 24);
-  if (days === 1) return 'Yesterday';
-  return `${days}d ago`;
+  if (days === 1) return t('helper.profile.yesterday');
+  return t('helper.profile.daysAgo', { count: days });
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function HelperProfileMain() {
   const router = useRouter();
-  const t = useProfileTheme();
-  const { PAGE_BG, ORANGE, DARK, MUTED, GREEN, CARD_BG } = t;
-  const s = useMemo(() => createStyles(t), [t]);
+  const { t } = useT();
+  const profileTheme = useProfileTheme();
+  const { PAGE_BG, ORANGE, DARK, MUTED, GREEN, CARD_BG } = profileTheme;
+  const s = useMemo(() => createStyles(profileTheme), [profileTheme]);
   const { handleLogout } = useAuth();
   const { isDesktop }    = useResponsive();
   const { unreadCount }  = useNotifications('helper');
@@ -138,49 +140,54 @@ export default function HelperProfileMain() {
   const rolesPreview = jobRoles.slice(0, 3).join(' • ');
 
   const strengthMsg =
-    strength >= 100 ? 'Excellent! Your profile is complete.'
-    : strength >= 75 ? 'Almost there — a few more details.'
-    : strength >= 50 ? 'Good start — keep filling in your info.'
-    : 'Your profile needs more information.';
+    strength >= 100 ? t('helper.profile.strengthExcellent')
+    : strength >= 75 ? t('helper.profile.strengthAlmost')
+    : strength >= 50 ? t('helper.profile.strengthGood')
+    : t('helper.profile.strengthNeedsInfo');
 
   const sections = [
     {
       key: 'personal', icon: 'person' as const,
       iconBg: '#DBEAFE', iconColor: '#2563EB',
-      title: 'Personal Information',
-      subtitle: 'Work preferences included',
+      title: t('helper.profile.personal'),
+      subtitle: t('helper.profile.personalSubtitle'),
       // Complete only when the core personal fields are filled (same required
       // set the backend uses for profile strength) — not just gender, which is
       // set at signup and would mark it "Complete" before the user starts.
       status: (profile?.birth_date && profile?.gender
         && (profile as any)?.province && (profile as any)?.municipality && (profile as any)?.barangay)
-        ? 'Complete' : 'Incomplete',
+        ? t('helper.profile.complete') : t('helper.profile.incomplete'),
+      good: !!(profile?.birth_date && profile?.gender
+        && (profile as any)?.province && (profile as any)?.municipality && (profile as any)?.barangay),
       route: '/(helper)/profile/personal',
     },
     {
       key: 'skills', icon: 'sparkles' as const,
       iconBg: '#EDE9FE', iconColor: '#7C3AED',
-      title: 'Skills & Specialties',
-      subtitle: `${jobRoles.length} Roles • ${skills.length} Skills • ${languages.length} Languages`,
-      status: jobRoles.length > 0 ? 'Complete' : 'Incomplete',
+      title: t('helper.profile.skills'),
+      subtitle: `${jobRoles.length} ${t('helper.profile.roles')} • ${skills.length} ${t('helper.profile.skillsCount')} • ${languages.length} ${t('helper.profile.languages')}`,
+      status: jobRoles.length > 0 ? t('helper.profile.complete') : t('helper.profile.incomplete'),
+      good: jobRoles.length > 0,
       route: '/(helper)/profile/skills',
     },
     {
       key: 'experience', icon: 'time' as const,
       iconBg: '#DBEAFE', iconColor: '#2563EB',
-      title: 'Work Experience',
+      title: t('helper.profile.experience'),
       subtitle: workHistory.length > 0
-        ? `${workHistory.length} past employer${workHistory.length !== 1 ? 's' : ''}${workHistory.some((w: any) => w.can_contact) ? ' • references' : ''}`
-        : 'Add past jobs & references',
-      status: (workHistory.length > 0 || Number((profile as any)?.years_experience) > 0) ? 'Complete' : 'Incomplete',
+        ? `${t('helper.profile.pastEmployers', { count: workHistory.length })}${workHistory.some((w: any) => w.can_contact) ? ` • ${t('helper.profile.references')}` : ''}`
+        : t('helper.profile.addExperience'),
+      status: (workHistory.length > 0 || Number((profile as any)?.years_experience) > 0) ? t('helper.profile.complete') : t('helper.profile.incomplete'),
+      good: workHistory.length > 0 || Number((profile as any)?.years_experience) > 0,
       route: '/(helper)/profile/experience',
     },
     {
       key: 'documents', icon: 'shield-checkmark' as const,
       iconBg: '#D1FAE5', iconColor: GREEN,
-      title: 'Documents & Verification',
-      subtitle: docTotal > 0 ? `${docVerified} of ${docTotal} documents verified` : 'No documents uploaded',
-      status: isVerified ? 'Verified' : docTotal > 0 ? 'Pending' : 'Not started',
+      title: t('helper.profile.documents'),
+      subtitle: docTotal > 0 ? t('helper.profile.documentsVerified', { verified: docVerified, total: docTotal }) : t('helper.profile.noDocuments'),
+      status: isVerified ? t('helper.profile.verified') : docTotal > 0 ? t('helper.profile.pending') : t('helper.profile.notStarted'),
+      good: isVerified,
       route: '/(helper)/profile/documents',
     },
   ];
@@ -223,7 +230,7 @@ export default function HelperProfileMain() {
             {isVerified && (
               <View style={s.pesoBadge}>
                 <Ionicons name="shield-checkmark" size={11} color="#fff" />
-                <Text style={s.pesoBadgeText}>PESO Verified Helper</Text>
+                <Text style={s.pesoBadgeText}>{t('helper.profile.verifiedHelper')}</Text>
                 <Ionicons name="checkmark-circle" size={11} color="#A7F3D0" />
               </View>
             )}
@@ -233,7 +240,7 @@ export default function HelperProfileMain() {
             ) : null}
 
             {profile?.years_experience ? (
-              <Text style={s.heroExp}>{profile.years_experience} Years Experience</Text>
+              <Text style={s.heroExp}>{t('helper.profile.yearsExperience', { years: profile.years_experience })}</Text>
             ) : null}
           </View>
         </View>
@@ -245,7 +252,7 @@ export default function HelperProfileMain() {
         <View style={s.strengthStrip}>
           <StrengthRing percent={strength} />
           <View style={s.strengthText}>
-            <Text style={s.strengthTitle}>Profile Strength</Text>
+            <Text style={s.strengthTitle}>{t('helper.profile.strength')}</Text>
             <Text style={s.strengthMsg}>{strengthMsg}</Text>
           </View>
           <TouchableOpacity
@@ -254,7 +261,7 @@ export default function HelperProfileMain() {
             onPress={() => router.push('/(helper)/profile/public-preview' as never)}
           >
             <Ionicons name="eye-outline" size={13} color="rgba(255,255,255,0.75)" />
-            <Text style={s.viewPublicText}>View Public Profile</Text>
+            <Text style={s.viewPublicText}>{t('helper.profile.viewPublic')}</Text>
             <Ionicons name="chevron-forward" size={12} color="rgba(255,255,255,0.6)" />
           </TouchableOpacity>
         </View>
@@ -264,36 +271,36 @@ export default function HelperProfileMain() {
       <TouchableOpacity style={s.resumeBanner} activeOpacity={0.85} onPress={() => router.push('/(helper)/profile/public-preview' as never)}>
         <View style={s.resumeIcon}><Ionicons name="document-text" size={22} color="#fff" /></View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={s.resumeTitle}>This profile is your resumé ✨</Text>
-          <Text style={s.resumeSub}>It's exactly what families see when they consider hiring you. Tap to preview it.</Text>
+          <Text style={s.resumeTitle}>{t('helper.profile.resumeTitle')} ✨</Text>
+          <Text style={s.resumeSub}>{t('helper.profile.resumeDescription')}</Text>
         </View>
         <View style={s.resumeCta}>
           <Ionicons name="eye-outline" size={15} color={ORANGE} />
-          <Text style={s.resumeCtaText}>Preview</Text>
+          <Text style={s.resumeCtaText}>{t('helper.profile.preview')}</Text>
         </View>
       </TouchableOpacity>
 
       {/* ── Quick Overview ── */}
-      <Text style={s.sectionLabel}>Quick Overview</Text>
+      <Text style={s.sectionLabel}>{t('helper.profile.quickOverview')}</Text>
       <View style={s.overviewCard}>
-        <OverviewTile icon="briefcase" iconBg="#FEE2D5" iconColor={ORANGE}  value={stats.applications}  label="Applications" />
+        <OverviewTile icon="briefcase" iconBg="#FEE2D5" iconColor={ORANGE}  value={stats.applications}  label={t('helper.profile.applications')} />
         <View style={s.overviewDiv} />
         <OverviewTile
           icon="eye" iconBg="#D1FAE5" iconColor={GREEN}
-          value={stats.profile_views} label="Profile Views"
+          value={stats.profile_views} label={t('helper.profile.profileViews')}
           onPress={() => setViewersModalOpen(true)}
         />
         <View style={s.overviewDiv} />
-        <OverviewTile icon="bookmark" iconBg="#F5E6CC" iconColor="#7A4E2A" value={stats.saved_jobs}    label="Saved Jobs" />
+        <OverviewTile icon="bookmark" iconBg="#F5E6CC" iconColor="#7A4E2A" value={stats.saved_jobs}    label={t('helper.profile.savedJobs')} />
         <View style={s.overviewDiv} />
-        <OverviewTile icon="star"     iconBg="#FEF3C7" iconColor="#D97706" value="—"                   label="Rating" />
+        <OverviewTile icon="star"     iconBg="#FEF3C7" iconColor="#D97706" value="—"                   label={t('helper.profile.rating')} />
       </View>
 
       {/* ── Profile Sections ── */}
-      <Text style={s.sectionLabel}>Profile Sections</Text>
+      <Text style={s.sectionLabel}>{t('helper.profile.sections')}</Text>
       <View style={s.sectionsWrap}>
         {sections.map((sec, idx) => {
-          const isGood = sec.status === 'Verified' || sec.status === 'Complete';
+          const isGood = sec.good;
           return (
             <React.Fragment key={sec.key}>
               <TouchableOpacity
@@ -346,20 +353,20 @@ export default function HelperProfileMain() {
           workMode={isWorkMode && !!activeHire}
         />
         <ConfirmationModal
-          visible={confirmLogout} title="Log Out"
-          message="Are you sure you want to log out?"
-          confirmText="Log Out" cancelText="Cancel" type="danger"
+          visible={confirmLogout} title={t('helper.profile.logoutTitle')}
+          message={t('helper.profile.logoutConfirm')}
+          confirmText={t('nav.logOut')} cancelText={t('common.cancel')} type="danger"
           onConfirm={executeLogout} onCancel={() => setConfirmLogout(false)}
         />
         <NotificationModal
-          visible={successLogout} message="Logged Out Successfully!" type="success"
+          visible={successLogout} message={t('helper.profile.logoutSuccess')} type="success"
           autoClose duration={1500}
           onClose={() => { setSuccessLogout(false); handleLogout(); }}
         />
         <NotificationModal
           visible={strengthCelebration}
-          title="Profile Complete! 🎉"
-          message="Your profile is 100% complete. Complete profiles get noticed first by families looking to hire."
+          title={t('helper.profile.celebrationTitle')}
+          message={t('helper.profile.celebrationMessage')}
           type="success"
           onClose={() => setStrengthCelebration(false)}
         />
@@ -377,7 +384,7 @@ export default function HelperProfileMain() {
           <TouchableOpacity style={s.barBtn} onPress={() => setMenuOpen(true)}>
             <Ionicons name="menu" size={26} color={DARK} />
           </TouchableOpacity>
-          <Text style={s.barTitle}>My Profile</Text>
+          <Text style={s.barTitle}>{t('helper.profile.title')}</Text>
           <TouchableOpacity style={s.barBtn} onPress={() => router.push('/(helper)/notifications')}>
             <Ionicons name={unreadCount > 0 ? 'notifications' : 'notifications-outline'} size={22} color={DARK} />
             {unreadCount > 0 && (
@@ -406,20 +413,20 @@ export default function HelperProfileMain() {
         onSaveSuccess={() => { setEditOpen(false); refresh(); }}
       />
       <ConfirmationModal
-        visible={confirmLogout} title="Log Out"
-        message="Are you sure you want to log out?"
-        confirmText="Log Out" cancelText="Cancel" type="danger"
+        visible={confirmLogout} title={t('helper.profile.logoutTitle')}
+        message={t('helper.profile.logoutConfirm')}
+        confirmText={t('nav.logOut')} cancelText={t('common.cancel')} type="danger"
         onConfirm={executeLogout} onCancel={() => setConfirmLogout(false)}
       />
       <NotificationModal
-        visible={successLogout} message="Logged Out Successfully!" type="success"
+        visible={successLogout} message={t('helper.profile.logoutSuccess')} type="success"
         autoClose duration={1500}
         onClose={() => { setSuccessLogout(false); handleLogout(); }}
       />
       <NotificationModal
         visible={strengthCelebration}
-        title="Profile Complete! 🎉"
-        message="Your profile is 100% complete. Complete profiles get noticed first by families looking to hire."
+        title={t('helper.profile.celebrationTitle')}
+        message={t('helper.profile.celebrationMessage')}
         type="success"
         onClose={() => setStrengthCelebration(false)}
       />
@@ -480,6 +487,7 @@ function ProfileViewersModal({
   loading: boolean;
   onClose: () => void;
 }) {
+  const { t } = useT();
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={vm.overlay}>
@@ -487,8 +495,8 @@ function ProfileViewersModal({
           <View style={vm.handle} />
           <View style={vm.header}>
             <View style={{ flex: 1 }}>
-              <Text style={vm.title}>Who Viewed Your Profile</Text>
-              <Text style={vm.subtitle}>Household employers who viewed you in the last 7 days</Text>
+              <Text style={vm.title}>{t('helper.profile.viewersTitle')}</Text>
+              <Text style={vm.subtitle}>{t('helper.profile.viewersSubtitle')}</Text>
             </View>
             <TouchableOpacity style={vm.closeBtn} onPress={onClose} hitSlop={8}>
               <Ionicons name="close" size={18} color="#7A5C3E" />
@@ -500,8 +508,8 @@ function ProfileViewersModal({
             ) : viewers.length === 0 ? (
               <View style={vm.empty}>
                 <Ionicons name="eye-off-outline" size={36} color="#7A5C3E" />
-                <Text style={vm.emptyTitle}>No views yet</Text>
-                <Text style={vm.emptySub}>Household employers who browse your profile will appear here.</Text>
+                <Text style={vm.emptyTitle}>{t('helper.profile.noViews')}</Text>
+                <Text style={vm.emptySub}>{t('helper.profile.noViewsHint')}</Text>
               </View>
             ) : (
               <View style={vm.list}>
@@ -517,11 +525,11 @@ function ProfileViewersModal({
                       )}
                       <View style={{ flex: 1 }}>
                         <Text style={vm.name}>{v.viewer_name}</Text>
-                        <Text style={vm.time}>{relativeTime(v.last_viewed_at)}</Text>
+                        <Text style={vm.time}>{relativeTime(v.last_viewed_at, t)}</Text>
                       </View>
                       <View style={vm.eyeChip}>
                         <Ionicons name="eye" size={12} color="#059669" />
-                        <Text style={vm.eyeChipText}>Viewed</Text>
+                        <Text style={vm.eyeChipText}>{t('helper.profile.viewed')}</Text>
                       </View>
                     </View>
                     {idx < viewers.length - 1 && <View style={vm.divider} />}

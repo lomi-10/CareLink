@@ -30,6 +30,7 @@ import { AwaitingVerificationCard } from '@/components/shared/AwaitingVerificati
 import { HelperHomeWeb } from '@/components/helper/web/HelperHomeWeb';
 import { HelperTopNav } from '@/components/helper/web/HelperTopNav';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
+import { useT } from '@/contexts/LocaleContext';
 import { ymdLocal } from '@/lib/helperWorkApi';
 import type { PendingReview } from '@/lib/reviewsApi';
 
@@ -40,6 +41,7 @@ function formatShortDate(ymd: string): string {
 
 export default function HelperHome() {
   const router = useRouter();
+  const { t } = useT();
   const w = useHelperWarm();
   const { MUTED, ORANGE, ICON_BG, GREEN, SUCCESS_BG, INFO, INFO_BG } = w;
   const layoutStyles = useMemo(() => createHelperHomeStyles(w), [w]);
@@ -167,7 +169,7 @@ export default function HelperHome() {
       />
       <NotificationModal
         visible={celebrateVisible}
-        message="Profile complete! You're now awaiting PESO verification."
+        message={t('helper.home.profileCompleteNotice')}
         type="success"
         autoClose
         duration={2800}
@@ -175,17 +177,17 @@ export default function HelperHome() {
       />
       <ConfirmationModal
         visible={confirmLogoutVisible}
-        title="Log Out"
-        message="Are you sure you want to log out?"
-        confirmText="Log Out"
-        cancelText="Cancel"
+        title={t('helper.home.logoutTitle')}
+        message={t('helper.home.logoutConfirm')}
+        confirmText={t('nav.logOut')}
+        cancelText={t('common.cancel')}
         type="danger"
         onConfirm={executeLogout}
         onCancel={() => setConfirmLogoutVisible(false)}
       />
       <NotificationModal
         visible={successLogoutVisible}
-        message="Logged Out Successfully!"
+        message={t('helper.home.logoutSuccess')}
         type="success"
         autoClose
         duration={1500}
@@ -253,9 +255,12 @@ export default function HelperHome() {
         />
         {!isWorkMode && activeHire?.employment_start_date && activeHire.employment_start_date > ymdLocal() ? (
           <View style={layoutStyles.endedCard}>
-            <Text style={layoutStyles.endedTitle}>Job starting soon</Text>
+            <Text style={layoutStyles.endedTitle}>{t('helper.home.startingSoon')}</Text>
             <Text style={layoutStyles.endedBody}>
-              Your placement{activeHire.job_title ? ` (${activeHire.job_title})` : ''} with {activeHire.employer_name || 'your employer'} starts on {formatShortDate(activeHire.employment_start_date)}. Work Mode will unlock automatically that day.
+              {t('helper.home.startingSoonDescription', {
+                employer: `${activeHire.employer_name || 'your employer'}${activeHire.job_title ? ` (${activeHire.job_title})` : ''}`,
+                date: formatShortDate(activeHire.employment_start_date),
+              })}
             </Text>
           </View>
         ) : null}
@@ -299,7 +304,7 @@ export default function HelperHome() {
     <SafeAreaView style={[layoutStyles.container, { backgroundColor: '#FBF5EC' }]}>
       <MobileHeader
         onMenuPress={() => setIsMobileMenuOpen(true)}
-        subtitle={showWorkDash ? 'Work Mode' : 'Helper Portal'}
+        subtitle={showWorkDash ? t('helper.menu.workMode') : t('helper.menu.helperPortal')}
         notificationCount={unreadCount}
         onNotificationPress={() => router.push('/(helper)/notifications')}
       />
@@ -351,11 +356,12 @@ export default function HelperHome() {
 
             {!isWorkMode && activeHire?.employment_start_date && activeHire.employment_start_date > ymdLocal() ? (
               <View style={layoutStyles.endedCard}>
-                <Text style={layoutStyles.endedTitle}>Job starting soon</Text>
+                <Text style={layoutStyles.endedTitle}>{t('helper.home.startingSoon')}</Text>
                 <Text style={layoutStyles.endedBody}>
-                  Your placement{activeHire.job_title ? ` (${activeHire.job_title})` : ''} with{' '}
-                  {activeHire.employer_name || 'your employer'} starts on{' '}
-                  {formatShortDate(activeHire.employment_start_date)}. Work Mode will unlock automatically that day.
+                  {t('helper.home.startingSoonDescription', {
+                    employer: `${activeHire.employer_name || 'your employer'}${activeHire.job_title ? ` (${activeHire.job_title})` : ''}`,
+                    date: formatShortDate(activeHire.employment_start_date),
+                  })}
                 </Text>
               </View>
             ) : null}
@@ -363,15 +369,17 @@ export default function HelperHome() {
             {employmentEnded?.application_id ? (
               <View style={layoutStyles.endedCard}>
                 <Text style={layoutStyles.endedTitle}>
-                  Employment ended
+                  {t('helper.home.employmentEnded')}
                 </Text>
                 <Text style={layoutStyles.endedBody}>
-                  Your placement
-                  {employmentEnded.job_title ? ` (${employmentEnded.job_title})` : ''} with{' '}
-                  {employmentEnded.employer_name || 'your employer'}
                   {employmentEnded.employment_ended_on
-                    ? ` ended on ${new Date(employmentEnded.employment_ended_on.replace(/-/g, '/')).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}.`
-                    : '.'}
+                    ? t('helper.home.endedDescription', {
+                      employer: `${employmentEnded.employer_name || 'your employer'}${employmentEnded.job_title ? ` (${employmentEnded.job_title})` : ''}`,
+                      date: new Date(employmentEnded.employment_ended_on.replace(/-/g, '/')).toLocaleDateString(),
+                    })
+                    : t('helper.home.endedDescriptionNoDate', {
+                      employer: `${employmentEnded.employer_name || 'your employer'}${employmentEnded.job_title ? ` (${employmentEnded.job_title})` : ''}`,
+                    })}
                 </Text>
                 <TouchableOpacity
                   style={layoutStyles.endedRateBtn}
@@ -384,7 +392,7 @@ export default function HelperHome() {
                   }
                 >
                   <Ionicons name="star-outline" size={18} color={ORANGE} />
-                  <Text style={layoutStyles.endedRateBtnText}>Rate this placement</Text>
+                  <Text style={layoutStyles.endedRateBtnText}>{t('helper.home.ratePlacement')}</Text>
                 </TouchableOpacity>
               </View>
             ) : null}
@@ -417,7 +425,7 @@ export default function HelperHome() {
             {profileData?.profile?.verification_status === 'Verified' && <RecommendationsSection />}
 
             {/* Quick Actions */}
-            <SectionHeader title="Quick Actions" />
+            <SectionHeader title={t('helper.home.quickActions')} />
             <HelperQuickActions />
           </>
         )}

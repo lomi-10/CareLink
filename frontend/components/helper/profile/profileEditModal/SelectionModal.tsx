@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Modal, TouchableOpacity, TextInput, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from './EditProfile.styles';
+import { useT } from '@/contexts/LocaleContext';
 
 const isWeb = Platform.OS === 'web';
 
@@ -10,6 +11,7 @@ export function SelectionModal({
   searchValue, onSearchChange, idKey, nameKey, showSearch = true,
   customData = [], onAddCustom, onRemoveCustom
 }: any) {
+  const { t } = useT();
   return (
     <Modal visible={visible} animationType="slide" transparent={isWeb} presentationStyle={isWeb ? "overFullScreen" : "pageSheet"}>
       <View style={isWeb ? styles.webOverlay : { flex: 1 }}>
@@ -27,7 +29,7 @@ export function SelectionModal({
           {showSearch && (
             <View style={styles.searchBox}>
               <Ionicons name="search" size={18} color="#666" />
-              <TextInput style={styles.searchInput} placeholder="Search..." value={searchValue} onChangeText={onSearchChange} />
+              <TextInput style={styles.searchInput} placeholder={t('helper.setup.search')} value={searchValue} onChangeText={onSearchChange} />
               {onAddCustom && searchValue.trim() !== '' && !data.some((d: any) => d[nameKey].toLowerCase() === searchValue.toLowerCase()) && (
                 <TouchableOpacity style={styles.addCustomBtn} onPress={() => { onAddCustom(searchValue); onSearchChange(''); }}>
                   <Ionicons name="add-circle" size={24} color="#007AFF" />
@@ -39,7 +41,7 @@ export function SelectionModal({
           <ScrollView style={{ flex: 1 }}>
             {customData.length > 0 && (
               <View style={styles.customSection}>
-                <Text style={styles.customSectionTitle}>Your custom specifications:</Text>
+                <Text style={styles.customSectionTitle}>{t('helper.setup.customSpecifications')}</Text>
                 {customData.map((item: string, index: number) => (
                   <View key={`custom-${index}`} style={styles.listItem}>
                     <Text style={[styles.listItemText, { color: '#007AFF', fontWeight: '500' }]}>{item}</Text>
@@ -63,15 +65,15 @@ export function SelectionModal({
             
             {data.length === 0 && searchValue.trim() === '' && (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No items found.</Text>
+                <Text style={styles.emptyText}>{t('helper.setup.noItems')}</Text>
               </View>
             )}
           </ScrollView>
 
           <View style={styles.modalFooter}>
-            <Text style={styles.selectedCount}>{selectedIds.length + customData.length} selected</Text>
+            <Text style={styles.selectedCount}>{t('helper.setup.selected', { count: selectedIds.length + customData.length })}</Text>
             <TouchableOpacity onPress={onClose} style={styles.doneBtn}>
-              <Text style={styles.doneText}>Done</Text>
+              <Text style={styles.doneText}>{t('helper.setup.done')}</Text>
             </TouchableOpacity>
           </View>
         </View>

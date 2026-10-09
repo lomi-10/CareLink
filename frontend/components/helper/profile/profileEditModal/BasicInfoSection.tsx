@@ -5,6 +5,7 @@ import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { styles, LabeledInput } from '.';
+import { useT } from '@/contexts/LocaleContext';
 
 function parseBirthYmd(s: string): Date {
   if (s && /^\d{4}-\d{2}-\d{2}$/.test(s)) {
@@ -47,6 +48,7 @@ export function BasicInfoSection({
   civilStatus, setCivilStatus,
   religion, setReligion
 }: any) {
+  const { t } = useT();
   const [showBirthPicker, setShowBirthPicker] = useState(false);
 
   const birthLabel = birthDate
@@ -55,7 +57,7 @@ export function BasicInfoSection({
         month: 'long',
         day: 'numeric',
       })
-    : 'Select birth date';
+    : t('helper.setup.selectBirthDate');
 
   const webBirthValue =
     birthDate && /^\d{4}-\d{2}-\d{2}$/.test(birthDate) ? birthDate : '';
@@ -68,34 +70,34 @@ export function BasicInfoSection({
         <View style={styles.sectionIconBg}>
           <Ionicons name="person" size={20} color="#007AFF" />
         </View>
-        <Text style={styles.sectionTitleText}>Basic Information</Text>
+        <Text style={styles.sectionTitleText}>{t('helper.setup.personalTitle')}</Text>
       </View>
 
       <View style={styles.inputGrid}>
         <View style={styles.inputHalf}>
-          <LabeledInput label="First Name" required value={firstName} onChangeText={setFirstName} placeholder="Juan" />
+          <LabeledInput label={t('helper.setup.firstName')} required value={firstName} onChangeText={setFirstName} placeholder={t('helper.setup.firstNamePlaceholder')} />
         </View>
         <View style={styles.inputHalf}>
-          <LabeledInput label="Last Name" required value={lastName} onChangeText={setLastName} placeholder="Cruz" />
+          <LabeledInput label={t('helper.setup.lastName')} required value={lastName} onChangeText={setLastName} placeholder={t('helper.setup.lastNamePlaceholder')} />
         </View>
       </View>
 
-      <LabeledInput label="Middle Name" value={middleName} onChangeText={setMiddleName} placeholder="Dela" />
+      <LabeledInput label={t('helper.setup.middleName')} value={middleName} onChangeText={setMiddleName} placeholder={t('helper.setup.middleNamePlaceholder')} />
 
       <View style={styles.inputGrid}>
         <View style={styles.inputHalf}>
-          <LabeledInput label="Username" value={username} onChangeText={setUsername} placeholder="juandelacruz" />
+          <LabeledInput label={t('helper.setup.username')} value={username} onChangeText={setUsername} placeholder="juandelacruz" />
         </View>
         <View style={styles.inputHalf}>
-          <LabeledInput label="Contact Number" required value={contactNumber} onChangeText={setContactNumber} keyboardType="phone-pad" placeholder="09XX XXX XXXX" />
+          <LabeledInput label={t('helper.setup.contactNumber')} required value={contactNumber} onChangeText={setContactNumber} keyboardType="phone-pad" placeholder="09XX XXX XXXX" />
         </View>
       </View>
 
-      <LabeledInput label="Email Address" value={email} onChangeText={setEmail} keyboardType="email-address" editable={false} placeholder="email@example.com" />
+      <LabeledInput label={t('helper.setup.emailAddress')} value={email} onChangeText={setEmail} keyboardType="email-address" editable={false} placeholder={t('helper.setup.emailPlaceholder')} />
 
       {Platform.OS === 'web' ? (
         <View style={styles.birthWebWrap}>
-          <Text style={styles.label}>Birth Date <Text style={styles.requiredMark}>*</Text></Text>
+          <Text style={styles.label}>{t('helper.setup.dateOfBirth')} <Text style={styles.requiredMark}>*</Text></Text>
           {React.createElement('input', {
             type: 'date',
             value: webBirthValue,
@@ -109,7 +111,7 @@ export function BasicInfoSection({
         </View>
       ) : (
         <>
-          <Text style={styles.label}>Birth Date <Text style={styles.requiredMark}>*</Text></Text>
+          <Text style={styles.label}>{t('helper.setup.dateOfBirth')} <Text style={styles.requiredMark}>*</Text></Text>
           <TouchableOpacity
             style={styles.birthDateBtn}
             onPress={() => setShowBirthPicker(true)}
@@ -137,25 +139,25 @@ export function BasicInfoSection({
         </>
       )}
 
-      <Text style={styles.label}>Gender <Text style={styles.requiredMark}>*</Text></Text>
+      <Text style={styles.label}>{t('helper.setup.gender')} <Text style={styles.requiredMark}>*</Text></Text>
       <View style={styles.row}>
         {['Male', 'Female'].map(opt => (
           <TouchableOpacity key={opt} onPress={() => setGender(opt as any)} style={[styles.option, gender === opt && styles.optionActive]}>
-            <Text style={[styles.optionText, gender === opt && styles.optionTextActive]}>{opt}</Text>
+            <Text style={[styles.optionText, gender === opt && styles.optionTextActive]}>{opt === 'Male' ? t('helper.profile.male') : t('helper.profile.female')}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <Text style={styles.label}>Civil Status <Text style={styles.requiredMark}>*</Text></Text>
+      <Text style={styles.label}>{t('helper.setup.civilStatus')} <Text style={styles.requiredMark}>*</Text></Text>
       <View style={styles.row}>
         {['Single', 'Married', 'Widowed', 'Separated'].map(opt => (
           <TouchableOpacity key={opt} onPress={() => setCivilStatus(opt)} style={[styles.option, civilStatus === opt && styles.optionActive]}>
-            <Text style={[styles.optionText, civilStatus === opt && styles.optionTextActive]}>{opt}</Text>
+            <Text style={[styles.optionText, civilStatus === opt && styles.optionTextActive]}>{t(`helper.setup.civil.${opt.toLowerCase()}`)}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <LabeledInput label="Religion" required value={religion} onChangeText={setReligion} placeholder="Catholic, etc." />
+      <LabeledInput label={t('helper.setup.religion')} required value={religion} onChangeText={setReligion} placeholder={t('helper.setup.religionPlaceholder')} />
     </View>
   );
 }

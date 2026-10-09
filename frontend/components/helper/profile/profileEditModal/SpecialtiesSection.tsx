@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from '.';
+import { useT } from '@/contexts/LocaleContext';
 
 export function SpecialtiesSection({
   selectedCategories, 
@@ -18,19 +19,20 @@ export function SpecialtiesSection({
   setLanguageModalVisible,
   isGeneralHousehelpSelected // <-- Added this from your code!
 }: any) {
+  const { t } = useT();
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeaderRow}>
         <View style={[styles.sectionIconBg, { backgroundColor: '#EBFBEE' }]}>
           <Ionicons name="ribbon" size={20} color="#2ECC71" />
         </View>
-        <Text style={styles.sectionTitleText}>Skills & Specialties</Text>
+        <Text style={styles.sectionTitleText}>{t('helper.setup.skillsTitle')}</Text>
       </View>
       
       <View style={styles.infoAlert}>
         <Ionicons name="information-circle" size={20} color="#007AFF" />
         <Text style={styles.infoAlertText}>
-          Complete all 3 steps for better job matching
+          {t('helper.setup.completeAllSteps')}
         </Text>
       </View>
 
@@ -41,11 +43,11 @@ export function SpecialtiesSection({
             <Text style={styles.stepNumber}>1</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.stepTitle}>Nature of Work</Text>
+            <Text style={styles.stepTitle}>{t('helper.setup.natureOfWork')}</Text>
             <Text style={styles.stepSubtitle}>
               {isGeneralHousehelpSelected 
-                ? 'General Househelp selected (All areas included)' 
-                : 'Select your primary work categories'}
+                ? t('helper.setup.generalHousehelpSelectedText')
+                : t('helper.setup.selectPrimaryCategories')}
             </Text>
           </View>
           <TouchableOpacity 
@@ -63,7 +65,7 @@ export function SpecialtiesSection({
               </View>
             ))
           ) : (
-            <Text style={styles.emptyTagText}>No categories selected</Text>
+            <Text style={styles.emptyTagText}>{t('helper.setup.noCategorySelected')}</Text>
           )}
         </View>
       </View>
@@ -75,8 +77,8 @@ export function SpecialtiesSection({
             <Text style={styles.stepNumber}>2</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.stepTitle}>Specific Jobs</Text>
-            <Text style={styles.stepSubtitle}>What specific roles can you perform?</Text>
+            <Text style={styles.stepTitle}>{t('helper.setup.specificJobs')}</Text>
+            <Text style={styles.stepSubtitle}>{t('helper.setup.specificRolesCanPerform')}</Text>
           </View>
           <TouchableOpacity 
             style={styles.stepActionBtn}
@@ -103,7 +105,7 @@ export function SpecialtiesSection({
             </>
           ) : (
             <Text style={styles.emptyTagText}>
-              {selectedCategoryIds.length === 0 ? 'Select a category first' : 'No jobs selected'}
+              {selectedCategoryIds.length === 0 ? t('helper.setup.selectCategoryFirst') : t('helper.setup.noJobsSelected')}
             </Text>
           )}
         </View>
@@ -116,8 +118,8 @@ export function SpecialtiesSection({
             <Text style={styles.stepNumber}>3</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.stepTitle}>Individual Skills</Text>
-            <Text style={styles.stepSubtitle}>Specific skills for your selected jobs</Text>
+            <Text style={styles.stepTitle}>{t('helper.setup.individualSkills')}</Text>
+            <Text style={styles.stepSubtitle}>{t('helper.setup.skillsForSelectedJobs')}</Text>
           </View>
           <TouchableOpacity 
             style={styles.stepActionBtn}
@@ -144,7 +146,7 @@ export function SpecialtiesSection({
             </>
           ) : (
             <Text style={styles.emptyTagText}>
-              {selectedJobIds.length === 0 && customJobs.length === 0 ? 'Select jobs first' : 'No skills selected'}
+              {selectedJobIds.length === 0 && customJobs.length === 0 ? t('helper.setup.selectJobsFirst') : t('helper.setup.noSkillsSelected')}
             </Text>
           )}
         </View>
@@ -157,7 +159,7 @@ export function SpecialtiesSection({
             <Ionicons name="language" size={18} color="#6C757D" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.stepTitle}>Languages Spoken</Text>
+            <Text style={styles.stepTitle}>{t('helper.setup.languagesSpoken')}</Text>
           </View>
           <TouchableOpacity 
             style={styles.stepActionBtn}
@@ -174,7 +176,7 @@ export function SpecialtiesSection({
               </View>
             ))
           ) : (
-            <Text style={styles.emptyTagText}>No languages selected</Text>
+            <Text style={styles.emptyTagText}>{t('helper.setup.noLanguagesSelected')}</Text>
           )}
         </View>
       </View>

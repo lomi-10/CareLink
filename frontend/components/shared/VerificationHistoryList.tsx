@@ -8,6 +8,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { useT } from '@/contexts/LocaleContext';
 
 type PaletteKey = 'helper' | 'parent';
 
@@ -29,18 +30,12 @@ function fmtDateTime(v?: string | null): string | null {
   return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function aiLabel(status?: string): string {
-  if (status === 'Passed') return 'Looks genuine';
-  if (status === 'Flagged') return 'Flagged for review';
-  if (status === 'Failed')  return 'Could not confirm';
-  return 'Checked';
-}
-
 export function VerificationHistoryList({ documents, themeKey = 'helper' }: {
   documents: any[];
   themeKey?: PaletteKey;
 }) {
   const t = PALETTE[themeKey];
+  const { t: tr } = useT();
   const docs = (documents ?? []).filter((d) => d && (d.file_url || d.file_path || d.status));
 
   if (docs.length === 0) {
@@ -49,9 +44,9 @@ export function VerificationHistoryList({ documents, themeKey = 'helper' }: {
         <View style={[st.emptyIcon, { backgroundColor: '#F5EDE0' }]}>
           <Ionicons name="time-outline" size={30} color={t.subtle} />
         </View>
-        <Text style={[st.emptyTitle, { color: t.ink }]}>No history yet</Text>
+        <Text style={[st.emptyTitle, { color: t.ink }]}>{tr('helper.setup.noHistoryTitle')}</Text>
         <Text style={[st.emptySub, { color: t.muted }]}>
-          Once you upload documents, every AI scan and PESO verification action will be logged here.
+          {tr('helper.setup.noHistoryDescription')}
         </Text>
       </View>
     );
@@ -67,19 +62,25 @@ export function VerificationHistoryList({ documents, themeKey = 'helper' }: {
         const legit = doc?.ai_extracted_data?.legitimacy_score;
         const clarity = doc?.ai_confidence_score;
         const scored = [
-          legit != null ? `Legitimacy ${Math.round(Number(legit))}%` : null,
-          clarity != null ? `Clarity ${Math.round(Number(clarity))}%` : null,
+          legit != null ? tr('helper.setup.legitimacyScore', { percent: Math.round(Number(legit)) }) : null,
+          clarity != null ? tr('helper.setup.clarityScore', { percent: Math.round(Number(clarity)) }) : null,
         ].filter(Boolean).join(' · ');
 
         const events: EventRow[] = [];
         if (doc.uploaded_at) {
-          events.push({ icon: 'cloud-upload-outline', color: t.muted, title: 'Uploaded', date: doc.uploaded_at });
+          events.push({ icon: 'cloud-upload-outline', color: t.muted, title: tr('helper.setup.uploadedTitle'), date: doc.uploaded_at });
         }
         if (doc.ai_verification_status && doc.ai_verification_status !== 'Unchecked') {
           events.push({
             icon: 'sparkles',
             color: t.accent,
-            title: `AI scan — ${aiLabel(doc.ai_verification_status)}`,
+            title: `${tr('helper.setup.aiScan')} — ${tr(doc.ai_verification_status === 'Passed'
+              ? 'helper.setup.aiLooksGenuine'
+              : doc.ai_verification_status === 'Flagged'
+                ? 'helper.setup.aiFlaggedReview'
+                : doc.ai_verification_status === 'Failed'
+                  ? 'helper.setup.aiCouldNotConfirm'
+                  : 'helper.setup.aiChecked')}`,
             date: doc.ai_checked_at,
             sub: scored || null,
           });
@@ -88,26 +89,31 @@ export function VerificationHistoryList({ documents, themeKey = 'helper' }: {
           events.push({
             icon: 'shield-checkmark',
             color: GREEN,
-            title: doc.verified_by ? `Verified by PESO — ${doc.verified_by}` : 'Verified by PESO',
+            title: doc.verified_by ? `${tr('helper.setup.verifiedByPeso')} — ${doc.verified_by}` : tr('helper.setup.verifiedByPeso'),
             date: doc.verified_at,
           });
         } else if (isRejected) {
           events.push({
             icon: 'close-circle',
             color: DANGER,
-            title: 'Rejected',
+            title: tr('helper.setup.rejected'),
             date: doc.verified_at || doc.ai_checked_at,
             sub: doc.rejection_reason || null,
           });
         }
 
+        const documentLabelKey = doc.document_type === 'Valid ID' ? 'validId'
+          : doc.document_type === 'Barangay Clearance' ? 'barangayClearance'
+            : doc.document_type === 'Police Clearance' ? 'policeClearance'
+              : doc.document_type === 'TESDA NC2' ? 'tesdaCertificate' : null;
+
         return (
           <View key={doc.document_id ?? doc.document_type} style={[st.card, { backgroundColor: t.cardBg, borderColor: t.line }]}>
             <View style={st.cardHead}>
-              <Text style={[st.docType, { color: t.ink }]}>{doc.document_type}</Text>
+              <Text style={[st.docType, { color: t.ink }]}>{documentLabelKey ? tr(`helper.setup.${documentLabelKey}`) : doc.document_type}</Text>
               <View style={[st.pill, { backgroundColor: isVerified ? '#D1FAE5' : isRejected ? '#FECACA' : '#FEF3C7' }]}>
                 <Text style={[st.pillText, { color: isVerified ? GREEN : isRejected ? DANGER : AMBER }]}>
-                  {isVerified ? 'Verified' : isRejected ? 'Rejected' : 'Pending'}
+                  {isVerified ? tr('helper.profile.verified') : isRejected ? tr('helper.setup.rejected') : tr('helper.setup.pendingReview')}
                 </Text>
               </View>
             </View>

@@ -12,12 +12,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHelperProfile } from '@/hooks/helper';
 import { HelperTabBar } from '@/components/helper/home';
 import EditHelperProfileModal from '@/components/helper/profile/profileEditModal/EditHelperProfileModal';
+import { useT } from '@/contexts/LocaleContext';
 
 const PAGE_BG = '#FBF5EC', DARK = '#2A1608', MUTED = '#7A5C3E', ORANGE = '#E86019';
 const CARD = '#FFFFFF', LINE = '#EFE0CB', GREEN = '#059669';
 
 export default function ExperienceScreen() {
   const router = useRouter();
+  const { t: tr } = useT();
   const { profileData, loading, refresh } = useHelperProfile();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
 
@@ -52,28 +54,28 @@ export default function ExperienceScreen() {
           <TouchableOpacity style={s.barBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={DARK} />
           </TouchableOpacity>
-          <Text style={s.barTitle}>Work Experience</Text>
+          <Text style={s.barTitle}>{tr('helper.setup.experienceTitle')}</Text>
           <TouchableOpacity style={s.editBtn} onPress={() => setEditOpen(true)}>
             <Ionicons name="create-outline" size={16} color={ORANGE} />
-            <Text style={s.editText}>Edit</Text>
+            <Text style={s.editText}>{tr('helper.setup.edit')}</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           <View style={s.card}>
-            <Text style={s.cardLabel}>Total Years of Experience</Text>
-            <Text style={s.cardValue}>{Number(p.years_experience) > 0 ? `${p.years_experience} years` : 'Not set'}</Text>
+            <Text style={s.cardLabel}>{tr('helper.setup.totalYearsExperience')}</Text>
+            <Text style={s.cardValue}>{Number(p.years_experience) > 0 ? tr('helper.setup.years', { count: p.years_experience }) : tr('helper.setup.notSet')}</Text>
           </View>
 
           {workHistory.length === 0 ? (
             <View style={s.empty}>
               <View style={s.emptyIc}><Ionicons name="briefcase-outline" size={30} color={ORANGE} /></View>
-              <Text style={s.emptyTitle}>Add your work history</Text>
+              <Text style={s.emptyTitle}>{tr('helper.setup.addWorkHistory')}</Text>
               <Text style={s.emptySub}>
-                Past employers make you far more trustworthy to families — and you can mark ones happy to be a reference.
+                {tr('helper.setup.workHistoryHint')}
               </Text>
               <TouchableOpacity style={s.emptyBtn} onPress={() => setEditOpen(true)}>
-                <Ionicons name="add" size={18} color="#fff" /><Text style={s.emptyBtnText}>Add work history</Text>
+                <Ionicons name="add" size={18} color="#fff" /><Text style={s.emptyBtnText}>{tr('helper.setup.addWorkHistoryAction')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -84,7 +86,7 @@ export default function ExperienceScreen() {
                   {w.can_contact && (
                     <View style={s.refBadge}>
                       <Ionicons name="call-outline" size={11} color={GREEN} />
-                      <Text style={s.refBadgeText}>Reference</Text>
+                      <Text style={s.refBadgeText}>{tr('helper.setup.reference')}</Text>
                     </View>
                   )}
                 </View>

@@ -11,6 +11,7 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { useResponsive } from '@/hooks/shared';
 import { useConversations } from '@/hooks/shared/useMessages';
+import { useT } from '@/contexts/LocaleContext';
 import { isHelperNavActive } from './helperPortalNav';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -25,24 +26,25 @@ const APPLY_SIZE  = 56;
 
 type TabDef = {
   path:       string;
-  label:      string;
+  labelKey:   string;
   icon:       keyof typeof Ionicons.glyphMap;
   iconActive: keyof typeof Ionicons.glyphMap;
   isCenter?:  boolean;
 };
 
 const TABS: TabDef[] = [
-  { path: '/(helper)/home',         label: 'Home',      icon: 'home-outline',           iconActive: 'home' },
-  { path: '/(helper)/browse',       label: 'Browse',  icon: 'search-outline',         iconActive: 'search' },
-  { path: '/(helper)/applications', label: 'Apply',      icon: 'briefcase-outline',      iconActive: 'briefcase',  isCenter: true },
-  { path: '/(helper)/messages',     label: 'Messages',   icon: 'chatbubbles-outline',    iconActive: 'chatbubbles' },
-  { path: '/(helper)/profile',      label: 'Profile',    icon: 'person-outline',         iconActive: 'person' },
+  { path: '/(helper)/home',         labelKey: 'nav.dashboard', icon: 'home-outline',        iconActive: 'home' },
+  { path: '/(helper)/browse',       labelKey: 'nav.findJobs',  icon: 'search-outline',      iconActive: 'search' },
+  { path: '/(helper)/applications', labelKey: 'nav.apply',    icon: 'briefcase-outline',   iconActive: 'briefcase',  isCenter: true },
+  { path: '/(helper)/messages',     labelKey: 'nav.messages', icon: 'chatbubbles-outline', iconActive: 'chatbubbles' },
+  { path: '/(helper)/profile',      labelKey: 'nav.profile',  icon: 'person-outline',      iconActive: 'person' },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function HelperTabBar() {
   const router   = useRouter();
+  const { t } = useT();
   const pathname = usePathname() ?? '';
   const insets   = useSafeAreaInsets();
   const { isDesktop }           = useResponsive();
@@ -56,6 +58,7 @@ export function HelperTabBar() {
   return (
     <View style={[s.wrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       {TABS.map((tab) => {
+        const label = t(tab.labelKey);
         const active = isHelperNavActive(pathname, tab.path);
         const isMsg  = tab.path.includes('messages');
         const hasBadge = isMsg && unreadMessages > 0;
@@ -68,7 +71,7 @@ export function HelperTabBar() {
               onPress={() => router.push(tab.path as never)}
               activeOpacity={0.85}
               accessibilityRole="button"
-              accessibilityLabel={tab.label}
+              accessibilityLabel={label}
             >
               {/* Elevated orange FAB */}
               <View style={s.centerCircle}>
@@ -78,7 +81,7 @@ export function HelperTabBar() {
                   color="#FFFFFF"
                 />
               </View>
-              <Text style={s.centerLabel}>{tab.label}</Text>
+              <Text style={s.centerLabel}>{label}</Text>
             </TouchableOpacity>
           );
         }
@@ -91,7 +94,7 @@ export function HelperTabBar() {
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
-            accessibilityLabel={tab.label}
+            accessibilityLabel={label}
           >
             {/* Icon with optional badge */}
             <View style={s.iconWrap}>
@@ -109,7 +112,7 @@ export function HelperTabBar() {
               )}
             </View>
 
-            <Text style={[s.label, active && s.labelActive]}>{tab.label}</Text>
+            <Text style={[s.label, active && s.labelActive]}>{label}</Text>
           </TouchableOpacity>
         );
       })}

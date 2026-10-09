@@ -22,6 +22,7 @@ import {
   type CredentialRole, type CredentialSpec, type CredentialTier,
 } from '@/constants/credentials';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { useT } from '@/contexts/LocaleContext';
 
 // ── Tier palettes ────────────────────────────────────────────────────────────
 // Hue distinguishes WHICH credential at a glance; the shared seal shape is what
@@ -126,6 +127,7 @@ export function CredentialBadge({
   onPress?: () => void;
   style?: ViewStyle;
 }) {
+  const { t: tr } = useT();
   const spec = credentialSpec(documentType);
   const sealed = state === 'sealed';
   const flagged = state === 'flagged';
@@ -138,14 +140,18 @@ export function CredentialBadge({
   const tint = flagged ? (dark ? 'rgba(239,68,68,0.14)' : '#FEF2F2') : dark ? DARK_TINT[tier] : pal.tint;
   const edge = flagged ? (dark ? 'rgba(248,113,113,0.5)' : '#FCA5A5') : sealed ? pal.edge : (dark ? 'rgba(148,163,184,0.35)' : '#D8DEE7');
 
+  const proofKey = spec.type === 'Valid ID' ? 'identityVerified'
+    : spec.type === 'Barangay Clearance' ? 'residencyVerified'
+      : spec.type === 'TESDA NC2' ? 'skillCertified'
+        : spec.type === 'NBI Clearance' ? 'nbiOnFile' : spec.type === 'Police Clearance' ? 'policeOnFile' : null;
   const line2 =
-    flagged ? 'Flagged by PESO'
-    : state === 'pending' ? 'Awaiting PESO review'
-    : state === 'missing' ? 'Required — not yet submitted'
+    flagged ? tr('helper.setup.flaggedByPeso')
+    : state === 'pending' ? tr('helper.setup.awaitingPesoReview')
+    : state === 'missing' ? tr('helper.setup.requiredNotSubmitted')
     // Deliberately not "not submitted": nobody asked for this one, so the copy
     // must read as an opportunity rather than an outstanding task.
-    : state === 'optional' ? 'Optional — add to stand out'
-    : spec.proves;
+    : state === 'optional' ? tr('helper.setup.optionalStandOut')
+    : proofKey ? tr(`helper.setup.${proofKey}`) : spec.proves;
 
   const s = useMemo(() => makeStyles(size), [size]);
   const compact = size === 'sm';
@@ -188,7 +194,7 @@ export function CredentialBadge({
           <View style={s.authRow}>
             <View style={[s.authDot, { backgroundColor: ink }]} />
             <Text style={[s.auth, { color: dark ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>
-              PESO VERIFIED · {spec.authority.replace('PESO ', '').toUpperCase()}
+              {tr('helper.setup.pesoVerifiedLabel')} · {spec.authority.replace('PESO ', '').toUpperCase()}
             </Text>
           </View>
         )}
@@ -230,6 +236,7 @@ export function CredentialWall({
   onPressCredential?: (documentType: string) => void;
   style?: ViewStyle;
 }) {
+  const { t: tr } = useT();
   const specs = useMemo(() => credentialsForRole(role), [role]);
 
   const { core, extra, coreSealed, coreTotal, bonusSealed, hasUnsealable } = useMemo(() => {
@@ -284,11 +291,13 @@ export function CredentialWall({
       {title !== null && (
         <View style={w.head}>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={[w.title, { color: dark ? '#F8FAFC' : '#0F172A' }]}>{title}</Text>
+            <Text style={[w.title, { color: dark ? '#F8FAFC' : '#0F172A' }]}>
+              {title === 'Credentials' ? tr('helper.setup.credentials') : title}
+            </Text>
             <Text style={[w.sub, { color: muted }]}>
               {subtitle ?? (complete
-                ? 'Fully PESO Verified'
-                : `${coreSealed} of ${coreTotal} required seals earned`)}
+                ? tr('helper.setup.fullyPesoVerified')
+                : tr('helper.setup.requiredSealsEarned', { earned: coreSealed, total: coreTotal }))}
             </Text>
           </View>
           {bonusSealed > 0 && (
@@ -298,7 +307,7 @@ export function CredentialWall({
               style={[w.tally, { backgroundColor: dark ? 'rgba(251,191,36,0.16)' : '#FFFBEB', borderColor: dark ? 'rgba(252,211,77,0.4)' : '#FCD34D' }]}
             >
               <Ionicons name="ribbon" size={13} color={gold} />
-              <Text style={[w.tallyText, { color: gold }]}>+{bonusSealed} bonus seal{bonusSealed !== 1 ? 's' : ''}</Text>
+              <Text style={[w.tallyText, { color: gold }]}>{tr('helper.setup.bonusSeal', { count: bonusSealed })}</Text>
             </MotiView>
           )}
         </View>

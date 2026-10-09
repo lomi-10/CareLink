@@ -27,6 +27,7 @@ import {
   type HelperNavItem,
 } from './helperPortalNav';
 import { useHelperWarm, type HelperWarm } from './helperWarmTheme';
+import { useT } from '@/contexts/LocaleContext';
 
 const { width } = Dimensions.get('window');
 
@@ -140,6 +141,7 @@ export function MobileMenu({
   onFinishDemo?: () => void;
 }) {
   const router = useRouter();
+  const { t } = useT();
   const pathname = usePathname();
   const { isWorkMode, activeHire } = useHelperWorkMode();
   const { openGuide } = useGuide();
@@ -167,10 +169,10 @@ export function MobileMenu({
   return (
     <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <TouchableOpacity style={styles.backgroundTap} onPress={onClose} activeOpacity={1} accessibilityLabel="Close menu" />
+        <TouchableOpacity style={styles.backgroundTap} onPress={onClose} activeOpacity={1} accessibilityLabel={t('helper.menu.closeMenu')} />
         <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} hitSlop={12} accessibilityLabel="Close menu">
+            <TouchableOpacity onPress={onClose} hitSlop={12} accessibilityLabel={t('helper.menu.closeMenu')}>
               <Ionicons name="close" size={28} color={w.DARK} />
             </TouchableOpacity>
           </View>
@@ -179,24 +181,22 @@ export function MobileMenu({
             <CareLinkLogoMark size={40} />
             <View style={{ flex: 1 }}>
               <Text style={styles.brandTitle}>CareLink</Text>
-              <Text style={styles.brandSub}>{workShell ? 'Work mode' : 'Helper portal'}</Text>
+              <Text style={styles.brandSub}>{workShell ? t('helper.menu.workMode') : t('helper.menu.helperPortal')}</Text>
             </View>
           </View>
 
           {workShell ? (
             <Text style={styles.hint}>
-              Use the bar below for Home, tasks, schedule, history, messages, and profile. This menu is for
-              notifications and settings.
+              {t('helper.menu.workHint')}
             </Text>
           ) : (
             <Text style={styles.hint}>
-              Home, find jobs, applications, messages, and profile are on the bottom bar. Open this menu for
-              saved jobs, notifications, and settings.
+              {t('helper.menu.helperHint')}
             </Text>
           )}
 
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            <Text style={styles.navLabel}>Menu</Text>
+            <Text style={styles.navLabel}>{t('helper.menu.mainMenu')}</Text>
             {items.map((item) => {
               const active = isHelperNavActive(pathname, item.path);
               const count = item.useNotificationBadge ? notif : 0;
@@ -217,7 +217,10 @@ export function MobileMenu({
                       color={active ? w.ORANGE : w.MUTED}
                     />
                     <Text style={[styles.drawerItemText, active && styles.drawerItemTextActive]} numberOfLines={1}>
-                      {item.label}
+                      {item.path.includes('saved_jobs') ? t('nav.savedJobs')
+                        : item.path.includes('notifications') ? t('nav.notifications')
+                          : item.path.includes('settings') ? t('nav.settings')
+                            : item.label}
                     </Text>
                   </View>
                   {count > 0 && (
@@ -229,7 +232,7 @@ export function MobileMenu({
               );
             })}
 
-            <Text style={[styles.navLabel, { marginTop: 18 }]}>Help</Text>
+            <Text style={[styles.navLabel, { marginTop: 18 }]}>{t('helper.menu.help')}</Text>
             <TouchableOpacity
               style={styles.drawerItem}
               onPress={() => {
@@ -240,7 +243,7 @@ export function MobileMenu({
             >
               <View style={styles.drawerItemLeft}>
                 <Ionicons name="help-buoy-outline" size={22} color={w.MUTED} />
-                <Text style={styles.drawerItemText}>How CareLink works</Text>
+                <Text style={styles.drawerItemText}>{t('helper.menu.howWorks')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={w.SUBTLE} />
             </TouchableOpacity>
@@ -255,7 +258,7 @@ export function MobileMenu({
             >
               <View style={styles.drawerItemLeft}>
                 <Ionicons name="chatbox-ellipses-outline" size={22} color={w.MUTED} />
-                <Text style={styles.drawerItemText}>System Evaluation</Text>
+                <Text style={styles.drawerItemText}>{t('helper.menu.evaluation')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={w.SUBTLE} />
             </TouchableOpacity>
@@ -271,7 +274,7 @@ export function MobileMenu({
               >
                 <View style={styles.drawerItemLeft}>
                   <Ionicons name="flag-outline" size={22} color={w.ORANGE} />
-                  <Text style={[styles.drawerItemText, styles.drawerItemTextActive]}>Finish demo session</Text>
+                  <Text style={[styles.drawerItemText, styles.drawerItemTextActive]}>{t('helper.menu.finishDemo')}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={w.SUBTLE} />
               </TouchableOpacity>
@@ -279,7 +282,7 @@ export function MobileMenu({
 
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
               <Ionicons name="log-out-outline" size={22} color={w.DANGER} />
-              <Text style={styles.logoutText}>Log out</Text>
+              <Text style={styles.logoutText}>{t('nav.logOut')}</Text>
             </TouchableOpacity>
           </ScrollView>
         </Animated.View>

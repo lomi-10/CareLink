@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { useT } from '@/contexts/LocaleContext';
 import type { JobPost } from '@/hooks/helper/useBrowseJobs';
 import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
 import { getCategoryIcon } from '@/app/(helper)/browse/browseHelpers';
@@ -38,6 +39,7 @@ export function RecommendedJobCard({
   onPress,
   onSave,
 }: RecommendedJobCardProps) {
+  const { t } = useT();
   const saved = !!job.is_saved;
   const [showMatch, setShowMatch] = useState(false);
   const pct = matchPercentage ?? Math.round(Number(job.match_score ?? 0));
@@ -67,7 +69,7 @@ export function RecommendedJobCard({
             {isTopMatch ? (
               <View style={s.topMatchBadge}>
                 <Ionicons name="star" size={10} color="#FFF" />
-                <Text style={s.topMatchText}>Top Match</Text>
+                <Text style={s.topMatchText}>{t('helper.home.topMatch')}</Text>
                 <Text style={s.topMatchPct}> · {pct}%</Text>
                 <Ionicons name="information-circle" size={11} color="rgba(255,255,255,0.85)" style={{ marginLeft: 3 }} />
               </View>
@@ -81,7 +83,7 @@ export function RecommendedJobCard({
 
           {isNew && (
             <View style={s.newBadge}>
-              <Text style={s.newBadgeText}>New</Text>
+              <Text style={s.newBadgeText}>{t('helper.home.new')}</Text>
             </View>
           )}
         </View>
@@ -121,7 +123,7 @@ export function RecommendedJobCard({
 
       {/* View Job */}
       <TouchableOpacity style={s.viewBtn} onPress={onPress} activeOpacity={0.88}>
-        <Text style={s.viewBtnText}>View Job</Text>
+        <Text style={s.viewBtnText}>{t('helper.home.viewJob')}</Text>
       </TouchableOpacity>
 
       <MatchBreakdownModal

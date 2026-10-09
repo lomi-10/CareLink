@@ -10,6 +10,7 @@ import { useNotifications } from '@/hooks/shared';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { isHelperNavActive } from './helperPortalNav';
 import { useHelperWarm, type HelperWarm } from './helperWarmTheme';
+import { useT } from '@/contexts/LocaleContext';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -96,6 +97,7 @@ const makeStyles = (w: HelperWarm) => StyleSheet.create({
 
 export function Sidebar({ onLogout }: SidebarProps) {
   const router = useRouter();
+  const { t } = useT();
   const pathname = usePathname() ?? '';
   const { unreadCount } = useNotifications('helper');
   const { isWorkMode } = useHelperWorkMode();
@@ -104,33 +106,33 @@ export function Sidebar({ onLogout }: SidebarProps) {
 
   const navItems = isWorkMode
     ? [
-        { icon: 'home' as const, label: 'Home', path: '/(helper)/home' },
-        { icon: 'list' as const, label: 'Tasks', path: '/(helper)/work/tasks' },
-        { icon: 'calendar' as const, label: 'Schedule', path: '/(helper)/work' },
-        { icon: 'time' as const, label: 'History', path: '/(helper)/work/history' },
+        { icon: 'home' as const, labelKey: 'nav.dashboard', path: '/(helper)/home' },
+        { icon: 'list' as const, labelKey: 'helper.nav.tasks', path: '/(helper)/work/tasks' },
+        { icon: 'calendar' as const, labelKey: 'helper.nav.schedule', path: '/(helper)/work' },
+        { icon: 'time' as const, labelKey: 'helper.nav.history', path: '/(helper)/work/history' },
         {
           icon: 'notifications' as const,
-          label: 'Notifications',
+          labelKey: 'nav.notifications',
           path: '/(helper)/notifications',
           badge: unreadCount,
         },
-        { icon: 'chatbubbles' as const, label: 'Messages', path: '/(helper)/messages' },
-        { icon: 'person' as const, label: 'Profile', path: '/(helper)/profile' },
-        { icon: 'settings' as const, label: 'Settings', path: '/(helper)/settings' },
+        { icon: 'chatbubbles' as const, labelKey: 'nav.messages', path: '/(helper)/messages' },
+        { icon: 'person' as const, labelKey: 'nav.profile', path: '/(helper)/profile' },
+        { icon: 'settings' as const, labelKey: 'nav.settings', path: '/(helper)/settings' },
       ]
     : [
-        { icon: 'home' as const, label: 'Home', path: '/(helper)/home' },
-        { icon: 'search' as const, label: 'Find Jobs', path: '/(helper)/browse' },
-        { icon: 'briefcase' as const, label: 'My Applications', path: '/(helper)/applications' },
+        { icon: 'home' as const, labelKey: 'nav.dashboard', path: '/(helper)/home' },
+        { icon: 'search' as const, labelKey: 'nav.findJobs', path: '/(helper)/browse' },
+        { icon: 'briefcase' as const, labelKey: 'nav.myApplications', path: '/(helper)/applications' },
         {
           icon: 'notifications' as const,
-          label: 'Notifications',
+          labelKey: 'nav.notifications',
           path: '/(helper)/notifications',
           badge: unreadCount,
         },
-        { icon: 'chatbubbles' as const, label: 'Messages', path: '/(helper)/messages' },
-        { icon: 'person' as const, label: 'Profile', path: '/(helper)/profile' },
-        { icon: 'settings' as const, label: 'Settings', path: '/(helper)/settings' },
+        { icon: 'chatbubbles' as const, labelKey: 'nav.messages', path: '/(helper)/messages' },
+        { icon: 'person' as const, labelKey: 'nav.profile', path: '/(helper)/profile' },
+        { icon: 'settings' as const, labelKey: 'nav.settings', path: '/(helper)/settings' },
       ];
 
   return (
@@ -139,12 +141,12 @@ export function Sidebar({ onLogout }: SidebarProps) {
         <CareLinkLogoMark size={44} />
         <View>
           <Text style={styles.logoText}>CareLink</Text>
-          <Text style={styles.logoSubtext}>{isWorkMode ? 'Work Mode' : 'Helper Portal'}</Text>
+          <Text style={styles.logoSubtext}>{isWorkMode ? t('helper.menu.workMode') : t('helper.menu.helperPortal')}</Text>
         </View>
       </View>
 
       <ScrollView style={styles.nav} showsVerticalScrollIndicator={false}>
-        <Text style={styles.navLabel}>MAIN MENU</Text>
+        <Text style={styles.navLabel}>{t('helper.menu.mainMenu')}</Text>
         {navItems.map((item) => {
           const active = isHelperNavActive(pathname, item.path);
           return (
@@ -160,7 +162,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
                   size={20}
                   color={active ? w.ORANGE : w.MUTED}
                 />
-                <Text style={[styles.navItemText, active && styles.navItemTextActive]}>{item.label}</Text>
+                <Text style={[styles.navItemText, active && styles.navItemTextActive]}>{t(item.labelKey)}</Text>
               </View>
 
               {item.badge != null && item.badge > 0 && (
@@ -177,7 +179,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
 
       <TouchableOpacity style={styles.logoutButton} onPress={onLogout} activeOpacity={0.75}>
         <Ionicons name="log-out-outline" size={20} color={w.DANGER} />
-        <Text style={styles.logoutText}>Logout</Text>
+        <Text style={styles.logoutText}>{t('nav.logOut')}</Text>
       </TouchableOpacity>
     </View>
   );
