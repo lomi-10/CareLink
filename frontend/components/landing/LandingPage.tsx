@@ -17,34 +17,53 @@ import { WebLandingRedesign } from "@/components/landing/WebLandingRedesign";
 import { FontFamily } from "@/constants/GlobalStyles";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import React, { useRef, useState } from "react";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LandingThemeProvider, useLandingTheme } from "./web/landingTheme";
+import { Team } from "./web/Team";
 
 const HERO_BG = require("@/assets/images/landing-bg-mobile.png");
-/** Matches the dark end of the hero gradient, so overscroll never shows white. */
-const PAGE_BG = "#140a07";
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 const LandingPage = () => {
   const { width } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const isDesktop = width >= 1024;
 
   if (isDesktop) return <WebLandingRedesign />;
 
-  // ── Mobile design ───────────────────────────────────────────────────────────
   return (
-    <View style={styles.root}>
+    <LandingThemeProvider>
+      <MobileLanding router={router} />
+    </LandingThemeProvider>
+  );
+};
+
+function MobileLanding({ router }: { router: ReturnType<typeof useRouter> }) {
+  const { c, mode, toggle } = useLandingTheme();
+  const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionY = useRef({ howItWorks: 0, team: 0 });
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const navigateTo = (key: "howItWorks" | "team") => {
+    setMenuVisible(false);
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: sectionY.current[key], animated: true });
+    });
+  };
+
+  return (
+    <View style={[styles.root, { backgroundColor: c.bg }]}>
       {/* Base dark-brown gradient + glow (unchanged) */}
       <LinearGradient 
         style={StyleSheet.absoluteFillObject} 
-        colors={["#7a5b37", "#140a07"]} 
+        colors={mode === "dark" ? ["#7a5b37", "#140a07"] : [c.bg, c.bg]}
         locations={[0, 1]} 
       />
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      {mode === "dark" ? <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
         <RadialGradient
           style={styles.radialStretch}
           colors={["rgba(217, 138, 58, 0.5)", "rgba(217, 138, 58, 0)"]}
@@ -53,14 +72,15 @@ const LandingPage = () => {
           rx="50%" 
           ry="50%"
         />
-      </View>
+      </View> : null}
 
       {/* Scrolling fast past the end used to flash a white bar: the scroll view
           has no background of its own, so overscrolling exposed the window
           behind it. Painting it the same dark colour as the page and disabling
           the bounce/stretch removes it on both platforms. */}
       <ScrollView
-        style={{ flex: 1, backgroundColor: PAGE_BG }}
+        ref={scrollRef}
+        style={{ flex: 1, backgroundColor: c.bg }}
         contentContainerStyle={[
           styles.scroll,
           { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 6 },
@@ -74,11 +94,19 @@ const LandingPage = () => {
           <View style={styles.brandRow}>
             <Logo />
             <Text style={styles.brand}>
-              <Text style={styles.brandCare}>Care</Text>
+              <Text style={{ color: c.text }}>Care</Text>
               <Text style={styles.brandLink}>Link</Text>
             </Text>
           </View>
-          <Ionicons name="menu" size={28} color="#F6E7D2" />
+          <Pressable
+            onPress={() => setMenuVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Open landing page menu"
+            hitSlop={10}
+            style={styles.menuButton}
+          >
+            <Ionicons name="menu" size={26} color={c.text} />
+          </Pressable>
         </View>
 
         {/* ── HERO CARD — the "yellow box", now backed by the one image ── */}
@@ -127,12 +155,130 @@ const LandingPage = () => {
           </View>
         </View>
 
-        {/* Partnership footer (unchanged) */}
-        <FrameComponent1 />
+        <View onLayout={(event) => { sectionY.current.howItWorks = event.nativeEvent.layout.y; }}>
+          <HowItWorks />
+        </View>
+
+        <View onLayout={(event) => { sectionY.current.team = event.nativeEvent.layout.y; }}>
+          <Team />
+        </View>
+
+        <PrivacyPolicyCallout onPress={() => router.push("/privacy-policy")} />
+        <View style={[styles.partnership, mode === "light" && styles.partnershipLight]}>
+          <FrameComponent1 />
+        </View>
       </ScrollView>
+
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <View style={styles.menuBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuVisible(false)} accessibilityLabel="Close menu" />
+          <View style={[styles.menuPanel, { backgroundColor: c.card, borderColor: c.cardBorder, marginTop: insets.top + 54 }]}>
+            <View style={styles.menuHeading}>
+              <Text style={[styles.menuTitle, { color: c.text }]}>Explore CareLink</Text>
+              <TouchableOpacity onPress={() => setMenuVisible(false)} accessibilityRole="button" accessibilityLabel="Close menu" hitSlop={10}>
+                <Ionicons name="close" size={23} color={c.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <MenuAction icon="list-outline" label="How it works" onPress={() => navigateTo("howItWorks")} color={c} />
+            <MenuAction icon="people-outline" label="Meet the team" onPress={() => navigateTo("team")} color={c} />
+            <MenuAction
+              icon={mode === "dark" ? "sunny-outline" : "moon-outline"}
+              label={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              onPress={toggle}
+              color={c}
+            />
+            <MenuAction icon="shield-checkmark-outline" label="Privacy Policy" onPress={() => {
+              setMenuVisible(false);
+              router.push("/privacy-policy");
+            }} color={c} />
+            <View style={[styles.menuDivider, { backgroundColor: c.cardBorder }]} />
+            <MenuAction icon="log-in-outline" label="Log in" onPress={() => {
+              setMenuVisible(false);
+              router.push("/(auth)/login");
+            }} color={c} />
+            <Pressable
+              onPress={() => {
+                setMenuVisible(false);
+                router.push("/(auth)/role-selection");
+              }}
+              style={[styles.menuGetStarted, { backgroundColor: c.accent }]}
+            >
+              <Text style={styles.menuGetStartedText}>Get started</Text>
+              <Ionicons name="arrow-forward" size={17} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
-};
+}
+
+function MenuAction({ icon, label, onPress, color }: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  color: ReturnType<typeof useLandingTheme>["c"];
+}) {
+  return (
+    <Pressable onPress={onPress} style={styles.menuAction} accessibilityRole="button">
+      <Ionicons name={icon} size={19} color={color.accent} />
+      <Text style={[styles.menuActionText, { color: color.text }]}>{label}</Text>
+      <Ionicons name="chevron-forward" size={16} color={color.textSubtle} />
+    </Pressable>
+  );
+}
+
+function HowItWorks() {
+  const { c } = useLandingTheme();
+  const steps = [
+    { icon: "people-outline" as const, title: "Choose your role", text: "Households post a job; helpers create a profile and apply for work." },
+    { icon: "chatbubbles-outline" as const, title: "Connect and interview", text: "Review applications, message each other, and arrange an interview in CareLink." },
+    { icon: "document-text-outline" as const, title: "Agree and get started", text: "When both sides agree, review and sign an employment contract for the placement." },
+  ];
+  return (
+    <View style={[styles.infoSection, { backgroundColor: c.bg }]}>
+      <Text style={[styles.infoEyebrow, { color: c.accent }]}>A CLEAR PATH TO A GOOD MATCH</Text>
+      <Text style={[styles.infoHeading, { color: c.text }]}>How it works</Text>
+      <Text style={[styles.infoIntro, { color: c.textMuted }]}>A straightforward process for households and helpers, from the first step to a signed agreement.</Text>
+      <View style={styles.steps}>
+        {steps.map((step, index) => (
+          <View key={step.title} style={[styles.stepCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+            <View style={[styles.stepIcon, { backgroundColor: c.accentSoft }]}>
+              <Ionicons name={step.icon} size={22} color={c.accent} />
+            </View>
+            <Text style={[styles.stepNumber, { color: c.accent }]}>STEP 0{index + 1}</Text>
+            <Text style={[styles.stepTitle, { color: c.text }]}>{step.title}</Text>
+            <Text style={[styles.stepText, { color: c.textMuted }]}>{step.text}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function PrivacyPolicyCallout({ onPress }: { onPress: () => void }) {
+  const { c } = useLandingTheme();
+  return (
+    <View style={[styles.privacyCard, { backgroundColor: c.card, borderColor: c.accent }]}>
+      <View style={[styles.privacyIcon, { backgroundColor: c.accentSoft }]}>
+        <Ionicons name="shield-checkmark-outline" size={22} color={c.accent} />
+      </View>
+      <View style={styles.privacyCopy}>
+        <Text style={[styles.privacyTitle, { color: c.text }]}>Your privacy matters</Text>
+        <Text style={[styles.privacyText, { color: c.textMuted }]}>Learn what information CareLink collects, how it is used, and the rights you have.</Text>
+      </View>
+      <Pressable onPress={onPress} style={[styles.privacyButton, { backgroundColor: c.accent }]} accessibilityRole="link">
+        <Text style={styles.privacyButtonText}>Read policy</Text>
+        <Ionicons name="arrow-forward" size={15} color="#fff" />
+      </Pressable>
+    </View>
+  );
+}
 
 function Feature({ icon, title, desc }: { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string }) {
   return (
@@ -172,9 +318,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     marginBottom: 12,
   },
+  menuButton: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   brand: { fontSize: 24, fontFamily: FontFamily.fredokaSemiBold },
-  brandCare: { color: "#FFFFFF" },
   brandLink: { color: "#E86019" },
 
   // hero card (the yellow box)
@@ -238,4 +391,78 @@ const styles = StyleSheet.create({
   },
   ctaTitle: { fontSize: 17, color: "#FFFFFF", fontFamily: FontFamily.fredokaSemiBold },
   ctaSub: { fontSize: 12, color: "rgba(255,255,255,0.85)", fontFamily: FontFamily.fredokaRegular, marginTop: 1 },
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15,8,4,0.58)",
+    alignItems: "flex-end",
+    paddingHorizontal: 16,
+  },
+  menuPanel: {
+    width: "100%",
+    maxWidth: 380,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 18,
+    gap: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.24,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 12,
+  },
+  menuHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingBottom: 8,
+  },
+  menuTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 19 },
+  menuAction: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 9,
+    borderRadius: 12,
+  },
+  menuActionText: { flex: 1, fontFamily: FontFamily.fredokaRegular, fontSize: 15 },
+  menuDivider: { height: StyleSheet.hairlineWidth, marginVertical: 5 },
+  menuGetStarted: {
+    minHeight: 46,
+    marginTop: 7,
+    paddingHorizontal: 15,
+    borderRadius: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  menuGetStartedText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: "#fff" },
+  infoSection: { paddingVertical: 54, paddingHorizontal: 4, gap: 12 },
+  infoEyebrow: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, letterSpacing: 1.2, textAlign: "center" },
+  infoHeading: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 29, textAlign: "center" },
+  infoIntro: { fontFamily: FontFamily.fredokaRegular, fontSize: 14, lineHeight: 21, textAlign: "center", marginBottom: 10 },
+  steps: { gap: 11 },
+  stepCard: { borderWidth: 1, borderRadius: 18, padding: 17 },
+  stepIcon: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center", marginBottom: 14 },
+  stepNumber: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10, letterSpacing: 1, marginBottom: 5 },
+  stepTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 17, marginBottom: 5 },
+  stepText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, lineHeight: 19 },
+  privacyCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 15,
+    marginVertical: 20,
+  },
+  privacyIcon: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  privacyCopy: { flex: 1, minWidth: 150, gap: 3 },
+  privacyTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15 },
+  privacyText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, lineHeight: 17 },
+  privacyButton: { minHeight: 40, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: 12, borderRadius: 11 },
+  privacyButtonText: { fontFamily: FontFamily.fredokaSemiBold, color: "#fff", fontSize: 12 },
+  partnership: { borderRadius: 18, overflow: "hidden" },
+  partnershipLight: { backgroundColor: "#3C250D" },
 });
