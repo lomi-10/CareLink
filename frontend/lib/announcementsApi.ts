@@ -23,9 +23,8 @@ type ApiResponse<T> = { success?: boolean; message?: string; data?: T };
 export function announcementImageUrl(path: string | null): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  // Announcement uploads live in the web root's /uploads folder, alongside
-  // chat uploads, rather than inside the API directory.
-  return new URL(`/${path.replace(/^\/+/, '')}`, API_URL).toString();
+  const apiBaseUrl = API_URL.endsWith('/') ? API_URL : `${API_URL}/`;
+  return new URL(path.replace(/^\/+/, ''), apiBaseUrl).toString();
 }
 
 async function readResponse<T>(response: Response, fallback: string): Promise<T> {
