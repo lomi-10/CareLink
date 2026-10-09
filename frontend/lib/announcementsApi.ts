@@ -23,8 +23,10 @@ type ApiResponse<T> = { success?: boolean; message?: string; data?: T };
 export function announcementImageUrl(path: string | null): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  const apiBaseUrl = API_URL.endsWith('/') ? API_URL : `${API_URL}/`;
-  return new URL(path.replace(/^\/+/, ''), apiBaseUrl).toString();
+  const filename = path.split('/').pop();
+  if (!filename) return null;
+  const apiBaseUrl = API_URL.replace(/\/+$/, '');
+  return `${apiBaseUrl}/shared/announcement_image.php?filename=${encodeURIComponent(filename)}`;
 }
 
 async function readResponse<T>(response: Response, fallback: string): Promise<T> {

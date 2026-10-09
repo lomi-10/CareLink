@@ -64,7 +64,7 @@ function save_announcement_image(array $file): string
         throw new InvalidArgumentException('This image format is not supported. Try JPG, PNG, GIF, WebP, BMP, TIFF, AVIF, HEIC, or HEIF.');
     }
 
-    $uploadDir = dirname(__DIR__, 2) . '/uploads/announcements/';
+    $uploadDir = dirname(__DIR__) . '/uploads/announcements/';
     if (!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
         throw new RuntimeException('Could not create the announcement image directory.');
     }
@@ -77,12 +77,17 @@ function save_announcement_image(array $file): string
 
 function remove_announcement_image(?string $relativePath): void
 {
-    if (!$relativePath || !preg_match('#^uploads/announcements/announcement_[a-f0-9]{32}\.(jpg|png|webp|gif|bmp|tif|avif|heic|heif|ico|jp2|jpx|jpm|jxr)$#', $relativePath)) {
+    if (!$relativePath || !preg_match('#^uploads/announcements/(announcement_[a-f0-9]{32}\.(jpg|png|webp|gif|bmp|tif|avif|heic|heif|ico|jp2|jpx|jpm|jxr))$#', $relativePath, $matches)) {
         return;
     }
-    $imageFile = dirname(__DIR__, 2) . '/' . $relativePath;
-    if (is_file($imageFile) && !unlink($imageFile)) {
-        error_log('Could not delete announcement image: ' . $imageFile);
+    $imagePaths = [
+        dirname(__DIR__) . '/uploads/announcements/' . $matches[1],
+        dirname(__DIR__, 2) . '/uploads/announcements/' . $matches[1],
+    ];
+    foreach ($imagePaths as $imageFile) {
+        if (is_file($imageFile) && !unlink($imageFile)) {
+            error_log('Could not delete announcement image: ' . $imageFile);
+        }
     }
 }
 
