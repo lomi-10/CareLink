@@ -75,7 +75,7 @@ export function credentialStateFor(
 }
 
 // ── The scalloped seal rosette ───────────────────────────────────────────────
-function SealMark({ size, colors }: { size: number; colors: readonly [string, string] }) {
+export function CredentialSealMark({ size, colors }: { size: number; colors: readonly [string, string] }) {
   const petal: ViewStyle = {
     position: 'absolute', width: size * 0.84, height: size * 0.84,
     borderRadius: size * 0.27, overflow: 'hidden',
@@ -200,7 +200,7 @@ export function CredentialBadge({
         )}
       </View>
 
-      {sealed ? <SealMark size={compact ? 18 : 26} colors={pal.grad} />
+      {sealed ? <CredentialSealMark size={compact ? 18 : 26} colors={pal.grad} />
         : flagged ? <Ionicons name="warning" size={compact ? 15 : 19} color={ink} />
         : null}
     </MotiView>

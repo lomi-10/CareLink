@@ -2,6 +2,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TrustStrip } from '@/components/shared/TrustStrip';
+import { PesoVerifiedBanner } from '@/components/shared/PesoVerifiedBanner';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -415,12 +416,18 @@ export function ParentProfileModal({
 
               <Text style={s.headerName}>{name}</Text>
 
-              <View style={isVerified ? s.pesoBadge : s.pesoUnverified}>
-                <Ionicons name={isVerified ? 'shield-checkmark' : 'warning'} size={12} color={isVerified ? '#fff' : '#FFB3B3'} />
-                <Text style={[s.pesoBadgeText, { color: isVerified ? '#fff' : '#FFB3B3' }]}>
-                  {isVerified ? 'PESO Verified Employer' : 'Unverified Employer'}
-                </Text>
-              </View>
+              {isVerified ? (
+                <PesoVerifiedBanner
+                  role="employer"
+                  location={[profile.municipality, profile.province].filter(Boolean).join(', ')}
+                  style={s.verifiedBanner}
+                />
+              ) : (
+                <View style={s.pesoUnverified}>
+                  <Ionicons name="warning" size={12} color="#FFB3B3" />
+                  <Text style={[s.pesoBadgeText, { color: '#FFB3B3' }]}>Unverified Employer</Text>
+                </View>
+              )}
 
               <View style={s.ratingRow}>
                 {[1, 2, 3, 4, 5].map(i => (
@@ -551,7 +558,7 @@ const s = StyleSheet.create({
   avatarFallback: { backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
   avatarInitials: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 30, color: '#fff' },
   headerName:     { fontFamily: FontFamily.fredokaSemiBold, fontSize: 22, color: '#fff', marginBottom: 8, textAlign: 'center' },
-  pesoBadge:      { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', marginBottom: 10 },
+  verifiedBanner: { maxWidth: 440, marginBottom: 14 },
   pesoUnverified: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,80,80,0.15)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,100,100,0.35)', marginBottom: 10 },
   pesoBadgeText:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12 },
   ratingRow:      { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 16 },

@@ -21,6 +21,7 @@ import { useHelperStats } from '@/hooks/helper';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { HelperTabBar, MobileMenu, Sidebar } from '@/components/helper/home';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
+import { PesoVerifiedBanner } from '@/components/shared/PesoVerifiedBanner';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { WorkModeTabBar } from '@/components/helper/work';
 import EditHelperProfileModal from '@/components/helper/profile/profileEditModal/EditHelperProfileModal';
@@ -129,6 +130,9 @@ export default function HelperProfileMain() {
   const fullName    = getFullName();
   const photoUri    = profile?.profile_image ?? null;
   const isVerified  = profile?.verification_status === 'Verified';
+  const verifiedLocation = [profile?.city, profile?.province]
+    .filter(Boolean)
+    .join(', ');
   const strength    = profileData?.profile_completeness ?? 0;
   const jobRoles    = mappedSpecialties?.jobs ?? [];
   const skills      = mappedSpecialties?.skills ?? [];
@@ -228,11 +232,7 @@ export default function HelperProfileMain() {
             <Text style={s.heroName} numberOfLines={2}>{fullName}</Text>
 
             {isVerified && (
-              <View style={s.pesoBadge}>
-                <Ionicons name="shield-checkmark" size={11} color="#fff" />
-                <Text style={s.pesoBadgeText}>{t('helper.profile.verifiedHelper')}</Text>
-                <Ionicons name="checkmark-circle" size={11} color="#A7F3D0" />
-              </View>
+              <PesoVerifiedBanner role="helper" location={verifiedLocation} compact style={{ marginBottom: 7 }} />
             )}
 
             {rolesPreview ? (

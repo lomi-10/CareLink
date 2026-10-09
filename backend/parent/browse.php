@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 }
 
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/complaint_tracking_tables.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Haversine distance (km) between two lat/lng pairs
@@ -225,6 +226,8 @@ try {
 
             // Meta
             'verification_status' => $row['verification_status'],
+            // Share verified document metadata only; uploaded files remain private.
+            'credentials' => carelink_public_helper_credentials($conn, $user_id),
             // Derived from Active placements (no dedicated column). Listed helpers
             // are always Available because hired helpers are filtered out above.
             'availability_status' => !empty($row['is_hired']) ? 'Unavailable' : 'Available',

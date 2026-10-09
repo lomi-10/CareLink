@@ -6,6 +6,8 @@ export { FeedbackScreen } from './FeedbackScreen';
 export { DocumentStatusTag, AiScanTag } from './DocumentStatusTag';
 export { CredentialBadge, CredentialWall, credentialStateFor } from './CredentialBadge';
 export type { CredentialState } from './CredentialBadge';
+export { PesoVerifiedBanner } from './PesoVerifiedBanner';
+export type { VerifiedAccountRole } from './PesoVerifiedBanner';
 export { SelectField, type SelectOption } from './SelectField';
 export { BottomSheetModal } from './BottomSheetModal';
 export { LoadingSpinner } from './LoadingSpinner';

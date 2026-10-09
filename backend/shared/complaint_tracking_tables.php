@@ -271,3 +271,30 @@ if (!function_exists('carelink_public_credentials')) {
         return $out;
     }
 }
+
+if (!function_exists('carelink_public_helper_credentials')) {
+    /**
+     * Public helper-document metadata for the employer profile's Documents tab.
+     * Never returns file paths or document contents; NBI is deliberately excluded.
+     */
+    function carelink_public_helper_credentials(mysqli $conn, int $userId): array
+    {
+        if ($userId <= 0) return [];
+        $out = [];
+        $st = $conn->prepare(
+            "SELECT document_type, status
+             FROM user_documents
+             WHERE user_id = ?
+               AND status = 'Verified'
+               AND document_type IN ('Valid ID', 'Barangay Clearance', 'Police Clearance', 'TESDA NC2')
+             ORDER BY FIELD(document_type, 'Valid ID', 'Barangay Clearance', 'Police Clearance', 'TESDA NC2')"
+        );
+        if (!$st) return $out;
+        $st->bind_param('i', $userId);
+        $st->execute();
+        $res = $st->get_result();
+        while ($r = $res->fetch_assoc()) $out[] = $r;
+        $st->close();
+        return $out;
+    }
+}

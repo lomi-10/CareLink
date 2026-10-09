@@ -22,6 +22,7 @@ import { Sidebar, MobileMenu, ParentTabBar, ParentWorkModeTabBar } from '@/compo
 import { ParentProfileWeb } from '@/components/parent/web/ParentProfileWeb';
 import { useParentPortalMode } from '@/hooks/parent/useParentPortalMode';
 import { ConfirmationModal, NotificationModal } from '@/components/shared';
+import { PesoVerifiedBanner } from '@/components/shared/PesoVerifiedBanner';
 import EditParentProfileModal from '@/components/parent/profile/EditParentProfileModal';
 
 import { formatParentHouseholdType } from '@/constants/parentHousehold';
@@ -206,10 +207,11 @@ export default function ParentProfile() {
           <View style={s.heroInfo}>
             <Text style={s.heroName} numberOfLines={2}>{fullName}</Text>
             {isVerified && (
-              <View style={s.pesoPill}>
-                <Ionicons name="shield-checkmark" size={13} color={BROWN} />
-                <Text style={s.pesoPillText}>PESO VERIFIED EMPLOYER</Text>
-              </View>
+              <PesoVerifiedBanner
+                role="employer"
+                location={[profile?.barangay, profile?.municipality, profile?.province].filter(Boolean).join(', ')}
+                compact
+              />
             )}
           </View>
         </View>

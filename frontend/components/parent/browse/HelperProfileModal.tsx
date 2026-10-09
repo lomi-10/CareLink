@@ -10,6 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
+import { CredentialBadge, credentialStateFor } from '@/components/shared/CredentialBadge';
+import { PesoVerifiedBanner } from '@/components/shared/PesoVerifiedBanner';
 import {
   BG, BROWN, CARAMEL, GOLD, DARK, MUTED, SUBTLE, DIVIDER, ICON_BG, SURFACE,
   GREEN, SUCCESS_BG, WARNING_BG, DANGER, DANGER_BG, OVERLAY,
@@ -45,6 +47,7 @@ const CARD_SHADOW = Platform.select({
   android: { elevation: 8 },
   default: { boxShadow: '0 8px 32px rgba(139,90,43,0.14)' } as any,
 });
+const HELPER_CREDENTIAL_TYPES = ['Valid ID', 'Barangay Clearance', 'Police Clearance', 'TESDA NC2'];
 
 function getInitials(name?: string) {
   if (!name) return 'H';
@@ -95,6 +98,9 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
   const municipality = h.municipality || h.helper_municipality || 'N/A';
   const province     = h.province || h.helper_province || 'N/A';
   const fullAddress  = `${barangay ? barangay + ', ' : ''}${municipality}, ${province}`;
+  const verifiedLocation = [municipality, province]
+    .filter((part) => part && part !== 'N/A')
+    .join(', ');
   const categories   = h.categories || h.helper_categories || [];
   const jobs         = h.jobs || h.helper_jobs || [];
   const skills       = h.skills || h.helper_skills || [];
@@ -104,6 +110,10 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
   const profileImage = h.profile_image
     ? (String(h.profile_image).startsWith('http') ? h.profile_image : `http://localhost/carelink_api/uploads/profiles/${h.profile_image}`)
     : null;
+  const verifiedCredentials = (Array.isArray(h.credentials) ? h.credentials : [])
+    .filter((credential: { document_type?: string; status?: string }) =>
+      HELPER_CREDENTIAL_TYPES.includes(credential.document_type ?? '')
+      && credential.status?.toLowerCase() === 'verified');
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -147,12 +157,6 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
             <View style={st.heroRight}>
               <Text style={st.heroName}>{h.full_name || h.helper_name}</Text>
               <View style={st.heroBadgesRow}>
-                {h.verification_status === 'Verified' && (
-                  <View style={[st.pill, st.pillGreen]}>
-                    <Ionicons name="shield-checkmark" size={11} color={GREEN} />
-                    <Text style={[st.pillText, { color: GREEN }]}>PESO Verified</Text>
-                  </View>
-                )}
                 {h.availability_status === 'Available' && (
                   <View style={[st.pill, st.pillBlue]}>
                     <Ionicons name="briefcase" size={11} color="#1D4ED8" />
@@ -167,6 +171,14 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
               )}
             </View>
           </View>
+
+          {h.verification_status === 'Verified' && (
+            <PesoVerifiedBanner
+              role="helper"
+              location={verifiedLocation}
+              style={st.verifiedBanner}
+            />
+          )}
 
           {/* ── Quick stats tiles ──────────────────────────────────────────── */}
           <View style={st.tilesRow}>
@@ -392,8 +404,22 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
               <View style={st.section}>
                 <View style={st.sectionHeader}>
                   <Ionicons name="document-text-outline" size={16} color={CARAMEL} />
-                  <Text style={st.sectionTitle}>Verification Documents</Text>
+                  <Text style={st.sectionTitle}>Verified Documents</Text>
                 </View>
+                {verifiedCredentials.length > 0 && (
+                  <View style={st.credentialBadges}>
+                    {verifiedCredentials.map((credential: { document_type: string; status: string }, index: number) => (
+                      <CredentialBadge
+                        key={`${credential.document_type}-${index}`}
+                        documentType={credential.document_type}
+                        state={credentialStateFor(credential)}
+                        size="sm"
+                        delay={index * 60}
+                        style={st.credentialBadge}
+                      />
+                    ))}
+                  </View>
+                )}
                 <View style={st.docsLocked}>
                   <Ionicons name="lock-closed-outline" size={30} color={MUTED} />
                   <Text style={st.docsLockedTitle}>Documents are private</Text>
@@ -507,6 +533,7 @@ const st = StyleSheet.create({
   heroRight: { flex: 1, gap: 8 },
   heroName: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 20, color: DARK },
   heroBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  verifiedBanner: { marginHorizontal: 16, marginTop: 12, marginBottom: 4 },
   pill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
@@ -633,6 +660,8 @@ const st = StyleSheet.create({
   },
   docsLockedTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: DARK },
   docsLockedText:  { fontFamily: FontFamily.fredokaRegular,  fontSize: 13, color: MUTED, textAlign: 'center', lineHeight: 19 },
+  credentialBadges: { gap: 10, marginBottom: 14 },
+  credentialBadge: { width: '100%' },
 
   // Footer
   footer: {

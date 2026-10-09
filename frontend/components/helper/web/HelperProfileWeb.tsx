@@ -16,6 +16,7 @@ import { useJobReferences } from '@/hooks/shared/useJobReferences';
 import { isValidPhMobile, normalizePhMobile } from '@/lib/phone';
 import { useCareBot } from '@/contexts/CareBotContext';
 import { NotificationModal, ConfirmationModal, VerifyChangeModal } from '@/components/shared';
+import { PesoVerifiedBanner } from '@/components/shared/PesoVerifiedBanner';
 import { DocumentAIScan, ScanResult } from '@/components/shared/DocumentAIScan';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
@@ -427,7 +428,9 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={s.pcardName}>{userName || 'Helper'}</Text>
-          <View style={[s.verPill, !verified && s.verPillOff]}><Ionicons name={verified ? 'checkmark-circle' : 'time-outline'} size={12} color={verified ? wt.green : wt.amber} /><Text style={[s.verPillText, !verified && { color: wt.amber }]}>{verified ? 'PESO Verified Helper' : 'Pending verification'}</Text></View>
+          {verified
+            ? <PesoVerifiedBanner role="helper" location={location === 'Location not set' ? '' : location} compact style={{ marginTop: 5, marginBottom: 3 }} />
+            : <View style={[s.verPill, s.verPillOff]}><Ionicons name="time-outline" size={12} color={wt.amber} /><Text style={[s.verPillText, { color: wt.amber }]}>Pending verification</Text></View>}
           {roles.length > 0 && <Text style={s.pcardRoles}>{roles.slice(0, 3).join('  ·  ')}</Text>}
           <View style={s.metaItem}><Ionicons name="location-outline" size={12} color={wt.featMut} /><Text style={s.metaText}>{location}</Text></View>
         </View>

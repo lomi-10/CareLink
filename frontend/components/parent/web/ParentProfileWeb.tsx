@@ -14,6 +14,7 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import { useParentProfile, useParentStats, useParentPortalMode } from '@/hooks/parent';
 import { useCareBot } from '@/contexts/CareBotContext';
 import { NotificationModal, ConfirmationModal, VerifyChangeModal, SelectField } from '@/components/shared';
+import { PesoVerifiedBanner } from '@/components/shared/PesoVerifiedBanner';
 import { DocumentAIScan, type ScanResult } from '@/components/shared/DocumentAIScan';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
 import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
@@ -359,10 +360,9 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={s.pcardName} numberOfLines={2}>{fullName || 'Household Employer'}</Text>
-          <View style={[s.verPill, !verified && s.verPillOff]}>
-            <Ionicons name={verified ? 'shield-checkmark' : 'time-outline'} size={12} color={verified ? pt.green : pt.amber} />
-            <Text style={[s.verPillText, !verified && { color: pt.amber }]}>{verified ? 'PESO Verified Employer' : badge.text}</Text>
-          </View>
+          {verified
+            ? <PesoVerifiedBanner role="employer" location={location === 'Address not set' ? '' : location} compact style={{ marginTop: 5, marginBottom: 3 }} />
+            : <View style={[s.verPill, s.verPillOff]}><Ionicons name="time-outline" size={12} color={pt.amber} /><Text style={[s.verPillText, { color: pt.amber }]}>{badge.text}</Text></View>}
           <View style={s.metaItem}><Ionicons name="location-outline" size={12} color={pt.featMut} /><Text style={s.metaText} numberOfLines={1}>{location}</Text></View>
         </View>
       </View>
