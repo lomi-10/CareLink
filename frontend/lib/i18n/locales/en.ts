@@ -356,10 +356,8 @@ export default {
     },
     settings: {
       account: 'Account',
-      palette: 'CareLink palette',
-      paletteHint: 'Choose a color style. This updates colors across the helper portal and is saved on this device.',
       brightness: 'Interface brightness',
-      brightnessHint: 'Choose light or dark mode for CareLink. This works together with your color palette.',
+      brightnessHint: 'Choose light or dark mode for CareLink.',
       matchDevice: 'Match device',
       matchDeviceHint: 'Use the same light or dark mode as your phone or computer.',
       alwaysLight: 'Always light',

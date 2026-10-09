@@ -21,6 +21,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'MAIN MENU',
     items: [
       { icon: 'grid', label: 'Dashboard', path: '/(peso)/home' },
+      { icon: 'megaphone', label: 'Announcements', path: '/(peso)/announcements' },
       { icon: 'notifications', label: 'Notifications', path: '/(peso)/notifications', badgeKey: 'notifications' },
     ],
   },

@@ -13,8 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { ss } from './settings.styles';
 import { BROWN, CARAMEL, DARK, MUTED, DIVIDER, ICON_BG, SURFACE } from '@/components/parent/home/parentWarmTheme';
 import { useColorSchemePreference, type ColorSchemePreference } from '@/contexts/ColorSchemePreferenceContext';
-import { PARENT_THEME_OPTIONS, type ParentThemeId } from '@/constants/parentThemePalettes';
-import { useParentTheme } from '@/contexts/ParentThemeContext';
 import { useAuth, useResponsive } from '@/hooks/shared';
 import { useParentProfile, usePlusStatus } from '@/hooks/parent';
 import { Sidebar, MobileMenu, ParentTabBar } from '@/components/parent/home';
@@ -39,7 +37,6 @@ export default function SettingsScreen() {
   const { isDesktop } = useResponsive();
   const { handleLogout, getFullName } = useAuth();
   const { profileData } = useParentProfile();
-  const { themeId, setThemeId } = useParentTheme();
   const { isPlus } = usePlusStatus();
 
   const [logs, setLogs] = useState<any[]>([]);
@@ -102,41 +99,11 @@ export default function SettingsScreen() {
         />
       </View>
 
-      {/* ── CareLink palette ── */}
-      <View style={ss.section}>
-        <Text style={ss.sectionTitle}>CareLink palette</Text>
-        <Text style={ss.sectionHint}>
-          Pick a color story (default, warm, sage, night, etc.). This changes backgrounds, cards, and accent colors
-          in the employer portal only. Saved on this device.
-        </Text>
-        <View style={ss.themeRow}>
-          {PARENT_THEME_OPTIONS.map((opt) => {
-            const selected = themeId === opt.id;
-            return (
-              <TouchableOpacity
-                key={opt.id}
-                onPress={() => setThemeId(opt.id as ParentThemeId)}
-                activeOpacity={0.88}
-                style={[ss.themeCard, selected && ss.themeCardSelected]}
-              >
-                <Text style={ss.themeCardLabel} numberOfLines={1}>{opt.label}</Text>
-                <Text style={ss.themeCardHint} numberOfLines={3}>{opt.hint}</Text>
-                {selected && (
-                  <View style={{ position: 'absolute', top: 8, right: 8 }}>
-                    <Ionicons name="checkmark-circle" size={20} color={BROWN} />
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
       {/* ── Interface brightness ── */}
       <View style={ss.section}>
         <Text style={ss.sectionTitle}>Interface brightness</Text>
         <Text style={ss.sectionHint}>
-          Controls light or dark mode for the whole CareLink app (both parent and helper). This is separate from the palette above.
+          Controls light or dark mode for the whole CareLink app (both parent and helper).
         </Text>
         <View style={ss.options}>
           {APPEARANCE_OPTIONS.map((opt) => {

@@ -374,10 +374,8 @@ export default {
     },
     settings: {
       account: 'Account',
-      palette: 'Mga kolor sa CareLink',
-      paletteHint: 'Pilia ang estilo sa kolor. Mausab niini ang kolor sa helper portal ug matipigan sa device.',
       brightness: 'Kahayag sa interface',
-      brightnessHint: 'Pilia ang light o dark mode para sa CareLink. Kauban kini sa imong gipiling kolor.',
+      brightnessHint: 'Pilia ang light o dark mode para sa CareLink.',
       matchDevice: 'Sunda ang device',
       matchDeviceHint: 'Gamita ang light o dark mode nga gigamit sa imong cellphone o computer.',
       alwaysLight: 'Kanunay nga light mode',

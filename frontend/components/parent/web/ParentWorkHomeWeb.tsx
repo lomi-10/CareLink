@@ -28,9 +28,10 @@ type AttentionItem =
   | { kind: 'request'; key: string; placement: ActivePlacement };
 
 export function ParentWorkHomeWeb({
-  userName, avatar, verified, onSwitchMode,
+  userName, avatar, verified, onSwitchMode, announcement,
 }: {
   userName: string; avatar: string | null; verified?: boolean; onSwitchMode: (m: 'recruitment' | 'work') => void;
+  announcement?: React.ReactNode;
 }) {
   const router = useRouter();
   const { open: openCareBot } = useCareBot();
@@ -91,6 +92,7 @@ export function ParentWorkHomeWeb({
             primary={{ label: 'Helper Management', icon: 'people-outline', onPress: () => go('/(parent)/hire') }}
             secondary={{ label: 'Tasks', icon: 'clipboard-outline', onPress: () => go('/(parent)/hire/placement_tasks') }}
           />
+          {announcement}
 
           {loading ? (
             <View style={s.center}><ActivityIndicator color={pt.accent} /></View>

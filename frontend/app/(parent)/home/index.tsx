@@ -15,7 +15,7 @@ import type { PendingReview } from '@/lib/reviewsApi';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { FontFamily } from '@/constants/GlobalStyles';
 
-import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal } from '@/components/shared';
+import { AnnouncementFeed, NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal } from '@/components/shared';
 import { useGuide } from '@/contexts/GuideContext';
 import { AwaitingVerificationCard } from '@/components/shared/AwaitingVerificationCard';
 import {
@@ -311,6 +311,7 @@ export default function ParentHome() {
               avatar={profileImage}
               verified={profileData?.profile?.verification_status === 'Verified'}
               onSwitchMode={switchMode}
+              announcement={<AnnouncementFeed />}
             />
           ) : (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -326,6 +327,7 @@ export default function ParentHome() {
             stats={stats}
             onSwitchMode={switchMode}
             banners={desktopBanners}
+            announcement={<AnnouncementFeed />}
           />
         )}
         {renderModals()}
@@ -342,7 +344,6 @@ export default function ParentHome() {
         notificationCount={unreadCount}
         onNotificationPress={() => router.push('/(parent)/notifications')}
       />
-
       {isWorkMode ? (
         <>
           {renderModeToggle()}
@@ -351,6 +352,7 @@ export default function ParentHome() {
               userName={getFullName()}
               profileImage={profileImage}
               onSwitchToRecruitment={() => switchMode('recruitment')}
+              announcement={<AnnouncementFeed />}
             />
           ) : (
             renderWorkModeLocked()
@@ -365,6 +367,7 @@ export default function ParentHome() {
         >
           {renderModeToggle()}
           <GreetingCard userName={getFullName()} profileImage={profileImage} />
+          <AnnouncementFeed />
           <ParentSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
           <AwaitingVerificationCard completeness={profileData?.profile_completeness} status={profileData?.profile?.verification_status} themeKey="parent" />
           <PendingPlacementReviewsBanner

@@ -39,10 +39,11 @@ const STATUS_META: Record<string, { label: string; bg: string; color: string }> 
 };
 
 export function ParentHomeWeb({
-  userName, avatar, verified, completeness, stats, onSwitchMode, banners,
+  userName, avatar, verified, completeness, stats, onSwitchMode, banners, announcement,
 }: {
   userName: string; avatar: string | null; verified: boolean; completeness: number;
   stats: Stats; onSwitchMode: (m: 'recruitment' | 'work') => void; banners?: React.ReactNode;
+  announcement?: React.ReactNode;
 }) {
   const router = useRouter();
   const { open: openCareBot } = useCareBot();
@@ -147,6 +148,7 @@ export function ParentHomeWeb({
             primary={{ label: 'Post a Job', icon: 'add-circle-outline', onPress: () => go('/(parent)/jobs') }}
             secondary={{ label: 'Browse Helpers', icon: 'search-outline', onPress: () => go('/(parent)/browse') }}
           />
+          {announcement}
 
           {/* KPI row */}
           <View style={s.kpis}>

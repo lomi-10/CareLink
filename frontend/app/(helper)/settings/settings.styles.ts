@@ -64,16 +64,5 @@ export function createHelperSettingsStyles(w: HelperWarm = makeHelperWarm()) {
       marginTop: 8,
     },
     linkText: { flex: 1, fontFamily: FontFamily.fredokaRegular, fontSize: 16 },
-    themeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
-    themeCard: {
-      width: '48%',
-      minWidth: 150,
-      flexGrow: 1,
-      padding: 12,
-      borderRadius: 12,
-      borderWidth: 1.5,
-    },
-    themeCardLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, marginBottom: 4 },
-    themeCardHint: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, lineHeight: 16 },
   });
 }

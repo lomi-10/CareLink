@@ -33,3 +33,5 @@ export { TimeField } from './TimeField';
 export { PasswordConfirmModal } from './PasswordConfirmModal';
 export { RequestContractChangesModal } from './RequestContractChangesModal';
 export { VerifyChangeModal } from './VerifyChangeModal';
+export { AnnouncementFeed } from './AnnouncementFeed';
+export { AnnouncementPostCard } from './AnnouncementPostCard';

@@ -44,7 +44,7 @@ const STATUS_PILL: Record<string, { label: string; bg: string; color: string }> 
 };
 
 export function HelperHomeWeb({
-  userName, avatar, verified, completeness, stats, onLogout, onBrowse, banners,
+  userName, avatar, verified, completeness, stats, onLogout, onBrowse, banners, announcement,
 }: {
   userName: string;
   avatar: string | null;
@@ -54,6 +54,7 @@ export function HelperHomeWeb({
   onLogout: () => void;
   onBrowse: () => void;
   banners?: React.ReactNode;
+  announcement?: React.ReactNode;
 }) {
   const router = useRouter();
   const { open: openCareBot } = useCareBot();
@@ -126,6 +127,7 @@ export function HelperHomeWeb({
                 {verified && <View style={s.heroAvaChk}><Ionicons name="checkmark" size={18} color="#fff" /></View>}
               </View>
             </LinearGradient>
+            {announcement}
 
             {/* Stat strip */}
             <View style={s.stats}>

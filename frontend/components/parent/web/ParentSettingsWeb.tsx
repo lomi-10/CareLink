@@ -1,5 +1,5 @@
 // components/parent/web/ParentSettingsWeb.tsx — desktop "Settings" screen on the
-// pt design system + ParentTopNav. Palette · interface brightness · help · activity
+// pt design system + ParentTopNav. Interface brightness · help · activity
 // log. Mirrors app/(parent)/settings/index.tsx logic. Logout handled by the host.
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
@@ -9,8 +9,6 @@ import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useParentPortalMode } from '@/hooks/parent';
 import { useColorSchemePreference, type ColorSchemePreference } from '@/contexts/ColorSchemePreferenceContext';
-import { PARENT_THEME_OPTIONS, type ParentThemeId } from '@/constants/parentThemePalettes';
-import { useParentTheme } from '@/contexts/ParentThemeContext';
 import { ParentTopNav } from './ParentTopNav';
 import { pt } from './parentWebTheme';
 
@@ -25,7 +23,6 @@ const APPEARANCE_OPTIONS: { value: ColorSchemePreference; label: string; hint: s
 export function ParentSettingsWeb({ userName, avatar, verified, onLogout }: { userName: string; avatar: string | null; verified: boolean; onLogout: () => void }) {
   const isWorkMode = useParentPortalMode();
   const { preference, setPreference } = useColorSchemePreference();
-  const { themeId, setThemeId } = useParentTheme();
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,28 +49,10 @@ export function ParentSettingsWeb({ userName, avatar, verified, onLogout }: { us
           <Text style={s.pageTitle}>Settings</Text>
           <Text style={s.pageSub}>Employer Portal — appearance &amp; account</Text>
 
-          {/* CareLink palette */}
-          <View style={s.section}>
-            <Text style={s.secTitle}>CareLink Palette</Text>
-            <Text style={s.secHint}>Pick a color story. This changes backgrounds, cards, and accents in the employer portal only. Saved on this device.</Text>
-            <View style={s.themeGrid}>
-              {PARENT_THEME_OPTIONS.map((opt) => {
-                const on = themeId === opt.id;
-                return (
-                  <Pressable key={opt.id} onPress={() => setThemeId(opt.id as ParentThemeId)} style={({ hovered }: any) => [s.themeCard, on && s.themeCardOn, TRANS, hovered && !on && { borderColor: pt.accent }]}>
-                    <Text style={s.themeLabel} numberOfLines={1}>{opt.label}</Text>
-                    <Text style={s.themeHint} numberOfLines={3}>{opt.hint}</Text>
-                    {on && <View style={s.themeCheck}><Ionicons name="checkmark-circle" size={20} color={pt.accent} /></View>}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
           {/* Interface brightness */}
           <View style={s.section}>
             <Text style={s.secTitle}>Interface Brightness</Text>
-            <Text style={s.secHint}>Controls light or dark mode for the whole CareLink app. Separate from the palette above.</Text>
+            <Text style={s.secHint}>Controls light or dark mode for the whole CareLink app.</Text>
             <View style={{ gap: 10, marginTop: 12 }}>
               {APPEARANCE_OPTIONS.map((opt) => {
                 const on = preference === opt.value;
@@ -132,13 +111,6 @@ const s = StyleSheet.create({
   section: { marginTop: 24 },
   secTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: pt.ink, marginBottom: 4 },
   secHint: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: pt.muted, lineHeight: 19, marginBottom: 12 },
-
-  themeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  themeCard: { flexGrow: 1, flexBasis: 200, minWidth: 180, maxWidth: 260, backgroundColor: pt.surface, borderWidth: 1.5, borderColor: pt.line, borderRadius: 14, padding: 14, ...shadowSm, cursor: 'pointer' as any },
-  themeCardOn: { borderColor: pt.accent, backgroundColor: '#FFFCF6' },
-  themeLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5, color: pt.ink },
-  themeHint: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: pt.muted, marginTop: 4, lineHeight: 17 },
-  themeCheck: { position: 'absolute', top: 8, right: 8 },
 
   optRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: pt.surface, borderWidth: 1, borderColor: pt.line, borderRadius: 14, padding: 14, ...shadowSm },
   optIc: { width: 42, height: 42, borderRadius: 12, backgroundColor: pt.accentSoft, alignItems: 'center', justifyContent: 'center' },

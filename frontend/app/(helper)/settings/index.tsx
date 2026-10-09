@@ -14,11 +14,9 @@ import {
   type ColorSchemePreference,
 } from '@/contexts/ColorSchemePreferenceContext';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
-import { useHelperTheme } from '@/contexts/HelperThemeContext';
 import { useAuth, useResponsive } from '@/hooks/shared';
 import { WorkModeTabBar } from '@/components/helper/work';
 import { Sidebar, MobileMenu, HelperTabBar } from '@/components/helper/home';
-import { PARENT_THEME_OPTIONS, type ParentThemeId } from '@/constants/parentThemePalettes';
 import { ConfirmationModal, NotificationModal, LanguagePicker } from '@/components/shared';
 import { useHelperWarm } from '@/components/helper/home/helperWarmTheme';
 import { useT } from '@/contexts/LocaleContext';
@@ -58,7 +56,6 @@ export default function HelperSettingsScreen() {
   const { preference, setPreference } = useColorSchemePreference();
   const { isDesktop } = useResponsive();
   const { isWorkMode, activeHire } = useHelperWorkMode();
-  const { themeId, setThemeId } = useHelperTheme();
   const w = useHelperWarm();
   const { DARK, MUTED, ORANGE, ICON_BG, DIVIDER, SURFACE, PAGE_BG } = w;
   const accent = ORANGE;
@@ -96,42 +93,6 @@ export default function HelperSettingsScreen() {
         selectedBg={ICON_BG}
         style={{ marginBottom: 26 }}
       />
-
-      <Text style={[styles.sectionLabel, { color: MUTED }]}>{t('helper.settings.palette')}</Text>
-      <Text style={[styles.sectionSub, { color: navTheme.colors.text }]}>
-        {t('helper.settings.paletteHint')}
-      </Text>
-      <View style={styles.themeRow}>
-        {PARENT_THEME_OPTIONS.map((opt) => {
-          const selected = themeId === opt.id;
-          return (
-            <TouchableOpacity
-              key={opt.id}
-              onPress={() => void setThemeId(opt.id as ParentThemeId)}
-              activeOpacity={0.88}
-              style={[
-                styles.themeCard,
-                {
-                  backgroundColor: selected ? ICON_BG : SURFACE,
-                  borderColor: selected ? accent : DIVIDER,
-                },
-              ]}
-            >
-              <Text style={[styles.themeCardLabel, { color: DARK }]} numberOfLines={1}>
-                {opt.label}
-              </Text>
-              <Text style={[styles.themeCardHint, { color: MUTED }]} numberOfLines={3}>
-                {opt.hint}
-              </Text>
-              {selected ? (
-                <View style={{ position: 'absolute', top: 8, right: 8 }}>
-                  <Ionicons name="checkmark-circle" size={20} color={accent} />
-                </View>
-              ) : null}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
 
       <Text style={[styles.sectionLabel, { color: MUTED, marginTop: 28 }]}>{t('helper.settings.brightness')}</Text>
       <Text style={[styles.sectionSub, { color: navTheme.colors.text }]}>

@@ -117,9 +117,9 @@ function ManageRow({ icon, label, onPress, danger, last }: {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-type Props = { userName: string; profileImage: string | null; onSwitchToRecruitment: () => void };
+type Props = { userName: string; profileImage: string | null; onSwitchToRecruitment: () => void; announcement?: React.ReactNode };
 
-export default function ParentWorkDashboard({ userName, profileImage, onSwitchToRecruitment }: Props) {
+export default function ParentWorkDashboard({ userName, profileImage, onSwitchToRecruitment, announcement }: Props) {
   const router = useRouter();
   const { perPlacement, loading, refresh } = useParentWorkDashboard();
 
@@ -188,6 +188,7 @@ export default function ParentWorkDashboard({ userName, profileImage, onSwitchTo
           </Text>
         </View>
       </LinearGradient>
+      {announcement}
 
       <Text style={s.explainer}>
         Manage pay, rest days, and day-to-day coordination for your helpers. Attendance tracking is optional.

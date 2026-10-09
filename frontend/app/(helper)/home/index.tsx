@@ -16,7 +16,7 @@ import { useHelperStats, useHelperProfile } from '@/hooks/helper';
 import { useAuth, useResponsive, useNotifications, useDemoSession } from '@/hooks/shared';
 import FeedbackModal from '@/components/shared/FeedbackModal';
 
-import { NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard } from '@/components/shared';
+import { AnnouncementFeed, NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard } from '@/components/shared';
 import { useGuide } from '@/contexts/GuideContext';
 import {
   MobileHeader, GreetingCard,
@@ -235,6 +235,7 @@ export default function HelperHome() {
               verified={profileData?.profile?.verification_status === 'Verified'}
               activeHire={activeHire}
               onRefreshWorkContext={refreshWork}
+              announcement={<AnnouncementFeed />}
             />
           </View>
           {renderModals()}
@@ -293,6 +294,7 @@ export default function HelperHome() {
           onLogout={initiateLogout}
           onBrowse={() => router.push('/(helper)/browse')}
           banners={desktopBanners}
+          announcement={<AnnouncementFeed />}
         />
         {renderModals()}
       </View>
@@ -333,6 +335,7 @@ export default function HelperHome() {
             verified={profileData?.profile?.verification_status === 'Verified'}
             activeHire={activeHire}
             onRefreshWorkContext={refreshWork}
+            announcement={<AnnouncementFeed />}
           />
         ) : (
           <>
@@ -341,6 +344,7 @@ export default function HelperHome() {
                 profileImage={profileImage}
               />
 
+            <AnnouncementFeed />
             <ProfileSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
             <AwaitingVerificationCard completeness={profileData?.profile_completeness} status={profileData?.profile?.verification_status} themeKey="helper" />
 

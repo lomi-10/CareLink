@@ -49,18 +49,6 @@ export const ss = StyleSheet.create({
   optionTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: DARK },
   optionHint:  { fontFamily: FontFamily.fredokaRegular,  fontSize: 12, color: MUTED, marginTop: 2, lineHeight: 16 },
 
-  // ── Theme cards ────────────────────────────────────────────────────────────
-  themeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  themeCard: {
-    width: '48%', minWidth: 150, flexGrow: 1,
-    padding: 12, borderRadius: 14, borderWidth: 1.5,
-    backgroundColor: SURFACE, borderColor: DIVIDER,
-    ...CARD_SHADOW,
-  },
-  themeCardSelected: { backgroundColor: ICON_BG, borderColor: BROWN },
-  themeCardLabel: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK, marginBottom: 4 },
-  themeCardHint:  { fontFamily: FontFamily.fredokaRegular,  fontSize: 12, color: MUTED, lineHeight: 16 },
-
   // ── Activity log ───────────────────────────────────────────────────────────
   logItem: {
     padding: 14, borderRadius: 12, marginBottom: 8,

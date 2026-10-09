@@ -35,6 +35,7 @@ type Props = {
   profileImage?: string | null;
   verified?: boolean;
   onRefreshWorkContext: () => Promise<void>;
+  announcement?: React.ReactNode;
 };
 
 function longDate(ymd: string | null | undefined): string | null {
@@ -46,7 +47,7 @@ function longDate(ymd: string | null | undefined): string | null {
 }
 
 export function WorkHome({
-  helperId, userFirstName, userFullName, activeHire, profileImage, verified, onRefreshWorkContext,
+  helperId, userFirstName, userFullName, activeHire, profileImage, verified, onRefreshWorkContext, announcement,
 }: Props) {
   const router = useRouter();
   const { notify, noticeHost } = useNotice();
@@ -166,6 +167,7 @@ export function WorkHome({
               </View>
             </View>
           </LinearGradient>
+          {announcement}
 
           {/* ── At a glance ── */}
           <View style={[s.glanceRow, isDesktop && { marginBottom: 10 }]}>
