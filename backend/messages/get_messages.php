@@ -28,6 +28,57 @@ try {
 
     ensure_job_invites_table($conn);
 
+    $partyStmt = $conn->prepare(
+        'SELECT user_id, user_type FROM users WHERE user_id IN (?, ?)'
+    );
+    $partyStmt->bind_param('ii', $user_id, $partner_id);
+    $partyStmt->execute();
+    $partyResult = $partyStmt->get_result();
+    $partyTypes = [];
+    while ($party = $partyResult->fetch_assoc()) {
+        $partyTypes[(int) $party['user_id']] = $party['user_type'];
+    }
+    $partyStmt->close();
+
+    $helperId = ($partyTypes[$user_id] ?? '') === 'helper'
+        ? $user_id
+        : ((($partyTypes[$partner_id] ?? '') === 'helper') ? $partner_id : 0);
+    $parentId = ($partyTypes[$user_id] ?? '') === 'parent'
+        ? $user_id
+        : ((($partyTypes[$partner_id] ?? '') === 'parent') ? $partner_id : 0);
+    $isReadOnly = false;
+    if ($helperId && $parentId) {
+        $hireStmt = $conn->prepare(
+            "SELECT parent_id FROM placements
+             WHERE helper_id = ? AND status = 'Active'"
+        );
+        $hireStmt->bind_param('i', $helperId);
+        $hireStmt->execute();
+        $hireResult = $hireStmt->get_result();
+        $hasActiveHire = false;
+        while ($hire = $hireResult->fetch_assoc()) {
+            $hasActiveHire = true;
+            if ((int) $hire['parent_id'] !== $parentId) {
+                $isReadOnly = true;
+            }
+        }
+        $hireStmt->close();
+        if (!$hasActiveHire) {
+            $closedAppStmt = $conn->prepare(
+                "SELECT 1 FROM job_applications ja
+                 INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+                 WHERE ja.helper_id = ? AND jp.parent_id = ?
+                   AND ja.status = 'Rejected'
+                   AND ja.parent_notes = 'Helper is already employed by another employer.'
+                 LIMIT 1"
+            );
+            $closedAppStmt->bind_param('ii', $helperId, $parentId);
+            $closedAppStmt->execute();
+            $isReadOnly = (bool) $closedAppStmt->get_result()->fetch_assoc();
+            $closedAppStmt->close();
+        }
+    }
+
     // Mark messages from partner as read
     $markStmt = $conn->prepare(
         "UPDATE messages SET is_read = 1, read_at = NOW()
@@ -90,7 +141,11 @@ try {
     }
     $stmt->close();
 
-    echo json_encode(['success' => true, 'messages' => $messages]);
+    echo json_encode([
+        'success' => true,
+        'messages' => $messages,
+        'is_read_only' => $isReadOnly,
+    ]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

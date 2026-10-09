@@ -21,6 +21,7 @@ import {
   requestContractChangesUrl,
 } from '@/constants/applications';
 import { ChatCallOptionsModal, HelperInterviewRequestModal } from '@/components/shared/ChatCallOptionsModal';
+import { isHiredElsewhere } from '@/lib/helperEmployment';
 import { DARK, MUTED, ORANGE, BLUE } from './messages.styles';
 import { useMessagesAppearance } from './messagesAppearance';
 import { ResolvedApplication } from './helpers';
@@ -31,15 +32,15 @@ import InterviewTab from './InterviewTab';
 import VideoCallTab from './VideoCallTab';
 
 export default function ChatPanel({
-  partnerId, partnerName, partnerPhoto, jobPostId, onBack,
+  partnerId, partnerName, partnerPhoto, jobPostId, isReadOnly, onBack,
 }: {
   partnerId: number; partnerName: string; partnerPhoto?: string | null;
-  jobPostId?: number | null; onBack?: () => void;
+  jobPostId?: number | null; isReadOnly?: boolean; onBack?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { s } = useMessagesAppearance();
-  const { messages, loading, sending, sendError, clearSendError, myUserId, sendMessage, editMessage, sendImage, sendVideoCall, fetchMessages, respondInvite } = useChat(partnerId);
+  const { messages, loading, sending, sendError, clearSendError, readOnly: serverReadOnly, myUserId, sendMessage, editMessage, sendImage, sendVideoCall, fetchMessages, respondInvite } = useChat(partnerId);
   const { refresh: refreshWorkContext } = useHelperWorkMode();
   const [inviteBusyId, setInviteBusyId] = useState<number | null>(null);
   const [text, setText]                   = useState('');
@@ -64,6 +65,8 @@ export default function ChatPanel({
   // application is a hire — and the call people most need is the interview,
   // which happens before there is a hire at all.
   const [callUrl, setCallUrl] = useState<string | null>(null);
+  const hiredElsewhere = serverReadOnly ?? isReadOnly
+    ?? isHiredElsewhere(resolvedApp?.status, resolvedApp?.parent_notes);
   const [cancelInterviewConfirmVisible, setCancelInterviewConfirmVisible] = useState(false);
   const [interviewActionLoading, setInterviewActionLoading] = useState(false);
   const [chatNotif, setChatNotif] = useState<{
@@ -145,11 +148,22 @@ export default function ChatPanel({
   }, [partnerId]);
 
   useEffect(() => {
+    if (hiredElsewhere) {
+      setActiveTab(prev => prev === 'videocall' ? 'messages' : prev);
+      setCallModal(false);
+      setHelperScheduleModal(false);
+      setEditTarget(null);
+      setCancelInterviewConfirmVisible(false);
+      setSignConfirmVisible(false);
+      setSignPasswordVisible(false);
+      setDisagreeModalVisible(false);
+      return;
+    }
     if (isHired) setActiveTab(prev => prev === 'interview' ? 'messages' : prev);
     // A blank pane is never an acceptable resting state: if the video tab is
     // selected while it cannot render, fall back rather than show nothing.
     else setActiveTab(prev => prev === 'videocall' ? 'messages' : prev);
-  }, [isHired]);
+  }, [isHired, hiredElsewhere]);
 
   // Surface a blocked send (e.g. messaging a helper who is already hired elsewhere).
   useEffect(() => {
@@ -411,9 +425,11 @@ export default function ChatPanel({
           <Text style={s.chatHeaderName} numberOfLines={1}>{partnerName}</Text>
           {jobPostId && <Text style={s.chatHeaderSub}>Job #{jobPostId}</Text>}
         </View>
-        <TouchableOpacity style={s.callBtn} onPress={() => setCallModal(true)}>
-          <Ionicons name="videocam" size={20} color={ORANGE} />
-        </TouchableOpacity>
+        {!hiredElsewhere && (
+          <TouchableOpacity style={s.callBtn} onPress={() => setCallModal(true)}>
+            <Ionicons name="videocam" size={20} color={ORANGE} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Tab bar */}
@@ -427,7 +443,7 @@ export default function ChatPanel({
           <Text style={[s.chatTabBtnText, activeTab === 'contract' && s.chatTabBtnTextActive]}>Contract</Text>
           {contractNeedsAction && <View style={[s.chatTabDot, s.chatTabDotAmber]} />}
         </TouchableOpacity>
-        {isHired ? (
+        {isHired && !hiredElsewhere ? (
           <TouchableOpacity style={[s.chatTabBtn, activeTab === 'videocall' && s.chatTabBtnActive]} onPress={() => setActiveTab('videocall')}>
             <Ionicons name="videocam-outline" size={16} color={activeTab === 'videocall' ? '#fff' : MUTED} />
             <Text style={[s.chatTabBtnText, activeTab === 'videocall' && s.chatTabBtnTextActive]}>Video Call</Text>
@@ -443,7 +459,7 @@ export default function ChatPanel({
 
       {activeTab === 'messages' && (
         <MessagesTab
-          onOpenVideoCall={openCall}
+          onOpenVideoCall={hiredElsewhere ? undefined : openCall}
           messages={messages}
           myUserId={myUserId}
           sending={sending}
@@ -460,18 +476,20 @@ export default function ChatPanel({
           setViewerUri={setViewerUri}
           editMessage={editMessage}
           insets={insets}
-          onAcceptInvite={(m) => handleInviteResponse(m, 'accept')}
-          onDeclineInvite={(m) => handleInviteResponse(m, 'decline')}
-          onOpenInviteJob={(m) => openInviteJob(m.job_post_id)}
+          onAcceptInvite={hiredElsewhere ? undefined : (m) => handleInviteResponse(m, 'accept')}
+          onDeclineInvite={hiredElsewhere ? undefined : (m) => handleInviteResponse(m, 'decline')}
+          onOpenInviteJob={hiredElsewhere ? undefined : (m) => openInviteJob(m.job_post_id)}
           inviteBusyId={inviteBusyId}
-          unavailableNotice={resolvedApp?.status === 'Rejected' && resolvedApp.parent_notes === 'Helper is already employed by another employer.'
-            ? 'You cannot continue this opportunity because you are already hired by another employer.' : null}
+          unavailableNotice={hiredElsewhere
+            ? 'You are already employed by another household. This conversation is read-only and messaging is unavailable.'
+            : null}
         />
       )}
 
       {activeTab === 'contract' && (
         <ContractTab
           resolvedApp={resolvedApp}
+          isReadOnly={hiredElsewhere}
           contractAction={contractAction}
           onReviewContract={openReviewContract}
           onDisagree={() => setDisagreeModalVisible(true)}
@@ -485,9 +503,10 @@ export default function ChatPanel({
         />
       )}
 
-      {activeTab === 'interview' && !isHired && (
+      {activeTab === 'interview' && (!isHired || hiredElsewhere) && (
         <InterviewTab
           resolvedApp={resolvedApp}
+          isReadOnly={hiredElsewhere}
           partnerName={partnerName}
           interviewActionLoading={interviewActionLoading}
           onPropose={() => setHelperScheduleModal(true)}

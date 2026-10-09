@@ -34,7 +34,7 @@ export function ProfileSetupGuide({ profileData, firstName }: { profileData: any
 
   const workHistory: any[] = profileData?.work_history ?? [];
 
-  const personalDone = !!(p?.contact_number && p?.birth_date && p?.gender && p?.province && p?.municipality && p?.barangay);
+  const personalDone = !!(p?.birth_date && p?.gender && p?.province && p?.municipality && p?.barangay);
   const skillsDone = jobs.length > 0;
   const expDone = workHistory.length > 0 || Number(p?.years_experience) > 0;
   const docsDone = hasDoc('Valid ID') && hasDoc('Barangay Clearance');

@@ -2,6 +2,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { employerPipelineStatusLabel, isHiredElsewhere } from '@/lib/helperEmployment';
 
 interface ApplicationCardProps {
   application: any; // Type from useJobApplications
@@ -32,9 +33,14 @@ export function ApplicationCard({
   onViewAttendance,
   onViewLeaveRequests,
 }: ApplicationCardProps) {
+  const hiredElsewhere = isHiredElsewhere(application.status, application.parent_notes);
   
   // Dynamic status configuration for premium badges
   const getStatusConfig = () => {
+    const elsewhereLabel = employerPipelineStatusLabel(application.status, application.parent_notes);
+    if (elsewhereLabel) {
+      return { color: '#B45309', bg: '#FEF3C7', icon: 'briefcase', label: elsewhereLabel };
+    }
     switch (application.status) {
       case 'Pending': return { color: '#D97706', bg: '#FEF3C7', icon: 'time', label: 'Needs Review' };
       case 'Reviewed': return { color: '#2563EB', bg: '#DBEAFE', icon: 'eye', label: 'Reviewed' };
@@ -54,8 +60,8 @@ export function ApplicationCard({
   };
 
   const statusConfig = getStatusConfig();
-  const canTakeAction = ['Pending', 'Reviewed'].includes(application.status);
-  const canSchedule   = ['Shortlisted', 'Interview Scheduled'].includes(application.status);
+  const canTakeAction = !hiredElsewhere && ['Pending', 'Reviewed'].includes(application.status);
+  const canSchedule   = !hiredElsewhere && ['Shortlisted', 'Interview Scheduled'].includes(application.status);
   const canManageTasks = ['hired', 'Accepted'].includes(application.status) && !!onManageTasks;
   const canViewAttendance = ['hired', 'Accepted'].includes(application.status) && !!onViewAttendance;
   const canViewLeaveRequests = ['hired', 'Accepted'].includes(application.status) && !!onViewLeaveRequests;
@@ -165,7 +171,7 @@ export function ApplicationCard({
             <Text style={styles.scheduleBtnText}>Interview</Text>
           </TouchableOpacity>
         )}
-        {onMessage && !canTakeAction && (
+        {onMessage && !hiredElsewhere && !canTakeAction && (
           <TouchableOpacity style={styles.msgBtn} onPress={(e) => { e.stopPropagation(); onMessage(); }}>
             <Ionicons name="chatbubble-outline" size={15} color="#2563EB" />
             <Text style={styles.msgBtnText}>Message</Text>

@@ -25,6 +25,86 @@ try {
     $conversations = [];
     $seenPartners  = [];
 
+    $userRow  = $conn->query("SELECT user_type FROM users WHERE user_id = $user_id")->fetch_assoc();
+    $userType = $userRow['user_type'] ?? null;
+    $activeHirePartners = [];
+    if ($userType === 'parent') {
+        $activeHires = $conn->prepare(
+            "SELECT DISTINCT other_pl.helper_id
+             FROM placements other_pl
+             WHERE other_pl.status = 'Active'
+               AND other_pl.parent_id != ?"
+        );
+        $activeHires->bind_param('i', $user_id);
+        $activeHires->execute();
+        $activeHireResult = $activeHires->get_result();
+        while ($hire = $activeHireResult->fetch_assoc()) {
+            $activeHirePartners[(int) $hire['helper_id']] = true;
+        }
+        $activeHires->close();
+    } elseif ($userType === 'helper') {
+        $activeHires = $conn->prepare(
+            "SELECT DISTINCT parent_id FROM placements
+             WHERE helper_id = ? AND status = 'Active'"
+        );
+        $activeHires->bind_param('i', $user_id);
+        $activeHires->execute();
+        $activeHireResult = $activeHires->get_result();
+        while ($hire = $activeHireResult->fetch_assoc()) {
+            $activeHirePartners[(int) $hire['parent_id']] = true;
+        }
+        $activeHires->close();
+    }
+
+    // Partners whose application with this user was closed because the helper
+    // was hired elsewhere — conversation becomes Read-Only (Closed).
+    $readOnlyPartners = [];
+    $elsewhereNote = 'Helper is already employed by another employer.';
+    if ($userType === 'parent') {
+        $ro = $conn->prepare(
+            "SELECT ja.helper_id
+             FROM job_applications ja
+             INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+             WHERE jp.parent_id = ?
+               AND ja.status = 'Rejected'
+               AND ja.parent_notes = ?"
+        );
+        $ro->bind_param('is', $user_id, $elsewhereNote);
+        $ro->execute();
+        $roRes = $ro->get_result();
+        while ($r = $roRes->fetch_assoc()) {
+            $readOnlyPartners[(int) $r['helper_id']] = true;
+        }
+        $ro->close();
+        $ownHires = $conn->prepare(
+            "SELECT DISTINCT helper_id FROM placements
+             WHERE parent_id = ? AND status = 'Active'"
+        );
+        $ownHires->bind_param('i', $user_id);
+        $ownHires->execute();
+        $ownHireResult = $ownHires->get_result();
+        while ($hire = $ownHireResult->fetch_assoc()) {
+            unset($readOnlyPartners[(int) $hire['helper_id']]);
+        }
+        $ownHires->close();
+    } elseif ($userType === 'helper') {
+        $ro = $conn->prepare(
+            "SELECT jp.parent_id
+             FROM job_applications ja
+             INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+             WHERE ja.helper_id = ?
+               AND ja.status = 'Rejected'
+               AND ja.parent_notes = ?"
+        );
+        $ro->bind_param('is', $user_id, $elsewhereNote);
+        $ro->execute();
+        $roRes = $ro->get_result();
+        while ($r = $roRes->fetch_assoc()) {
+            $readOnlyPartners[(int) $r['parent_id']] = true;
+        }
+        $ro->close();
+    }
+
     // 1. Existing message threads — latest message per conversation partner
     $stmt = $conn->prepare("
         SELECT
@@ -72,7 +152,17 @@ try {
         if ($msgType === 'image')      $previewText = 'Sent a photo';
         if ($msgType === 'video_call') $previewText = 'Video call invitation';
 
-        $partnerId = (int)$row['partner_id'];
+        $partnerId  = (int)$row['partner_id'];
+        $isReadOnly = isset($readOnlyPartners[$partnerId]);
+        if ($userType === 'parent' && isset($activeHirePartners[$partnerId])) {
+            $isReadOnly = true;
+        } elseif ($userType === 'helper' && $row['user_type'] === 'parent' && !empty($activeHirePartners)) {
+            $isReadOnly = count($activeHirePartners) !== 1 || !isset($activeHirePartners[$partnerId]);
+        }
+        if ($isReadOnly) {
+            $previewText = 'Read-Only (Closed)';
+        }
+
         $conversations[] = [
             'partner_id'         => $partnerId,
             'partner_name'       => trim($row['first_name'] . ' ' . $row['last_name']),
@@ -85,7 +175,8 @@ try {
             'job_post_id'        => $row['job_post_id'] ? (int)$row['job_post_id'] : null,
             'job_title'          => $row['job_title'],
             'has_messages'       => true,
-            'application_status' => null,
+            'application_status' => $isReadOnly ? 'Rejected' : null,
+            'is_read_only'       => $isReadOnly,
         ];
         $seenPartners[$partnerId] = true;
     }
@@ -93,8 +184,6 @@ try {
 
     // 2. Pending connections — shortlisted-or-further applications without messages yet
     $shortlistedStatuses = "'Shortlisted','Interview Scheduled','Accepted','contract_pending','hired'";
-    $userRow  = $conn->query("SELECT user_type FROM users WHERE user_id = $user_id")->fetch_assoc();
-    $userType = $userRow['user_type'] ?? null;
 
     $stmt2 = null;
     if ($userType === 'parent') {
@@ -140,6 +229,13 @@ try {
                 $photo = (stripos($rawPhoto, 'http') === 0) ? $rawPhoto : $base . $rawPhoto;
             }
 
+            $isReadOnly = isset($readOnlyPartners[$partnerId]);
+            if ($userType === 'parent' && isset($activeHirePartners[$partnerId])) {
+                $isReadOnly = true;
+            } elseif ($userType === 'helper' && $row['user_type'] === 'parent' && !empty($activeHirePartners)) {
+                $isReadOnly = count($activeHirePartners) !== 1 || !isset($activeHirePartners[$partnerId]);
+            }
+
             $conversations[] = [
                 'partner_id'         => $partnerId,
                 'partner_name'       => trim($row['first_name'] . ' ' . $row['last_name']),
@@ -152,7 +248,8 @@ try {
                 'job_post_id'        => (int)$row['job_post_id'],
                 'job_title'          => $row['job_title'],
                 'has_messages'       => false,
-                'application_status' => $row['status'],
+                'application_status' => $isReadOnly ? 'Rejected' : $row['status'],
+                'is_read_only'       => $isReadOnly,
             ];
         }
         $stmt2->close();

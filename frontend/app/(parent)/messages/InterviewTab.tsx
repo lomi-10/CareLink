@@ -3,16 +3,21 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { MUTED, DANGER, GREEN, BROWN, ICON_BG } from '@/components/parent/home/parentWarmTheme';
+import { NotificationCard } from '@/components/shared';
+import { SimilarHelpersRecoveryCard } from '@/components/parent/SimilarHelpersRecoveryCard';
+import { isHiredElsewhere } from '@/lib/helperEmployment';
+import { MUTED, GREEN, BROWN, ICON_BG, DANGER } from '@/components/parent/home/parentWarmTheme';
 import { s } from './messages.styles';
 import { fmtLongDate, fullTime, interviewPillStyle, ResolvedApplication } from './helpers';
 import { ContractRow } from './components';
 import { InterviewGuideModal } from './InterviewGuideModal';
 
 export default function InterviewTab({
-  resolvedApp, partnerName, interviewActionLoading, onSchedule, onReschedule, onCancel,
+  resolvedApp, isReadOnly, jobPostId, partnerName, interviewActionLoading, onSchedule, onReschedule, onCancel,
 }: {
   resolvedApp: ResolvedApplication | null;
+  isReadOnly?: boolean;
+  jobPostId?: number | null;
   partnerName: string;
   interviewActionLoading: boolean;
   onSchedule: () => void;
@@ -20,25 +25,33 @@ export default function InterviewTab({
   onCancel: () => void;
 }) {
   const [guideOpen, setGuideOpen] = useState(false);
-  const helperUnavailable = resolvedApp?.status === 'Rejected'
-    && resolvedApp.parent_notes === 'Helper is already employed by another employer.';
+  const helperUnavailable = isReadOnly ?? isHiredElsewhere(resolvedApp?.status, resolvedApp?.parent_notes);
+  const statusLabel = helperUnavailable
+    ? 'Cancelled'
+    : (resolvedApp?.interview_id ? (resolvedApp.interview_status || 'Scheduled') : 'None');
   return (
     <ScrollView style={s.contractTabBody} contentContainerStyle={{ paddingBottom: 24 }}>
       <View style={s.contractHeaderRow}>
         <Text style={s.contractHeaderTitle}>Interview Schedule</Text>
-        <View style={[s.statusPill, !resolvedApp?.interview_id ? s.statusPillGray : interviewPillStyle(resolvedApp.interview_status)]}>
-          <Text style={s.statusPillTxt}>{resolvedApp?.interview_id ? (resolvedApp.interview_status || 'Scheduled') : 'None'}</Text>
+        <View style={[s.statusPill, !resolvedApp?.interview_id && !helperUnavailable ? s.statusPillGray : interviewPillStyle(helperUnavailable ? 'Cancelled' : resolvedApp?.interview_status)]}>
+          <Text style={s.statusPillTxt}>{statusLabel}</Text>
         </View>
       </View>
 
       {helperUnavailable ? (
-        <View style={s.contractEmptyState}>
-          <View style={s.contractEmptyIconWrap}>
-            <Ionicons name="person-remove-outline" size={32} color={DANGER} />
-          </View>
-          <Text style={s.contractEmptyTitle}>Helper unavailable</Text>
-          <Text style={s.contractEmptySub}>You cannot hire this helper because they are already hired by another employer.</Text>
-        </View>
+        <>
+          <NotificationCard
+            tone="danger"
+            icon="calendar-outline"
+            badge="Interview canceled"
+            title="Helper already employed"
+            message="This helper accepted employment with another household. Your interview was automatically canceled so you are not left waiting."
+            style={{ marginHorizontal: 0, marginTop: 0, marginBottom: 12 }}
+          />
+          <SimilarHelpersRecoveryCard
+            jobPostId={resolvedApp?.job_post_id ?? jobPostId}
+          />
+        </>
       ) : null}
 
       {/* Interview guide — questions to ask, saved answers pre-fill the contract. */}
@@ -77,7 +90,7 @@ export default function InterviewTab({
             </TouchableOpacity>
           </View>
         </View>
-      ) : !helperUnavailable ? (
+      ) : !helperUnavailable && resolvedApp ? (
         <>
           <View style={s.contractSummaryCard}>
             <ContractRow label="Date" value={fmtLongDate(resolvedApp.interview_date)} />

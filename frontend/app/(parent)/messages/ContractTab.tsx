@@ -3,15 +3,20 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { NotificationCard } from '@/components/shared';
+import { SimilarHelpersRecoveryCard } from '@/components/parent/SimilarHelpersRecoveryCard';
+import { isHiredElsewhere } from '@/lib/helperEmployment';
 import { MUTED, DANGER } from '@/components/parent/home/parentWarmTheme';
 import { s } from './messages.styles';
 import { fmtDate, ResolvedApplication } from './helpers';
 import { ContractRow } from './components';
 
 export default function ContractTab({
-  resolvedApp, hiringAction, onReviewContract, onEditTerms, onHire, onReject, onAgree, onDelete,
+  resolvedApp, isReadOnly, jobPostId, hiringAction, onReviewContract, onEditTerms, onHire, onReject, onAgree, onDelete,
 }: {
   resolvedApp: ResolvedApplication | null;
+  isReadOnly?: boolean;
+  jobPostId?: number | null;
   hiringAction: boolean;
   onReviewContract: () => void | Promise<void>;
   onEditTerms: () => void | Promise<void>;
@@ -20,11 +25,21 @@ export default function ContractTab({
   onAgree: () => void;
   onDelete: () => void;
 }) {
-  const helperUnavailable = resolvedApp?.status === 'Rejected'
-    && resolvedApp.parent_notes === 'Helper is already employed by another employer.';
+  const helperUnavailable = isReadOnly ?? isHiredElsewhere(resolvedApp?.status, resolvedApp?.parent_notes);
   return (
     <ScrollView style={s.contractTabBody} contentContainerStyle={{ paddingBottom: 24 }}>
-      {!resolvedApp ? (
+      {helperUnavailable ? (
+        <>
+          <NotificationCard
+            tone="danger"
+            badge="Candidate Hired Elsewhere"
+            title="Helper unavailable"
+            message="This helper is already employed by another employer. Hiring is closed for this conversation."
+            style={{ marginHorizontal: 0, marginTop: 0, marginBottom: 12 }}
+          />
+          <SimilarHelpersRecoveryCard jobPostId={resolvedApp?.job_post_id ?? jobPostId} />
+        </>
+      ) : !resolvedApp ? (
         <View style={s.contractEmptyState}>
           <View style={s.contractEmptyIconWrap}>
             <Ionicons name="document-text-outline" size={32} color={MUTED} />
@@ -37,10 +52,8 @@ export default function ContractTab({
           <View style={s.contractEmptyIconWrap}>
             <Ionicons name="document-text-outline" size={32} color={MUTED} />
           </View>
-          <Text style={s.contractEmptyTitle}>{helperUnavailable ? 'Helper unavailable' : 'No contract'}</Text>
-          <Text style={s.contractEmptySub}>{helperUnavailable
-            ? 'You cannot hire this helper because they are already hired by another employer.'
-            : `This application is ${resolvedApp.status.toLowerCase()}.`}</Text>
+          <Text style={s.contractEmptyTitle}>No contract</Text>
+          <Text style={s.contractEmptySub}>{`This application is ${resolvedApp.status.toLowerCase()}.`}</Text>
         </View>
       ) : resolvedApp.status === 'contract_pending' ? (
         <>

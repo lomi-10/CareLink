@@ -3,25 +3,37 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { NotificationCard } from '@/components/shared';
+import { isHiredElsewhere } from '@/lib/helperEmployment';
 import { ORANGE, SUBTLE, DANGER } from './messages.styles';
 import { useMessagesAppearance } from './messagesAppearance';
 import { fmtDate, ResolvedApplication } from './helpers';
 import { ContractRow } from './components';
 
 export default function ContractTab({
-  resolvedApp, contractAction, onReviewContract, onDisagree, onAgree,
+  resolvedApp, isReadOnly, contractAction, onReviewContract, onDisagree, onAgree,
 }: {
   resolvedApp: ResolvedApplication | null;
+  isReadOnly?: boolean;
   contractAction: boolean;
   onReviewContract: () => void | Promise<void>;
   onDisagree: () => void;
   onAgree: () => void;
 }) {
   const { s } = useMessagesAppearance();
+  const hiredElsewhere = isReadOnly ?? isHiredElsewhere(resolvedApp?.status, resolvedApp?.parent_notes);
 
   return (
     <ScrollView style={s.contractTabBody} contentContainerStyle={{ paddingBottom: 24 }}>
-      {!resolvedApp ? (
+      {hiredElsewhere ? (
+        <NotificationCard
+          tone="neutral"
+          badge="Read-Only · Closed"
+          title="Opportunity unavailable"
+          message="You are already employed by another household. This conversation is closed."
+          style={{ marginHorizontal: 0, marginTop: 0 }}
+        />
+      ) : !resolvedApp ? (
         <View style={s.contractEmptyState}>
           <View style={s.contractEmptyIconWrap}>
             <Ionicons name="document-text-outline" size={36} color={ORANGE} />
@@ -34,10 +46,8 @@ export default function ContractTab({
           <View style={s.contractEmptyIconWrap}>
             <Ionicons name="document-text-outline" size={36} color={SUBTLE} />
           </View>
-          <Text style={s.contractEmptyTitle}>{resolvedApp.parent_notes === 'Helper is already employed by another employer.' ? 'Opportunity unavailable' : 'No contract'}</Text>
-          <Text style={s.contractEmptySub}>{resolvedApp.parent_notes === 'Helper is already employed by another employer.'
-            ? 'You cannot continue this opportunity because you are already hired by another employer.'
-            : `This application is ${resolvedApp.status}.`}</Text>
+          <Text style={s.contractEmptyTitle}>No contract</Text>
+          <Text style={s.contractEmptySub}>{`This application is ${resolvedApp.status}.`}</Text>
         </View>
       ) : resolvedApp.status === 'contract_pending' ? (
         <>

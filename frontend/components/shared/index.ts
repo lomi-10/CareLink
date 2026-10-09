@@ -1,5 +1,7 @@
 export { NotificationModal } from './NotificationModal';
 export { NotificationDetailModal } from './NotificationDetailModal';
+export { NotificationCard } from './NotificationCard';
+export type { NotificationCardTone, NotificationCardAction } from './NotificationCard';
 export { FeedbackScreen } from './FeedbackScreen';
 export { DocumentStatusTag, AiScanTag } from './DocumentStatusTag';
 export { CredentialBadge, CredentialWall, credentialStateFor } from './CredentialBadge';

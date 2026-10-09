@@ -80,7 +80,10 @@ const APPLICATION_STATUS_APPEARANCE: Record<string, { color: string; bg: string;
   termination_pending:   { color: '#B45309', bg: '#FEF3C7', icon: 'document-text',    label: 'Ending contract' },
   Withdrawn:             { color: '#6B7280', bg: '#F3F4F6', icon: 'arrow-undo',       label: 'Withdrawn' },
 };
-function applicationStatusAppearance(status: string) {
+function applicationStatusAppearance(status: string, parentNotes?: string | null) {
+  if (status === 'Rejected' && parentNotes === 'Helper is already employed by another employer.') {
+    return { color: '#B45309', bg: '#FEF3C7', icon: 'briefcase' as const, label: 'Candidate Hired Elsewhere' };
+  }
   return APPLICATION_STATUS_APPEARANCE[status] ?? { color: MUTED, bg: ICON_BG, icon: 'information-circle' as const, label: status };
 }
 

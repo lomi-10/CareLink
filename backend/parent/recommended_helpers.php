@@ -30,6 +30,7 @@ try {
     $parent_id = isset($_GET['parent_id']) ? intval($_GET['parent_id']) : 0;
     $limit     = isset($_GET['limit'])     ? intval($_GET['limit'])     : 10;
     $requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
+    $job_post_id  = isset($_GET['job_post_id'])  ? intval($_GET['job_post_id'])  : 0;
 
     if ($parent_id <= 0) throw new Exception('parent_id required');
     carelink_require_self($requester_id, $parent_id, 'You are not allowed to view these recommendations.');
@@ -52,27 +53,50 @@ try {
     $pLng          = !empty($parent['longitude']) ? floatval($parent['longitude']) : null;
 
     // ── 2. Parent's hiring history — category IDs + typical salary/experience
-    //      requirements drawn from their own job posts (signals what they need) ─
+    //      requirements drawn from their own job posts (signals what they need).
+    //      When job_post_id is set (recovery after a helper was hired elsewhere),
+    //      prefer that post's criteria so alternatives match the original search.
     $parentCatIds   = [];
     $parentJobIds   = [];
     $salarySamples  = [];
     $expSamples     = [];
-    $stmt = $conn->prepare("
-        SELECT category_id, job_ids, salary_offered, salary_period, min_experience_years
-        FROM job_posts
-        WHERE parent_id = ?
-    ");
-    $stmt->bind_param("i", $parent_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    while ($r = $res->fetch_assoc()) {
-        $parentCatIds[] = (int)$r['category_id'];
-        foreach (json_decode($r['job_ids'] ?? '[]', true) ?: [] as $jid) $parentJobIds[] = (int)$jid;
-        $monthly = ($r['salary_period'] === 'Daily') ? floatval($r['salary_offered']) * 26 : floatval($r['salary_offered']);
-        $salarySamples[] = $monthly;
-        if ($r['min_experience_years'] !== null) $expSamples[] = (int)$r['min_experience_years'];
+    if ($job_post_id > 0) {
+        $stmt = $conn->prepare("
+            SELECT category_id, job_ids, salary_offered, salary_period, min_experience_years
+            FROM job_posts
+            WHERE job_post_id = ? AND parent_id = ?
+            LIMIT 1
+        ");
+        $stmt->bind_param("ii", $job_post_id, $parent_id);
+        $stmt->execute();
+        $focus = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if ($focus) {
+            $parentCatIds[] = (int)$focus['category_id'];
+            foreach (json_decode($focus['job_ids'] ?? '[]', true) ?: [] as $jid) $parentJobIds[] = (int)$jid;
+            $monthly = ($focus['salary_period'] === 'Daily') ? floatval($focus['salary_offered']) * 26 : floatval($focus['salary_offered']);
+            $salarySamples[] = $monthly;
+            if ($focus['min_experience_years'] !== null) $expSamples[] = (int)$focus['min_experience_years'];
+        }
     }
-    $stmt->close();
+    if (empty($parentCatIds)) {
+        $stmt = $conn->prepare("
+            SELECT category_id, job_ids, salary_offered, salary_period, min_experience_years
+            FROM job_posts
+            WHERE parent_id = ?
+        ");
+        $stmt->bind_param("i", $parent_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($r = $res->fetch_assoc()) {
+            $parentCatIds[] = (int)$r['category_id'];
+            foreach (json_decode($r['job_ids'] ?? '[]', true) ?: [] as $jid) $parentJobIds[] = (int)$jid;
+            $monthly = ($r['salary_period'] === 'Daily') ? floatval($r['salary_offered']) * 26 : floatval($r['salary_offered']);
+            $salarySamples[] = $monthly;
+            if ($r['min_experience_years'] !== null) $expSamples[] = (int)$r['min_experience_years'];
+        }
+        $stmt->close();
+    }
     $parentCatIds = array_values(array_unique($parentCatIds));
     $parentJobIds = array_values(array_unique($parentJobIds));
     $pTypicalSalary = !empty($salarySamples) ? array_sum($salarySamples) / count($salarySamples) : null;
@@ -83,7 +107,9 @@ try {
     $res = $conn->query("SELECT category_id, category_name FROM ref_categories");
     if ($res) while ($r = $res->fetch_assoc()) $refCats[$r['category_id']] = $r['category_name'];
 
-    // ── 4. Approved helpers not already actively placed with this parent ─────
+    // ── 4. Approved helpers who are not currently Hired / Unavailable ────────
+    // Exclude anyone with an Active placement (any employer), not only this
+    // parent — mirrors browse.php so recovery suggestions stay hireable.
     $stmt = $conn->prepare("
         SELECT u.user_id, u.first_name, u.last_name,
                hp.profile_id, hp.profile_image, hp.bio,
@@ -97,10 +123,10 @@ try {
         WHERE u.user_type = 'helper' AND u.status = 'approved'
           AND NOT EXISTS (
               SELECT 1 FROM placements pl
-              WHERE pl.helper_id = u.user_id AND pl.parent_id = ? AND pl.status = 'Active'
+              WHERE pl.helper_id = u.user_id AND pl.status = 'Active'
           )
     ");
-    $stmt->bind_param("i", $parent_id);
+    // No bind params — Active-placement filter is correlative on u.user_id.
     $stmt->execute();
     $helpersResult = $stmt->get_result();
 

@@ -82,7 +82,11 @@ try {
             hp.employment_type, hp.work_schedule, hp.expected_salary, hp.salary_period,
             hp.verification_status, hp.rating_average, hp.rating_count,
             li.interview_id, li.interview_date, li.interview_type, li.location_or_link,
-            li.interview_status, li.parent_confirmed, li.helper_confirmed
+            li.interview_status, li.parent_confirmed, li.helper_confirmed,
+            CASE WHEN EXISTS (
+                SELECT 1 FROM placements pl
+                WHERE pl.helper_id = a.helper_id AND pl.status = 'Active'
+            ) THEN 1 ELSE 0 END AS helper_is_hired
         FROM job_applications a
         JOIN job_posts jp ON a.job_post_id = jp.job_post_id
         LEFT JOIN ref_categories rc ON jp.category_id = rc.category_id
@@ -262,8 +266,8 @@ try {
             
             // Meta Statuses
             'verification_status' => $row['verification_status'],
-            // No dedicated availability column yet — helpers on the platform are assumed open to work
-            'availability_status' => 'Available',
+            // Derived from Active placements — hired helpers are Unavailable.
+            'availability_status' => !empty($row['helper_is_hired']) ? 'Unavailable' : 'Available',
             'helper_rating_average' => (float)$row['rating_average'],
             'helper_rating_count' => (int)$row['rating_count'],
         ];

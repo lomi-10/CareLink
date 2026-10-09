@@ -75,18 +75,15 @@ try {
 
     if ($helperId && $partyParent) {
         $hireStmt = $conn->prepare(
-            "SELECT jp.parent_id FROM job_applications ja
-             INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
-             WHERE ja.helper_id = ?
-               AND ja.status IN ('hired','Accepted','termination_pending')
-               AND ja.employer_signed_at IS NOT NULL AND ja.helper_signed_at IS NOT NULL
+            "SELECT 1 FROM placements
+             WHERE helper_id = ? AND status = 'Active' AND parent_id != ?
              LIMIT 1"
         );
-        $hireStmt->bind_param('i', $helperId);
+        $hireStmt->bind_param('ii', $helperId, $partyParent);
         $hireStmt->execute();
         $hireRow = $hireStmt->get_result()->fetch_assoc();
         $hireStmt->close();
-        if ($hireRow && (int) $hireRow['parent_id'] !== $partyParent) {
+        if ($hireRow) {
             echo json_encode([
                 'success' => false,
                 'code'    => 'helper_unavailable',

@@ -130,6 +130,7 @@ export function ParentMessagesWeb({ userName, avatar, verified, onLogout }: { us
               partnerName={active.partner_name}
               partnerPhoto={active.partner_photo}
               jobPostId={active.job_post_id}
+              isReadOnly={active.is_read_only}
               onBack={() => { setActive(null); refresh(); }}
             />
           ) : (

@@ -107,7 +107,7 @@ export function ImageViewer({ uri, onClose }: { uri: string; onClose: () => void
 export function Bubble({
   msg, isMine, onLongPress, onImagePress, onEditPress,
   onAcceptInvite, onDeclineInvite, onOpenInviteJob, inviteBusy,
-  onOpenVideoCall,
+  onOpenVideoCall, disableInteractions,
 }: {
   msg: Message;
   isMine: boolean;
@@ -120,6 +120,7 @@ export function Bubble({
   /** Opens a call inside the app. Without it the bubble leaves for a new tab. */
   onOpenVideoCall?: (url: string) => void;
   inviteBusy?: boolean;
+  disableInteractions?: boolean;
 }) {
   const isVideoCall = msg.message_type === 'video_call';
   const isImage     = msg.message_type === 'image';
@@ -129,7 +130,7 @@ export function Bubble({
     const status   = msg.invite_status ?? 'pending';
     const accepted = status === 'accepted';
     const declined = status === 'declined';
-    const showActions = !isMine && status === 'pending';
+    const showActions = !disableInteractions && !isMine && status === 'pending';
     return (
       <View style={[s.bubbleWrap, isMine ? s.bubbleWrapRight : s.bubbleWrapLeft]}>
         <View style={{ maxWidth: 330, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#EDE0D0', overflow: 'hidden' }}>
@@ -166,7 +167,7 @@ export function Bubble({
               </View>
             )}
 
-            {!isMine && accepted && (
+            {!disableInteractions && !isMine && accepted && (
               <TouchableOpacity onPress={onOpenInviteJob} activeOpacity={0.85}
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 12, paddingVertical: 10, borderRadius: 11, backgroundColor: ACCENT + '18' }}>
                 <Ionicons name="arrow-forward-circle" size={16} color={ACCENT} />
@@ -198,6 +199,7 @@ export function Bubble({
           onPress={() => (onOpenVideoCall
             ? onOpenVideoCall(msg.message_text)
             : Linking.openURL(msg.message_text))}
+          disabled={disableInteractions}
           activeOpacity={0.8}
         >
           <View style={[s.videoCardIcon, isMine && { backgroundColor: 'rgba(255,255,255,0.25)' }]}>

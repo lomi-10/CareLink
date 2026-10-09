@@ -3,15 +3,18 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { NotificationCard } from '@/components/shared';
+import { isHiredElsewhere } from '@/lib/helperEmployment';
 import { ORANGE, GREEN, DANGER } from './messages.styles';
 import { useMessagesAppearance } from './messagesAppearance';
 import { fmtLongDate, fullTime, interviewPillStyle, ResolvedApplication } from './helpers';
 import { ContractRow } from './components';
 
 export default function InterviewTab({
-  resolvedApp, partnerName, interviewActionLoading, onPropose, onConfirm, onDecline, onCancel,
+  resolvedApp, isReadOnly, partnerName, interviewActionLoading, onPropose, onConfirm, onDecline, onCancel,
 }: {
   resolvedApp: ResolvedApplication | null;
+  isReadOnly?: boolean;
   partnerName: string;
   interviewActionLoading: boolean;
   onPropose: () => void;
@@ -20,26 +23,29 @@ export default function InterviewTab({
   onCancel: () => void;
 }) {
   const { s } = useMessagesAppearance();
-  const unavailable = resolvedApp?.status === 'Rejected'
-    && resolvedApp.parent_notes === 'Helper is already employed by another employer.';
+  const unavailable = isReadOnly ?? isHiredElsewhere(resolvedApp?.status, resolvedApp?.parent_notes);
+  const statusLabel = unavailable
+    ? 'Cancelled'
+    : (resolvedApp?.interview_id ? (resolvedApp.interview_status || 'Scheduled') : 'None');
 
   return (
     <ScrollView style={s.contractTabBody} contentContainerStyle={{ paddingBottom: 24 }}>
       <View style={s.contractHeaderRow}>
         <Text style={s.contractHeaderTitle}>Interview Schedule</Text>
-        <View style={[s.statusPill, resolvedApp?.interview_id ? interviewPillStyle(s, resolvedApp.interview_status) : s.statusPillGray]}>
-          <Text style={s.statusPillTxt}>{resolvedApp?.interview_id ? (resolvedApp.interview_status || 'Scheduled') : 'None'}</Text>
+        <View style={[s.statusPill, (resolvedApp?.interview_id || unavailable) ? interviewPillStyle(s, unavailable ? 'Cancelled' : resolvedApp?.interview_status) : s.statusPillGray]}>
+          <Text style={s.statusPillTxt}>{statusLabel}</Text>
         </View>
       </View>
 
       {unavailable ? (
-        <View style={s.contractEmptyState}>
-          <View style={s.contractEmptyIconWrap}>
-            <Ionicons name="person-remove-outline" size={36} color={DANGER} />
-          </View>
-          <Text style={s.contractEmptyTitle}>Opportunity unavailable</Text>
-          <Text style={s.contractEmptySub}>You cannot continue this opportunity because you are already hired by another employer.</Text>
-        </View>
+        <NotificationCard
+          tone="neutral"
+          icon="calendar-outline"
+          badge="Interview canceled"
+          title="Opportunity unavailable"
+          message="You are already employed by another household. This interview was automatically canceled."
+          style={{ marginHorizontal: 0, marginTop: 0 }}
+        />
       ) : !resolvedApp?.interview_id ? (
         <View style={s.contractEmptyState}>
           <View style={s.contractEmptyIconWrap}>

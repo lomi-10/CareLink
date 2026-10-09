@@ -21,6 +21,8 @@ export interface Conversation {
   has_messages:  boolean;
   /** job_applications.status for pending connections (has_messages === false), otherwise null. */
   application_status: string | null;
+  /** True when the helper was hired elsewhere — messaging is closed. */
+  is_read_only?: boolean;
 }
 
 const PENDING_CONNECTION_LABELS: Record<string, string> = {
@@ -95,6 +97,7 @@ export function useChat(partnerId: number) {
   const [loading,  setLoading]  = useState(true);
   const [sending,  setSending]  = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [readOnly, setReadOnly] = useState<boolean | null>(null);
   const clearSendError = useCallback(() => setSendError(null), []);
   const [myUserId, setMyUserId] = useState<number>(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -110,7 +113,10 @@ export function useChat(partnerId: number) {
         `${API_URL}/messages/get_messages.php?user_id=${user.user_id}&partner_id=${partnerId}&requester_id=${user.user_id}`
       );
       const data = await res.json();
-      if (data.success) setMessages(data.messages ?? []);
+      if (data.success) {
+        setMessages(data.messages ?? []);
+        if (typeof data.is_read_only === 'boolean') setReadOnly(data.is_read_only);
+      }
     } catch (e) {
       console.error('[useChat]', e);
     } finally {
@@ -119,6 +125,7 @@ export function useChat(partnerId: number) {
   }, [partnerId]);
 
   useEffect(() => {
+    setReadOnly(null);
     fetchMessages();
     pollRef.current = setInterval(fetchMessages, 5000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -318,5 +325,5 @@ export function useChat(partnerId: number) {
     }
   }, [fetchMessages]);
 
-  return { messages, loading, sending, sendError, clearSendError, myUserId, fetchMessages, sendMessage, editMessage, sendImage, sendVideoCall, respondInvite };
+  return { messages, loading, sending, sendError, clearSendError, readOnly, myUserId, fetchMessages, sendMessage, editMessage, sendImage, sendVideoCall, respondInvite };
 }

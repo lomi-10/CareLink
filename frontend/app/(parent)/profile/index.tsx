@@ -124,7 +124,7 @@ export default function ParentProfile() {
     : 'Your profile needs more information.';
 
   // ── Profile Sections (status pills) ──
-  const personalComplete  = !!(user?.username && profile?.contact_number);
+  const personalComplete  = !!(user?.username);
   const householdComplete = !!household?.household_type;
   const addressComplete   = !!profile?.address;
 

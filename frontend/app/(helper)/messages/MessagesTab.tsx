@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { EdgeInsets } from 'react-native-safe-area-context';
 
 import { Message } from '@/hooks/shared';
+import { NotificationCard } from '@/components/shared';
 import { MUTED, SUBTLE } from './messages.styles';
 import { useMessagesAppearance } from './messagesAppearance';
 import { dateDivider, shouldShowDivider } from './helpers';
@@ -45,15 +46,19 @@ export default function MessagesTab({
   unavailableNotice?: string | null;
 }) {
   const { s } = useMessagesAppearance();
+  const closed = !!unavailableNotice;
 
   return (
     <>
-      {unavailableNotice && (
-        <View style={{ margin: 14, marginBottom: 0, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#E8B6A8', backgroundColor: '#FFF1EC', flexDirection: 'row', gap: 10 }}>
-          <Ionicons name="person-remove-outline" size={22} color="#B94A36" />
-          <Text style={{ flex: 1, color: '#7A3024', fontWeight: '700', lineHeight: 19 }}>{unavailableNotice}</Text>
-        </View>
-      )}
+      {unavailableNotice ? (
+        <NotificationCard
+          tone="neutral"
+          icon="lock-closed-outline"
+          badge="Read-Only · Closed"
+          title="This conversation is closed"
+          message={unavailableNotice}
+        />
+      ) : null}
       {/* Messages */}
       <FlatList
         ref={flatRef}
@@ -75,13 +80,14 @@ export default function MessagesTab({
               <Bubble
                 msg={item}
                 isMine={isMine}
-                onLongPress={() => setEditTarget(item)}
-                onEditPress={item.message_type === 'text' && isMine ? () => setEditTarget(item) : undefined}
+                onLongPress={closed ? undefined : () => setEditTarget(item)}
+                onEditPress={!closed && item.message_type === 'text' && isMine ? () => setEditTarget(item) : undefined}
                 onImagePress={uri => setViewerUri(uri)}
                 onOpenVideoCall={onOpenVideoCall}
-                onAcceptInvite={onAcceptInvite ? () => onAcceptInvite(item) : undefined}
-                onDeclineInvite={onDeclineInvite ? () => onDeclineInvite(item) : undefined}
-                onOpenInviteJob={onOpenInviteJob ? () => onOpenInviteJob(item) : undefined}
+                disableInteractions={closed}
+                onAcceptInvite={!closed && onAcceptInvite ? () => onAcceptInvite(item) : undefined}
+                onDeclineInvite={!closed && onDeclineInvite ? () => onDeclineInvite(item) : undefined}
+                onOpenInviteJob={!closed && onOpenInviteJob ? () => onOpenInviteJob(item) : undefined}
                 inviteBusy={inviteBusyId === item.message_id}
               />
             </>
@@ -97,12 +103,12 @@ export default function MessagesTab({
       />
 
       {/* Input bar */}
-      <View style={[s.inputRow, Platform.OS === 'android' && insets.bottom > 0 && { paddingBottom: insets.bottom + 10 }, unavailableNotice && { opacity: 0.5 }]}>
-        <TouchableOpacity style={s.inputIcon} onPress={handlePickImage}>
+      <View style={[s.inputRow, Platform.OS === 'android' && insets.bottom > 0 && { paddingBottom: insets.bottom + 10 }, closed && { opacity: 0.5 }]}>
+        <TouchableOpacity style={s.inputIcon} onPress={handlePickImage} disabled={closed}>
           <Ionicons name="image-outline" size={22} color={MUTED} />
         </TouchableOpacity>
         {handleTakePhoto ? (
-          <TouchableOpacity style={s.inputIcon} onPress={handleTakePhoto}>
+          <TouchableOpacity style={s.inputIcon} onPress={handleTakePhoto} disabled={closed}>
             <Ionicons name="camera-outline" size={22} color={MUTED} />
           </TouchableOpacity>
         ) : null}
@@ -110,16 +116,17 @@ export default function MessagesTab({
           style={s.input}
           value={text}
           onChangeText={setText}
-          placeholder="Type a message…"
+          placeholder={closed ? 'Messaging unavailable' : 'Type a message…'}
           placeholderTextColor={SUBTLE}
           multiline
           maxLength={2000}
           returnKeyType="default"
+          editable={!closed}
         />
         <TouchableOpacity
-          style={[s.sendBtn, (!text.trim() || sending) && s.sendBtnDisabled]}
+          style={[s.sendBtn, (!text.trim() || sending || closed) && s.sendBtnDisabled]}
           onPress={handleSend}
-          disabled={!text.trim() || sending || !!unavailableNotice}
+          disabled={!text.trim() || sending || closed}
         >
           {sending
             ? <ActivityIndicator size="small" color="#fff" />

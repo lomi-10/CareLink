@@ -172,6 +172,7 @@ export default function ParentMessages() {
               partnerName={activePartner.partner_name}
               partnerPhoto={activePartner.partner_photo}
               jobPostId={activePartner.job_post_id}
+              isReadOnly={activePartner.is_read_only}
               onBack={() => { setActivePartner(null); refresh(); }}
             />
           </SafeAreaView>

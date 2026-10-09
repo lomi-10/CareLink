@@ -47,13 +47,9 @@ try {
     }
 
     $availabilityStmt = $conn->prepare(
-        "SELECT 1
-         FROM job_applications
-         WHERE helper_id = ?
-           AND status IN ('hired', 'Accepted', 'termination_pending')
-           AND application_id != ?
-           AND employer_signed_at IS NOT NULL
-           AND helper_signed_at IS NOT NULL
+        "SELECT 1 FROM placements
+         WHERE helper_id = ? AND status = 'Active'
+           AND (application_id IS NULL OR application_id != ?)
          LIMIT 1"
     );
     $availabilityStmt->bind_param('ii', $helper_id, $application_id);

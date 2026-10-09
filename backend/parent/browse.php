@@ -50,6 +50,8 @@ try {
     }
 
     // No contact columns here at all — see the response mapping below.
+    // Helpers with an Active placement are Hired / Unavailable and are hidden
+    // from new shortlisting so employers cannot pursue someone already placed.
     $query = "
         SELECT
             u.user_id, u.first_name, u.last_name, u.email,
@@ -58,10 +60,18 @@ try {
             hp.expected_salary, hp.salary_period, hp.barangay, hp.municipality, hp.province,
             hp.education_level, hp.religion, hp.civil_status,
             hp.verification_status, hp.latitude, hp.longitude,
-            hp.rating_average, hp.rating_count, hp.bio
+            hp.rating_average, hp.rating_count, hp.bio,
+            CASE WHEN EXISTS (
+                SELECT 1 FROM placements pl
+                WHERE pl.helper_id = u.user_id AND pl.status = 'Active'
+            ) THEN 1 ELSE 0 END AS is_hired
         FROM users u
         JOIN helper_profiles hp ON u.user_id = hp.user_id
         WHERE u.user_type = 'helper' AND u.status = 'approved'
+          AND NOT EXISTS (
+              SELECT 1 FROM placements pl
+              WHERE pl.helper_id = u.user_id AND pl.status = 'Active'
+          )
     ";
 
     $result = $conn->query($query);
@@ -215,7 +225,9 @@ try {
 
             // Meta
             'verification_status' => $row['verification_status'],
-            'availability_status' => $row['availability_status'],
+            // Derived from Active placements (no dedicated column). Listed helpers
+            // are always Available because hired helpers are filtered out above.
+            'availability_status' => !empty($row['is_hired']) ? 'Unavailable' : 'Available',
             'rating_average' => (float)$row['rating_average'],
             'rating_count' => (int)$row['rating_count'],
             'bio' => $row['bio']
