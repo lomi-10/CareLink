@@ -178,7 +178,7 @@ VALUES
   (3, '1996-04-12', 'Female', 'Single', 'Roman Catholic',
    'Leyte', 'Ormoc', 'Cogon', 11.0064000, 124.6075000, 'Cogon, Ormoc, Leyte',
    'Test helper account for API testing.', 'High School Grad', 3,
-   'Stay-out', 'Full-time', 6000.00, 'Monthly', 'Verified');
+   'Stay-out', 'Full-time', 6400.00, 'Monthly', 'Verified');
 
 
 -- Household employer profile. province is NOT NULL and defaults to 'Leyte',

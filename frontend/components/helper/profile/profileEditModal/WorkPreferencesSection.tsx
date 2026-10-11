@@ -72,7 +72,7 @@ export function WorkPreferencesSection({
           value={expectedSalary} 
           onChangeText={setExpectedSalary} 
           keyboardType="numeric"
-          placeholder="6000"
+          placeholder="6400"
         />
         <Text style={styles.salaryHint}>{t('helper.setup.expectedSalaryMinimum')}</Text>
       </View>

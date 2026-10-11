@@ -122,7 +122,7 @@ function carelink_score_job_for_helper(array $helper, array $helperCatIds, array
     }
 
     // 6. Salary (15) ------------------------------------------------------------
-    $hExpectedSalary = floatval($helper['expected_salary'] ?? 6000);
+    $hExpectedSalary = floatval($helper['expected_salary'] ?? 6400);
     $hSalaryPeriod   = $helper['salary_period'] ?? 'Monthly';
     $jobMonthly    = (($job['salary_period'] ?? '') === 'Daily') ? floatval($job['salary_offered'] ?? 0) * 26 : floatval($job['salary_offered'] ?? 0);
     $helperMonthly = ($hSalaryPeriod === 'Daily') ? $hExpectedSalary * 26 : $hExpectedSalary;

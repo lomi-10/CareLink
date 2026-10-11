@@ -135,7 +135,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
         address: p.address ?? '', landmark: p.landmark ?? '', bio: p.bio ?? '', education_level: p.education_level ?? '',
         experience_years: String(p.years_experience ?? p.experience_years ?? 0),
         employment_type: p.employment_type ?? 'Any', work_schedule: p.work_schedule ?? 'Full-time',
-        expected_salary: String(p.expected_salary ?? 6000), salary_period: p.salary_period ?? 'Monthly',
+        expected_salary: String(p.expected_salary ?? 6400), salary_period: p.salary_period ?? 'Monthly',
       };
       const payload = { ...base, ...overrides, ...(extras ?? {}) };
       // gender & education_level are nullable enums — sending '' would truncate,
@@ -327,7 +327,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
         address: p.address ?? '', landmark: p.landmark ?? '', bio: p.bio ?? '',
         experience_years: String(p.years_experience ?? p.experience_years ?? 0),
         employment_type: p.employment_type ?? 'Any', work_schedule: p.work_schedule ?? 'Full-time',
-        expected_salary: String(p.expected_salary ?? 6000), salary_period: p.salary_period ?? 'Monthly',
+        expected_salary: String(p.expected_salary ?? 6400), salary_period: p.salary_period ?? 'Monthly',
       }).forEach(([k, v]) => fd.append(k, String(v ?? '')));
       // gender / education_level are nullable enums — '' would truncate them.
       if (p.gender) fd.append('gender', p.gender);

@@ -65,7 +65,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   // Work Preferences
   const [employmentType, setEmploymentType] = useState<string>('Any');
   const [workSchedule, setWorkSchedule] = useState<string>('Full-time');
-  const [expectedSalary, setExpectedSalary] = useState('6000');
+  const [expectedSalary, setExpectedSalary] = useState('6400');
   const [salaryPeriod, setSalaryPeriod] = useState<string>('Monthly');
   const [availabilityStatus, setAvailabilityStatus] = useState<string>('Available');
 
@@ -250,7 +250,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         setExperienceYears(p.experience_years ? String(p.experience_years) : '0');
         setEmploymentType(p.employment_type || 'Any');
         setWorkSchedule(p.work_schedule || 'Full-time');
-        setExpectedSalary(p.expected_salary ? String(p.expected_salary) : '6000');
+        setExpectedSalary(p.expected_salary ? String(p.expected_salary) : '6400');
         setSalaryPeriod(p.salary_period || 'Monthly');
         setAvailabilityStatus(p.availability_status || 'Available');
         setProfileImage(p.profile_image || null);
@@ -399,8 +399,8 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
     if (!province || !municipality || !barangay) {
       return showNotification('Complete address is required', 'error');
     }
-    if (!expectedSalary || parseFloat(expectedSalary) < 6000) {
-      return showNotification('Salary must be at least ₱6,000', 'error');
+    if (!expectedSalary || parseFloat(expectedSalary) < 6400) {
+      return showNotification('Salary must be at least ₱6,400', 'error');
     }
     if (selectedCategoryIds.length === 0) {
       return showNotification('Select at least one job category', 'error');
@@ -965,9 +965,9 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
                         value={expectedSalary} 
                         onChangeText={setExpectedSalary} 
                         keyboardType="numeric"
-                        placeholder="6000"
+                        placeholder="6400"
                       />
-                      <Text style={styles.salaryHint}>Recommended minimum: ₱6,000/month</Text>
+                      <Text style={styles.salaryHint}>Recommended minimum: ₱6,400/month</Text>
                     </View>
 
                     <Text style={styles.label}>Current Availability</Text>

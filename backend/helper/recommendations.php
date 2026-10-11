@@ -53,7 +53,7 @@ try {
     $hProvince       = $helper['province']       ?? '';
     $hMunicipality   = $helper['municipality']   ?? '';
     $hExpYears       = (int)($helper['experience_years'] ?? 0);
-    $hExpectedSalary = floatval($helper['expected_salary'] ?? 6000);
+    $hExpectedSalary = floatval($helper['expected_salary'] ?? 6400);
     $hSalaryPeriod   = $helper['salary_period']   ?? 'Monthly';
 
     // ── 2. Helper's category IDs (from their selected job roles) ─────────────

@@ -143,7 +143,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const [experienceYears, setExperienceYears] = useState('0');
   const [employmentType, setEmploymentType] = useState<string>('Any');
   const [workSchedule,   setWorkSchedule]   = useState<string>('Full-time');
-  const [expectedSalary, setExpectedSalary] = useState('6000');
+  const [expectedSalary, setExpectedSalary] = useState('6400');
   const [salaryPeriod,   setSalaryPeriod]   = useState<string>('Monthly');
   const [profileImage,   setProfileImage]   = useState<string | null>(null);
   const [imageChanged,   setImageChanged]   = useState(false);
@@ -252,7 +252,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         setExperienceYears(p.experience_years ? String(p.experience_years) : '0');
         setEmploymentType(p.employment_type || 'Any');
         setWorkSchedule(p.work_schedule || 'Full-time');
-        setExpectedSalary(p.expected_salary ? String(p.expected_salary) : '6000');
+        setExpectedSalary(p.expected_salary ? String(p.expected_salary) : '6400');
         setSalaryPeriod(p.salary_period || 'Monthly');
         setProfileImage(p.profile_image || null);
         // Free-text custom roles/skills the helper added themselves.
@@ -349,7 +349,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const sectionDone: Record<string, boolean> = {
     personal:     !!(firstName.trim() && lastName.trim() && birthDate && province && municipality && barangay), // contact number is optional
     skills:       selectedCategoryIds.length > 0 && selectedLanguageIds.length > 0,
-    preferences:  !!(expectedSalary && parseFloat(expectedSalary) >= 6000),
+    preferences:  !!(expectedSalary && parseFloat(expectedSalary) >= 6400),
     experience:   !!(parseInt(experienceYears || '0', 10) > 0 || workRows.length > 0),
   };
   const nextSectionKey = SECTIONS.find(sec => !sectionDone[sec.key])?.key;
@@ -475,7 +475,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         if (!selectedLanguageIds.length) return tr('helper.setup.validationLanguage');
         return null;
       case 'preferences':
-        if (!expectedSalary || parseFloat(expectedSalary) < 6000) return tr('helper.setup.validationSalary');
+        if (!expectedSalary || parseFloat(expectedSalary) < 6400) return tr('helper.setup.validationSalary');
         return null;
       case 'experience':
         // Bio is optional — only validate length if the helper actually typed one.
@@ -853,7 +853,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         disabledOptions={employmentType === 'Stay-in' ? ['Part-time', 'Any'] : []}
       />
       <Label>{tr('helper.setup.salaryLabel')} <Req /></Label>
-      <StyledInput value={expectedSalary} onChangeText={setExpectedSalary} placeholder="6000" keyboardType="numeric" />
+      <StyledInput value={expectedSalary} onChangeText={setExpectedSalary} placeholder="6400" keyboardType="numeric" />
       <Text style={s.inputHint}>{tr('helper.setup.expectedSalaryMinimum')}</Text>
     </>
   );

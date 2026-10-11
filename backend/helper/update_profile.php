@@ -113,7 +113,7 @@ try {
     // Work preferences (SEPARATE COLUMNS!)
     $employment_type = isset($_POST['employment_type']) ? $_POST['employment_type'] : 'Any';
     $work_schedule = isset($_POST['work_schedule']) ? $_POST['work_schedule'] : 'Full-time';
-    $expected_salary = isset($_POST['expected_salary']) ? floatval($_POST['expected_salary']) : 6000.00;
+    $expected_salary = isset($_POST['expected_salary']) ? floatval($_POST['expected_salary']) : 6400.00;
     $salary_period = isset($_POST['salary_period']) ? $_POST['salary_period'] : 'Monthly';
     
     // Validate required fields

@@ -400,7 +400,7 @@ CREATE TABLE `helper_profiles` (
   `experience_years` int DEFAULT '0',
   `employment_type` enum('Stay-in','Stay-out','Any') COLLATE utf8mb4_general_ci DEFAULT 'Any',
   `work_schedule` enum('Full-time','Part-time','Any') COLLATE utf8mb4_general_ci DEFAULT 'Any' COMMENT 'Hours commitment (college students = Part-time)',
-  `expected_salary` decimal(10,2) DEFAULT '6000.00' COMMENT 'Minimum per PESO: ₱6,000',
+  `expected_salary` decimal(10,2) DEFAULT '6400.00' COMMENT 'Minimum per PESO: ₱6,400',
   `salary_period` enum('Daily','Monthly') COLLATE utf8mb4_general_ci DEFAULT 'Monthly',
   `custom_jobs` text COLLATE utf8mb4_general_ci DEFAULT (_utf8mb4'[]'),
   `custom_skills` text COLLATE utf8mb4_general_ci DEFAULT (_utf8mb4'[]'),
@@ -563,7 +563,7 @@ CREATE TABLE `job_posts` (
   `description` text COLLATE utf8mb4_general_ci NOT NULL,
   `employment_type` enum('Stay-in','Stay-out','Any') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Any',
   `work_schedule` enum('Full-time','Part-time','Any') COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Hours commitment',
-  `salary_offered` decimal(10,2) NOT NULL COMMENT 'Minimum: ₱6,000/month',
+  `salary_offered` decimal(10,2) NOT NULL COMMENT 'Minimum: ₱6,400/month',
   `salary_period` enum('Daily','Weekly','Semi-monthly','Monthly') COLLATE utf8mb4_general_ci DEFAULT 'Monthly',
   `benefits` text COLLATE utf8mb4_general_ci COMMENT 'SSS, PhilHealth, Pag-IBIG, etc.',
   `province` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
@@ -1318,7 +1318,7 @@ VALUES
   (3, '1996-04-12', 'Female', 'Single', 'Roman Catholic',
    'Leyte', 'Ormoc', 'Cogon', 11.0064000, 124.6075000, 'Cogon, Ormoc, Leyte',
    'Test helper account for API testing.', 'High School Grad', 3,
-   'Stay-out', 'Full-time', 6000.00, 'Monthly', 'Verified');
+   'Stay-out', 'Full-time', 6400.00, 'Monthly', 'Verified');
 
 INSERT INTO parent_profiles
   (user_id, province, municipality, barangay,
