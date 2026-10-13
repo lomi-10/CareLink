@@ -119,7 +119,11 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={st.overlay}>
-        <View style={st.modal}>
+        <ScrollView
+          style={st.modal}
+          contentContainerStyle={st.modalContent}
+          showsVerticalScrollIndicator={false}
+        >
 
           {/* Header bar */}
           <View style={st.header}>
@@ -227,7 +231,7 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
           </View>
 
           {/* ── Tab content ────────────────────────────────────────────────── */}
-          <ScrollView style={st.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={st.scrollContent}>
+          <View>
 
             {/* OVERVIEW */}
             {activeTab === 'overview' && (
@@ -430,7 +434,7 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
               </View>
             )}
 
-          </ScrollView>
+          </View>
 
           {/* ── Footer ────────────────────────────────────────────────────── */}
           <View style={st.footer}>
@@ -462,7 +466,7 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
             </TouchableOpacity>
           </View>
 
-        </View>
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -495,12 +499,11 @@ const st = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: '92%',
-    // On native, the `flex: 1` ScrollView below can collapse to 0px height inside a
-    // container that only has `maxHeight` (no `height`) — give it a definite height.
     height: Platform.OS === 'web' ? undefined : '92%',
     overflow: 'hidden',
     ...CARD_SHADOW,
   },
+  modalContent: { paddingBottom: 24 },
 
   // Header
   header: {
@@ -579,10 +582,6 @@ const st = StyleSheet.create({
   tabBtnActive: { borderBottomColor: CARAMEL },
   tabText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },
   tabTextActive: { fontFamily: FontFamily.fredokaSemiBold, color: BROWN },
-
-  // Scroll
-  scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 24 },
 
   // Sections
   section: { paddingHorizontal: 16, paddingTop: 20 },
