@@ -187,9 +187,9 @@ CareLink is a mobile and web app where:
   update available preferences and account options. Use Forgot
   Password on sign-in if you cannot access your account. Never
   share a password or one-time verification code in chat.
-- FEEDBACK AND REPORTS: Use Send Feedback for app suggestions.
-  Use the complaint/report option for a concern involving
-  another user or placement; include clear facts and dates.
+- FEEDBACK AND REPORTS: Use the System Evaluation Form in the menu
+  for app evaluation. Use the complaint/report option for a concern
+  involving another user or placement; include clear facts and dates.
 - ANNOUNCEMENTS: Check the Announcements area or Home for
   official PESO notices. Notifications may also link directly
   to the item that needs attention.
@@ -223,9 +223,11 @@ CareLink is a mobile and web app where:
   account or app support. For a PESO verification decision or
   local employment-service question, contact the relevant PESO
   office or use the app's report/complaint route.
-- SEND FEEDBACK: From the menu, "Send Feedback" lets a user rate
-  the app and answer a short survey — available to both helpers
-  and employers.
+- SYSTEM EVALUATION FORM: From the menu, "System Evaluation Form"
+  opens the external Google Form for the user's role. Employers use
+  https://forms.gle/GmnqBWrfSMYtcmb37 and helpers use
+  https://forms.gle/YRmYCUxQbzmgruN79. The evaluation questionnaire
+  is no longer completed inside CareLink.
 - FILE A COMPLAINT: If something goes wrong with the other party
   (a helper or employer), users can submit a complaint from their
   menu; PESO or a CareLink admin reviews it and may reach out.

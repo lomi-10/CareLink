@@ -396,7 +396,7 @@ export default {
       mainMenu: 'Menu',
       help: 'Tabang',
       howWorks: 'Giunsa paggamit ang CareLink',
-      evaluation: 'Pagsusi sa System',
+      evaluationForm: 'Porma sa Pagsusi sa System',
       finishDemo: 'Tapusa ang demo session',
       closeMenu: 'Isira ang menu',
     },

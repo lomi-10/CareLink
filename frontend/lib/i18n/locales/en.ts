@@ -378,7 +378,7 @@ export default {
       mainMenu: 'Menu',
       help: 'Help',
       howWorks: 'How CareLink works',
-      evaluation: 'System Evaluation',
+      evaluationForm: 'System Evaluation Form',
       finishDemo: 'Finish demo session',
       closeMenu: 'Close menu',
     },

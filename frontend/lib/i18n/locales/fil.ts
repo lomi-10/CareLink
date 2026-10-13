@@ -383,7 +383,7 @@ export default {
       mainMenu: 'Menu',
       help: 'Tulong',
       howWorks: 'Paano gumagana ang CareLink',
-      evaluation: 'Pagsusuri ng System',
+      evaluationForm: 'Form ng Pagsusuri ng System',
       finishDemo: 'Tapusin ang demo session',
       closeMenu: 'Isara ang menu',
     },
