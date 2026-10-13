@@ -46,6 +46,8 @@ export default function BrowseJobs() {
   const { isDesktop }  = useResponsive();
   const { handleLogout, getFullName } = useAuth();
   const { profileData } = useHelperProfile();
+  const helperCurrentlyEmployed = profileData?.profile.availability_status === 'Currently Employed'
+    || Number(profileData?.profile.has_active_placement) === 1;
   const { unreadCount }  = useNotifications('helper');
   const { ready, isWorkMode } = useHelperWorkMode();
 
@@ -67,7 +69,7 @@ export default function BrowseJobs() {
   // Top 3 individual jobs by match score — drives the "Recommended for You" section
   const topRecommended = useMemo(() =>
     [...jobs]
-      .filter(j => Number(j.match_score ?? 0) > 0)
+      .filter(j => Number(j.match_score ?? 0) > 0 && j.can_apply !== false)
       .sort((a, b) => Number(b.match_score ?? 0) - Number(a.match_score ?? 0))
       .slice(0, 3),
     [jobs]
@@ -153,6 +155,7 @@ export default function BrowseJobs() {
       <JobDetailsModal
         visible={jobDetailsVisible}
         job={selectedJob}
+        helperCurrentlyEmployed={helperCurrentlyEmployed}
         onApply={() => { setJobDetails(false); setApplication(true); }}
         onClose={() => setJobDetails(false)}
         onReport={() => { setJobDetails(false); setComplaintOpen(true); }}
@@ -353,6 +356,7 @@ export default function BrowseJobs() {
           userName={getFullName()}
           avatar={(profileData?.profile?.profile_image as string) ?? null}
           verified={profileData?.profile?.verification_status === 'Verified'}
+          currentlyEmployed={helperCurrentlyEmployed}
           onLogout={initiateLogout}
         />
         <ConfirmationModal

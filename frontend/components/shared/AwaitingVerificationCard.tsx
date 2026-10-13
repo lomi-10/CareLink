@@ -1,7 +1,5 @@
 // components/shared/AwaitingVerificationCard.tsx
-// Shown on the Home screen once a user's profile strength reaches 90–100% but
-// PESO hasn't verified them yet: confirms they're done and to await verification.
-// Hidden once Verified (or while still below 90%, where the setup guide shows).
+// Shown only after the account has entered PESO's verification queue.
 
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
@@ -12,18 +10,15 @@ import { useT } from '@/contexts/LocaleContext';
 const ACCENT: Record<'helper' | 'parent', string> = { helper: '#E86019', parent: '#C88B4A' };
 
 export function AwaitingVerificationCard({
-  completeness, status, themeKey = 'helper',
+  status, themeKey = 'helper',
 }: {
   completeness?: number | null;
   status?: string | null;
   themeKey?: 'helper' | 'parent';
 }) {
-  const pct = completeness ?? 0;
   const { t } = useT();
   const s = String(status ?? '');
-  // Only when the profile is essentially complete AND still awaiting PESO.
-  if (pct < 90) return null;
-  if (s === 'Verified' || s === 'Rejected') return null;
+  if (s !== 'Pending') return null;
 
   return (
     <View style={st.card}>
@@ -34,7 +29,7 @@ export function AwaitingVerificationCard({
         <View style={{ flex: 1 }}>
           <Text style={st.title}>{t('helper.home.profileCompleteTitle')} 🎉</Text>
           <Text style={st.sub}>
-            {t('helper.home.awaitingVerificationDescription', { percent: Math.min(100, Math.round(pct)) })}
+            {t('helper.home.awaitingVerificationDescription')}
           </Text>
         </View>
       </View>

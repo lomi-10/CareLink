@@ -144,8 +144,8 @@ export default function HelperProfileMain() {
   const rolesPreview = jobRoles.slice(0, 3).join(' • ');
 
   const strengthMsg =
-    strength >= 100 ? t('helper.profile.strengthExcellent')
-    : strength >= 75 ? t('helper.profile.strengthAlmost')
+    isVerified ? t('helper.profile.strengthExcellent')
+    : profileData?.ready_for_review ? t('helper.profile.strengthAlmost')
     : strength >= 50 ? t('helper.profile.strengthGood')
     : t('helper.profile.strengthNeedsInfo');
 
@@ -156,7 +156,7 @@ export default function HelperProfileMain() {
       title: t('helper.profile.personal'),
       subtitle: t('helper.profile.personalSubtitle'),
       // Complete only when the core personal fields are filled (same required
-      // set the backend uses for profile strength) — not just gender, which is
+      // set the backend uses for profile progress) — not just gender, which is
       // set at signup and would mark it "Complete" before the user starts.
       status: (profile?.birth_date && profile?.gender
         && (profile as any)?.province && (profile as any)?.municipality && (profile as any)?.barangay)
@@ -248,7 +248,7 @@ export default function HelperProfileMain() {
         {/* ── Divider ── */}
         <View style={s.heroDivider} />
 
-        {/* ── Bottom strip: profile strength ── */}
+        {/* ── Bottom strip: profile completion ── */}
         <View style={s.strengthStrip}>
           <StrengthRing percent={strength} />
           <View style={s.strengthText}>

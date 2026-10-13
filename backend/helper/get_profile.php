@@ -112,6 +112,12 @@ try {
                     hp.expected_salary,
                     hp.salary_period,
                     hp.verification_status,
+                    hp.availability_status,
+                    CASE WHEN EXISTS (
+                            SELECT 1 FROM placements pl
+                            WHERE pl.helper_id = hp.user_id AND pl.status = 'Active'
+                          ) THEN 1 ELSE 0
+                    END AS has_active_placement,
                     hp.rating_average,
                     hp.rating_count,
                     hp.custom_jobs,
@@ -371,35 +377,46 @@ try {
     // Calculate profile completeness
     // ========================================================================
 
-    // Weighted out of 100. The ESSENTIALS a helper needs to be PESO-verifiable
-    // (identity, address, work, documents, photo) sum to 90; optional polish
-    // fields make up the final 10. So a properly set-up profile reads 90% — the
-    // threshold we ask helpers to reach before verification — and 100% when fully
-    // fleshed out.
+    // Required details and a submitted Valid ID account for 80%. Optional
+    // profile details account for the remaining 20%; readiness is calculated
+    // separately from this progress score.
     $completeness = 0;
+    $ready_for_review = false;
     if ($profile !== null) {
         $completed = 0;
 
-        // Personal identity + address (36)
-        $core = ['contact_number' => 7, 'birth_date' => 7, 'gender' => 6, 'province' => 5, 'municipality' => 5, 'barangay' => 6];
+        // Required details + role + Valid ID (80)
+        $core = ['contact_number' => 10, 'birth_date' => 10, 'gender' => 10, 'province' => 5, 'municipality' => 5, 'barangay' => 5];
         foreach ($core as $f => $w) if (!empty($profile[$f])) $completed += $w;
+        $hasJobCategory = count($selected_jobs) > 0;
+        if ($hasJobCategory) $completed += 10;
 
-        // Profile photo (8)
-        if (!empty($profile['profile_image'])) $completed += 8;
+        $hasValidId = false;
+        foreach ($documents as $document) {
+            if ($document['document_type'] === 'Valid ID'
+                && in_array($document['status'], ['Pending', 'Verified'], true)) {
+                $hasValidId = true;
+                break;
+            }
+        }
+        if ($hasValidId) $completed += 25;
 
-        // Work & skills (18)
-        if (count($selected_jobs) > 0)      $completed += 8;
-        if (count($selected_skills) > 0)    $completed += 6;
-        if (count($selected_languages) > 0) $completed += 4;
+        $ready_for_review = $hasValidId && $hasJobCategory
+            && !empty($profile['contact_number'])
+            && !empty($profile['birth_date'])
+            && !empty($profile['gender'])
+            && !empty($profile['province'])
+            && !empty($profile['municipality'])
+            && !empty($profile['barangay']);
 
-        // Required documents (28)
-        $uploadedDocTypes = array_column($documents, 'document_type');
-        if (in_array('Valid ID', $uploadedDocTypes, true))           $completed += 14;
-        if (in_array('Barangay Clearance', $uploadedDocTypes, true)) $completed += 14;
-
-        // Optional polish — the final 10
-        $optional = ['bio' => 4, 'education_level' => 3, 'religion' => 2, 'landmark' => 1];
-        foreach ($optional as $f => $w) if (!empty($profile[$f])) $completed += $w;
+        // Optional profile details (20)
+        if (!empty($profile['profile_image'])) $completed += 5;
+        if (count($selected_skills) > 0) $completed += 5;
+        if (count($selected_languages) > 0) $completed += 5;
+        if (!empty($profile['bio'])) $completed += 2;
+        if (!empty($profile['education_level'])) $completed += 1;
+        if (!empty($profile['religion'])) $completed += 1;
+        if (!empty($profile['landmark'])) $completed += 1;
 
         $completeness = min(100, $completed);
     }
@@ -422,7 +439,8 @@ try {
         'selected_languages' => $selected_languages,
         'documents' => $documents,
         'work_history' => $work_history,
-        'profile_completeness' => $completeness
+        'profile_completeness' => $completeness,
+        'ready_for_review' => $ready_for_review
     ));
 
 } catch (Exception $e) {

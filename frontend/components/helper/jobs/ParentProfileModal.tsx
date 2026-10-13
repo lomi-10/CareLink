@@ -240,6 +240,12 @@ function JobsTab({ browseJobs, onOpenJob }: {
             <View style={jt.cardBody}>
               <View style={jt.titleRow}>
                 <Text style={jt.cardTitle} numberOfLines={1}>{job.title}</Text>
+                {job.can_apply === false && (
+                  <View style={jt.appliedBadge}>
+                    <Ionicons name="checkmark-circle" size={12} color="#15803D" />
+                    <Text style={jt.appliedBadgeText}>Already applied</Text>
+                  </View>
+                )}
                 {matchPct > 0 && (
                   <View style={jt.matchBadge}>
                     <Text style={jt.matchText}>{matchPct}% Match</Text>
@@ -621,6 +627,8 @@ const jt = StyleSheet.create({
   cardBody:   { flex: 1, gap: 4 },
   titleRow:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardTitle:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK, flex: 1 },
+  appliedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#ECFDF3', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: '#BBF7D0' },
+  appliedBadgeText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10, color: '#15803D' },
   matchBadge: { backgroundColor: '#ECFDF5', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, borderWidth: 1, borderColor: GREEN + '44' },
   matchText:  { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: GREEN },
   cardSub:    { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },

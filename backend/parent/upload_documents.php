@@ -151,11 +151,10 @@ try {
             throw new Exception("No valid files were successfully processed.");
         }
 
-        // Return account to PESO queue after new uploads (first-time or replacing
-        // rejected docs) — but only once BOTH required documents are on file.
-        // Uploading a single document must not by itself queue an incomplete
-        // submission for PESO review.
-        if (carelink_has_required_documents($conn, $user_id)) {
+        // Queue a partial submission too, so PESO can review the uploaded ID
+        // and see which required document is still missing. Approval still
+        // requires an explicit missing-document acknowledgement.
+        if (carelink_has_any_required_document($conn, $user_id)) {
             $updateProfile = $conn->prepare(
                 "UPDATE parent_profiles
                  SET verification_status = 'Pending', updated_at = NOW()

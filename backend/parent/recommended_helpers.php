@@ -117,10 +117,11 @@ try {
                hp.expected_salary, hp.salary_period,
                hp.barangay, hp.municipality, hp.province,
                hp.latitude, hp.longitude,
-               hp.verification_status, hp.rating_average, hp.rating_count
+               hp.verification_status, hp.availability_status, hp.rating_average, hp.rating_count
         FROM users u
         JOIN helper_profiles hp ON u.user_id = hp.user_id
         WHERE u.user_type = 'helper' AND u.status = 'approved'
+          AND COALESCE(hp.availability_status, 'Available') = 'Available'
           AND NOT EXISTS (
               SELECT 1 FROM placements pl
               WHERE pl.helper_id = u.user_id AND pl.status = 'Active'

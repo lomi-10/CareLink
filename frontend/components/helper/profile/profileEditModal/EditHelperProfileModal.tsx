@@ -147,6 +147,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const [salaryPeriod,   setSalaryPeriod]   = useState<string>('Monthly');
   const [profileImage,   setProfileImage]   = useState<string | null>(null);
   const [imageChanged,   setImageChanged]   = useState(false);
+  const [availabilityStatus, setAvailabilityStatus] = useState('Available');
 
   // Reference data
   const [availableCategories, setAvailableCategories] = useState<any[]>([]);
@@ -255,6 +256,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         setExpectedSalary(p.expected_salary ? String(p.expected_salary) : '6400');
         setSalaryPeriod(p.salary_period || 'Monthly');
         setProfileImage(p.profile_image || null);
+        setAvailabilityStatus(p.availability_status === 'Currently Employed' ? 'Currently Employed' : 'Available');
         // Free-text custom roles/skills the helper added themselves.
         setCustomJobs(Array.isArray(p.custom_jobs) ? p.custom_jobs : []);
         setCustomSkills(Array.isArray(p.custom_skills) ? p.custom_skills : []);
@@ -384,6 +386,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       fd.append('work_schedule',   workSchedule);
       fd.append('expected_salary', expectedSalary);
       fd.append('salary_period',   salaryPeriod);
+      fd.append('availability_status', availabilityStatus);
       fd.append('skill_ids',       JSON.stringify(selectedSkillIds));
       fd.append('language_ids',    JSON.stringify(selectedLanguageIds));
       fd.append('job_ids',         JSON.stringify(selectedJobIds));
@@ -566,6 +569,15 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         <Label>{tr('helper.setup.emailAddress')}</Label>
         <VerifiedRow value={email || tr('helper.setup.emailNotSet')} onChange={() => setChangeField('email')} />
         <Text style={s.verifiedNote}>{tr('helper.setup.emailVerificationHint')}</Text>
+        <Label>{tr('helper.setup.availability')}</Label>
+        <DropdownField
+          value={availabilityStatus}
+          onChange={setAvailabilityStatus}
+          options={['Available', 'Currently Employed']}
+          placeholder={tr('helper.setup.selectAvailability')}
+          optionLabel={option => tr(option === 'Available' ? 'helper.setup.available' : 'helper.setup.currentlyEmployed')}
+        />
+        <Text style={s.verifiedNote}>{tr('helper.setup.availabilityHelp')}</Text>
       </>
     );
     if (step === 4) return (
@@ -1307,25 +1319,26 @@ const RELIGION_OPTIONS = [
   'Aglipayan', 'Other', 'Prefer not to say',
 ];
 
-function DropdownField({ value, onChange, options, placeholder }: {
+function DropdownField({ value, onChange, options, placeholder, optionLabel }: {
   value: string;
   onChange: (v: string) => void;
   options: string[];
   placeholder?: string;
+  optionLabel?: (option: string) => string;
 }) {
   const [open, setOpen] = useState(false);
   const { t: tr } = useT();
   return (
     <View>
       <TouchableOpacity style={[s.input, s.dropdownField]} onPress={() => setOpen(o => !o)} activeOpacity={0.8}>
-        <Text style={[s.dropdownValue, !value && { color: '#B8956A' }]}>{value || placeholder || tr('helper.setup.select')}</Text>
+        <Text style={[s.dropdownValue, !value && { color: '#B8956A' }]}>{value ? optionLabel?.(value) ?? value : placeholder || tr('helper.setup.select')}</Text>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={MUTED} />
       </TouchableOpacity>
       {open && (
         <View style={s.dropdownList}>
           {options.map(opt => (
             <TouchableOpacity key={opt} style={s.dropdownItem} onPress={() => { onChange(opt); setOpen(false); }} activeOpacity={0.7}>
-              <Text style={[s.dropdownItemText, value === opt && { color: ORANGE, fontFamily: FontFamily.fredokaSemiBold }]}>{opt}</Text>
+              <Text style={[s.dropdownItemText, value === opt && { color: ORANGE, fontFamily: FontFamily.fredokaSemiBold }]}>{optionLabel?.(opt) ?? opt}</Text>
               {value === opt && <Ionicons name="checkmark" size={16} color={ORANGE} />}
             </TouchableOpacity>
           ))}

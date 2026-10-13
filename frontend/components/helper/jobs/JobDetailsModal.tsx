@@ -11,6 +11,7 @@ import { applicationStatusLabel } from '@/lib/applicationStatusLabel';
 import { applyByLabel } from '@/lib/jobExpiry';
 import { useT } from '@/contexts/LocaleContext';
 import { ParentProfileModal } from './ParentProfileModal';
+import { NotificationCard } from '@/components/shared';
 
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -32,6 +33,7 @@ interface JobDetailsModalProps {
   onToggleSave?: () => void;
   onReport?: () => void;
   job: any;
+  helperCurrentlyEmployed?: boolean;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -94,7 +96,7 @@ function IntroCard({ icon, label, value, variant = 'category' }: {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onReport, job }: JobDetailsModalProps) {
+export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onReport, job, helperCurrentlyEmployed = false }: JobDetailsModalProps) {
   const { t: tr } = useT();
   const [activeTab, setActiveTab] = useState<JobDetailsTab>('overview');
   const [employerProfileVisible, setEmployerProfileVisible] = useState(false);
@@ -389,6 +391,14 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
                   />
                   <Text style={s.appliedPillText}>{applicationStatusLabel(job.application_status ?? '')}</Text>
                 </View>
+              ) : helperCurrentlyEmployed ? (
+                <NotificationCard
+                  tone="warning"
+                  title="Currently employed"
+                  message="You can browse jobs, but you need to mark yourself Available before applying."
+                  compact
+                  style={{ marginHorizontal: 0, marginTop: 0 }}
+                />
               ) : (
                 <TouchableOpacity style={s.applyBtn} onPress={onApply} activeOpacity={0.85}>
                   <Ionicons name="paper-plane" size={18} color="#fff" />

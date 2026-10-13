@@ -103,6 +103,7 @@ $before = migrate_table_list($conn);
 // but will not be created by a deploy — which is the problem this file exists
 // to solve, so leaving one off quietly reintroduces it.
 $migrations = [
+    'shared/helper_availability_migration.php' => ['ensure_helper_availability_column'],
     'shared/auth_tokens.php'              => ['ensure_auth_tokens_table'],
     'shared/complaint_tracking_tables.php' => ['ensure_complaint_tracking_tables', 'ensure_user_safety_flags_table'],
     'shared/contract_signatures_table.php' => ['ensure_contract_signatures_table'],

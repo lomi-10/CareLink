@@ -70,6 +70,25 @@ const API_URL = PRODUCTION_API_URL || (Platform.OS === 'web' ? webApiUrl : mobil
   the env var itself requires a manual **Redeploy** (env vars are baked
   in at build time, not read at runtime).
 
+## Part 2b — Backend and database migrations
+
+Every push to `main` syncs `backend/` to Hostinger and then calls the
+protected `backend/migrate.php` endpoint. The migration endpoint updates the
+Hostinger database configured by `DB_*` in the server's `config.local.php`;
+it does not update a separate Laragon database.
+
+For automatic Hostinger migrations, `MIGRATE_TOKEN` must be set to the same
+value in the Hostinger `config.local.php` and GitHub repository Actions
+secrets. `MIGRATE_URL` is optional and defaults to the configured CareLink API
+URL. The deploy workflow fails if `MIGRATE_TOKEN` is missing or if migrations
+fail, rather than reporting a successful database update.
+
+To update Laragon, run the protected migration endpoint locally with
+`MIGRATE_TOKEN` set in Laragon's `config.local.php`. The helper-availability
+migration checks whether the column already exists, so it is safe to run more
+than once and works with MySQL versions that do not support
+`ADD COLUMN IF NOT EXISTS`.
+
 ---
 
 ## Part 3 — Email (signup codes / password reset)

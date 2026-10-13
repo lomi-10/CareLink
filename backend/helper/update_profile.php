@@ -115,6 +115,11 @@ try {
     $work_schedule = isset($_POST['work_schedule']) ? $_POST['work_schedule'] : 'Full-time';
     $expected_salary = isset($_POST['expected_salary']) ? floatval($_POST['expected_salary']) : 6400.00;
     $salary_period = isset($_POST['salary_period']) ? $_POST['salary_period'] : 'Monthly';
+    $availability_status_sent = isset($_POST['availability_status']);
+    $availability_status = $availability_status_sent ? trim($_POST['availability_status']) : 'Available';
+    if ($availability_status_sent && !in_array($availability_status, ['Available', 'Currently Employed'], true)) {
+        throw new Exception("Invalid availability status");
+    }
     
     // Validate required fields
     // NOTE: Other profile fields (contact, birth date, address, salary) are
@@ -387,6 +392,12 @@ try {
                 $expected_salary,     // d (decimal)
                 $salary_period        // s
             );
+
+            if ($availability_status_sent) {
+                $updateFields[] = "availability_status = ?";
+                $types .= "s";
+                $params[] = $availability_status;
+            }
             
             // Add lat/lng if provided by frontend (GPS / Nominatim result)
             if ($latitude !== null) {
@@ -439,23 +450,24 @@ try {
                 user_id, birth_date, gender, civil_status, religion,
                 province, municipality, barangay, address, landmark, bio,
                 education_level, experience_years, employment_type, work_schedule,
-                expected_salary, salary_period, profile_image, latitude, longitude, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                expected_salary, salary_period, availability_status, profile_image, latitude, longitude, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
             $insertStmt = $conn->prepare($insertSql);
             if (!$insertStmt) {
                 throw new Exception("Failed to prepare insert: " . $conn->error);
             }
 
-            // 20 columns: user_id(i), 11 strings (birth_date…education_level),
+            // 21 columns: user_id(i), 11 strings (birth_date…education_level),
             // experience_years(i), employment_type(s), work_schedule(s),
-            // expected_salary(d), salary_period(s), profile_image(s), latitude(d), longitude(d).
+            // expected_salary(d), salary_period(s), availability_status(s),
+            // profile_image(s), latitude(d), longitude(d).
             $insertStmt->bind_param(
-                "isssssssssssissdssdd",
+                "isssssssssssissdsssdd",
                 $user_id, $birth_date, $gender, $civil_status, $religion,
                 $province, $municipality, $barangay, $address, $landmark, $bio,
                 $education_level, $experience_years, $employment_type, $work_schedule,
-                $expected_salary, $salary_period, $profile_image_url, $latitude, $longitude
+                $expected_salary, $salary_period, $availability_status, $profile_image_url, $latitude, $longitude
             );
             
             if (!$insertStmt->execute()) {

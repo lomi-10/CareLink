@@ -60,7 +60,7 @@ try {
             hp.experience_years, hp.employment_type, hp.work_schedule,
             hp.expected_salary, hp.salary_period, hp.barangay, hp.municipality, hp.province,
             hp.education_level, hp.religion, hp.civil_status,
-            hp.verification_status, hp.latitude, hp.longitude,
+            hp.verification_status, hp.availability_status, hp.latitude, hp.longitude,
             hp.rating_average, hp.rating_count, hp.bio,
             CASE WHEN EXISTS (
                 SELECT 1 FROM placements pl
@@ -69,6 +69,7 @@ try {
         FROM users u
         JOIN helper_profiles hp ON u.user_id = hp.user_id
         WHERE u.user_type = 'helper' AND u.status = 'approved'
+          AND COALESCE(hp.availability_status, 'Available') = 'Available'
           AND NOT EXISTS (
               SELECT 1 FROM placements pl
               WHERE pl.helper_id = u.user_id AND pl.status = 'Active'

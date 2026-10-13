@@ -22,11 +22,11 @@ export function ProfileCompletionCard({ percent, role = "helper" }: Props) {
           <Ionicons name="pie-chart" size={20} color={accent} />
         </View>
         <View style={styles.textCol}>
-          <Text style={styles.title}>Profile strength</Text>
+          <Text style={styles.title}>Profile completion</Text>
           <Text style={styles.hint}>
             {clamped >= 100
-              ? "Your profile looks complete."
-              : "Add missing details to improve trust and matching."}
+              ? "All profile sections are complete."
+              : "Add essential and optional details so employers can learn about your experience."}
           </Text>
         </View>
         <Text style={[styles.pct, { color: accent }]}>{clamped}%</Text>

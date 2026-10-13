@@ -46,7 +46,7 @@ try {
     // Return users for PESO verification screen.
     //
     // Desired behavior:
-    // - Show ALL users who reached 100% setup (users.profile_completed = 1)
+    // - Show users who meet the backend readiness criteria
     // - ALSO show Verified/Rejected users for history, even if profile_completed is old (0)
     // - PESO UI filters handle Pending / Verified / Rejected / All
     $sql = "SELECT 
@@ -64,7 +64,17 @@ try {
                     ELSE COALESCE(h.verification_status, p.verification_status, 'Unverified')
                 END as verification_status,
                 COALESCE(h.created_at, p.created_at, u.created_at) as created_at,
-                EXISTS (SELECT 1 FROM user_documents ud WHERE ud.user_id = u.user_id AND ud.ai_checked_at IS NOT NULL) as ai_scanned
+                EXISTS (SELECT 1 FROM user_documents ud WHERE ud.user_id = u.user_id AND ud.ai_checked_at IS NOT NULL) as ai_scanned,
+                EXISTS (
+                    SELECT 1 FROM user_documents d
+                    WHERE d.user_id = u.user_id AND d.document_type = 'Valid ID'
+                      AND d.status IN ('Pending', 'Verified')
+                ) as has_valid_id,
+                EXISTS (
+                    SELECT 1 FROM user_documents d
+                    WHERE d.user_id = u.user_id AND d.document_type = 'Barangay Clearance'
+                      AND d.status IN ('Pending', 'Verified')
+                ) as has_barangay_clearance
             FROM users u
             LEFT JOIN helper_profiles h ON u.user_id = h.user_id
             LEFT JOIN parent_profiles p ON u.user_id = p.user_id
@@ -80,19 +90,19 @@ try {
                 OR (
                   u.user_type = 'helper'
                   AND h.profile_id IS NOT NULL
-                  AND COALESCE(u.username,'') <> '' AND CHAR_LENGTH(u.username) >= 3
                   AND COALESCE(u.phone,'') <> ''
+                  AND COALESCE(h.birth_date,'') <> ''
+                  AND COALESCE(h.gender,'') <> ''
                   AND COALESCE(h.province,'') <> ''
                   AND COALESCE(h.municipality,'') <> ''
                   AND COALESCE(h.barangay,'') <> ''
-                  AND COALESCE(h.bio,'') <> '' AND CHAR_LENGTH(TRIM(h.bio)) >= 15
-                  AND EXISTS (SELECT 1 FROM helper_skills hs WHERE hs.profile_id = h.profile_id)
-                  AND (
-                    SELECT COUNT(DISTINCT d.document_type) FROM user_documents d
+                  AND EXISTS (SELECT 1 FROM helper_jobs hj WHERE hj.profile_id = h.profile_id)
+                  AND EXISTS (
+                    SELECT 1 FROM user_documents d
                     WHERE d.user_id = u.user_id
-                      AND d.document_type IN ('Barangay Clearance','Valid ID')
+                      AND d.document_type = 'Valid ID'
                       AND d.status IN ('Pending','Verified')
-                  ) >= 2
+                  )
                 )
                 OR (
                   u.user_type = 'parent'
@@ -157,6 +167,14 @@ try {
 
         // Whether ANY of this user's documents has been AI-scanned yet.
         $row['ai_scanned'] = !empty($row['ai_scanned']);
+        $row['missing_required_documents'] = [];
+        if (empty($row['has_valid_id'])) {
+            $row['missing_required_documents'][] = 'Valid ID';
+        }
+        if (empty($row['has_barangay_clearance'])) {
+            $row['missing_required_documents'][] = 'Barangay Clearance';
+        }
+        unset($row['has_valid_id'], $row['has_barangay_clearance']);
 
         $users[] = $row;
     }

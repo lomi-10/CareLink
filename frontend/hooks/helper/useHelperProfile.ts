@@ -31,6 +31,8 @@ export interface HelperProfileData {
     bio?: string;
     employment_type?: string;
     work_schedule?: string;
+    availability_status?: 'Available' | 'Currently Employed';
+    has_active_placement?: boolean | number | string;
     years_experience?: number;
     expected_salary?: number;
     salary_period?: string;
@@ -66,6 +68,8 @@ export interface HelperProfileData {
   work_history: WorkHistoryEntry[];
   /** 0–100 from API */
   profile_completeness?: number;
+  /** Essential details, a job category, and a submitted Valid ID are present. */
+  ready_for_review?: boolean;
 }
 
 export interface WorkHistoryEntry {
@@ -184,6 +188,7 @@ export function useHelperProfile() {
               typeof data.profile_completeness === 'number'
                 ? data.profile_completeness
                 : 0,
+            ready_for_review: data.ready_for_review === true,
           };
 
           setProfileData(formattedData);

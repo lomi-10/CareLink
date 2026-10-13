@@ -14,7 +14,7 @@
  * Fields returned:
  *   user_type                   'parent' | 'helper' | (other)
  *   verification_status         'Verified' | 'Pending' | 'Rejected' | 'Unverified'
- *   profile_completion_percent  0-100  (same formula as get_profile.php)
+ *   profile_completion_percent  0-100  (same formula as helper/get_profile.php)
  *   has_active_job_post          bool   (parents only; false otherwise)
  *   has_active_placement        bool   (true when in an active employment)
  *   is_plus_subscriber          bool   (parents only; CareLink Plus, false otherwise)
@@ -93,22 +93,27 @@ function carelink_uc_helper(mysqli $conn, int $userId, array &$ctx): void
         $langs = carelink_uc_count($conn, "SELECT COUNT(*) c FROM helper_languages WHERE profile_id = ?", $profileId);
         $docs  = carelink_uc_doc_types($conn, $userId);
 
-        // Mirror helper/get_profile.php completeness.
-        $total = 0; $done = 0;
-        foreach (['contact_number', 'birth_date', 'gender', 'province', 'municipality', 'barangay'] as $f) {
-            $total += 8; if (!empty($p[$f])) $done += 8;
-        }
-        foreach (['bio', 'education_level', 'religion', 'landmark'] as $f) {
-            $total += 5; if (!empty($p[$f])) $done += 5;
-        }
-        $total += 10; if (!empty($p['profile_image'])) $done += 10;
-        $total += 10; if ($jobs  > 0) $done += 10;
-        $total += 10; if ($skills > 0) $done += 10;
-        $total += 10; if ($langs > 0) $done += 10;
-        foreach (['Barangay Clearance', 'Valid ID'] as $d) {
-            $total += 10; if (in_array($d, $docs, true)) $done += 10;
-        }
-        $ctx['profile_completion_percent'] = $total > 0 ? (int) round($done / $total * 100) : 0;
+        $completed = 0;
+        $core = ['contact_number' => 10, 'birth_date' => 10, 'gender' => 10, 'province' => 5, 'municipality' => 5, 'barangay' => 5];
+        foreach ($core as $field => $weight) if (!empty($p[$field])) $completed += $weight;
+        if ($jobs > 0) $completed += 10;
+        $hasValidId = carelink_uc_exists(
+            $conn,
+            "SELECT 1 FROM user_documents
+             WHERE user_id = ? AND document_type = 'Valid ID'
+               AND status IN ('Pending', 'Verified')
+             LIMIT 1",
+            $userId
+        );
+        if ($hasValidId) $completed += 25;
+        if (!empty($p['profile_image'])) $completed += 5;
+        if ($skills > 0) $completed += 5;
+        if ($langs > 0) $completed += 5;
+        if (!empty($p['bio'])) $completed += 2;
+        if (!empty($p['education_level'])) $completed += 1;
+        if (!empty($p['religion'])) $completed += 1;
+        if (!empty($p['landmark'])) $completed += 1;
+        $ctx['profile_completion_percent'] = min(100, $completed);
     }
 
     $ctx['has_active_placement'] = carelink_uc_exists(
@@ -213,7 +218,10 @@ function carelink_uc_exists(mysqli $conn, string $sql, int $id): bool
 
 function carelink_uc_doc_types(mysqli $conn, int $userId): array
 {
-    $stmt = $conn->prepare("SELECT DISTINCT document_type FROM user_documents WHERE user_id = ?");
+    $stmt = $conn->prepare(
+        "SELECT DISTINCT document_type FROM user_documents
+         WHERE user_id = ? AND status IN ('Pending', 'Verified')"
+    );
     if (!$stmt) return [];
     $stmt->bind_param("i", $userId);
     $stmt->execute();

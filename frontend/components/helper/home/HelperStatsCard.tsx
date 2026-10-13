@@ -1,5 +1,5 @@
 // components/helper/home/HelperStatsCard.tsx
-// 4-column unified stats card: Applied, Saved, Profile Views, Profile Strength.
+// 4-column unified stats card: Applied, Saved, Profile Views, Profile Progress.
 // Used on the helper dashboard (non-hired state).
 
 import { Ionicons } from '@expo/vector-icons';

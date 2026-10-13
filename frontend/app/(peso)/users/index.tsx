@@ -19,6 +19,7 @@ export interface VerificationUser {
   user_id: number; name: string; email: string; user_type: string;
   contact_number?: string; profile_image?: string; verification_status: string; created_at?: string;
   ai_scanned?: boolean;
+  missing_required_documents?: string[];
 }
 
 const FILTER_TABS = ["Pending", "Verified", "Rejected", "All"] as const;
@@ -113,6 +114,14 @@ export default function UserVerification() {
             {!!item.contact_number && <Meta icon="call-outline" text={item.contact_number} />}
             {!!joinDate && <Meta icon="calendar-outline" text={`Joined ${joinDate}`} />}
           </View>
+          {!!item.missing_required_documents?.length && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 5 }}>
+              <Ionicons name="alert-circle-outline" size={12} color={c.warn} />
+              <Text style={{ fontFamily: font.semibold, fontSize: 11, color: c.warn }} numberOfLines={1}>
+                Missing: {item.missing_required_documents.join(", ")}
+              </Text>
+            </View>
+          )}
         </View>
         <Pill label={item.verification_status} tone={STATUS_TONE[item.verification_status] ?? "neutral"} />
         <Ionicons name="chevron-forward" size={16} color={c.subtle} />

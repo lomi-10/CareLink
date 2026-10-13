@@ -101,20 +101,19 @@ export default function HelperHome() {
     });
   }, [profileData, stats?.applications, workReady, isWorkMode, activeHire, syncStage]);
 
-  // One-time celebration when the profile first reaches 90%+ (verification-ready).
+  // Celebrate once when the helper actually enters the PESO queue.
   const [celebrateVisible, setCelebrateVisible] = useState(false);
   useEffect(() => {
-    const pct = profileData?.profile_completeness ?? 0;
     const vstatus = String(profileData?.profile?.verification_status ?? '');
-    if (pct >= 90 && vstatus !== 'Verified' && vstatus !== 'Rejected') {
-      AsyncStorage.getItem('helper_profile_complete_v1').then((seen) => {
+    if (vstatus === 'Pending') {
+      AsyncStorage.getItem('helper_peso_queue_notice_v1').then((seen) => {
         if (!seen) {
           setCelebrateVisible(true);
-          AsyncStorage.setItem('helper_profile_complete_v1', '1').catch(() => {});
+          AsyncStorage.setItem('helper_peso_queue_notice_v1', '1').catch(() => {});
         }
       });
     }
-  }, [profileData?.profile_completeness, profileData?.profile?.verification_status]);
+  }, [profileData?.profile?.verification_status]);
 
   const openPlacementReview = (applicationId: number, counterpartyName: string, jobTitle?: string) => {
     setReviewTarget({ applicationId, counterpartyName, jobTitle });
@@ -290,6 +289,7 @@ export default function HelperHome() {
           avatar={profileImage}
           verified={profileData?.profile?.verification_status === 'Verified'}
           completeness={profileData?.profile_completeness ?? 0}
+          readyForReview={profileData?.ready_for_review === true}
           stats={{ applications: stats.applications, saved_jobs: stats.saved_jobs, profile_views: stats.profile_views }}
           onLogout={initiateLogout}
           onBrowse={() => router.push('/(helper)/browse')}

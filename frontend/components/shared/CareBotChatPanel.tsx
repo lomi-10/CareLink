@@ -108,7 +108,7 @@ const KB: KbEntry[] = [
   {
     keys: ['account', 'verification', 'get verified', 'peso verif', 'verify my'],
     answer:
-      'PESO verification confirms an account is legitimate. Complete your profile (details, address, and documents), then upload your Valid ID (front & back) and Barangay Clearance in Profile → Documents. CareBot scans them and PESO reviews — usually within 1–3 working days. Reaching about 90% profile strength means you’re ready for verification.',
+      'PESO verification confirms an account is legitimate. Complete your required profile details, choose at least one job category, and submit your Valid ID (front & back) in Profile → Documents to enter the PESO review queue. PESO may still request your Barangay Clearance. Your profile progress is separate from PESO verification; an uploaded ID is not considered verified until PESO reviews it.',
   },
   {
     keys: ['upload', 'document', 'valid id', 'barangay', 'clearance', 'tesda'],

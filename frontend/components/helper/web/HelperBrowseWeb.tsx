@@ -13,7 +13,7 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import { useBrowseJobs, type JobPost } from '@/hooks/helper';
 import { useJobReferences } from '@/hooks/shared/useJobReferences';
 import { formatParentHouseholdType } from '@/constants/parentHousehold';
-import { NotificationModal } from '@/components/shared';
+import { NotificationCard, NotificationModal } from '@/components/shared';
 import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
 import { isShareableWithEmployer } from '@/constants/documents';
 import { pickCoverLetter, MAX_GENERATIONS, type HelperInfo } from '@/lib/coverLetterTemplates';
@@ -46,14 +46,14 @@ const CAT_ICON = (name: string): keyof typeof Ionicons.glyphMap => {
   return 'construct-outline';
 };
 
-export function HelperBrowseWeb({ userName, avatar, verified, onLogout }: { userName: string; avatar: string | null; verified: boolean; onLogout: () => void }) {
+export function HelperBrowseWeb({ userName, avatar, verified, currentlyEmployed, onLogout }: { userName: string; avatar: string | null; verified: boolean; currentlyEmployed: boolean; onLogout: () => void }) {
   const router = useRouter();
   const { jobs, filters, updateFilter, resetFilters, refresh, toggleSaveJob, savedCount, loading } = useBrowseJobs();
   const { categories } = useJobReferences();
 
   const parentGroups = useMemo(() => groupJobsByParent(jobs), [jobs]);
   const topRecommended = useMemo(
-    () => [...jobs].filter((j) => Number(j.match_score ?? 0) > 0).sort((a, b) => Number(b.match_score ?? 0) - Number(a.match_score ?? 0)).slice(0, 3),
+    () => [...jobs].filter((j) => Number(j.match_score ?? 0) > 0 && j.can_apply !== false).sort((a, b) => Number(b.match_score ?? 0) - Number(a.match_score ?? 0)).slice(0, 3),
     [jobs],
   );
 
@@ -187,7 +187,7 @@ export function HelperBrowseWeb({ userName, avatar, verified, onLogout }: { user
             </View>
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingTop: 4 }} showsVerticalScrollIndicator={false}>
               {panel.mode === 'job' && (
-                <JobPanel job={panel.job} pp={pp?.id === panel.job.parent_id ? pp.data : null}
+                <JobPanel job={panel.job} pp={pp?.id === panel.job.parent_id ? pp.data : null} currentlyEmployed={currentlyEmployed}
                   onViewHousehold={() => openFamily(panel.job.parent_id, panel.job.parent_name || 'Employer')}
                   onApply={() => setPanel({ mode: 'apply', job: panel.job })}
                   onToggleSave={() => toggleSaveJob(panel.job.job_post_id)} />
@@ -287,7 +287,7 @@ function FamilyCard({ g, active, onView }: { g: any; active: boolean; onView: ()
 }
 
 // ─── Job details panel ───
-function JobPanel({ job, pp, onViewHousehold, onApply, onToggleSave }: { job: JobPost; pp: any; onViewHousehold: () => void; onApply: () => void; onToggleSave: () => void }) {
+function JobPanel({ job, pp, currentlyEmployed, onViewHousehold, onApply, onToggleSave }: { job: JobPost; pp: any; currentlyEmployed: boolean; onViewHousehold: () => void; onApply: () => void; onToggleSave: () => void }) {
   const [saved, setSaved] = useState(!!job.is_saved);
   const [moreDesc, setMoreDesc] = useState(false);
   const [showAllReqs, setShowAllReqs] = useState(false);
@@ -419,6 +419,14 @@ function JobPanel({ job, pp, onViewHousehold, onApply, onToggleSave }: { job: Jo
             />
             <Text style={[s.applyBtnText, { color: wt.muted }]}>{applicationStatusLabel(job.application_status ?? '')}</Text>
           </View>
+        ) : currentlyEmployed ? (
+          <NotificationCard
+            tone="warning"
+            title="Currently employed"
+            message="You can browse jobs, but you need to mark yourself Available before applying."
+            compact
+            style={{ flex: 1, marginHorizontal: 0, marginTop: 0 }}
+          />
         ) : (
           <Pressable onPress={onApply} style={({ hovered, pressed }: any) => [{ flex: 1 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
             <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.applyBtn}>
@@ -535,7 +543,7 @@ function FamilyPanel({ parentName, data, loading, jobs, tab, onTab, onOpenJob }:
               <Pressable key={job.job_post_id} onPress={() => onOpenJob(job)} style={({ hovered }: any) => [s.jobRow, TRANS, hovered && { borderColor: wt.accent, backgroundColor: '#FFF9F3' }]}>
                 <View style={s.recIc}><Ionicons name={CAT_ICON(job.categories?.[0] ?? job.title)} size={18} color={wt.accent} /></View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <View style={s.jobRowTop}><Text style={s.jobRowTitle} numberOfLines={1}>{job.title}</Text>{match > 0 && <View style={s.matchPill}><Text style={s.matchPillText}>{match}%</Text></View>}</View>
+                  <View style={s.jobRowTop}><Text style={s.jobRowTitle} numberOfLines={1}>{job.title}</Text>{job.can_apply === false && <View style={s.appliedBadge}><Text style={s.appliedBadgeText}>Already applied</Text></View>}{match > 0 && <View style={s.matchPill}><Text style={s.matchPillText}>{match}%</Text></View>}</View>
                   <Text style={s.jobRowSub}>{[job.employment_type, job.work_schedule].filter(Boolean).join(' · ')}</Text>
                   {salary > 0 && <Text style={s.recSalary}>₱{salary.toLocaleString()} <Text style={s.recSalaryPer}>/ {fmtPeriod(job.salary_period)}</Text></Text>}
                 </View>
@@ -570,6 +578,7 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
   const [selDocs, setSelDocs] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorTone, setErrorTone] = useState<'warning' | 'danger'>('danger');
   // The helper's own details — personalise the generated letter so no two match.
   const [helperInfo, setHelperInfo] = useState<HelperInfo | null>(null);
   const salary = Number(job.salary_offered);
@@ -615,13 +624,13 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
 
   // First press validates and shows the review; the review's Confirm actually posts.
   const handleSubmitPress = () => {
-    if (letter.trim().length < 50) { setError('Please write a cover letter (min 50 characters).'); return; }
+    if (letter.trim().length < 50) { setErrorTone('danger'); setError('Please write a cover letter (min 50 characters).'); return; }
     setError(null);
     setConfirming(true);
   };
 
   const submit = async () => {
-    if (letter.trim().length < 50) { setError('Please write a cover letter (min 50 characters).'); return; }
+    if (letter.trim().length < 50) { setErrorTone('danger'); setError('Please write a cover letter (min 50 characters).'); return; }
     setSubmitting(true); setError(null);
     try {
       const raw = await AsyncStorage.getItem('user_data');
@@ -631,9 +640,11 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
         body: JSON.stringify({ job_post_id: job.job_post_id, helper_id: user.user_id, cover_letter: letter.trim(), shared_document_ids: selDocs, requester_id: user.user_id }),
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.message || 'Failed to submit application');
-      onSubmitted();
-    } catch (e: any) { setError(e.message || 'Failed to submit application'); } finally { setSubmitting(false); }
+      if (!data.success) {
+        setErrorTone(data.code === 'not_verified' || data.code === 'currently_employed' ? 'warning' : 'danger');
+        setError(data.message || 'Failed to submit application');
+      } else onSubmitted();
+    } catch (e: any) { setErrorTone('danger'); setError(e.message || 'Failed to submit application'); } finally { setSubmitting(false); }
   };
 
   // ── Review-before-submit step (mirrors the mobile ApplicationModal) ──
@@ -658,7 +669,7 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
           </View>
         ) : <Text style={[s.jobRowSub, { marginTop: 4 }]}>None — only your profile will be shared.</Text>}
 
-        {error && <View style={[s.errRow, { marginTop: 12 }]}><Ionicons name="alert-circle" size={14} color={wt.red} /><Text style={s.errText}>{error}</Text></View>}
+        {error && <NotificationCard tone={errorTone} title={errorTone === 'warning' ? 'Application unavailable' : 'Could not submit application'} message={error} compact style={{ marginHorizontal: 0, marginTop: 12 }} />}
 
         <View style={s.applyRow}>
           <Pressable onPress={() => setConfirming(false)} style={({ hovered }: any) => [s.cancelBtn, TRANS, hovered && { backgroundColor: wt.lineSoft }]}>
@@ -705,7 +716,7 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
         <TextInput style={[s.letterInput, error && { borderColor: wt.red }]} multiline value={letter} onChangeText={(v) => { setLetter(v); setError(null); }} maxLength={1000}
           placeholder="Tell the employer about your experience and why you're interested…" placeholderTextColor={wt.subtle} textAlignVertical="top" />
         <Text style={[s.charCount, letter.length < 50 && letter.length > 0 && { color: wt.accent }]}>{letter.length}/1000{letter.length > 0 && letter.length < 50 ? '  · min 50 chars' : ''}</Text>
-        {error && <View style={s.errRow}><Ionicons name="alert-circle" size={14} color={wt.red} /><Text style={s.errText}>{error}</Text></View>}
+        {error && <NotificationCard tone={errorTone} title={errorTone === 'warning' ? 'Application unavailable' : 'Could not submit application'} message={error} compact style={{ marginHorizontal: 0, marginTop: 8 }} />}
       </View>
 
       {docs.length > 0 && (
@@ -882,6 +893,8 @@ const s = StyleSheet.create({
   jobRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: wt.surface, borderWidth: 1, borderColor: wt.line, borderRadius: 13, padding: 13 },
   jobRowTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   jobRowTitle: { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: wt.ink },
+  appliedBadge: { backgroundColor: '#ECFDF3', borderWidth: 1, borderColor: '#BBF7D0', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3 },
+  appliedBadgeText: { color: '#15803D', fontFamily: FontFamily.fredokaSemiBold, fontSize: 10 },
   jobRowSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: wt.muted, marginTop: 2 },
   ratingSummary: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: wt.raise, borderWidth: 1, borderColor: wt.line, borderRadius: 14, padding: 14 },
   ratingBig: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 34, color: wt.ink },

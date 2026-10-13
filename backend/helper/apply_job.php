@@ -46,6 +46,43 @@ if (!carelink_is_verified($conn, $helper_id)) {
     exit;
 }
 
+$employment_stmt = $conn->prepare("
+    SELECT hp.availability_status,
+           EXISTS (
+               SELECT 1 FROM placements pl
+               WHERE pl.helper_id = hp.user_id AND pl.status = 'Active'
+           ) AS has_active_placement
+    FROM helper_profiles hp
+    WHERE hp.user_id = ?
+    LIMIT 1
+");
+if (!$employment_stmt) {
+    error_log("Failed to prepare helper availability check: " . $conn->error);
+    echo json_encode(['success' => false, 'message' => 'Unable to verify your availability right now. Please try again.']);
+    exit;
+}
+$employment_stmt->bind_param("i", $helper_id);
+if (!$employment_stmt->execute()) {
+    error_log("Failed helper availability check for {$helper_id}: " . $employment_stmt->error);
+    $employment_stmt->close();
+    echo json_encode(['success' => false, 'message' => 'Unable to verify your availability right now. Please try again.']);
+    exit;
+}
+$employment = $employment_stmt->get_result()->fetch_assoc();
+$employment_stmt->close();
+if (!$employment) {
+    echo json_encode(['success' => false, 'message' => 'Helper profile not found.']);
+    exit;
+}
+if ($employment['availability_status'] === 'Currently Employed' || !empty($employment['has_active_placement'])) {
+    echo json_encode([
+        'success' => false,
+        'code' => 'currently_employed',
+        'message' => 'Your availability is set to Currently Employed. You can browse jobs, but you must mark yourself Available before applying.',
+    ]);
+    exit;
+}
+
 // Documents the helper explicitly chose to share with this employer (consent is per-application)
 $shared_document_ids = [];
 if (isset($input['shared_document_ids']) && is_array($input['shared_document_ids'])) {

@@ -44,12 +44,13 @@ const STATUS_PILL: Record<string, { label: string; bg: string; color: string }> 
 };
 
 export function HelperHomeWeb({
-  userName, avatar, verified, completeness, stats, onLogout, onBrowse, banners, announcement,
+  userName, avatar, verified, completeness, readyForReview, stats, onLogout, onBrowse, banners, announcement,
 }: {
   userName: string;
   avatar: string | null;
   verified: boolean;
   completeness: number;
+  readyForReview: boolean;
   stats: Stats;
   onLogout: () => void;
   onBrowse: () => void;
@@ -134,7 +135,7 @@ export function HelperHomeWeb({
               <Stat icon="briefcase" fill={wt.accentSoft} color={wt.accent} value={stats.applications} label="Applications" link="View all" onPress={() => go('/(helper)/applications')} />
               <Stat icon="bookmark" fill={wt.accentSoft} color="#8A4B23" value={stats.saved_jobs} label="Saved Jobs" link="View all" onPress={() => go('/(helper)/browse/saved_jobs')} />
               <Stat icon="eye" fill={wt.greenSoft} color={wt.green} value={stats.profile_views} label="Profile Views" link="View all" onPress={() => go('/(helper)/profile')} />
-              <Stat icon="trending-up" fill={wt.purpleSoft} color={wt.purple} value={`${completeness}%`} label="Profile Strength" link="Improve" onPress={() => go('/(helper)/profile')} last />
+              <Stat icon="trending-up" fill={wt.purpleSoft} color={wt.purple} value={`${completeness}%`} label="Profile Completion" link="Improve" onPress={() => go('/(helper)/profile')} last />
             </View>
 
             {/* Recommended */}
@@ -231,11 +232,13 @@ export function HelperHomeWeb({
             {/* Profile progress */}
             <LinearGradient colors={FEATURE_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.feature}>
               <View style={s.featHead}>
-                <Text style={s.featTitle}>Profile Progress</Text>
+                <Text style={s.featTitle}>Profile Completion</Text>
                 <Text style={s.featPct}>{completeness}% Complete</Text>
               </View>
               <View style={s.bar}><LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.barFill, { width: `${Math.min(100, completeness)}%` }]} /></View>
-              <Text style={s.featText}>{completeness >= 90 ? 'Great — you’re verification-ready! Keep your profile fresh for more views.' : 'Almost there! Complete your profile to get more employer views.'}</Text>
+              <Text style={s.featText}>{readyForReview
+                ? 'Your required details and Valid ID are ready for PESO review. Add optional details to complete your profile.'
+                : 'Add your required details, choose a job category, and submit a Valid ID to enter PESO review.'}</Text>
               <TouchableOpacity onPress={() => go('/(helper)/profile')} activeOpacity={0.9}>
                 <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.featBtn}>
                   <Text style={s.featBtnText}>Complete My Profile</Text>

@@ -1,10 +1,8 @@
 <?php
 /**
- * Both required document types must be uploaded (Pending or Verified — a
- * Rejected copy doesn't count) before an account is considered ready for
- * PESO's queue. Shared by the profile-completed sync below AND the upload
- * endpoints, so uploading a single document (e.g. just a Valid ID) can no
- * longer flip verification_status to 'Pending' on its own.
+ * Parent review readiness requires both required document types. Helpers
+ * enter the review queue with a submitted Valid ID; PESO may still require
+ * Barangay Clearance before approving them.
  */
 /**
  * The documents an account must have on file before PESO can verify it.
@@ -68,18 +66,44 @@ function carelink_has_required_documents(mysqli $conn, int $user_id): bool
     return $count >= 2; // both Barangay Clearance AND Valid ID
 }
 
+function carelink_has_any_required_document(mysqli $conn, int $user_id): bool
+{
+    $stmt = $conn->prepare(
+        "SELECT 1
+         FROM user_documents
+         WHERE user_id = ?
+           AND document_type IN ('Barangay Clearance', 'Valid ID')
+           AND status IN ('Pending', 'Verified')
+         LIMIT 1"
+    );
+    if (!$stmt) {
+        error_log("Failed to prepare required-document availability check: " . $conn->error);
+        return false;
+    }
+    $stmt->bind_param("i", $user_id);
+    if (!$stmt->execute()) {
+        error_log("Failed required-document availability check for user {$user_id}: " . $stmt->error);
+        $stmt->close();
+        return false;
+    }
+    $exists = $stmt->get_result()->num_rows > 0;
+    $stmt->close();
+    return $exists;
+}
+
 /**
- * Marks users.profile_completed based on minimum fields for PESO verification prep.
+ * Marks helper users.profile_completed when they are ready to enter the PESO
+ * queue; this is separate from optional profile-completion progress.
  * Called from helper/update_profile.php and parent/update_profile.php inside the same transaction.
  *
- * @return bool Whether the profile is considered complete after sync.
+ * @return bool Whether the helper is ready to enter the PESO review queue.
  */
 function carelink_sync_helper_profile_completed(mysqli $conn, int $user_id): bool
 {
     $sql = "
-        SELECT u.username,
-               u.phone AS contact_number,
-               hp.province, hp.municipality, hp.barangay, hp.bio, hp.profile_id
+        SELECT u.phone AS contact_number,
+               hp.birth_date, hp.gender,
+               hp.province, hp.municipality, hp.barangay, hp.profile_id
         FROM users u
         INNER JOIN helper_profiles hp ON hp.user_id = u.user_id
         WHERE u.user_id = ?
@@ -101,36 +125,42 @@ function carelink_sync_helper_profile_completed(mysqli $conn, int $user_id): boo
     $stmt->close();
 
     $profile_id = (int) $row['profile_id'];
-    $bio = isset($row['bio']) ? trim((string) $row['bio']) : '';
-    $uname = isset($row['username']) ? trim((string) $row['username']) : '';
-
-    $baseOk = $uname !== ''
-        && strlen($uname) >= 3
-        && trim((string) $row['contact_number']) !== ''
+    $baseOk = trim((string) $row['contact_number']) !== ''
+        && trim((string) $row['birth_date']) !== ''
+        && trim((string) $row['gender']) !== ''
         && trim((string) $row['province']) !== ''
         && trim((string) $row['municipality']) !== ''
         && trim((string) $row['barangay']) !== '';
-    // Bio is deliberately NOT part of this. It's an optional field, and
-    // requiring 15+ characters here silently kept accounts with a short intro
-    // out of PESO's queue with nothing in the UI explaining why.
 
-    $skillCount = 0;
-    $sk = $conn->prepare("SELECT COUNT(*) AS c FROM helper_skills WHERE profile_id = ?");
-    if ($sk) {
-        $sk->bind_param("i", $profile_id);
-        $sk->execute();
-        $skillCount = (int) ($sk->get_result()->fetch_assoc()['c'] ?? 0);
-        $sk->close();
+    $jobCount = 0;
+    $jobs = $conn->prepare("SELECT COUNT(*) AS c FROM helper_jobs WHERE profile_id = ?");
+    if ($jobs) {
+        $jobs->bind_param("i", $profile_id);
+        $jobs->execute();
+        $jobCount = (int) ($jobs->get_result()->fetch_assoc()['c'] ?? 0);
+        $jobs->close();
     }
 
-    $hasRequiredDocs = carelink_has_required_documents($conn, $user_id);
+    $validId = $conn->prepare(
+        "SELECT 1 FROM user_documents
+         WHERE user_id = ? AND document_type = 'Valid ID'
+           AND status IN ('Pending', 'Verified')
+         LIMIT 1"
+    );
+    $hasValidId = false;
+    if ($validId) {
+        $validId->bind_param("i", $user_id);
+        $validId->execute();
+        $hasValidId = $validId->get_result()->num_rows > 0;
+        $validId->close();
+    }
 
-    $complete = $baseOk && $skillCount > 0 && $hasRequiredDocs;
-    carelink_set_profile_completed_flag($conn, $user_id, $complete);
+    $readyForReview = $baseOk && $jobCount > 0 && $hasValidId;
+    carelink_set_profile_completed_flag($conn, $user_id, $readyForReview);
 
-    // If helper is now "complete", move verification into the PESO queue.
-    // (Photo is NOT required here; this is about minimum data + skills + docs.)
-    if ($complete) {
+    // A submitted Valid ID is enough to enter the review queue. PESO still
+    // handles document verification and may require the Barangay Clearance.
+    if ($readyForReview) {
         $q = $conn->prepare(
             "UPDATE helper_profiles
              SET verification_status = 'Pending',
@@ -149,7 +179,7 @@ function carelink_sync_helper_profile_completed(mysqli $conn, int $user_id): boo
                     $conn,
                     'peso_queue_user',
                     'Helper ready for verification',
-                    $nm . ' completed their profile and is in the PESO verification queue.',
+                    $nm . ' completed the required details and submitted a Valid ID for PESO review.',
                     'account',
                     $user_id
                 );
@@ -157,7 +187,7 @@ function carelink_sync_helper_profile_completed(mysqli $conn, int $user_id): boo
             $q->close();
         }
     }
-    return $complete;
+    return $readyForReview;
 }
 
 function carelink_sync_parent_profile_completed(mysqli $conn, int $user_id): bool

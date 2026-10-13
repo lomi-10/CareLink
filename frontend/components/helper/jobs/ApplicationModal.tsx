@@ -5,6 +5,7 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import { isShareableWithEmployer } from '@/constants/documents';
 import { pickCoverLetter, MAX_GENERATIONS, type HelperInfo } from '@/lib/coverLetterTemplates';
 import type { JobPost } from '@/hooks/helper';
+import { NotificationCard } from '@/components/shared';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
@@ -72,6 +73,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
   const [genCount,      setGenCount]      = useState(0); // cover-letter generations used
   const [submitting,    setSubmitting]    = useState(false);
   const [error,         setError]         = useState<string | null>(null);
+  const [errorTone,     setErrorTone]     = useState<'warning' | 'danger'>('danger');
   const [expanded,      setExpanded]      = useState(false); // full-screen cover-letter editor
   const [confirming,    setConfirming]    = useState(false); // read-first review before submit
 
@@ -117,6 +119,9 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
 
   useEffect(() => {
     if (!visible) return;
+    setError(null);
+    setErrorTone('danger');
+    setConfirming(false);
 
     let cancelled = false;
     (async () => {
@@ -177,6 +182,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
   const handleSubmitPress = () => {
     if (!job) return;
     if (coverLetter.trim().length < 50) {
+      setErrorTone('danger');
       setError('Please write a cover letter (min 50 characters).');
       return;
     }
@@ -188,6 +194,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
     if (!job) return;
 
     if (coverLetter.trim().length < 50) {
+      setErrorTone('danger');
       setError('Please write a cover letter (min 50 characters).');
       return;
     }
@@ -224,9 +231,11 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
         onSubmit();
         onClose();
       } else {
-        throw new Error(data.message || 'Failed to submit application');
+        setErrorTone(data.code === 'not_verified' || data.code === 'currently_employed' ? 'warning' : 'danger');
+        setError(data.message || 'Failed to submit application');
       }
     } catch (err: any) {
+      setErrorTone('danger');
       setError(err.message || 'Failed to submit application');
     } finally {
       setSubmitting(false);
@@ -253,6 +262,16 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
           </View>
 
           <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+
+            {error && (
+              <NotificationCard
+                tone={errorTone}
+                title={errorTone === 'warning' ? 'Application unavailable' : 'Could not submit application'}
+                message={error}
+                compact
+                style={{ marginHorizontal: 0, marginTop: 0, marginBottom: 12 }}
+              />
+            )}
 
             {/* ── Job summary card ── */}
             <View style={s.jobCard}>
@@ -304,7 +323,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
               })()}
 
               {/* Textarea */}
-              <View style={[s.textareaWrap, error ? s.textareaError : null]}>
+              <View style={s.textareaWrap}>
                 <TextInput
                   style={s.textarea}
                   multiline
@@ -331,12 +350,6 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
                 </View>
               </View>
 
-              {error && (
-                <View style={s.errorRow}>
-                  <Ionicons name="alert-circle" size={14} color="#EF4444" />
-                  <Text style={s.errorText}>{error}</Text>
-                </View>
-              )}
             </View>
 
             {/* ── Share Documents (optional) ── */}
