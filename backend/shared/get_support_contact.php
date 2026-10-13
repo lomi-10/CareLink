@@ -29,7 +29,8 @@ try {
     $row = $conn->query(
         "SELECT user_id, first_name, last_name FROM users
           WHERE user_type = 'admin' AND status = 'approved'
-          ORDER BY user_id ASC LIMIT 1"
+          ORDER BY (username = 'super_admin') DESC, user_id ASC
+          LIMIT 1"
     )->fetch_assoc();
 
     if (!$row) {

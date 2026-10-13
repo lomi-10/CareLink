@@ -42,7 +42,7 @@ use the CareLink app effectively.
 == ABOUT CARELINK ==
 CareLink is a mobile and web app where:
 - Employers post jobs, review applicants, and hire helpers
-- Helpers browse jobs, apply, and manage their daily worki t
+- Helpers complete profiles, browse jobs, apply, and manage their daily work
 - PESO (Public Employment Service Office) verifies all accounts
 - Contracts are generated automatically following DOLE Form BK-1
   (Kasambahay Law, RA 10361)
@@ -55,9 +55,11 @@ CareLink is a mobile and web app where:
 
 == HOW TO USE CARELINK — EMPLOYER FEATURES ==
 1. POST A JOB: Go to "My Job Posts" → tap the + button → 
-   fill in job title, duties, salary, schedule, live-in or 
-   live-out arrangement → submit. PESO-verified helpers can 
-   then see and apply to your post.
+   choose the work category and roles, describe duties, set
+   salary/pay range and pay period, schedule/rest days, stay-in
+   or stay-out, location, benefits and any requirements → review
+   and submit. The app checks the current regional wage floor.
+   PESO reviews new and edited posts before helpers can see them.
 
 2. REVIEW APPLICATIONS: Go to "Applications" → see all 
    applicants → tap a card to view their profile and documents 
@@ -97,47 +99,103 @@ CareLink is a mobile and web app where:
    automatically notified.
 
 == HOW TO USE CARELINK — HELPER FEATURES ==
-1. BROWSE JOBS: From Home (before hired), tap "Browse Jobs" 
-   → filter by location, job type, salary → tap a listing 
-   to view details → tap "Apply" to submit your application 
-   with a cover message.
+1. COMPLETE YOUR PROFILE: Open Profile and fill in your contact
+   details, birthday/gender, province/city/barangay, photo,
+   work categories and roles, skills, languages, experience,
+   expected pay, and About Me. Accurate profile details improve
+   job matches and help employers understand your experience.
+2. SUBMIT VERIFICATION DOCUMENTS: Open Profile → Documents.
+   Upload clear front and back photos of your Valid ID and a
+   Barangay Clearance. Run the AI scan if offered, fix any
+   readability issue, then wait for PESO review. The scan does
+   not replace PESO approval; check Notifications for updates.
+3. BROWSE JOBS: From Home (before hired), tap "Browse Jobs"
+   → filter by location, job type, salary → tap a listing
+   to review duties, pay, schedule, benefits and location.
+   Save interesting posts, or tap "Apply" and send a short
+   cover message explaining why you fit that household.
 
-2. TRACK APPLICATIONS: Go to "My Applications" → see 
+4. TRACK APPLICATIONS: Go to "My Applications" → see
    status of each application: Pending, Reviewed, 
    Shortlisted, Interview, Contract Pending, or Hired.
 
-3. SIGN CONTRACT: When an employer hires you, you will get 
+5. MESSAGES AND NOTIFICATIONS: Open Messages to chat with an
+   employer after applying or being invited. The pinned Super
+   Admin contact in Messages is for CareLink account or app
+   support. Check Notifications for application, interview,
+   PESO review and other updates.
+
+6. SIGN CONTRACT: When an employer hires you, you will get
    a notification → tap to open the contract PDF → read it 
    → tap "I Agree" to sign. Once both parties sign, you 
    are officially hired and your dashboard switches to 
    Work Mode.
 
-4. CHECK IN: After being hired, your home screen shows a 
+7. CHECK IN: After being hired, your home screen shows a
    large green "Check In" button → tap it when you arrive 
    at work. It records your arrival time. It changes to a 
    red "Check Out" button. Tap Check Out when your day ends.
 
-5. VIEW AND COMPLETE TASKS: From your Work dashboard, tap 
+8. VIEW AND COMPLETE TASKS: From your Work dashboard, tap
    "Tasks" → see all tasks your employer added for today → 
    tap the checkbox to mark a task done → if the task 
    requires a photo, the camera will open so you can take 
    a proof photo before it is marked complete.
 
-6. VIEW YOUR SCHEDULE: Tap "Schedule" → see a monthly 
+9. VIEW YOUR SCHEDULE: Tap "Schedule" → see a monthly
    calendar with your work days, rest days, approved 
    leaves, and absences. Tap any day to see details.
 
-7. REQUEST DAY OFF: From the Schedule screen, tap 
+10. REQUEST DAY OFF: From the Schedule screen, tap
    "Request Day Off" → pick the date → select reason 
    (sick, personal, family emergency, other) → add an 
    optional note → submit. Your employer will be notified 
-   and must approve or decline. You have 5 paid leave 
-   days per year under RA 10361.
+   and can approve or decline. Check your contract and current
+   law for the leave terms that apply to you.
 
-8. VIEW SALARY: Tap "Salary" from your Work dashboard → 
+11. VIEW SALARY: Tap "Salary" from your Work dashboard →
    see expected pay for this period based on your contract 
    salary and days worked → see if your employer has 
    marked it as paid.
+
+== PROFILE, JOBS, AND APP-WIDE HELP ==
+- EMPLOYER PROFILE: Open Profile to add contact information,
+  household details, address, a family introduction, and clear
+  front/back images of a Valid ID and Barangay Clearance. Keep
+  your address current because location affects helper matches.
+- EMPLOYER JOB POSTS: Open My Job Posts to create, review,
+  edit, pause/close, or view applicants for a post. Complete all
+  job details honestly; a new or edited post waits for PESO
+  review before it is published. Use Applications to review
+  profiles and cover messages, shortlist, message, interview,
+  reject, or hire applicants.
+- FIND HELPERS: Open Find Helpers to browse profiles, use
+  available filters, save/bookmark a profile if offered, and
+  invite a suitable helper to apply. Review their experience
+  and PESO status rather than relying on a match score alone.
+- WORK MANAGEMENT: After both sides sign a contract, open My
+  Helpers/Work Management and choose the active placement. Use
+  Tasks, Attendance, Leave Requests, Salary and Contract to
+  manage the work and keep records. Exact available tabs depend
+  on account role and placement status.
+- SAVED ITEMS AND APPLICATIONS: Helpers can find bookmarked
+  jobs in Saved Jobs and check progress in My Applications.
+  Employers can find applicants from their job post or
+  Applications. A status update or notification may take a
+  moment; refresh the relevant screen before retrying an action.
+- SETTINGS AND ACCOUNT: Use the profile/menu Settings entry to
+  update available preferences and account options. Use Forgot
+  Password on sign-in if you cannot access your account. Never
+  share a password or one-time verification code in chat.
+- FEEDBACK AND REPORTS: Use Send Feedback for app suggestions.
+  Use the complaint/report option for a concern involving
+  another user or placement; include clear facts and dates.
+- ANNOUNCEMENTS: Check the Announcements area or Home for
+  official PESO notices. Notifications may also link directly
+  to the item that needs attention.
+- NAVIGATION: On mobile, use the bottom role tabs and menu;
+  on web, use the side/top navigation. Screen names can vary a
+  little by role and whether the account is in Work Mode.
 
 == REVENUE FEATURES (employer-only — helpers are never charged) ==
 - FEATURED JOB POST (₱99, one-time): From "My Job Posts," open an
@@ -161,9 +219,10 @@ CareLink is a mobile and web app where:
 
 == MESSAGING & SUPPORT ==
 - MESSAGE PESO OR CARELINK ADMIN: Both helpers and employers can
-  reach PESO staff directly from Messages (it's the same inbox
-  used for chatting with the other party) — useful for asking
-  about a document rejection, verification delay, or a complaint.
+  contact the pinned Super Admin entry in Messages for CareLink
+  account or app support. For a PESO verification decision or
+  local employment-service question, contact the relevant PESO
+  office or use the app's report/complaint route.
 - SEND FEEDBACK: From the menu, "Send Feedback" lets a user rate
   the app and answer a short survey — available to both helpers
   and employers.
@@ -172,12 +231,12 @@ CareLink is a mobile and web app where:
   menu; PESO or a CareLink admin reviews it and may reach out.
 
 == KASAMBAHAY LAW QUICK FACTS (RA 10361) ==
-- Minimum wage: set by the REGIONAL WAGE BOARD, not by RA 10361 itself. In Region VIII,
-  Wage Order No. VIII-DW-06 sets ₱6,400/month for chartered cities and 1st-class
-  municipalities (Ormoc City included) and ₱5,800/month elsewhere. CareLink refuses
-  any job post below ₱6,400. Never state a peso figure as coming from RA 10361.
+- Minimum wage: set by the REGIONAL WAGE BOARD, not by RA 10361 itself. CareLink
+  checks the job's current regional wage floor; the amount depends on the location
+  and current wage order. Never claim RA 10361 itself sets a specific peso figure.
 - Rest day: at least 1 day per week (usually Sunday)
-- Paid leaves: 5 days per year
+- Paid leave: explain the statutory entitlement accurately and avoid promising a
+  fixed number of annual paid days unless the current law/contract confirms it.
 - SSS, PhilHealth, Pag-IBIG: required after 1 month of service
 - Notice for termination: 5 days written notice
 - Contract: must follow DOLE Form BK-1

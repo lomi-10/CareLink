@@ -32,10 +32,10 @@ import InterviewTab from './InterviewTab';
 import VideoCallTab from './VideoCallTab';
 
 export default function ChatPanel({
-  partnerId, partnerName, partnerPhoto, jobPostId, isReadOnly, onBack,
+  partnerId, partnerName, partnerPhoto, jobPostId, isReadOnly, isSupportContact = false, onBack,
 }: {
   partnerId: number; partnerName: string; partnerPhoto?: string | null;
-  jobPostId?: number | null; isReadOnly?: boolean; onBack?: () => void;
+  jobPostId?: number | null; isReadOnly?: boolean; isSupportContact?: boolean; onBack?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -425,7 +425,7 @@ export default function ChatPanel({
           <Text style={s.chatHeaderName} numberOfLines={1}>{partnerName}</Text>
           {jobPostId && <Text style={s.chatHeaderSub}>Job #{jobPostId}</Text>}
         </View>
-        {!hiredElsewhere && (
+        {!hiredElsewhere && !isSupportContact && (
           <TouchableOpacity style={s.callBtn} onPress={() => setCallModal(true)}>
             <Ionicons name="videocam" size={20} color={ORANGE} />
           </TouchableOpacity>
@@ -438,23 +438,23 @@ export default function ChatPanel({
           <Ionicons name="chatbubbles-outline" size={16} color={activeTab === 'messages' ? '#fff' : MUTED} />
           <Text style={[s.chatTabBtnText, activeTab === 'messages' && s.chatTabBtnTextActive]}>Messages</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.chatTabBtn, activeTab === 'contract' && s.chatTabBtnActive]} onPress={() => setActiveTab('contract')}>
+        {!isSupportContact && <TouchableOpacity style={[s.chatTabBtn, activeTab === 'contract' && s.chatTabBtnActive]} onPress={() => setActiveTab('contract')}>
           <Ionicons name="document-text-outline" size={16} color={activeTab === 'contract' ? '#fff' : MUTED} />
           <Text style={[s.chatTabBtnText, activeTab === 'contract' && s.chatTabBtnTextActive]}>Contract</Text>
           {contractNeedsAction && <View style={[s.chatTabDot, s.chatTabDotAmber]} />}
-        </TouchableOpacity>
-        {isHired && !hiredElsewhere ? (
+        </TouchableOpacity>}
+        {!isSupportContact && isHired && !hiredElsewhere ? (
           <TouchableOpacity style={[s.chatTabBtn, activeTab === 'videocall' && s.chatTabBtnActive]} onPress={() => setActiveTab('videocall')}>
             <Ionicons name="videocam-outline" size={16} color={activeTab === 'videocall' ? '#fff' : MUTED} />
             <Text style={[s.chatTabBtnText, activeTab === 'videocall' && s.chatTabBtnTextActive]}>Video Call</Text>
           </TouchableOpacity>
-        ) : (
+        ) : !isSupportContact ? (
           <TouchableOpacity style={[s.chatTabBtn, activeTab === 'interview' && s.chatTabBtnActive]} onPress={() => setActiveTab('interview')}>
             <Ionicons name="calendar-outline" size={16} color={activeTab === 'interview' ? '#fff' : MUTED} />
             <Text style={[s.chatTabBtnText, activeTab === 'interview' && s.chatTabBtnTextActive]}>Interview</Text>
             {interviewBadge && <View style={[s.chatTabDot, s.chatTabDotBlue]} />}
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
       {activeTab === 'messages' && (
@@ -486,7 +486,7 @@ export default function ChatPanel({
         />
       )}
 
-      {activeTab === 'contract' && (
+      {!isSupportContact && activeTab === 'contract' && (
         <ContractTab
           resolvedApp={resolvedApp}
           isReadOnly={hiredElsewhere}
@@ -503,7 +503,7 @@ export default function ChatPanel({
         />
       )}
 
-      {activeTab === 'interview' && (!isHired || hiredElsewhere) && (
+      {!isSupportContact && activeTab === 'interview' && (!isHired || hiredElsewhere) && (
         <InterviewTab
           resolvedApp={resolvedApp}
           isReadOnly={hiredElsewhere}
@@ -516,7 +516,7 @@ export default function ChatPanel({
         />
       )}
 
-      {activeTab === 'videocall' && isHired && (
+      {!isSupportContact && activeTab === 'videocall' && isHired && (
         <VideoCallTab
           partnerName={partnerName}
           onStartCall={startCall}

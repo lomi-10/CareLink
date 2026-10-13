@@ -75,7 +75,25 @@ const KB: KbEntry[] = [
     keys: ['post a job', 'post job', 'create a job', 'job post', 'how to post', 'hiring'],
     roles: ['parent'],
     answer:
-      'Posting a job is easy:\n1. Open the Jobs menu.\n2. Tap “Post a Job”.\n3. Fill in the duties, work schedule, and salary (CareLink’s minimum is ₱7,000/month — a fair-pay standard above the legal kasambahay minimum). SSS, PhilHealth & Pag-IBIG are included on top.\n4. Submit it for PESO verification.\n5. Once approved, PESO-verified helpers can see and apply to it.',
+      'To post a job, open My Job Posts and tap +. Choose the category and roles, describe duties, set the salary/pay range and pay period, schedule/rest days, stay-in or stay-out arrangement, location and benefits, then review and submit. CareLink checks the current regional wage floor. PESO reviews a new or edited post before it is visible to helpers.',
+  },
+  {
+    keys: ['edit job', 'manage job', 'close job', 'pause job', 'job post status', 'my job posts'],
+    roles: ['parent'],
+    answer:
+      'Open My Job Posts and select the post to review its status, edit its details, or manage whether it is still open. PESO reviews new and edited posts before they appear to helpers. Open the post’s Applicants area to review applicants, shortlist, message, interview, reject, or hire.',
+  },
+  {
+    keys: ['set up my profile', 'complete my profile', 'profile setup', 'helper profile', 'my profile'],
+    roles: ['helper'],
+    answer:
+      'To finish your helper profile, open Profile and add your contact details, birthday/gender, address, photo, work categories and roles, skills, languages, experience, expected pay, and About Me. Then open Profile → Documents and upload clear front and back photos of your Valid ID plus your Barangay Clearance. An AI scan can help check image quality, but PESO makes the final verification decision. Check Notifications for review updates.',
+  },
+  {
+    keys: ['set up my profile', 'complete my profile', 'profile setup', 'employer profile', 'household profile', 'my profile'],
+    roles: ['parent'],
+    answer:
+      'To finish your household profile, open Profile and add your contact details, household information, address (province, city/municipality and barangay), and a short introduction. Then open Profile → Documents and upload clear front and back photos of your Valid ID plus your Barangay Clearance. Check Notifications for PESO review updates; profile completion and verification are separate steps.',
   },
   {
     keys: ['review applicant', 'applicants', 'who applied', 'shortlist', 'review'],
@@ -122,6 +140,12 @@ const KB: KbEntry[] = [
       'To apply for a job:\n1. Tap Find Jobs.\n2. Open a job that fits you.\n3. Tap Apply.\n4. Write a short cover letter (or let CareBot draft one).\nTrack everything under My Applications.',
   },
   {
+    keys: ['saved job', 'bookmark', 'save a job'],
+    roles: ['helper'],
+    answer:
+      'In Find Jobs, open a listing and use its save/bookmark control to keep it for later. Open Saved Jobs from the Browse Jobs area to revisit it. Saving a job does not submit an application; open the listing and tap Apply when you are ready.',
+  },
+  {
     keys: ['match', 'percentage', 'matching', 'why this'],
     answer:
       'The match % compares skills, work categories, location, salary expectation, and availability between a helper and a job. The more complete and accurate the profile, the better the matches — so fill in skills, experience, and preferred work setup.',
@@ -132,6 +156,11 @@ const KB: KbEntry[] = [
       'Once a hire is signed, Work Mode unlocks. Use Tasks for daily to-dos, check in/out for attendance, and Schedule to see work days and request leave. Salary and leave balances update from these records.',
   },
   {
+    keys: ['message super admin', 'super admin', 'contact support', 'support', 'help'],
+    answer:
+      'For CareLink account or app support, open Messages and use the pinned Super Admin contact. For a PESO verification decision, contact the relevant PESO office. For an issue with another user or placement, use the in-app report/complaint option and include the key facts and dates.',
+  },
+  {
     keys: ['message', 'chat', 'contact', 'talk to'],
     answer:
       'Open Messages to chat with the other party once you’ve applied, invited, or been hired. Keep conversations inside CareLink so there’s a clear record.',
@@ -140,6 +169,16 @@ const KB: KbEntry[] = [
     keys: ['support', 'help', 'complaint', 'report a problem', 'peso office', 'dispute'],
     answer:
       'For account or verification help, your local PESO office is the main contact — CareLink partners with them for verification and disputes. In the app you can also file a report from a helper’s or employer’s profile, or from an active placement; the CareLink system administrator reviews it first and forwards serious cases to PESO.',
+  },
+  {
+    keys: ['settings', 'change password', 'forgot password', 'sign out', 'log out'],
+    answer:
+      'Open Settings from your profile/menu to see the account options available to your role. If you cannot sign in, use Forgot Password and request a reset code through the email or mobile channel you registered with. Never share your password or one-time code in a chat.',
+  },
+  {
+    keys: ['announcement', 'peso notice', 'notification', 'where are my notifications'],
+    answer:
+      'Check the Notifications screen for account, application, message and review updates. PESO announcements are available from the Announcements area or Home. Open a notification to follow its link, or refresh the relevant screen if a recent update is not showing yet.',
   },
   {
     keys: ['kasambahay', 'batas', 'ra 10361', 'r.a. 10361', 'law', 'rights'],
@@ -157,8 +196,8 @@ function carebotLocalAnswer(userLine: string, accent: CareBotAccent): string {
     if (e.keys.some((k) => t.includes(k))) return e.answer;
   }
   return accent === 'parent'
-    ? 'Here’s the short version: in CareLink you post jobs and review PESO-verified helpers, hire with a Kasambahay-compliant contract, then manage tasks, attendance, and salary in Work Management. Ask me about posting a job, reviewing applicants, contracts, payments & benefits, or account verification.'
-    : 'Here’s the short version: complete your profile and get PESO-verified, then browse jobs, apply, and once hired use Work Mode for tasks, attendance, and schedule. Ask me about applying, getting verified, your match %, or payments & rights.';
+    ? 'CareLink lets you complete a household profile, post jobs for PESO review, find helpers, review applications, message candidates, hire with a written contract, and manage an active placement. Profile, Messages, Notifications, job posts, Work Management, Settings, feedback, and support are available from the role navigation. Ask me which screen or step you need.'
+    : 'CareLink lets you complete a helper profile and documents for PESO review, browse and save jobs, apply, track applications, message employers, and use Work Mode after both parties sign a contract. Profile, Find Jobs, Saved Jobs, Messages, Notifications, Schedule, Tasks, Salary, Settings, feedback, and support are available from the role navigation. Ask me which screen or step you need.';
 }
 
 /** Server default CHATBOT_MAX_TURNS / CARELINK_CHATBOT_MAX_TURNS_DEFAULT (last N rows). */
@@ -177,20 +216,24 @@ function mapLinesToContents(lines: ChatLine[]): { role: 'user' | 'model'; text: 
 // ─── Suggested topics (web sidebar + mobile chips) ─────────────────────────────
 type Topic = { icon: keyof typeof Ionicons.glyphMap; label: string; question: string };
 const PARENT_TOPICS: Topic[] = [
+  { icon: 'person-circle-outline', label: 'Set up my profile', question: 'How do I set up my household profile and get verified?' },
   { icon: 'briefcase-outline', label: 'How do I post a job?', question: 'How do I post a job?' },
   { icon: 'people-outline', label: 'How do I review applicants?', question: 'How do I review applicants?' },
   { icon: 'document-text-outline', label: 'Contract & Compliance', question: 'How do contracts and compliance work?' },
   { icon: 'wallet-outline', label: 'Payments & Benefits', question: 'What payments and benefits are required?' },
   { icon: 'bar-chart-outline', label: 'Reports & Analytics', question: 'Where can I see reports and analytics?' },
   { icon: 'shield-checkmark-outline', label: 'Account & Verification', question: 'How do I get PESO-verified?' },
+  { icon: 'headset-outline', label: 'Contact Super Admin', question: 'How can I message the Super Admin for app support?' },
 ];
 const HELPER_TOPICS: Topic[] = [
+  { icon: 'person-circle-outline', label: 'Set up my profile', question: 'How do I complete my helper profile and get verified?' },
   { icon: 'search-outline', label: 'How do I apply for a job?', question: 'How do I apply for a job?' },
   { icon: 'shield-checkmark-outline', label: 'Get PESO-verified', question: 'How do I get PESO-verified?' },
   { icon: 'document-text-outline', label: 'Upload my documents', question: 'How do I upload my documents?' },
   { icon: 'sparkles-outline', label: 'How does matching work?', question: 'How is my match percentage computed?' },
   { icon: 'calendar-outline', label: 'Tasks & attendance', question: 'How do tasks and attendance work?' },
   { icon: 'wallet-outline', label: 'Payments & rights', question: 'What are my payments and rights?' },
+  { icon: 'headset-outline', label: 'Contact Super Admin', question: 'How can I message the Super Admin for app support?' },
 ];
 
 export type CareBotChatPanelProps = {
@@ -256,7 +299,7 @@ export function CareBotChatPanel({
     setLines((prev) => prev.length > 0 ? prev : [
       {
         id: 'welcome',
-        text: "Hi! I'm CareBot. I can help you with CareLink jobs, hiring, tasks, attendance, and Kasambahay Law basics.\n\nWhat would you like to know?",
+        text: "Hi! I'm CareBot. I can guide you through your profile, verification, jobs, applications, messages, Work Mode, and other CareLink features. What would you like help with?",
         createdAt: Date.now(),
         side: 'bot',
       },

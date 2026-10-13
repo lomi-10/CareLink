@@ -360,8 +360,8 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 15,
     lineHeight: 22,
-    color: "#6E4E2E",
-    fontFamily: FontFamily.fredokaRegular,
+    color: "#371f06",
+    fontFamily: FontFamily.fredokaSemiBold,
     marginTop: 14,
     maxWidth: 240,
   },

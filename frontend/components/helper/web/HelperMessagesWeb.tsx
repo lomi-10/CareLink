@@ -8,7 +8,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { useConversations, pendingConnectionLabel, type Conversation } from '@/hooks/shared/useMessages';
+import { useConversations, pendingConnectionLabel, supportConversation, type Conversation, type SupportContact } from '@/hooks/shared/useMessages';
 import { useBrowseJobs, type JobPost } from '@/hooks/helper';
 import { useCareBot } from '@/contexts/CareBotContext';
 import { ParentProfileModal } from '@/components/helper/jobs';
@@ -33,7 +33,10 @@ function convTime(v?: string) {
   return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 }
 
-export function HelperMessagesWeb({ userName, avatar, verified, onLogout, workMode = false }: { userName: string; avatar: string | null; verified: boolean; onLogout: () => void; workMode?: boolean }) {
+export function HelperMessagesWeb({ userName, avatar, verified, onLogout, workMode = false, supportContact, supportContactError }: {
+  userName: string; avatar: string | null; verified: boolean; onLogout: () => void; workMode?: boolean;
+  supportContact: SupportContact | null; supportContactError: string | null;
+}) {
   const router = useRouter();
   const { open: openCareBot } = useCareBot();
   const { conversations, loading, refresh } = useConversations();
@@ -60,13 +63,17 @@ export function HelperMessagesWeb({ userName, avatar, verified, onLogout, workMo
   }, [params.partner_id, params.partner_name, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(() => {
+    const support = supportContact ? supportConversation(supportContact, conversations) : null;
     let arr = conversations;
     if (chip === 'employers') arr = arr.filter((c) => c.partner_type === 'parent');
     else if (chip === 'system') arr = arr.filter((c) => (c.partner_type as string) === 'system');
     const q = search.trim().toLowerCase();
     if (q) arr = arr.filter((c) => c.partner_name.toLowerCase().includes(q) || (c.job_title ?? '').toLowerCase().includes(q));
+    if (support && (!q || support.partner_name.toLowerCase().includes(q))) {
+      arr = [support, ...arr.filter((conversation) => conversation.partner_id !== support.partner_id)];
+    }
     return arr;
-  }, [conversations, chip, search]);
+  }, [conversations, chip, search, supportContact]);
 
   const totalUnread = conversations.reduce((n, c) => n + (c.unread_count || 0), 0);
   const CHIPS: { key: typeof chip; label: string; n?: number }[] = [
@@ -104,6 +111,9 @@ export function HelperMessagesWeb({ userName, avatar, verified, onLogout, workMo
           </View>
 
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
+            {supportContactError ? (
+              <Text style={{ color: '#9A3412', padding: 12 }}>Super Admin contact is unavailable right now. Please try again later.</Text>
+            ) : null}
             {loading && conversations.length === 0 ? (
               <ActivityIndicator color={wt.accent} style={{ marginTop: 30 }} />
             ) : filtered.length === 0 ? (
@@ -140,6 +150,7 @@ export function HelperMessagesWeb({ userName, avatar, verified, onLogout, workMo
               partnerPhoto={active.partner_photo}
               jobPostId={active.job_post_id}
               isReadOnly={active.is_read_only}
+              isSupportContact={active.partner_type === 'admin'}
               onBack={() => { setActive(null); refresh(); }}
             />
           ) : (
@@ -181,6 +192,7 @@ function ConvRow({ conv, active, onPress }: { conv: Conversation; active: boolea
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={s.convTop}>
           <Text style={s.convName} numberOfLines={1}>{conv.partner_name}</Text>
+          {conv.partner_type === 'admin' && <View style={s.verPill}><Ionicons name="shield-checkmark" size={10} color={wt.accent} /><Text style={s.verPillText}>Super Admin</Text></View>}
           {conv.partner_type === 'parent' && <View style={s.verPill}><Ionicons name="checkmark-circle" size={10} color={wt.green} /><Text style={s.verPillText}>PESO Verified</Text></View>}
           <View style={{ flex: 1 }} />
           <Text style={s.convTime}>{convTime(conv.last_sent_at)}</Text>

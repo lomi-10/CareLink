@@ -69,6 +69,9 @@ export function ConvItem({ item, onPress, active }: { item: Conversation; onPres
         {item.job_title && (
           <Text style={s.convJob} numberOfLines={1}>re: {item.job_title}</Text>
         )}
+        {item.partner_type === 'admin' && (
+          <Text style={s.convJob} numberOfLines={1}>Super Admin · CareLink support</Text>
+        )}
         {item.has_messages ? (
           <Text
             style={[s.convPreview, item.unread_count > 0 && { color: DARK, fontFamily: FontFamily.fredokaSemiBold }]}

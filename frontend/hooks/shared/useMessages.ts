@@ -9,7 +9,7 @@ import API_URL from '@/constants/api';
 export interface Conversation {
   partner_id:    number;
   partner_name:  string;
-  partner_type:  'helper' | 'parent';
+  partner_type:  'helper' | 'parent' | 'peso' | 'admin';
   partner_photo: string | null;
   last_message:  string | null;
   last_sent_at:  string;
@@ -23,6 +23,33 @@ export interface Conversation {
   application_status: string | null;
   /** True when the helper was hired elsewhere — messaging is closed. */
   is_read_only?: boolean;
+}
+
+export interface SupportContact {
+  user_id: number;
+  name: string;
+}
+
+export function supportConversation(
+  contact: SupportContact,
+  conversations: Conversation[],
+): Conversation {
+  const existing = conversations.find((conversation) => conversation.partner_id === contact.user_id);
+  if (existing) return { ...existing, partner_name: 'Super Admin' };
+  return {
+    partner_id: contact.user_id,
+    partner_name: 'Super Admin',
+    partner_type: 'admin',
+    partner_photo: null,
+    last_message: null,
+    last_sent_at: '',
+    is_mine: false,
+    unread_count: 0,
+    job_post_id: null,
+    job_title: null,
+    has_messages: false,
+    application_status: null,
+  };
 }
 
 const PENDING_CONNECTION_LABELS: Record<string, string> = {
@@ -88,6 +115,39 @@ export function useConversations() {
   }, [fetchConversations]);
 
   return { conversations, loading, refresh: fetchConversations };
+}
+
+export function useSupportContact() {
+  const [contact, setContact] = useState<SupportContact | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/shared/get_support_contact.php`);
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || `Could not load the Super Admin contact (${response.status}).`);
+      }
+      const admin = data.admin as { user_id?: number; name?: string } | null;
+      if (!admin?.user_id) {
+        setContact(null);
+        setError('No approved Super Admin contact is configured.');
+        return;
+      }
+      setContact({ user_id: Number(admin.user_id), name: admin.name || 'Super Admin' });
+      setError(null);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'Could not load the Super Admin contact.';
+      console.error('[useSupportContact]', cause);
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+  return { contact, loading, error, refresh };
 }
 
 // ─── useChat ──────────────────────────────────────────────────────────────────

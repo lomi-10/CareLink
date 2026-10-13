@@ -6,7 +6,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { useConversations, useAuth, useResponsive, useNotifications, Conversation } from '@/hooks/shared';
+import { useConversations, useSupportContact, supportConversation, useAuth, useResponsive, useNotifications, Conversation } from '@/hooks/shared';
 import { useHelperProfile } from '@/hooks/helper';
 import { HelperMessagesWeb } from '@/components/helper/web/HelperMessagesWeb';
 import { Sidebar, MobileMenu, HelperTabBar } from '@/components/helper/home';
@@ -34,6 +34,7 @@ function HelperMessagesContent() {
   const params = useLocalSearchParams<{ partner_id?: string; partner_name?: string; job_post_id?: string }>();
 
   const { conversations, loading: loadingConvs, refresh } = useConversations();
+  const { contact: supportContact, error: supportContactError } = useSupportContact();
 
   const [activePartner,        setActivePartner]        = useState<Conversation | null>(null);
   const [isMobileMenuOpen,     setIsMobileMenuOpen]     = useState(false);
@@ -79,6 +80,10 @@ function HelperMessagesContent() {
         (c.job_title ?? '').toLowerCase().includes(convSearch.toLowerCase())
       )
     : conversations;
+  const adminConversation = supportContact ? supportConversation(supportContact, conversations) : null;
+  const inboxConversations = adminConversation
+    ? [adminConversation, ...filteredConvs.filter(c => c.partner_id !== adminConversation.partner_id)]
+    : filteredConvs;
 
   const openPartner = useCallback((conv: Conversation) => {
     setActivePartner(conv);
@@ -103,9 +108,14 @@ function HelperMessagesContent() {
         )}
       </View>
 
+      {supportContactError ? (
+        <Text style={{ color: '#9A3412', paddingHorizontal: 16, paddingVertical: 8 }}>
+          Super Admin contact is unavailable right now. Please try again later.
+        </Text>
+      ) : null}
       {loadingConvs ? (
         <LoadingSpinner visible />
-      ) : filteredConvs.length === 0 ? (
+      ) : inboxConversations.length === 0 ? (
         <View style={s.emptyWrap}>
           <Ionicons name="chatbubbles-outline" size={52} color={SUBTLE} />
           <Text style={s.emptyTitle}>{convSearch ? 'No matches' : 'No messages yet'}</Text>
@@ -115,7 +125,7 @@ function HelperMessagesContent() {
         </View>
       ) : (
         <FlatList
-          data={filteredConvs}
+          data={inboxConversations}
           keyExtractor={c => String(c.partner_id)}
           renderItem={({ item }) => (
             <ConvItem
@@ -168,6 +178,7 @@ function HelperMessagesContent() {
               partnerPhoto={activePartner.partner_photo}
               jobPostId={activePartner.job_post_id}
               isReadOnly={activePartner.is_read_only}
+              isSupportContact={activePartner.partner_type === 'admin'}
               onBack={() => { setActivePartner(null); refresh(); }}
             />
           </SafeAreaView>
@@ -210,6 +221,8 @@ function HelperMessagesContent() {
         verified={profileData?.profile?.verification_status === 'Verified'}
         onLogout={initiateLogout}
         workMode={isWorkMode && !!activeHire}
+        supportContact={supportContact}
+        supportContactError={supportContactError}
       />
       <ConfirmationModal
         visible={confirmLogoutVisible}

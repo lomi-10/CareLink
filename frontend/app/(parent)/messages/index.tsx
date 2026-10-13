@@ -7,7 +7,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { useConversations, Conversation } from '@/hooks/shared';
+import { useConversations, useSupportContact, supportConversation, Conversation } from '@/hooks/shared';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { Sidebar, MobileMenu, ParentTabBar, ParentWorkModeTabBar } from '@/components/parent/home';
 import { useParentProfile, useParentWorkModeUnlocked } from '@/hooks/parent';
@@ -33,6 +33,7 @@ export default function ParentMessages() {
   const params = useLocalSearchParams<{ partner_id?: string; partner_name?: string; job_post_id?: string }>();
 
   const { conversations, loading: loadingConvs, refresh } = useConversations();
+  const { contact: supportContact, error: supportContactError } = useSupportContact();
 
   const [activePartner,        setActivePartner]        = useState<Conversation | null>(null);
   const [isMobileMenuOpen,     setIsMobileMenuOpen]     = useState(false);
@@ -78,6 +79,10 @@ export default function ParentMessages() {
         (c.job_title ?? '').toLowerCase().includes(convSearch.toLowerCase())
       )
     : conversations;
+  const adminConversation = supportContact ? supportConversation(supportContact, conversations) : null;
+  const inboxConversations = adminConversation
+    ? [adminConversation, ...filteredConvs.filter(c => c.partner_id !== adminConversation.partner_id)]
+    : filteredConvs;
 
   const openPartner = useCallback((conv: Conversation) => {
     setActivePartner(conv);
@@ -102,9 +107,14 @@ export default function ParentMessages() {
         )}
       </View>
 
+      {supportContactError ? (
+        <Text style={{ color: '#9A3412', paddingHorizontal: 16, paddingVertical: 8 }}>
+          Super Admin contact is unavailable right now. Please try again later.
+        </Text>
+      ) : null}
       {loadingConvs ? (
         <LoadingSpinner visible />
-      ) : filteredConvs.length === 0 ? (
+      ) : inboxConversations.length === 0 ? (
         <View style={s.emptyWrap}>
           <Ionicons name="chatbubbles-outline" size={52} color={SUBTLE} />
           <Text style={s.emptyTitle}>{convSearch ? 'No matches' : 'No messages yet'}</Text>
@@ -114,7 +124,7 @@ export default function ParentMessages() {
         </View>
       ) : (
         <FlatList
-          data={filteredConvs}
+          data={inboxConversations}
           keyExtractor={c => String(c.partner_id)}
           renderItem={({ item }) => (
             <ConvItem
@@ -173,6 +183,7 @@ export default function ParentMessages() {
               partnerPhoto={activePartner.partner_photo}
               jobPostId={activePartner.job_post_id}
               isReadOnly={activePartner.is_read_only}
+              isSupportContact={activePartner.partner_type === 'admin'}
               onBack={() => { setActivePartner(null); refresh(); }}
             />
           </SafeAreaView>
@@ -216,6 +227,8 @@ export default function ParentMessages() {
         avatar={(profileData?.profile?.profile_image as string) ?? null}
         verified={profileData?.profile?.verification_status === 'Verified'}
         onLogout={initiateLogout}
+        supportContact={supportContact}
+        supportContactError={supportContactError}
       />
       <ConfirmationModal
         visible={confirmLogoutVisible}
