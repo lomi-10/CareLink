@@ -566,6 +566,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       <>
         <Label>{tr('helper.setup.contactNumber')} <OptTag /></Label>
         <StyledInput value={contactNumber} onChangeText={setContactNumber} placeholder="09XX XXX XXXX" keyboardType="phone-pad" />
+        <Text style={s.verifiedNote}>We&apos;ll send SMS alerts for new chats and PESO announcements to this number. Carrier messaging fees may apply.</Text>
         <Label>{tr('helper.setup.emailAddress')}</Label>
         <VerifiedRow value={email || tr('helper.setup.emailNotSet')} onChange={() => setChangeField('email')} />
         <Text style={s.verifiedNote}>{tr('helper.setup.emailVerificationHint')}</Text>

@@ -657,6 +657,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
                       <PillSelect options={['Elementary', 'High School Undergrad', 'High School Grad', 'College Undergrad', 'College Grad', 'Vocational']} value={form.education_level} onChange={(v) => setF('education_level', v)} />
                       <FLabel>Contact Number <Opt /></FLabel>
                       <FInput value={form.contact_number} onChange={(v) => setF('contact_number', v)} placeholder="0917 000 0000" />
+                      <Text style={{ color: wt.muted, fontSize: 12, marginTop: 4 }}>We&apos;ll send SMS alerts for new chats and PESO announcements to this number. Carrier messaging fees may apply.</Text>
                       <VerifiedField label="Email Address" value={U.email || 'Not set'} accent={wt.accent} onChange={() => setChangeField('email')} />
                       <FLabel>Current Address</FLabel>
                       <LocationSearchInput

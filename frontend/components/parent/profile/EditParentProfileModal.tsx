@@ -404,6 +404,7 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
 
       <Label>Contact Number <OptTag /></Label>
       <StyledInput value={contactNumber} onChangeText={setContactNumber} placeholder="09XX XXX XXXX" keyboardType="phone-pad" />
+      <Text style={s.verifiedNote}>We&apos;ll send SMS alerts for new chats and PESO announcements to this number. Carrier messaging fees may apply.</Text>
       <Label>Email Address</Label>
       <PVerifiedRow value={email || 'Not set'} onChange={() => setChangeField('email')} />
       <Text style={s.verifiedNote}>For your security, changing your email needs a quick email verification.</Text>

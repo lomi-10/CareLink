@@ -19,6 +19,7 @@ try {
     require_once __DIR__ . "/../dbcon.php";
     require_once __DIR__ . "/../shared/auth_codes.php";
     require_once __DIR__ . "/../shared/mailer.php";
+    require_once __DIR__ . "/../shared/textbee.php";
 
     $data   = json_decode(file_get_contents("php://input"), true) ?? [];
     $email  = strtolower(trim((string) ($data['email'] ?? '')));
@@ -30,10 +31,10 @@ try {
     }
 
     if ($userId) {
-        $stmt = $conn->prepare("SELECT user_id, first_name, email, email_verified_at FROM users WHERE user_id = ?");
+        $stmt = $conn->prepare("SELECT user_id, first_name, email, phone, email_verified_at, account_verified_at, account_verification_channel FROM users WHERE user_id = ?");
         $stmt->bind_param('i', $userId);
     } else {
-        $stmt = $conn->prepare("SELECT user_id, first_name, email, email_verified_at FROM users WHERE email = ?");
+        $stmt = $conn->prepare("SELECT user_id, first_name, email, phone, email_verified_at, account_verified_at, account_verification_channel FROM users WHERE email = ?");
         $stmt->bind_param('s', $email);
     }
     $stmt->execute();
@@ -44,8 +45,8 @@ try {
         echo json_encode(["success" => false, "message" => "We couldn't find that account."]);
         exit();
     }
-    if ($user['email_verified_at'] !== null) {
-        echo json_encode(["success" => true, "message" => "This email is already verified. You can sign in.", "already_verified" => true]);
+    if (!empty($user['account_verified_at']) || !empty($user['email_verified_at'])) {
+        echo json_encode(["success" => true, "message" => "This account is already verified. You can sign in.", "already_verified" => true]);
         exit();
     }
     if (carelink_code_on_cooldown($conn, (int) $user['user_id'], 'verify_email')) {
@@ -54,13 +55,17 @@ try {
     }
 
     $code = carelink_issue_code($conn, (int) $user['user_id'], 'verify_email');
-    $sent = carelink_send_verification_code($user['email'], $user['first_name'], $code);
+    $channel = ($user['account_verification_channel'] ?? 'email') === 'sms' ? 'sms' : 'email';
+    $sent = $channel === 'sms'
+        ? carelink_textbee_send([(string) ($user['phone'] ?? '')], 'CareLink verification code: ' . $code . '. It expires in 15 minutes.')
+        : carelink_send_verification_code($user['email'], $user['first_name'], $code);
 
     echo json_encode([
         "success" => $sent,
+        "verification_channel" => $channel,
         "message" => $sent
-            ? "We sent a new code to " . $user['email'] . "."
-            : "We couldn't send the email right now. Please try again shortly.",
+            ? ($channel === 'sms' ? "We sent a new code by SMS." : "We sent a new code to " . $user['email'] . ".")
+            : "We couldn't send the verification code right now. Please try again shortly.",
     ]);
 
 } catch (Throwable $e) {

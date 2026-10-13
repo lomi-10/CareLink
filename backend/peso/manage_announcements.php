@@ -234,7 +234,44 @@ try {
         remove_announcement_image($oldImagePath);
     }
 
-    announcement_response(true, $action === 'edit' ? 'Announcement updated.' : 'Announcement published.', ['announcement_id' => $announcementId]);
+    $smsAlertsQueued = true;
+    if ($action === 'create') {
+        require_once __DIR__ . '/../shared/textbee.php';
+        $recipientsResult = $conn->query("
+            SELECT phone
+            FROM users
+            WHERE user_type IN ('parent', 'helper')
+              AND phone IS NOT NULL
+              AND phone <> ''
+            ORDER BY user_id
+        ");
+        if (!$recipientsResult) {
+            $smsAlertsQueued = false;
+            error_log('PESO announcement SMS: could not load phone recipients: ' . $conn->error);
+        } else {
+            $phones = [];
+            while ($recipient = $recipientsResult->fetch_assoc()) {
+                $phones[] = (string) $recipient['phone'];
+            }
+            $smsText = 'CareLink: New PESO announcement. Open the app to read it.';
+            foreach (array_chunk($phones, 50) as $phoneBatch) {
+                if (!carelink_textbee_send($phoneBatch, $smsText)) {
+                    $smsAlertsQueued = false;
+                    break;
+                }
+            }
+        }
+    }
+
+    $responseMessage = $action === 'edit'
+        ? 'Announcement updated.'
+        : ($smsAlertsQueued
+            ? 'Announcement published.'
+            : 'Announcement published, but some SMS alerts were not queued. Check TextBee configuration, quotas, and server logs.');
+    announcement_response(true, $responseMessage, [
+        'announcement_id' => $announcementId,
+        'sms_alerts_queued' => $action === 'create' ? $smsAlertsQueued : null,
+    ]);
 } catch (Throwable $error) {
     error_log('manage_announcements.php: ' . $error->getMessage());
     if ($error instanceof InvalidArgumentException) {

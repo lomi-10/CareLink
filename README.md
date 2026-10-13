@@ -42,7 +42,8 @@ CareLink/
 ### Backend Setup
 1. Create symlink from `backend/` to `C:\laragon\www\carelink_api` (see DEPLOYMENT_GUIDE.md)
 2. Import `backend/database/current.sql` into MySQL
-3. For an existing database, call the protected `backend/migrate.php` endpoint to apply schema migrations. On Laragon, configure `MIGRATE_TOKEN` in the local `backend/config.local.php` and run the endpoint against `http://localhost/carelink_api`; for Hostinger, configure the same token on the server and as the GitHub Actions `MIGRATE_TOKEN` secret. These are separate databases, so migrating one does not change the other. If the endpoint is unavailable, use the guarded manual instructions in `backend/database/migration_2026_10_13_helper_availability.sql`.
+3. For an existing database, call the protected `backend/migrate.php` endpoint to apply schema migrations. On Laragon, configure `MIGRATE_TOKEN` in the local `backend/config.local.php` and run the endpoint against `http://localhost/carelink_api`; for Hostinger, configure the same token on the server and as the GitHub Actions `MIGRATE_TOKEN` secret. These are separate databases, so migrating one does not change the other. If the endpoint is unavailable, use the guarded manual instructions in `backend/database/migration_2026_10_13_helper_availability.sql` and `backend/database/migration_2026_10_13_account_verification.sql`.
+4. Optional SMS: enable PHP cURL and configure `TEXTBEE_API_KEY` in the backend environment or `backend/config.local.php`. During signup, users choose whether their single OTP goes to email or SMS and provide only that contact method. A phone number can be added later in profile setup to receive new-chat and newly published PESO-announcement alerts. TextBee sends through a paired Android phone and SIM. TextBee's free-plan and carrier SMS quotas apply. Never put the TextBee API key in the Expo app.
 
 ### Frontend Setup
 ```bash

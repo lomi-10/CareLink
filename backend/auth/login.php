@@ -83,21 +83,24 @@ $clean_full_name = trim($first . ' ' . $middle . $last);
 
 if (password_verify($password, $row["password"])) {
 
-    // Email verification gate — checked BEFORE the approval gate so an unverified
+    // Signup verification gate — checked BEFORE the approval gate so an unverified
     // user is told to verify rather than the misleading "pending approval".
     // Accounts created before verification shipped were backfilled as verified,
     // so this can never lock out an existing user.
-    if (empty($row['email_verified_at'])) {
+    if (empty($row['account_verified_at']) && empty($row['email_verified_at'])) {
         $log_stmt = $conn->prepare("INSERT INTO log_trail (user_id, action, module, status, ip_address, device_info) VALUES (?, 'LOGIN', 'Auth', 'Failed', ?, ?)");
         $log_stmt->bind_param("iss", $user_id, $ip_address, $user_agent);
         $log_stmt->execute();
 
         echo json_encode([
             "success"  => false,
-            "message"  => "Please verify your email to continue. Check your inbox for the 6-digit code.",
+            "message"  => ($row['account_verification_channel'] ?? 'email') === 'sms'
+                ? "Please verify your mobile number to continue. Check your phone for the 6-digit code."
+                : "Please verify your email to continue. Check your inbox for the 6-digit code.",
             "reason"   => "email_unverified",
             "user_id"  => (int) $row['user_id'],
             "email"    => $row['email'],
+            "verification_channel" => $row['account_verification_channel'] ?? 'email',
         ]);
         exit;
     }

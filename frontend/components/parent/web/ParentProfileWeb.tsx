@@ -581,6 +581,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
                       />
                       <FLabel>Contact Number <Opt /></FLabel>
                       <FInput value={form.contact_number} onChange={(v) => setF('contact_number', v)} placeholder="09XX XXX XXXX" />
+                      <Text style={{ color: pt.muted, fontSize: 12, marginTop: 4 }}>We&apos;ll send SMS alerts for new chats and PESO announcements to this number. Carrier messaging fees may apply.</Text>
                       <PVerifiedField label="Email Address" value={U.email || 'Not set'} onChange={() => setChangeField('email')} />
                       <FLabel>About the Household <Opt /></FLabel>
                       <FInput value={form.bio} onChange={(v) => setF('bio', v)} placeholder="Tell helpers about your family and what you're looking for…" multiline />

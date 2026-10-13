@@ -1106,9 +1106,11 @@ CREATE TABLE `user_safety_flags` (
 
 CREATE TABLE `users` (
   `user_id` int NOT NULL AUTO_INCREMENT,
-  `email` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `phone` varchar(11) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `email_verified_at` datetime DEFAULT NULL,
+  `account_verified_at` datetime DEFAULT NULL,
+  `account_verification_channel` varchar(10) NOT NULL DEFAULT 'email',
   `username` varchar(100) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
   `password` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'bcrypt hashed',
   `first_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,

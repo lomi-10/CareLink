@@ -1,6 +1,6 @@
 <?php
 /**
- * auth/verify_email.php — confirm a signup code and mark the email verified.
+ * auth/verify_email.php — confirm a signup code and mark the account verified.
  *
  * POST { user_id | email, code }
  */
@@ -31,10 +31,10 @@ try {
 
     // Resolve the account by id or email.
     if ($userId) {
-        $stmt = $conn->prepare("SELECT user_id, first_name, email, email_verified_at FROM users WHERE user_id = ?");
+        $stmt = $conn->prepare("SELECT user_id, first_name, email, phone, email_verified_at, account_verified_at, account_verification_channel FROM users WHERE user_id = ?");
         $stmt->bind_param('i', $userId);
     } else {
-        $stmt = $conn->prepare("SELECT user_id, first_name, email, email_verified_at FROM users WHERE email = ?");
+        $stmt = $conn->prepare("SELECT user_id, first_name, email, phone, email_verified_at, account_verified_at, account_verification_channel FROM users WHERE email = ?");
         $stmt->bind_param('s', $email);
     }
     $stmt->execute();
@@ -45,8 +45,8 @@ try {
         echo json_encode(["success" => false, "message" => "We couldn't find that account."]);
         exit();
     }
-    if ($user['email_verified_at'] !== null) {
-        echo json_encode(["success" => true, "message" => "This email is already verified. You can sign in.", "already_verified" => true]);
+    if (!empty($user['account_verified_at']) || !empty($user['email_verified_at'])) {
+        echo json_encode(["success" => true, "message" => "This account is already verified. You can sign in.", "already_verified" => true]);
         exit();
     }
 
@@ -56,14 +56,22 @@ try {
         exit();
     }
 
-    $upd = $conn->prepare("UPDATE users SET email_verified_at = NOW() WHERE user_id = ?");
+    $updSql = ($user['account_verification_channel'] ?? 'email') !== 'sms'
+        ? "UPDATE users SET account_verified_at = NOW(), email_verified_at = NOW() WHERE user_id = ?"
+        : "UPDATE users SET account_verified_at = NOW() WHERE user_id = ?";
+    $upd = $conn->prepare($updSql);
+    if (!$upd) {
+        throw new RuntimeException('Could not prepare account verification update: ' . $conn->error);
+    }
     $upd->bind_param('i', $user['user_id']);
-    $upd->execute();
+    if (!$upd->execute()) {
+        throw new RuntimeException('Could not mark account verified: ' . $upd->error);
+    }
     $upd->close();
 
     echo json_encode([
         "success" => true,
-        "message" => "Email verified! You can now sign in.",
+        "message" => "Account verified! You can now sign in.",
         "user_id" => (int) $user['user_id'],
     ]);
 

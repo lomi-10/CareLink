@@ -130,6 +130,11 @@ export default function PrivacyPolicyScreen() {
               <Text style={s.strong}>Account and security activity</Text>: login times, IP address and
               device or browser information, kept as an audit trail.
             </Bullet>
+            <Bullet>
+              <Text style={s.strong}>Mobile number</Text>: if you provide one, CareLink uses it for
+              account verification by SMS and for SMS alerts about new chat messages and PESO announcements.
+              Your carrier may charge for SMS.
+            </Bullet>
           </Section>
 
           <Section title="Why we collect it, and on what basis">
@@ -195,6 +200,11 @@ export default function PrivacyPolicyScreen() {
             <Bullet>
               <Text style={s.strong}>Our email provider</Text> — your email address, to send verification
               codes and account notices.
+            </Bullet>
+            <Bullet>
+              <Text style={s.strong}>TextBee</Text> — if you provide a mobile number, the number and SMS
+              content are sent to TextBee to deliver account verification codes and the limited alerts
+              described above through our paired Android phone.
             </Bullet>
             <Bullet>
               <Text style={s.strong}>Our web host</Text> — where the application and database run.

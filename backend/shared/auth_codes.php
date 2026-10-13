@@ -1,6 +1,6 @@
 <?php
 /**
- * shared/auth_codes.php — issue & verify one-time codes (email verification,
+ * shared/auth_codes.php — issue & verify one-time codes (signup verification,
  * password reset).
  *
  * Security decisions, so they live in one place instead of four endpoints:
@@ -36,11 +36,11 @@ function carelink_code_on_cooldown(mysqli $conn, int $userId, string $purpose): 
 
 /**
  * Issue a fresh 6-digit code, invalidating any earlier unused ones.
- * @return string the PLAINTEXT code — email it, never store or log it.
+ * @return string the PLAINTEXT code — deliver it, never store or log it.
  */
 function carelink_issue_code(mysqli $conn, int $userId, string $purpose, ?string $pendingValue = null): string
 {
-    // Retire older codes so only the newest email works.
+    // Retire older codes so only the newest code works.
     $del = $conn->prepare("UPDATE auth_codes SET consumed_at = NOW()
                            WHERE user_id = ? AND purpose = ? AND consumed_at IS NULL");
     $del->bind_param('is', $userId, $purpose);
@@ -70,7 +70,7 @@ function carelink_verify_code(mysqli $conn, int $userId, string $purpose, string
 {
     $code = trim($code);
     if (!preg_match('/^\d{6}$/', $code)) {
-        return ['ok' => false, 'message' => 'Enter the 6-digit code from your email.'];
+        return ['ok' => false, 'message' => 'Enter the 6-digit code we sent you.'];
     }
 
     $sql = "SELECT code_id, code_hash, pending_value, expires_at, attempts FROM auth_codes

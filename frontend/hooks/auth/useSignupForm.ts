@@ -9,7 +9,7 @@ export interface FormData {
   middle_name: string;
   last_name: string;
   email: string;
-  /** PH mobile — a second way to sign in. Normalised server-side (shared/phone.php). */
+  /** PH mobile — required only when SMS is selected. Normalised server-side. */
   phone: string;
   user_type: string;
   password: string;
@@ -27,10 +27,11 @@ export function useSignupForm() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [verificationChannel, setVerificationChannelState] = useState<"email" | "sms">("email");
   const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [privacyConsent, setPrivacyConsent] = useState(false);
-  // Signup does a DNS MX lookup AND an SMTP send before responding, so it can take
-  // several seconds. Without this the button stayed live the whole time: an
+  // Signup validates the selected contact's email domain and sends one OTP before
+  // responding, so it can take several seconds. Without this the button stayed live: an
   // impatient second tap raced the first, the first created the account, and the
   // second came back "email/mobile already registered" — making a SUCCESSFUL
   // signup look like a failure.
@@ -45,6 +46,13 @@ export function useSignupForm() {
 
   const handleChange = (key: keyof FormData, value: string) =>
     setForm(prev => ({ ...prev, [key]: value }));
+
+  const setVerificationChannel = (channel: "email" | "sms") => {
+    setVerificationChannelState(channel);
+    setForm(prev => channel === "email"
+      ? { ...prev, phone: "" }
+      : { ...prev, email: "" });
+  };
 
   useEffect(() => {
     if (role && typeof role === "string") {
@@ -68,22 +76,29 @@ export function useSignupForm() {
     // function too — a fast double-tap can fire twice before React re-renders.
     if (loading) return;
 
-    const { first_name, last_name, email, user_type, password, confirmpass } = form;
+    const { first_name, last_name, email, phone, user_type, password, confirmpass } = form;
 
-    if (!first_name || !last_name || !user_type || !email || !password || !confirmpass) {
+    if (!first_name.trim() || !last_name.trim() || !user_type || !password || !confirmpass) {
       setNotification({ visible: true, message: "Please fill in all required fields.", type: "warning" });
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (verificationChannel === "email" && !email.trim()) {
+      setNotification({ visible: true, message: "Enter an email address to receive your verification code.", type: "warning" });
+      return;
+    }
+
+    if (verificationChannel === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setNotification({ visible: true, message: "Please enter a valid email address.", type: "error" });
       return;
     }
 
-    // Optional, but if given it must be a real PH mobile. Server re-checks and
-    // normalises (shared/phone.php) — this is only to save a round-trip.
-    if (form.phone.trim() && !isValidPhMobile(form.phone)) {
+    if (verificationChannel === "sms" && !phone.trim()) {
+      setNotification({ visible: true, message: "Enter a mobile number to receive your verification code by SMS.", type: "warning" });
+      return;
+    }
+
+    if (verificationChannel === "sms" && !isValidPhMobile(phone)) {
       setNotification({
         visible: true,
         message: "Please enter a valid Philippine mobile number, like 0917 123 4567.",
@@ -107,18 +122,22 @@ export function useSignupForm() {
       const response = await fetch(`${API_URL}/auth/signup.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, privacy_consent: privacyConsent }),
+        body: JSON.stringify({
+          ...form,
+          email: verificationChannel === "email" ? email.trim() : "",
+          phone: verificationChannel === "sms" ? phone.trim() : "",
+          verification_channel: verificationChannel,
+          privacy_consent: privacyConsent,
+        }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        // Signup now emails a 6-digit code and login is gated on it, so send the
-        // user to verification rather than login — landing on login unverified
-        // would just bounce them straight back.
+        // Signup sends one 6-digit code through the channel the user selected.
         setNotification({
           visible: true,
-          message: data.message || "Account created! Check your email for the code.",
+          message: data.message || "Account created! Check your verification code.",
           type: "success",
         });
 
@@ -127,7 +146,11 @@ export function useSignupForm() {
           if (data.requires_verification) {
             router.replace({
               pathname: "/(auth)/verify-email",
-              params: { email: data.email ?? form.email, user_id: String(data.user_id ?? "") },
+              params: {
+                email: data.email ?? form.email,
+                user_id: String(data.user_id ?? ""),
+                channel: data.verification_channel === "sms" ? "sms" : "email",
+              },
             } as never);
           } else {
             router.replace("/login");
@@ -151,6 +174,7 @@ export function useSignupForm() {
   return {
     role, form, handleChange, showPassword, setShowPassword,
     showConfirmPassword, setShowConfirmPassword, isPasswordValid,
+    verificationChannel, setVerificationChannel,
     privacyConsent, setPrivacyConsent, loading,
     notification, closeNotification, handleSignUpScreen, router
   };

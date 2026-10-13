@@ -24,6 +24,7 @@ try {
     require_once __DIR__ . "/../shared/phone.php";
     require_once __DIR__ . "/../shared/phone_identity.php";
     require_once __DIR__ . "/../shared/mailer.php";
+    require_once __DIR__ . "/../shared/textbee.php";
 
     if (!$conn) {
         throw new Exception("Database connection failed: " . $conn->connect_error);
@@ -37,8 +38,13 @@ try {
         throw new Exception("No input received.");
     }
 
-    // Validate required fields based on your React Native state
-    if (empty($data['first_name']) || empty($data['last_name']) || empty($data['email']) || empty($data['password']) || empty($data['user_type'])) {
+    // Validate required fields based on the chosen verification channel.
+    $verificationChannel = strtolower(trim((string) ($data['verification_channel'] ?? 'email')));
+    if (!in_array($verificationChannel, ['email', 'sms'], true)) {
+        echo json_encode(["success" => false, "message" => "Choose email or SMS for account verification."]);
+        exit();
+    }
+    if (empty($data['first_name']) || empty($data['last_name']) || empty($data['password']) || empty($data['user_type'])) {
         echo json_encode(["success" => false, "message" => "Missing required fields."]);
         exit();
     }
@@ -54,7 +60,10 @@ try {
     $first_name = trim($data['first_name']);
     $middle_name = trim($data['middle_name'] ?? '');
     $last_name = trim($data['last_name']);
-    $email = strtolower(trim($data['email']));
+    $emailInput = $verificationChannel === 'email'
+        ? strtolower(trim((string) ($data['email'] ?? '')))
+        : '';
+    $email = $emailInput !== '' ? $emailInput : null;
     $password = $data['password'];
     $user_type = strtolower(trim($data['user_type'])); // "parent", "helper", etc.
 
@@ -67,22 +76,24 @@ try {
     // Email validation: correct format + the domain must actually accept mail
     // (MX record). This rejects fake/typo domains without asking the user to
     // confirm anything. It verifies the DOMAIN is real, not the exact inbox.
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if ($verificationChannel === 'email' && $email === null) {
+        echo json_encode(["success" => false, "message" => "Enter an email address to receive your verification code."]);
+        exit();
+    }
+    if ($email !== null && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         echo json_encode(["success" => false, "message" => "Please enter a valid email address."]);
         exit();
     }
-    $emailDomain = substr(strrchr($email, '@'), 1);
-    if ($emailDomain === '' || (!checkdnsrr($emailDomain, 'MX') && !checkdnsrr($emailDomain, 'A'))) {
+    $emailDomain = $email !== null ? substr(strrchr($email, '@'), 1) : '';
+    if ($email !== null && ($emailDomain === '' || (!checkdnsrr($emailDomain, 'MX') && !checkdnsrr($emailDomain, 'A')))) {
         echo json_encode(["success" => false, "message" => "That email domain doesn't seem to exist. Please use a real, working email address."]);
         exit();
     }
 
-    // Mobile number — a second way to sign in, for users who find a number easier
-    // to remember than an email. Stored canonically (09XXXXXXXXX) so every format
-    // the user might type resolves to the same account. Optional: anyone who'd
-    // rather not give a number still signs in with their email.
+    // Store only the contact used for account verification. The alternate can be
+    // added later in profile setup.
     $phone = null;
-    if (!empty($data['phone'])) {
+    if ($verificationChannel === 'sms' && !empty($data['phone'])) {
         $phone = carelink_normalize_ph_mobile((string) $data['phone']);
         if ($phone === null) {
             echo json_encode([
@@ -93,31 +104,36 @@ try {
             exit();
         }
     }
+    if ($verificationChannel === 'sms' && $phone === null) {
+        echo json_encode(["success" => false, "message" => "Enter a mobile number to receive your verification code by SMS."]);
+        exit();
+    }
 
-    // 5. DUPLICATE CHECKS — email and phone TOGETHER.
+    // 5. DUPLICATE CHECKS — report every provided identifier conflict together.
     // These used to run in two places (phone here, email 20 lines later), so when
     // both were taken the user fixed the phone, resubmitted, and only THEN learned
     // the email was taken too. Reporting every clash at once, in form order, means
     // one fix instead of a guessing game.
     $errors = [];
 
-    $stmt = $conn->prepare("SELECT user_id FROM users WHERE email = ?");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    if ($stmt->get_result()->num_rows > 0) {
-        $errors['email'] = "This email already has an account. Sign in instead, or use a different email.";
+    if ($email !== null) {
+        $stmt = $conn->prepare("SELECT user_id FROM users WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        if ($stmt->get_result()->num_rows > 0) {
+            $errors['email'] = "This email already has an account. Sign in instead, or use a different email.";
+        }
+        $stmt->close();
     }
-    $stmt->close();
 
     if ($phone !== null) {
-        // Checks users.phone AND helper_profiles/parent_profiles.contact_number —
-        // a number entered in profile setup never used to block signup with the
-        // same number, letting one person hold a helper AND a parent account.
+        // Check users.phone AND helper_profiles/parent_profiles.contact_number so
+        // a number already tied to another account cannot be used for SMS signup.
         $conflict = carelink_phone_conflict($conn, 0, $phone);
         if ($conflict !== null) {
-            // Phone is optional, so tell them the cheapest way out rather than
-            // leaving them stuck on a field they never needed to fill.
-            $errors['phone'] = "This mobile number is already used by another account. Use a different number, or leave it blank — it's optional.";
+            $errors['phone'] = $verificationChannel === 'sms'
+                ? "This mobile number is already used by another account. Sign in instead, or use a different number."
+                : "This mobile number is already used by another account. Use a different number.";
         }
     }
 
@@ -132,7 +148,7 @@ try {
     }
 
     // 6. GENERATE USERNAME
-    $username_base = explode('@', $email)[0];
+    $username_base = $email !== null ? explode('@', $email)[0] : (string) $phone;
     $username_base = preg_replace("/[^a-zA-Z0-9]/", "", $username_base);
     if (empty($username_base)) { $username_base = "user"; }
     $username = $username_base . rand(1000, 9999);
@@ -144,15 +160,14 @@ try {
     $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
     $status = "pending";
 
-    // Notice we are inserting first_name, middle_name, and last_name now!
-    $insertQuery = "INSERT INTO users (first_name, middle_name, last_name, username, email, phone, password, user_type, status, privacy_consent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+    $insertQuery = "INSERT INTO users (first_name, middle_name, last_name, username, email, phone, account_verification_channel, password, user_type, status, privacy_consent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
     $stmt = $conn->prepare($insertQuery);
     if (!$stmt) {
         throw new Exception("SQL Prepare Error (Users): " . $conn->error);
     }
 
-    $stmt->bind_param("sssssssss", $first_name, $middle_name, $last_name, $username, $email, $phone, $hashedPassword, $user_type, $status);
+    $stmt->bind_param("ssssssssss", $first_name, $middle_name, $last_name, $username, $email, $phone, $verificationChannel, $hashedPassword, $user_type, $status);
 
     if (!$stmt->execute()) {
         throw new Exception("Failed to insert user: " . $stmt->error);
@@ -191,27 +206,29 @@ try {
     // 10. COMMIT TRANSACTION (Save everything)
     $conn->commit();
 
-    // 11. EMAIL VERIFICATION
-    // Deliberately AFTER the commit: the account is valid whether or not our SMTP
-    // is reachable. If the mail fails the user can hit "Resend" instead of losing
-    // a registration to someone else's outage.
-    $emailSent = false;
+    // Send only through the channel the user selected.
+    $verificationSent = false;
     try {
         $code = carelink_issue_code($conn, (int) $new_user_id, 'verify_email');
-        $emailSent = carelink_send_verification_code($email, $first_name, $code);
-    } catch (Throwable $mailErr) {
-        error_log('Signup verification email failed for ' . $email . ': ' . $mailErr->getMessage());
+        $verificationSent = $verificationChannel === 'sms'
+            ? carelink_textbee_send([$phone], 'CareLink verification code: ' . $code . '. It expires in 15 minutes.')
+            : carelink_send_verification_code($email, $first_name, $code);
+    } catch (Throwable $verificationError) {
+        error_log('Signup verification delivery failed: ' . $verificationError->getMessage());
     }
 
     echo json_encode([
         "success"          => true,
-        "message"          => $emailSent
-            ? "Account created! Check your email for the 6-digit code."
-            : "Account created, but we couldn't send the verification email. Tap Resend to try again.",
+        "message"          => $verificationSent
+            ? ($verificationChannel === 'sms'
+                ? "Account created! Check your mobile phone for the 6-digit code."
+                : "Account created! Check your email for the 6-digit code.")
+            : "Account created, but we couldn't send the verification code. Tap Resend to try again.",
         "user_id"          => (int) $new_user_id,
         "email"            => $email,
+        "verification_channel" => $verificationChannel,
         "requires_verification" => true,
-        "email_sent"       => $emailSent,
+        "verification_sent" => $verificationSent,
     ]);
 
 } catch (Exception $e) {

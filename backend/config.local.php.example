@@ -39,6 +39,11 @@ return [
     'MAIL_FROM'      => 'youraddress@gmail.com',
     'MAIL_FROM_NAME' => 'CareLink',
 
+    // ── TextBee SMS (optional; sends through your paired Android phone/SIM) ──
+    // Keep this server-side only. Never add the API key to the Expo app.
+    // The free plan currently allows 1 device, 50 SMS/day, and 300 SMS/month.
+    // 'TEXTBEE_API_KEY' => 'your_textbee_api_key',
+
     // Later, to send from your own domain instead (better deliverability), only
     // these values change — no code edits:
     //   'MAIL_HOST' => 'smtp.hostinger.com', 'MAIL_PORT' => '465',
@@ -82,4 +87,5 @@ return [
     // fine. Leave this out entirely and migrate.php refuses every request,
     // including your own — it fails closed rather than defaulting to open.
     'MIGRATE_TOKEN' => 'change-me-to-a-long-random-string',
+
 ];

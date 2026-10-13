@@ -29,12 +29,13 @@ const RESEND_COOLDOWN = 60; // matches CARELINK_CODE_COOLDOWN_SEC on the server
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ email?: string; user_id?: string }>();
+  const params = useLocalSearchParams<{ email?: string; user_id?: string; channel?: string }>();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1024;
 
   const email = (params.email ?? "").toString();
   const userId = params.user_id ? Number(params.user_id) : undefined;
+  const usesSms = params.channel === "sms";
 
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [busy, setBusy] = useState(false);
@@ -89,7 +90,7 @@ export default function VerifyEmailScreen() {
       const data = await res.json();
       if (data.success) {
         setDone(true);
-        setNotif({ visible: true, message: data.message || "Email verified!", type: "success" });
+        setNotif({ visible: true, message: data.message || "Account verified!", type: "success" });
         setTimeout(() => router.replace("/login"), 1500);
       } else {
         setNotif({ visible: true, message: data.message || "That code didn't work.", type: "error" });
@@ -147,10 +148,16 @@ export default function VerifyEmailScreen() {
               <AnimatedLogo size={64} rings={false} glow float beat boxScale={1.3} entrance />
             </View>
 
-            <Text style={v.title}>Check your email</Text>
+            <Text style={v.title}>{usesSms ? "Check your phone" : "Check your email"}</Text>
             <Text style={v.subtitle}>
-              We sent a 6-digit code to{"\n"}
-              <Text style={v.emailText}>{email || "your email address"}</Text>
+              {usesSms
+                ? "We sent a 6-digit code to your mobile number."
+                : (
+                  <>
+                    We sent a 6-digit code to{"\n"}
+                    <Text style={v.emailText}>{email || "your email address"}</Text>
+                  </>
+                )}
             </Text>
 
             <View style={v.codeRow}>
@@ -187,7 +194,7 @@ export default function VerifyEmailScreen() {
               ) : (
                 <>
                   <Ionicons name="shield-checkmark" size={18} color="#fff" />
-                  <Text style={v.btnText}>{done ? "Verified" : "Verify email"}</Text>
+                  <Text style={v.btnText}>{done ? "Verified" : "Verify account"}</Text>
                 </>
               )}
             </Pressable>
@@ -202,7 +209,9 @@ export default function VerifyEmailScreen() {
             </View>
 
             <Text style={v.hint}>
-              The code expires in 15 minutes. Check your spam folder if it hasn&apos;t arrived.
+              {usesSms
+                ? "The code expires in 15 minutes. Make sure your phone can receive SMS."
+                : "The code expires in 15 minutes. Check your spam folder if it hasn&apos;t arrived."}
             </Text>
 
             <Pressable

@@ -42,6 +42,7 @@ export default function SignUpScreen() {
     showPassword, setShowPassword,
     showConfirmPassword, setShowConfirmPassword,
     privacyConsent, setPrivacyConsent, loading,
+    verificationChannel, setVerificationChannel,
     notification, closeNotification,
     handleSignUpScreen, router,
   } = useSignupForm();
@@ -61,6 +62,39 @@ export default function SignUpScreen() {
   const title = role === 'parent' ? 'Household Employer registration'
     : role === 'helper'           ? 'Helper registration'
     :                               'Create account';
+  const verificationPicker = (
+    <View style={{ marginTop: 16, marginBottom: 8 }}>
+      <Text style={[s.label, { color: t.label }]}>Send verification code by</Text>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        {([
+          { value: 'email', label: 'Email' },
+          { value: 'sms', label: 'SMS' },
+        ] as const).map((option) => {
+          const selected = verificationChannel === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              onPress={() => setVerificationChannel(option.value)}
+              style={{
+                flex: 1,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                borderWidth: 1,
+                borderRadius: 10,
+                borderColor: selected ? t.pillIcon : t.inputBorder,
+                backgroundColor: selected ? t.pillBg : t.inputBg,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: t.label, fontWeight: selected ? '700' : '500' }}>{option.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
 
   const pw = form.password;
   const pwChecks = [
@@ -141,40 +175,26 @@ export default function SignUpScreen() {
         onChangeText={(v) => handleChange('middle_name', v)}
       />
 
-      {/* ── Email ── */}
-      <Text style={[s.label, { color: t.label }]}>
-        Email <Text style={{ color: t.required }}>*</Text>
-      </Text>
-      <TextInput
-        style={[s.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
-        placeholder="you@email.com"
-        placeholderTextColor={t.placeholder}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        value={form.email}
-        onChangeText={(v) => handleChange('email', v)}
-      />
+      {verificationPicker}
 
-      {/* ── Mobile number ──
-          Optional, but it becomes a second way to sign in — easier to remember
-          than an email for many users. Validated in useSignupForm via lib/phone. */}
       <Text style={[s.label, { color: t.label }]}>
-        Mobile number <Text style={{ color: t.placeholder, fontSize: 13 }}>(optional)</Text>
+        {verificationChannel === 'email' ? 'Email address' : 'Mobile number'} <Text style={{ color: t.required }}>*</Text>
       </Text>
       <TextInput
         style={[s.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
-        placeholder="0917 123 4567"
+        placeholder={verificationChannel === 'email' ? 'you@email.com' : '0917 123 4567'}
         placeholderTextColor={t.placeholder}
-        keyboardType="phone-pad"
+        keyboardType={verificationChannel === 'email' ? 'email-address' : 'phone-pad'}
         autoCapitalize="none"
         autoCorrect={false}
-        maxLength={16}
-        value={form.phone}
-        onChangeText={(v) => handleChange('phone', v)}
+        maxLength={verificationChannel === 'sms' ? 16 : undefined}
+        value={verificationChannel === 'email' ? form.email : form.phone}
+        onChangeText={(v) => handleChange(verificationChannel === 'email' ? 'email' : 'phone', v)}
       />
       <Text style={[s.hint, { color: t.placeholder }]}>
-        You&apos;ll be able to sign in with this number instead of your email.
+        {verificationChannel === 'sms'
+          ? 'This number will receive your verification code and SMS alerts for new chats and PESO announcements. Carrier messaging fees may apply.'
+          : 'You can add a mobile number later in your profile to receive SMS alerts for new chats and PESO announcements.'}
       </Text>
 
       {/* ── Password ── */}
@@ -468,27 +488,59 @@ export default function SignUpScreen() {
                     />
                   </View>
 
-                  <View style={[d.gridRow, d.gridRowWithHint]}>
-                    <View style={d.col}>
-                      <Text style={[d.fieldLabel, { color: t.label }]}>Email <Text style={{ color: t.required }}>*</Text></Text>
-                      <TextInput
-                        style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
-                        placeholder="you@email.com" placeholderTextColor={t.placeholder}
-                        keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email"
-                        value={form.email} onChangeText={(v) => handleChange('email', v)}
-                      />
-                    </View>
-                    <View style={d.col}>
-                      <Text style={[d.fieldLabel, { color: t.label }]}>Mobile <Text style={{ color: t.optional }}>(optional)</Text></Text>
-                      <TextInput
-                        style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
-                        placeholder="0917 123 4567" placeholderTextColor={t.placeholder}
-                        keyboardType="phone-pad" autoCapitalize="none" autoCorrect={false} maxLength={16} autoComplete="tel"
-                        value={form.phone} onChangeText={(v) => handleChange('phone', v)}
-                      />
+                  <View style={{ marginTop: 16, marginBottom: 8 }}>
+                    <Text style={[d.fieldLabel, { color: t.label }]}>Send verification code by</Text>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      {([
+                        { value: 'email', label: 'Email' },
+                        { value: 'sms', label: 'SMS' },
+                      ] as const).map((option) => {
+                        const selected = verificationChannel === option.value;
+                        return (
+                          <Pressable
+                            key={option.value}
+                            accessibilityRole="radio"
+                            accessibilityState={{ selected }}
+                            onPress={() => setVerificationChannel(option.value)}
+                            style={{
+                              flex: 1,
+                              paddingVertical: 12,
+                              borderWidth: 1,
+                              borderRadius: 10,
+                              borderColor: selected ? t.pillIcon : t.inputBorder,
+                              backgroundColor: selected ? t.pillBg : t.inputBg,
+                              alignItems: 'center',
+                            }}
+                          >
+                            <Text style={{ color: t.label, fontWeight: selected ? '700' : '500' }}>{option.label}</Text>
+                          </Pressable>
+                        );
+                      })}
                     </View>
                   </View>
-                  <Text style={[d.hint, { color: t.placeholder }]}>You can sign in with either your email or mobile number.</Text>
+
+                  <View style={[d.field, d.gridRowWithHint]}>
+                    <Text style={[d.fieldLabel, { color: t.label }]}>
+                      {verificationChannel === 'email' ? 'Email address' : 'Mobile number'} <Text style={{ color: t.required }}>*</Text>
+                    </Text>
+                    <TextInput
+                      style={[d.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.inputText }]}
+                      placeholder={verificationChannel === 'email' ? 'you@email.com' : '0917 123 4567'}
+                      placeholderTextColor={t.placeholder}
+                      keyboardType={verificationChannel === 'email' ? 'email-address' : 'phone-pad'}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      autoComplete={verificationChannel === 'email' ? 'email' : 'tel'}
+                      maxLength={verificationChannel === 'sms' ? 16 : undefined}
+                      value={verificationChannel === 'email' ? form.email : form.phone}
+                      onChangeText={(v) => handleChange(verificationChannel === 'email' ? 'email' : 'phone', v)}
+                    />
+                  </View>
+                  <Text style={[d.hint, { color: t.placeholder }]}>
+                    {verificationChannel === 'sms'
+                      ? 'This number will receive your verification code and SMS alerts for new chats and PESO announcements. Carrier messaging fees may apply.'
+                      : 'You can add a mobile number later in your profile to receive SMS alerts for new chats and PESO announcements.'}
+                  </Text>
 
                   <View style={[d.gridRow, d.gridRowWithHint]}>
                     <View style={d.col}>

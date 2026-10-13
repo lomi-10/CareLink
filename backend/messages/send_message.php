@@ -121,6 +121,15 @@ try {
         $notifBody,
         'message', $sender_id);
 
+    if ($message_type !== 'video_call' && $sender_id !== $receiver_id) {
+        require_once __DIR__ . '/../shared/textbee.php';
+        carelink_textbee_send_to_user(
+            $conn,
+            $receiver_id,
+            'CareLink: New message from ' . $senderName . '. Open the app to reply.'
+        );
+    }
+
     echo json_encode(['success' => true, 'message_id' => $message_id]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);

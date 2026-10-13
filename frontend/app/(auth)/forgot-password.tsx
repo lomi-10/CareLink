@@ -1,7 +1,7 @@
 // app/(auth)/forgot-password.tsx
 // PHP: auth/request_password_reset.php, auth/reset_password.php
 //
-// Two steps in one screen: ask for the email, then take the code + new password.
+// Two steps in one screen: request a reset code by email or SMS, then set a password.
 // Replaces the old dead-end that told users to "contact your administrator".
 
 import { Ionicons } from "@expo/vector-icons";
@@ -29,6 +29,7 @@ const RESEND_COOLDOWN = 60;
 /** Mirrors the server rules in auth/reset_password.php. */
 const RULES = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
+  { label: "One lowercase letter", test: (p: string) => /[a-z]/.test(p) },
   { label: "One uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
   { label: "One number", test: (p: string) => /[0-9]/.test(p) },
   { label: "One special character", test: (p: string) => /[!@#$%^&*(),.?":{}|<>]/.test(p) },
@@ -40,7 +41,8 @@ export default function ForgotPasswordScreen() {
   const isDesktop = width >= 1024;
 
   const [step, setStep] = useState<"email" | "reset">("email");
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [channel, setChannel] = useState<"email" | "sms">("email");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -59,13 +61,13 @@ export default function ForgotPasswordScreen() {
   const pwOk = RULES.every((r) => r.test(password));
 
   const requestCode = async () => {
-    if (!email.trim() || busy) return;
+    if (!identifier.trim() || busy) return;
     setBusy(true);
     try {
       const res = await fetch(`${API_URL}/auth/request_password_reset.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ identifier: identifier.trim(), channel }),
       });
       const data = await res.json();
       if (data.success) {
@@ -85,7 +87,13 @@ export default function ForgotPasswordScreen() {
   const submitReset = async () => {
     if (busy) return;
     if (code.trim().length !== 6) {
-      setNotif({ visible: true, message: "Enter the 6-digit code from your email.", type: "error" });
+      setNotif({
+        visible: true,
+        message: channel === "sms"
+          ? "Enter the 6-digit code from your phone."
+          : "Enter the 6-digit code from your email.",
+        type: "error",
+      });
       return;
     }
     if (!pwOk) {
@@ -97,7 +105,7 @@ export default function ForgotPasswordScreen() {
       const res = await fetch(`${API_URL}/auth/reset_password.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), code: code.trim(), password }),
+        body: JSON.stringify({ identifier: identifier.trim(), channel, code: code.trim(), password }),
       });
       const data = await res.json();
       if (data.success) {
@@ -132,17 +140,45 @@ export default function ForgotPasswordScreen() {
               <>
                 <Text style={v.title}>Forgot your password?</Text>
                 <Text style={v.subtitle}>
-                  Enter the email you signed up with and we&apos;ll send you a 6-digit reset code.
+                  Choose how you signed up. We&apos;ll send one 6-digit reset code to that contact.
                 </Text>
 
-                <Text style={v.fieldLabel}>Email address</Text>
+                <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+                  {([
+                    { value: "email", label: "Email" },
+                    { value: "sms", label: "SMS" },
+                  ] as const).map((option) => {
+                    const selected = channel === option.value;
+                    return (
+                      <Pressable
+                        key={option.value}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected }}
+                        onPress={() => setChannel(option.value)}
+                        style={{
+                          flex: 1,
+                          paddingVertical: 12,
+                          borderWidth: 1,
+                          borderColor: selected ? "#E86019" : "#E8D3B3",
+                          borderRadius: 10,
+                          backgroundColor: selected ? "#FFF4E8" : "#FFFFFF",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text style={{ color: "#2A1608", fontWeight: selected ? "700" : "500" }}>{option.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Text style={v.fieldLabel}>{channel === "sms" ? "Mobile number" : "Email address"}</Text>
                 <TextInput
                   style={v.input}
-                  placeholder="you@example.com"
+                  placeholder={channel === "sms" ? "0917 123 4567" : "you@example.com"}
                   placeholderTextColor="#B8956A"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
+                  value={identifier}
+                  onChangeText={setIdentifier}
+                  keyboardType={channel === "sms" ? "phone-pad" : "email-address"}
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoFocus
@@ -151,18 +187,18 @@ export default function ForgotPasswordScreen() {
 
                 <Pressable
                   onPress={requestCode}
-                  disabled={!email.trim() || busy}
+                  disabled={!identifier.trim() || busy}
                   style={({ hovered }: any) => [
                     v.btn,
-                    (!email.trim() || busy) && { opacity: 0.5 },
-                    hovered && email.trim() && !busy && { transform: [{ translateY: -2 }] },
+                    (!identifier.trim() || busy) && { opacity: 0.5 },
+                    hovered && identifier.trim() && !busy && { transform: [{ translateY: -2 }] },
                   ]}
                 >
                   {busy ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <>
-                      <Ionicons name="mail" size={18} color="#fff" />
+                      <Ionicons name={channel === "sms" ? "chatbubble" : "mail"} size={18} color="#fff" />
                       <Text style={v.btnText}>Send reset code</Text>
                     </>
                   )}
@@ -172,8 +208,8 @@ export default function ForgotPasswordScreen() {
               <>
                 <Text style={v.title}>Choose a new password</Text>
                 <Text style={v.subtitle}>
-                  Enter the code we sent to{"\n"}
-                  <Text style={v.emailText}>{email}</Text>
+                  Enter the code we sent by {channel === "sms" ? "SMS" : "email"} to{"\n"}
+                  <Text style={v.emailText}>{identifier}</Text>
                 </Text>
 
                 <Text style={v.fieldLabel}>6-digit code</Text>
@@ -250,7 +286,11 @@ export default function ForgotPasswordScreen() {
                   </Pressable>
                 </View>
 
-                <Text style={v.hint}>The code expires in 15 minutes. Check your spam folder too.</Text>
+                <Text style={v.hint}>
+                  {channel === "sms"
+                    ? "The code expires in 15 minutes. Make sure your phone can receive SMS."
+                    : "The code expires in 15 minutes. Check your spam folder too."}
+                </Text>
               </>
             )}
 
@@ -259,7 +299,7 @@ export default function ForgotPasswordScreen() {
               style={({ hovered }: any) => [v.backRow, hovered && { opacity: 0.7 }]}
             >
               <Ionicons name="arrow-back" size={16} color="#5C3A1A" />
-              <Text style={v.backText}>{step === "reset" ? "Use a different email" : "Back to sign in"}</Text>
+              <Text style={v.backText}>{step === "reset" ? "Use a different contact" : "Back to sign in"}</Text>
             </Pressable>
           </View>
         </ScrollView>

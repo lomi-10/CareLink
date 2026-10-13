@@ -143,7 +143,11 @@ export function useLoginForm() {
             setNotification(prev => ({ ...prev, visible: false }));
             router.push({
               pathname: "/(auth)/verify-email",
-              params: { email: data.email ?? email, user_id: String(data.user_id ?? "") },
+              params: {
+                email: data.email ?? email,
+                user_id: String(data.user_id ?? ""),
+                channel: data.verification_channel === "sms" ? "sms" : "email",
+              },
             } as never);
           }, 1200);
 
