@@ -112,8 +112,8 @@ CareLink is a mobile and web app where:
 3. BROWSE JOBS: From Home (before hired), tap "Browse Jobs"
    → filter by location, job type, salary → tap a listing
    to review duties, pay, schedule, benefits and location.
-   Save interesting posts, or tap "Apply" and send a short
-   cover message explaining why you fit that household.
+   Save interesting posts, or tap "Apply" and submit an application.
+   You can also send a short cover message explaining why you fit that household.
 
 4. TRACK APPLICATIONS: Go to "My Applications" → see
    status of each application: Pending, Reviewed, 

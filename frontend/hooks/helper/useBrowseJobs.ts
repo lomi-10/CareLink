@@ -79,6 +79,11 @@ export interface JobPost {
   parent_rating?: number;
   parent_verified?: boolean;
   parent_profile_image?: string | null;
+  parent_barangay?: string | null;
+  parent_municipality?: string | null;
+  parent_province?: string | null;
+  parent_address?: string | null;
+  parent_landmark?: string | null;
   
   // Match Score
   match_score?: number;
@@ -115,19 +120,16 @@ export interface JobFilters {
   
   // NEW: Search & advanced filters
   search_query: string;
-  location_province?: string;
-  location_municipality?: string;
   requires_sss?: boolean;
   requires_philhealth?: boolean;
   requires_pagibig?: boolean;
   requires_meals?: boolean;
   requires_accommodation?: boolean;
   verified_only?: boolean;
-  min_experience?: number;
   posted_within?: string;
 }
 
-const defaultFilters: JobFilters = {
+export const DEFAULT_JOB_FILTERS: JobFilters = {
   category: 'all',
   distance: 9999,
   employment_type: 'all',
@@ -138,12 +140,40 @@ const defaultFilters: JobFilters = {
   search_query: '',
   verified_only: false,
   posted_within: 'all',
+  requires_sss: false,
+  requires_philhealth: false,
+  requires_pagibig: false,
+  requires_meals: false,
+  requires_accommodation: false,
 };
+
+const normalizeSearchText = (value: unknown) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+
+const includesAnyValue = (value: unknown) =>
+  value === true || value === 1 || value === '1' || value === 'true';
+
+const getMonthlySalary = (job: JobPost) => {
+  const salary = Number(job.salary_offered) || 0;
+  const period = normalizeSearchText(job.salary_period);
+  if (period.startsWith('day')) return salary * 26;
+  if (period.startsWith('week')) return salary * 52 / 12;
+  if (period.startsWith('year') || period.startsWith('annual')) return salary / 12;
+  return salary;
+};
+
+const getPostedTimestamp = (job: JobPost) =>
+  Date.parse(job.posted_at.replace(' ', 'T'));
 
 export function useBrowseJobs() {
   const [jobs, setJobs] = useState<JobPost[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<JobPost[]>([]);
-  const [filters, setFilters] = useState<JobFilters>(defaultFilters);
+  const [filters, setFilters] = useState<JobFilters>(DEFAULT_JOB_FILTERS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
@@ -233,40 +263,35 @@ export function useBrowseJobs() {
   };
 
   // Generate search suggestions
-  const generateSearchSuggestions = (query: string) => {
-    if (!query.trim()) {
+  const generateSearchSuggestions = (query: string, availableJobs: JobPost[]) => {
+    const normalizedQuery = normalizeSearchText(query);
+    if (!normalizedQuery) {
       setSearchSuggestions([]);
       return;
     }
 
-    const suggestions: string[] = [];
-    const lowerQuery = query.toLowerCase();
-
-    // Add category suggestions
-    const categories = ["yaya", "cook", "driver", "general househelp", "laundry", "gardener"];
-    categories.forEach(cat => {
-      if (cat.includes(lowerQuery)) {
-        suggestions.push(cat);
-      }
+    const candidates = availableJobs.flatMap((job) => [
+      job.title,
+      job.category_name,
+      job.custom_category,
+      ...(Array.isArray(job.categories) ? job.categories : []),
+      ...(Array.isArray(job.job_names) ? job.job_names : []),
+      ...(Array.isArray(job.jobs) ? job.jobs : []),
+      ...(Array.isArray(job.skills) ? job.skills : []),
+      job.barangay,
+      job.municipality,
+      job.province,
+    ]);
+    const seen = new Set<string>();
+    const suggestions = candidates.filter((candidate): candidate is string => {
+      if (typeof candidate !== 'string' || !candidate.trim()) return false;
+      const normalized = normalizeSearchText(candidate);
+      if (!normalized || seen.has(normalized) || !normalized.includes(normalizedQuery)) return false;
+      seen.add(normalized);
+      return true;
     });
 
-    // Add location suggestions
-    const locations = ["Ormoc City", "Tacloban", "Leyte", "Cebu"];
-    locations.forEach(loc => {
-      if (loc.toLowerCase().includes(lowerQuery)) {
-        suggestions.push(loc);
-      }
-    });
-
-    // Add skill suggestions
-    const skills = ["childcare", "cooking", "cleaning", "driving"];
-    skills.forEach(skill => {
-      if (skill.includes(lowerQuery)) {
-        suggestions.push(skill);
-      }
-    });
-
-    setSearchSuggestions(suggestions.slice(0, 5));
+    setSearchSuggestions(suggestions.slice(0, 6));
   };
 
   // Apply all filters
@@ -274,32 +299,45 @@ export function useBrowseJobs() {
     let filtered = [...jobs];
 
     // Search query filter
-    if (filters.search_query.trim()) {
-      const query = filters.search_query.toLowerCase();
+    const searchTerms = normalizeSearchText(filters.search_query).split(/\s+/).filter(Boolean);
+    if (searchTerms.length > 0) {
       filtered = filtered.filter((job) => {
-        return (
-          job.title.toLowerCase().includes(query) ||
-          job.description.toLowerCase().includes(query) ||
-          job.categories.some(cat => cat.toLowerCase().includes(query)) ||
-          job.skills.some(skill => skill.toLowerCase().includes(query)) ||
-          job.municipality.toLowerCase().includes(query) ||
-          job.province.toLowerCase().includes(query)
-        );
+        const searchableText = normalizeSearchText([
+          job.title,
+          job.description,
+          job.category_name,
+          job.custom_category,
+          job.parent_name,
+          job.barangay,
+          job.municipality,
+          job.province,
+          job.parent_barangay,
+          job.parent_municipality,
+          job.parent_province,
+          job.parent_address,
+          job.parent_landmark,
+          job.employment_type,
+          job.work_schedule,
+          ...(Array.isArray(job.categories) ? job.categories : []),
+          ...(Array.isArray(job.job_names) ? job.job_names : []),
+          ...(Array.isArray(job.jobs) ? job.jobs : []),
+          ...(Array.isArray(job.skills) ? job.skills : []),
+        ].join(' '));
+        return searchTerms.every((term) => searchableText.includes(term));
       });
     }
 
     // Category filter
     if (filters.category !== 'all') {
       filtered = filtered.filter((job) =>
-        job.category_ids.includes(filters.category)
+        Array.isArray(job.category_ids) && job.category_ids.some((id) => String(id) === filters.category)
       );
     }
 
     // Distance filter
     if (filters.distance !== 9999) {
       filtered = filtered.filter((job) => {
-        if (!job.distance) return true;
-        return job.distance <= filters.distance;
+        return typeof job.distance === 'number' && Number.isFinite(job.distance) && job.distance <= filters.distance;
       });
     }
 
@@ -307,8 +345,8 @@ export function useBrowseJobs() {
     if (filters.employment_type !== 'all') {
       filtered = filtered.filter(
         (job) => 
-          job.employment_type === filters.employment_type || 
-          job.employment_type === 'Any'
+          normalizeSearchText(job.employment_type) === normalizeSearchText(filters.employment_type) ||
+          normalizeSearchText(job.employment_type) === 'any'
       );
     }
 
@@ -316,48 +354,48 @@ export function useBrowseJobs() {
     if (filters.work_schedule !== 'all') {
       filtered = filtered.filter(
         (job) => 
-          job.work_schedule === filters.work_schedule || 
-          job.work_schedule === 'Any'
+          normalizeSearchText(job.work_schedule) === normalizeSearchText(filters.work_schedule) ||
+          normalizeSearchText(job.work_schedule) === 'any'
       );
     }
 
     // Salary range filter
     filtered = filtered.filter((job) => {
-      const monthlySalary = job.salary_period === 'Daily' 
-        ? job.salary_offered * 26 
-        : job.salary_offered;
-      
+      const monthlySalary = getMonthlySalary(job);
       return monthlySalary >= filters.salary_min && monthlySalary <= filters.salary_max;
     });
 
     // Benefits filters
     if (filters.requires_sss) {
-      filtered = filtered.filter(job => job.provides_sss);
+      filtered = filtered.filter(job => includesAnyValue(job.provides_sss));
     }
     if (filters.requires_philhealth) {
-      filtered = filtered.filter(job => job.provides_philhealth);
+      filtered = filtered.filter(job => includesAnyValue(job.provides_philhealth));
     }
     if (filters.requires_pagibig) {
-      filtered = filtered.filter(job => job.provides_pagibig);
+      filtered = filtered.filter(job => includesAnyValue(job.provides_pagibig));
     }
     if (filters.requires_meals) {
-      filtered = filtered.filter(job => job.provides_meals);
+      filtered = filtered.filter(job => includesAnyValue(job.provides_meals));
     }
     if (filters.requires_accommodation) {
-      filtered = filtered.filter(job => job.provides_accommodation);
+      filtered = filtered.filter(job => includesAnyValue(job.provides_accommodation));
     }
 
     // Verified only filter
     if (filters.verified_only) {
-      filtered = filtered.filter(job => job.parent_verified);
+      filtered = filtered.filter(job => includesAnyValue(job.parent_verified));
     }
 
-    // Experience filter
-    if (filters.min_experience) {
-      filtered = filtered.filter(job => {
-        if (!job.min_experience_years) return true;
-        return filters.min_experience ? filters.min_experience >= job.min_experience_years : true;
-      });
+    if (filters.posted_within && filters.posted_within !== 'all') {
+      const days = Number(filters.posted_within);
+      if (Number.isFinite(days) && days > 0) {
+        const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+        filtered = filtered.filter((job) => {
+          const postedAt = getPostedTimestamp(job);
+          return Number.isFinite(postedAt) && postedAt >= cutoff;
+        });
+      }
     }
 
     // Sort
@@ -366,13 +404,17 @@ export function useBrowseJobs() {
         case 'recommended':
           return (b.match_score || 0) - (a.match_score || 0);
         case 'nearest':
-          return (a.distance || 999) - (b.distance || 999);
+          return (a.distance ?? Number.POSITIVE_INFINITY) - (b.distance ?? Number.POSITIVE_INFINITY);
         case 'highest_salary':
-          const salaryA = a.salary_period === 'Daily' ? a.salary_offered * 26 : a.salary_offered;
-          const salaryB = b.salary_period === 'Daily' ? b.salary_offered * 26 : b.salary_offered;
-          return salaryB - salaryA;
-        case 'newest':
-          return parseInt(b.job_post_id) - parseInt(a.job_post_id);
+          return getMonthlySalary(b) - getMonthlySalary(a);
+        case 'newest': {
+          const postedA = getPostedTimestamp(a);
+          const postedB = getPostedTimestamp(b);
+          if (Number.isFinite(postedA) && Number.isFinite(postedB)) return postedB - postedA;
+          if (Number.isFinite(postedA)) return -1;
+          if (Number.isFinite(postedB)) return 1;
+          return (Number(b.job_post_id) || 0) - (Number(a.job_post_id) || 0);
+        }
         default:
           return 0;
       }
@@ -387,13 +429,13 @@ export function useBrowseJobs() {
     
     // If updating search query, generate suggestions
     if (key === 'search_query') {
-      generateSearchSuggestions(value);
+      generateSearchSuggestions(String(value ?? ''), jobs);
     }
   };
 
   // Reset filters
   const resetFilters = () => {
-    setFilters(defaultFilters);
+    setFilters(DEFAULT_JOB_FILTERS);
     setSearchSuggestions([]);
   };
 
@@ -458,6 +500,17 @@ export function useBrowseJobs() {
     applyFilters();
   }, [filters, jobs]);
 
+  const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
+    if (key === 'sort' || key === 'search_query') return false;
+    if (key === 'category') return value !== DEFAULT_JOB_FILTERS.category;
+    if (key === 'distance') return value !== DEFAULT_JOB_FILTERS.distance;
+    if (key === 'salary_min') return value !== DEFAULT_JOB_FILTERS.salary_min;
+    if (key === 'salary_max') return value !== DEFAULT_JOB_FILTERS.salary_max;
+    if (key === 'employment_type' || key === 'work_schedule') return value !== 'all';
+    if (key === 'posted_within') return value !== 'all';
+    return value === true;
+  }).length;
+
   return {
     jobs: filteredJobs,
     allJobs: jobs,
@@ -469,6 +522,7 @@ export function useBrowseJobs() {
     refresh: fetchJobs,
     totalCount: jobs.length,
     filteredCount: filteredJobs.length,
+    activeFilterCount,
     
     // Search features
     searchSuggestions,

@@ -59,7 +59,7 @@ export default function BrowseJobs() {
   const {
     jobs, filters, loading, updateFilter, resetFilters, refresh,
     totalCount, filteredCount, searchSuggestions, recentSearches,
-    saveRecentSearch, clearRecentSearches, toggleSaveJob, savedCount,
+    saveRecentSearch, clearRecentSearches, toggleSaveJob, savedCount, activeFilterCount,
   } = useBrowseJobs();
 
   const { categories } = useJobReferences();
@@ -91,15 +91,7 @@ export default function BrowseJobs() {
   const initiateLogout = () => { setMobileMenu(false); setConfirmLogout(true); };
   const executeLogout  = () => { setConfirmLogout(false); setSuccessLogout(true); };
 
-  const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
-    if (key === 'category')        return value !== 'all';
-    if (key === 'distance')        return value !== 9999;
-    if (key === 'employment_type') return value !== 'all';
-    if (key === 'work_schedule')   return value !== 'all';
-    if (key === 'salary_min')      return value !== 0;
-    if (key === 'salary_max')      return value !== 999999;
-    return false;
-  }).length;
+  const hasBrowseCriteria = activeFilterCount > 0 || Boolean(filters.search_query.trim());
 
   const handleViewJob = (job: JobPost) => { setSelectedJob(job); setJobDetails(true); };
 
@@ -247,6 +239,7 @@ export default function BrowseJobs() {
       <View style={s.searchStrip}>
         <SearchBar
           value={filters.search_query}
+          placeholder="Search jobs, categories, skills, or places..."
           onChangeText={(text) => updateFilter('search_query', text)}
           onSubmit={() => {
             if (filters.search_query.trim()) saveRecentSearch(filters.search_query);
@@ -288,7 +281,7 @@ export default function BrowseJobs() {
             <Text style={s.resultsFiltered}>{'  ·  '}filtered from {totalCount}</Text>
           )}
         </View>
-        {activeFilterCount > 0 && (
+        {hasBrowseCriteria && (
           <TouchableOpacity style={s.clearFiltersBtn} onPress={resetFilters} hitSlop={8}>
             <Ionicons name="close-circle" size={14} color={ORANGE} />
             <Text style={s.clearFiltersBtnText}>Clear filters</Text>
@@ -304,11 +297,11 @@ export default function BrowseJobs() {
           </View>
           <Text style={s.emptyTitle}>No jobs found</Text>
           <Text style={s.emptyBody}>
-            {activeFilterCount > 0
+            {hasBrowseCriteria
               ? 'Try adjusting or clearing your filters to see more results.'
               : 'No PESO-verified jobs are available right now. Check back soon!'}
           </Text>
-          {activeFilterCount > 0 && (
+          {hasBrowseCriteria && (
             <TouchableOpacity style={s.emptyBtn} onPress={resetFilters} activeOpacity={0.85}>
               <Ionicons name="refresh-outline" size={16} color="#fff" />
               <Text style={s.emptyBtnText}>Clear All Filters</Text>

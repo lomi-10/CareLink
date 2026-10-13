@@ -76,10 +76,8 @@ export default function BrowseHelpers() {
 
   const rankedHelpers = useMemo(() => {
     const notHired = helpers.filter((h) => !hiredHelperIds.has(String(h.user_id)));
-    return [...notHired].sort((a, b) =>
-      computeHelperJobMatch(b, bestJobForHelper(b, jobs)).score - computeHelperJobMatch(a, bestJobForHelper(a, jobs)).score
-    );
-  }, [helpers, hiredHelperIds, jobs]);
+    return notHired;
+  }, [helpers, hiredHelperIds]);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
@@ -94,7 +92,7 @@ export default function BrowseHelpers() {
 
   const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
     if (key === 'category') return value !== 'all';
-    if (key === 'distance') return value !== 20;
+    if (key === 'distance') return value !== 9999;
     if (key === 'sort') return false;
     return value !== 'all';
   }).length;
@@ -251,7 +249,7 @@ export default function BrowseHelpers() {
               {recommendedSection}
               <View style={s.resultsBar}>
                 <Text style={s.resultsText}>
-                  {rankedHelpers.length} verified {rankedHelpers.length === 1 ? 'helper' : 'helpers'} found
+                  {rankedHelpers.length} available {rankedHelpers.length === 1 ? 'helper' : 'helpers'} found
                   {hiredHelperIds.size > 0 ? ` · ${hiredHelperIds.size} hired hidden` : ''}
                 </Text>
               </View>

@@ -1,7 +1,7 @@
 // components/helper/jobs/AdvancedSearchModal.tsx
 // Advanced search modal with comprehensive filters
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
-import type { JobFilters } from '@/hooks/helper';
+import { DEFAULT_JOB_FILTERS, type JobFilters } from '@/hooks/helper';
 import type { Category } from '@/hooks/shared';
 
 interface AdvancedSearchModalProps {
@@ -33,12 +33,13 @@ export function AdvancedSearchModal({
   categories,
 }: AdvancedSearchModalProps) {
   const [localFilters, setLocalFilters] = useState<JobFilters>(filters);
-  const [matchCount, setMatchCount] = useState(0); // Would be calculated from API
+
+  useEffect(() => {
+    if (visible) setLocalFilters({ ...filters });
+  }, [visible, filters]);
 
   const updateFilter = (key: keyof JobFilters, value: any) => {
     setLocalFilters(prev => ({ ...prev, [key]: value }));
-    // In production, call API to get live count
-    // setMatchCount(...)
   };
 
   const handleApply = () => {
@@ -47,19 +48,10 @@ export function AdvancedSearchModal({
   };
 
   const handleReset = () => {
-    const defaultFilters: JobFilters = {
-      category: 'all',
-      distance: 20,
-      employment_type: 'all',
-      work_schedule: 'all',
-      salary_min: 0,
-      salary_max: 50000,
-      sort: 'recommended',
-      search_query: '',
-      verified_only: false,
-      posted_within: 'all',
-    };
-    setLocalFilters(defaultFilters);
+    const defaults = { ...DEFAULT_JOB_FILTERS };
+    setLocalFilters(defaults);
+    onApply(defaults);
+    onClose();
   };
 
   return (
@@ -132,7 +124,7 @@ export function AdvancedSearchModal({
                 minimumValue={5}
                 maximumValue={50}
                 step={5}
-                value={localFilters.distance === 9999 ? 50 : localFilters.distance}
+                value={Math.min(localFilters.distance, 50)}
                 onValueChange={(value) => updateFilter('distance', value)}
                 minimumTrackTintColor="#007AFF"
                 maximumTrackTintColor="#E5E7EB"
@@ -140,8 +132,25 @@ export function AdvancedSearchModal({
               />
               <View style={styles.sliderLabels}>
                 <Text style={styles.sliderLabel}>5 km</Text>
-                <Text style={styles.sliderLabel}>50+ km</Text>
+                <Text style={styles.sliderLabel}>50 km</Text>
               </View>
+              <Text style={styles.distanceHint}>
+                Uses available location data; jobs without a distance estimate are excluded from a radius search.
+              </Text>
+              <TouchableOpacity
+                style={[styles.anyDistanceButton, localFilters.distance === 9999 && styles.anyDistanceButtonActive]}
+                onPress={() => updateFilter('distance', 9999)}
+                activeOpacity={0.75}
+              >
+                <Ionicons
+                  name={localFilters.distance === 9999 ? 'checkmark-circle' : 'globe-outline'}
+                  size={17}
+                  color={localFilters.distance === 9999 ? '#fff' : '#4B5563'}
+                />
+                <Text style={[styles.anyDistanceText, localFilters.distance === 9999 && styles.anyDistanceTextActive]}>
+                  Any distance
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Salary Range */}
@@ -149,7 +158,7 @@ export function AdvancedSearchModal({
               <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionTitle}>Monthly Salary Range</Text>
                 <Text style={styles.badgeText}>
-                  ₱{localFilters.salary_min.toLocaleString()} - ₱{localFilters.salary_max.toLocaleString()}
+                  ₱{localFilters.salary_min.toLocaleString()} - {localFilters.salary_max >= 999999 ? '₱50,000+' : `₱${localFilters.salary_max.toLocaleString()}`}
                 </Text>
               </View>
               <Slider
@@ -157,8 +166,8 @@ export function AdvancedSearchModal({
                 minimumValue={0}
                 maximumValue={50000}
                 step={1000}
-                value={localFilters.salary_min}
-                onValueChange={(value) => updateFilter('salary_min', value)}
+                value={Math.min(localFilters.salary_min, 50000)}
+                onValueChange={(value) => updateFilter('salary_min', Math.min(value, localFilters.salary_max))}
                 minimumTrackTintColor="#007AFF"
                 maximumTrackTintColor="#E5E7EB"
                 thumbTintColor="#007AFF"
@@ -168,8 +177,8 @@ export function AdvancedSearchModal({
                 minimumValue={0}
                 maximumValue={50000}
                 step={1000}
-                value={localFilters.salary_max}
-                onValueChange={(value) => updateFilter('salary_max', value)}
+                value={Math.min(localFilters.salary_max, 50000)}
+                onValueChange={(value) => updateFilter('salary_max', Math.max(value, localFilters.salary_min))}
                 minimumTrackTintColor="#007AFF"
                 maximumTrackTintColor="#E5E7EB"
                 thumbTintColor="#007AFF"
@@ -220,6 +229,45 @@ export function AdvancedSearchModal({
               </View>
             </View>
 
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Posted</Text>
+              <View style={styles.categoryGrid}>
+                {[
+                  { label: 'Any time', value: 'all' },
+                  { label: 'Past week', value: '7' },
+                  { label: 'Past month', value: '30' },
+                  { label: 'Past 3 months', value: '90' },
+                ].map(({ label, value }) => (
+                  <TouchableOpacity
+                    key={value}
+                    style={[
+                      styles.categoryChip,
+                      localFilters.posted_within === value && styles.categoryChipActive,
+                    ]}
+                    onPress={() => updateFilter('posted_within', value)}
+                  >
+                    <Text style={[
+                      styles.categoryChipText,
+                      localFilters.posted_within === value && styles.categoryChipTextActive,
+                    ]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.switchRow}>
+              <View style={styles.switchInfo}>
+                <Ionicons name="shield-checkmark-outline" size={20} color="#4B5563" />
+                <Text style={styles.switchLabel}>Approved employers only</Text>
+              </View>
+              <Switch
+                value={localFilters.verified_only || false}
+                onValueChange={(value) => updateFilter('verified_only', value)}
+                trackColor={{ false: '#E5E7EB', true: '#007AFF' }}
+                thumbColor="#fff"
+              />
+            </View>
+
             {/* Benefits Required */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Must Include Benefits</Text>
@@ -260,6 +308,32 @@ export function AdvancedSearchModal({
                   onValueChange={(value) => updateFilter('requires_pagibig', value)}
                   trackColor={{ false: '#E5E7EB', true: '#007AFF' }}
                   thumbColor={'#fff'}
+                />
+              </View>
+
+              <View style={styles.switchRow}>
+                <View style={styles.switchInfo}>
+                  <Ionicons name="restaurant-outline" size={20} color="#4B5563" />
+                  <Text style={styles.switchLabel}>Meals provided</Text>
+                </View>
+                <Switch
+                  value={localFilters.requires_meals || false}
+                  onValueChange={(value) => updateFilter('requires_meals', value)}
+                  trackColor={{ false: '#E5E7EB', true: '#007AFF' }}
+                  thumbColor="#fff"
+                />
+              </View>
+
+              <View style={styles.switchRow}>
+                <View style={styles.switchInfo}>
+                  <Ionicons name="bed-outline" size={20} color="#4B5563" />
+                  <Text style={styles.switchLabel}>Accommodation provided</Text>
+                </View>
+                <Switch
+                  value={localFilters.requires_accommodation || false}
+                  onValueChange={(value) => updateFilter('requires_accommodation', value)}
+                  trackColor={{ false: '#E5E7EB', true: '#007AFF' }}
+                  thumbColor="#fff"
                 />
               </View>
             </View>
@@ -404,6 +478,37 @@ const styles = StyleSheet.create({
   sliderLabel: {
     fontSize: 12,
     color: '#9CA3AF',
+  },
+  distanceHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#6B7280',
+    marginTop: 12,
+  },
+  anyDistanceButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+  },
+  anyDistanceButtonActive: {
+    backgroundColor: '#1D4ED8',
+    borderColor: '#1D4ED8',
+  },
+  anyDistanceText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  anyDistanceTextActive: {
+    color: '#fff',
   },
   optionsRow: {
     flexDirection: 'row',

@@ -1,7 +1,7 @@
 // components/parent/browse/FilterModal.tsx
 // Advanced filter modal for helper browsing
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,10 @@ export function FilterModal({
   onClose,
 }: FilterModalProps) {
   const [localFilters, setLocalFilters] = useState<BrowseFilters>(filters);
+
+  useEffect(() => {
+    if (visible) setLocalFilters({ ...filters });
+  }, [visible, filters]);
 
   const updateLocalFilter = (key: keyof BrowseFilters, value: any) => {
     setLocalFilters((prev) => ({ ...prev, [key]: value }));
@@ -134,6 +138,9 @@ export function FilterModal({
                   />
                 ))}
               </View>
+              <Text style={styles.hintText}>
+                Distance uses map coordinates when available and an area estimate otherwise. Helpers without a location match are excluded when you set a radius.
+              </Text>
             </FilterSection>
 
             {/* Verification Filter */}
@@ -153,27 +160,6 @@ export function FilterModal({
                   label="Pending"
                   selected={localFilters.verification === 'Pending'}
                   onPress={() => updateLocalFilter('verification', 'Pending')}
-                />
-              </View>
-            </FilterSection>
-
-            {/* Availability Filter */}
-            <FilterSection title="Availability">
-              <View style={styles.chipContainer}>
-                <FilterChip
-                  label="All"
-                  selected={localFilters.availability === 'all'}
-                  onPress={() => updateLocalFilter('availability', 'all')}
-                />
-                <FilterChip
-                  label="Available Now"
-                  selected={localFilters.availability === 'Available'}
-                  onPress={() => updateLocalFilter('availability', 'Available')}
-                />
-                <FilterChip
-                  label="Not Available"
-                  selected={localFilters.availability === 'Not Available'}
-                  onPress={() => updateLocalFilter('availability', 'Not Available')}
                 />
               </View>
             </FilterSection>
@@ -343,6 +329,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1A1C1E',
     marginBottom: 12,
+  },
+  hintText: {
+    marginTop: 10,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#777',
   },
   chipContainer: {
     flexDirection: 'row',

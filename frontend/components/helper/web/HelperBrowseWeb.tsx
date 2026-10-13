@@ -48,7 +48,7 @@ const CAT_ICON = (name: string): keyof typeof Ionicons.glyphMap => {
 
 export function HelperBrowseWeb({ userName, avatar, verified, currentlyEmployed, onLogout }: { userName: string; avatar: string | null; verified: boolean; currentlyEmployed: boolean; onLogout: () => void }) {
   const router = useRouter();
-  const { jobs, filters, updateFilter, resetFilters, refresh, toggleSaveJob, savedCount, loading } = useBrowseJobs();
+  const { jobs, filters, updateFilter, resetFilters, refresh, toggleSaveJob, savedCount, loading, activeFilterCount, saveRecentSearch } = useBrowseJobs();
   const { categories } = useJobReferences();
 
   const parentGroups = useMemo(() => groupJobsByParent(jobs), [jobs]);
@@ -114,15 +114,42 @@ export function HelperBrowseWeb({ userName, avatar, verified, currentlyEmployed,
               <Ionicons name="search" size={18} color={wt.subtle} />
               <TextInput
                 style={s.searchInput}
-                placeholder="Search by job title, skills, or location..."
+                placeholder="Search jobs, categories, skills, or places..."
                 placeholderTextColor={wt.subtle}
                 value={filters.search_query}
                 onChangeText={(v) => updateFilter('search_query', v)}
+                onSubmitEditing={() => saveRecentSearch(filters.search_query)}
+                accessibilityLabel="Search jobs, categories, skills, or places"
               />
+              {filters.search_query.length > 0 && (
+                <Pressable
+                  onPress={() => updateFilter('search_query', '')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                  style={({ hovered }: any) => [s.clearSearchBtn, TRANS, hovered && { backgroundColor: wt.accentSoft }]}
+                >
+                  <Ionicons name="close-circle" size={19} color={wt.subtle} />
+                </Pressable>
+              )}
             </View>
             <Pressable onPress={() => setFiltersOpen(true)} style={({ hovered }: any) => [s.filterBtn, TRANS, hovered && { borderColor: wt.accent, backgroundColor: wt.accentSoft }]}>
-              <Ionicons name="options-outline" size={17} color={wt.ink} /><Text style={s.filterBtnText}>Filters</Text>
+              <Ionicons name="options-outline" size={17} color={wt.ink} />
+              <Text style={s.filterBtnText}>Filters</Text>
+              {activeFilterCount > 0 && (
+                <View style={s.filterBadge}>
+                  <Text style={s.filterBadgeText}>{activeFilterCount}</Text>
+                </View>
+              )}
             </Pressable>
+            {activeFilterCount > 0 && (
+              <Pressable
+                onPress={resetFilters}
+                accessibilityRole="button"
+                style={({ hovered }: any) => [s.clearFiltersBtn, TRANS, hovered && { backgroundColor: wt.accentSoft }]}
+              >
+                <Text style={s.clearFiltersText}>Reset</Text>
+              </Pressable>
+            )}
           </View>
 
           <View style={s.chips}>
@@ -762,6 +789,11 @@ const s = StyleSheet.create({
   searchInput: { flex: 1, fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: wt.ink, outlineStyle: 'none' as any },
   filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: wt.surface, borderWidth: 1, borderColor: wt.line, borderRadius: 12, paddingHorizontal: 16 },
   filterBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: wt.ink },
+  filterBadge: { minWidth: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5, backgroundColor: wt.accent },
+  filterBadgeText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: '#fff' },
+  clearSearchBtn: { padding: 4, borderRadius: 12 },
+  clearFiltersBtn: { alignSelf: 'center', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10 },
+  clearFiltersText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: wt.accent },
 
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
   chip: { borderWidth: 1, borderColor: wt.line, backgroundColor: wt.surface, borderRadius: 999, paddingHorizontal: 15, paddingVertical: 8 },

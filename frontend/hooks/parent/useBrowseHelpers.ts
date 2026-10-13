@@ -67,17 +67,15 @@ export interface HelperProfile {
 export interface BrowseFilters {
   category: string; 
   distance: number; 
-  availability: string; 
   verification: string; 
   gender: string; 
   experience: string; 
   sort: string; 
 }
 
-const defaultFilters: BrowseFilters = {
+export const DEFAULT_BROWSE_FILTERS: BrowseFilters = {
   category: 'all',
-  distance: 20,
-  availability: 'all',
+  distance: 9999,
   verification: 'all',
   gender: 'all',
   experience: 'all',
@@ -87,10 +85,9 @@ const defaultFilters: BrowseFilters = {
 export function useBrowseHelpers() {
   const [helpers, setHelpers] = useState<HelperProfile[]>([]);
   const [filteredHelpers, setFilteredHelpers] = useState<HelperProfile[]>([]);
-  const [filters, setFilters] = useState<BrowseFilters>(defaultFilters);
+  const [filters, setFilters] = useState<BrowseFilters>(DEFAULT_BROWSE_FILTERS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [parentLocation, setParentLocation] = useState<{ lat: number; lng: number; } | null>(null);
 
   const fetchHelpers = async () => {
     try {
@@ -125,11 +122,10 @@ export function useBrowseHelpers() {
     if (filters.category !== 'all') {
       filtered = filtered.filter((h) => h.category_ids?.includes(filters.category));
     }
-    if (filters.distance !== 9999 && parentLocation) {
-      filtered = filtered.filter((h) => !h.distance || h.distance <= filters.distance);
-    }
-    if (filters.availability !== 'all') {
-      filtered = filtered.filter((h) => h.availability_status === filters.availability);
+    if (filters.distance !== 9999) {
+      filtered = filtered.filter((h) =>
+        typeof h.distance === 'number' && Number.isFinite(h.distance) && h.distance <= filters.distance
+      );
     }
     if (filters.verification !== 'all') {
       filtered = filtered.filter((h) => h.verification_status === filters.verification);
@@ -152,7 +148,7 @@ export function useBrowseHelpers() {
 
     filtered.sort((a, b) => {
       switch (filters.sort) {
-        case 'nearest': return (a.distance || 999) - (b.distance || 999);
+        case 'nearest': return (a.distance ?? Number.POSITIVE_INFINITY) - (b.distance ?? Number.POSITIVE_INFINITY);
         case 'highest_rated': return (b.rating_average || 0) - (a.rating_average || 0);
         case 'most_experienced': return (b.experience_years || 0) - (a.experience_years || 0);
         case 'newest': return parseInt(b.profile_id) - parseInt(a.profile_id);
@@ -164,7 +160,7 @@ export function useBrowseHelpers() {
   };
 
   const updateFilter = (key: keyof BrowseFilters, value: any) => setFilters((prev) => ({ ...prev, [key]: value }));
-  const resetFilters = () => setFilters(defaultFilters);
+  const resetFilters = () => setFilters(DEFAULT_BROWSE_FILTERS);
 
   useEffect(() => { fetchHelpers(); }, []);
   useEffect(() => { applyFilters(); }, [filters, helpers]);
