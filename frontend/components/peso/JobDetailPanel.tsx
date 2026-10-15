@@ -184,7 +184,9 @@ export function JobDetailPanel({
   }
 
   // ── derived ────────────────────────────────────────────────────────────────
-  const category = job.custom_category || job.category_name;
+  const category = Array.isArray(job.categories) && job.categories.length > 1
+    ? job.categories.join(', ')
+    : job.custom_category || job.category_name;
   const isPending = job.status === 'Pending';
   const statusMeta = job.status === 'Open' ? { label: 'Approved', c: c.ok, icon: 'checkmark-circle' as const }
     : job.status === 'Rejected' ? { label: 'Rejected', c: c.bad, icon: 'close-circle' as const }
@@ -363,6 +365,7 @@ export function JobDetailPanel({
 
               <View style={narrow ? undefined : { flex: 1, gap: 12 }}>
                 <Block title="Job details" icon="briefcase-outline">
+                  <KV icon="people-outline" label="Helper openings" value={String(job.slots ?? 1)} />
                   <KV icon="briefcase-outline" label="Employment type" value={job.employment_type || '—'} />
                   <KV icon="time-outline" label="Work schedule" value={job.work_schedule || '—'} />
                   <KV icon="cafe-outline" label="Days off" value={parseDaysOff(job.days_off)} />

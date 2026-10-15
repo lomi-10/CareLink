@@ -92,19 +92,47 @@ function computeJobSpecificMatch(helper: MatchableHelper, job: JobPost): HelperJ
   const factors: MatchFactor[] = [];
   let pts = 0;
 
-  // 1. Category match (25 pts) — binary
-  const jobCat = job.category_id != null ? String(job.category_id) : '';
+  // 1. Category coverage (25 pts) — prorated for mixed-specialty posts.
+  const jobCatIds = (job.category_ids?.length
+    ? job.category_ids
+    : job.category_id != null ? [job.category_id] : []).map(String);
   const helperCatIds = (helper.category_ids ?? []).map(String);
-  const jobCategoryName = (job.category_name || job.custom_category || '').trim().toLowerCase();
-  const catLabel = job.category_name || job.custom_category || 'this role';
-  const categoryMatched =
-    (!!jobCat && helperCatIds.includes(jobCat)) ||
-    (!!jobCategoryName && (helper.categories ?? []).some((c) => c.toLowerCase() === jobCategoryName));
-  pts += categoryMatched ? 25 : 0;
+  const jobCategoryNames = (job.categories?.length
+    ? job.categories
+    : [job.category_name || job.custom_category || '']).map((name) => name.trim().toLowerCase()).filter(Boolean);
+  const helperCategoryNames = (helper.categories ?? []).map((name) => name.toLowerCase());
+  const generalCategoryId = job.general_househelp_category_id == null
+    ? ''
+    : String(job.general_househelp_category_id);
+  const isGeneralHousehelpPost = !!generalCategoryId && jobCatIds.includes(generalCategoryId);
+  const specialtyIds = (job.household_specialty_category_ids ?? []).map(String);
+  const specialtyNames = (job.household_specialty_category_names ?? []).map((name) => name.toLowerCase());
+  const requiredCategoryCount = isGeneralHousehelpPost
+    ? Math.max(specialtyIds.length, specialtyNames.length, 1)
+    : Math.max(jobCatIds.length, jobCategoryNames.length, 1);
+  const categoryOverlap = isGeneralHousehelpPost
+    ? helperCatIds.includes(generalCategoryId)
+      ? requiredCategoryCount
+      : helperCatIds.length > 0
+        ? specialtyIds.filter((id) => helperCatIds.includes(id)).length
+        : specialtyNames.filter((name) => helperCategoryNames.includes(name)).length
+    : jobCatIds.length > 0 && helperCatIds.length > 0
+      ? jobCatIds.filter((id) => helperCatIds.includes(id)).length
+      : jobCategoryNames.filter((name) => helperCategoryNames.includes(name)).length;
+  const categoryPts = Math.round((categoryOverlap / requiredCategoryCount) * 25);
+  const categoryMatched = categoryOverlap > 0;
+  const catLabel = isGeneralHousehelpPost
+    ? 'General Househelp (all-around)'
+    : jobCategoryNames.join(', ') || 'this role';
+  pts += categoryPts;
   factors.push({
-    key: 'category', label: 'Category', earned: categoryMatched ? 25 : 0, max: 25, hit: categoryMatched,
+    key: 'category', label: 'Category', earned: categoryPts, max: 25, hit: categoryMatched,
     detail: categoryMatched
-      ? `Specializes in ${catLabel} — exactly what you're hiring for`
+      ? categoryOverlap === requiredCategoryCount
+        ? `Specializes in all required categories: ${catLabel}`
+        : isGeneralHousehelpPost
+          ? `Covers ${categoryOverlap} of ${requiredCategoryCount} household specialties`
+          : `Matches ${categoryOverlap} of ${requiredCategoryCount} required categories: ${catLabel}`
       : `Works in a different category than ${catLabel}`,
   });
 
@@ -132,13 +160,10 @@ function computeJobSpecificMatch(helper: MatchableHelper, job: JobPost): HelperJ
   let rolePts = 0; let roleDetail: string; let roleHit = false;
   if (jobRoles.length > 0) {
     const matching = jobRoles.filter((r) => helperRoles.includes(r)).length;
-    // Score against up to 3 "core" roles so a broad, over-listed post doesn't
-    // gut a helper who does its main roles (category already covers the specialty).
     if (matching > 0) {
-      const need = Math.min(jobRoles.length, 3);
-      rolePts = Math.round(Math.min(1, matching / need) * 15);
+      rolePts = Math.round((matching / jobRoles.length) * 15);
       roleHit = true;
-      roleDetail = 'Has done the job roles you need';
+      roleDetail = `Has done ${matching} of your ${jobRoles.length} required job roles`;
     } else {
       roleDetail = 'Different job roles from what you need';
     }

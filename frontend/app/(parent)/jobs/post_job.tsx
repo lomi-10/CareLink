@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -104,14 +105,44 @@ export default function PostJob() {
   };
 
   // MULTI-SELECT Helpers
-  const availableJobs = formData.category_id ? getJobsByCategories([formData.category_id]) : [];
+  const availableJobs = formData.category_ids.length > 0 ? getJobsByCategories(formData.category_ids) : [];
   const availableSkills = formData.job_ids.length > 0 ? getSkillsByJobs(formData.job_ids) : [];
 
   // Handlers
   const handleSelectCategory = (categoryId: string | number) => {
     if (isDisabled) return;
     const idStr = categoryId.toString();
-    updateFields({ category_id: idStr, job_ids: [], skill_ids: [] });
+    const generalId = categories.find((category) => category.name.trim().toLowerCase() === 'general househelp')?.category_id.toString();
+    const isSelected = formData.category_ids.includes(idStr);
+    const nextCategoryIds = isSelected
+      ? formData.category_ids.filter((id) => id !== idStr)
+      : idStr === generalId || formData.category_ids.includes(generalId ?? '')
+        ? [idStr]
+        : [...formData.category_ids, idStr];
+    const nextJobs = formData.job_ids.filter((jobId) => {
+      const job = jobs.find((item) => item.job_id.toString() === jobId);
+      return !!job && nextCategoryIds.includes(job.category_id.toString());
+    });
+    const nextSkills = formData.skill_ids.filter((skillId) => {
+      const skill = skills.find((item) => item.skill_id.toString() === skillId);
+      return !!skill && nextJobs.includes(skill.job_id.toString());
+    });
+    const categoryName = categories
+      .filter((category) => nextCategoryIds.includes(category.category_id.toString()))
+      .map((category) => category.name)
+      .join(' & ');
+    const selectedTitles = jobs
+      .filter((job) => nextJobs.includes(job.job_id.toString()))
+      .map((job) => job.job_title);
+    updateFields({
+      category_id: nextCategoryIds[0] || '',
+      category_ids: nextCategoryIds,
+      job_ids: nextJobs,
+      skill_ids: nextSkills,
+      custom_category: nextCategoryIds.includes('6') ? formData.custom_category : '',
+      custom_job_title: nextJobs.length > 0 ? formData.custom_job_title : '',
+      title: formData.custom_job_title ? formData.title : buildJobTitle(categoryName, selectedTitles),
+    });
   };
 
   const handleToggleJob = (jobId: string | number, jobTitle: string) => {
@@ -122,14 +153,21 @@ export default function PostJob() {
     // Same concise-title rule as the web modal (shared lib/jobTitle.ts): the
     // category becomes the title once 3+ roles are picked, so a helper never sees
     // a comma-joined wall of roles. A parent's custom title always wins.
-    const categoryName = categories.find((c) => c.category_id.toString() === formData.category_id)?.name ?? '';
+    const categoryName = categories
+      .filter((category) => formData.category_ids.includes(category.category_id.toString()))
+      .map((category) => category.name)
+      .join(' & ');
     const selectedTitles = availableJobs
       .filter((j) => newJobs.includes(j.job_id.toString()))
       .map((j) => j.job_title);
     const newTitle = formData.custom_job_title?.trim()
       ? formData.title
       : buildJobTitle(categoryName, selectedTitles);
-    updateFields({ job_ids: newJobs, title: newTitle, skill_ids: [] });
+    const keptSkills = formData.skill_ids.filter((skillId) => {
+      const skill = availableSkills.find((item) => item.skill_id.toString() === skillId);
+      return !!skill && newJobs.includes(skill.job_id.toString());
+    });
+    updateFields({ job_ids: newJobs, title: newTitle, skill_ids: keptSkills });
   };
 
   const handleToggleSkill = (skillId: string | number) => {
@@ -149,7 +187,10 @@ export default function PostJob() {
 
   const handleGenerateDescription = () => {
     if (isDisabled) return;
-    const category = categories.find((c) => c.category_id.toString() === formData.category_id) || null;
+    const selectedCategories = categories.filter((c) => formData.category_ids.includes(c.category_id.toString()));
+    const category = selectedCategories.length > 1
+      ? { category_id: 'multi', name: selectedCategories.map((c) => c.name).join(' & '), icon: '' }
+      : selectedCategories[0] || null;
     const selectedJobs = availableJobs.filter((j) => formData.job_ids.includes(j.job_id.toString()));
     if (descGenerationsLeft <= 0) return;
     // Seeded with this employer's own account id, so two households posting the
@@ -242,13 +283,27 @@ export default function PostJob() {
         
         {/* RA 10361 scope, asked first — a one-time task cannot be posted at all. */}
         <EngagementTypeSelector value={formData.engagement_type} onChange={(v) => updateField('engagement_type', v)} error={errors.engagement_type} disabled={isDisabled} />
-        <CategorySelector categories={categories} selectedCategoryIds={formData.category_id ? [formData.category_id] : []} customCategory={formData.custom_category} onToggleCategory={handleSelectCategory} onCustomCategoryChange={(value: string) => updateField('custom_category', value)} error={errors.category} disabled={isDisabled} />
-        <JobTitleInput categoryIds={formData.category_id ? [formData.category_id] : []} availableJobs={availableJobs} selectedJobIds={formData.job_ids} customJobTitle={formData.custom_job_title} title={formData.title} onToggleJob={handleToggleJob} onCustomJobChange={(value: string) => updateField('custom_job_title', value)} onTitleChange={(value: string) => updateField('title', value)} error={errors.title} disabled={isDisabled} />
+        <CategorySelector categories={categories} selectedCategoryIds={formData.category_ids} customCategory={formData.custom_category} onToggleCategory={handleSelectCategory} onCustomCategoryChange={(value: string) => updateField('custom_category', value)} error={errors.category} disabled={isDisabled} />
+        <JobTitleInput categoryIds={formData.category_ids} availableJobs={availableJobs} selectedJobIds={formData.job_ids} customJobTitle={formData.custom_job_title} title={formData.title} onToggleJob={handleToggleJob} onCustomJobChange={(value: string) => updateField('custom_job_title', value)} onTitleChange={(value: string) => updateField('title', value)} error={errors.title} disabled={isDisabled} />
         <SkillsSelector selectedJobIds={formData.job_ids} availableSkills={availableSkills} selectedSkills={formData.skill_ids} customSkills={formData.custom_skills} onToggleSkill={handleToggleSkill} onCustomSkillsChange={(value: string) => updateField('custom_skills', value)} disabled={isDisabled} />
+        <View style={{ marginBottom: 20 }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 8 }}>Number of Helpers</Text>
+          <TextInput
+            style={{ borderWidth: 1, borderColor: errors.slots ? '#EF4444' : '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, backgroundColor: '#fff' }}
+            value={formData.slots}
+            onChangeText={(value) => updateField('slots', value.replace(/\D/g, ''))}
+            keyboardType="number-pad"
+            inputMode="numeric"
+            placeholder=""
+            editable={!isDisabled}
+            accessibilityLabel="Number of helper openings"
+          />
+          {errors.slots ? <Text style={{ color: '#EF4444', marginTop: 6 }}>{errors.slots}</Text> : null}
+        </View>
         <DescriptionInput value={formData.description} onChange={(value) => updateField("description", value)} onGenerateDescription={handleGenerateDescription} error={errors.description} disabled={isDisabled} generationsLeft={descGenerationsLeft} />
         <LocationSelector province={formData.province} municipality={formData.municipality} barangay={formData.barangay} onProvinceChange={(value) => updateField('province', value)} onMunicipalityChange={(value) => updateField('municipality', value)} onBarangayChange={(value) => updateField('barangay', value)} disabled={isDisabled} />
         <WorkArrangementCard employmentType={formData.employment_type} workSchedule={formData.work_schedule} onEmploymentTypeChange={(type: string) => updateField('employment_type', type)} onWorkScheduleChange={(schedule: string) => updateField('work_schedule', schedule)} disabled={isDisabled} />
-        <SalaryInputCard salaryMin={formData.salary_min} salaryMax={formData.salary_max} salaryPeriod={formData.salary_period} onSalaryMinChange={(value: string) => updateField('salary_min', value)} onSalaryMaxChange={(value: string) => updateField('salary_max', value)} onPeriodChange={(period) => updateField('salary_period', period)} categoryIds={formData.category_id ? [formData.category_id] : []} error={errors.salary} errorMax={errors.salary_max} disabled={isDisabled} />
+        <SalaryInputCard salaryMin={formData.salary_min} salaryMax={formData.salary_max} salaryPeriod={formData.salary_period} onSalaryMinChange={(value: string) => updateField('salary_min', value)} onSalaryMaxChange={(value: string) => updateField('salary_max', value)} onPeriodChange={(period) => updateField('salary_period', period)} categoryIds={formData.category_ids} error={errors.salary} errorMax={errors.salary_max} disabled={isDisabled} />
         <AgeRangeSelector minAge={formData.min_age} maxAge={formData.max_age} onMinAgeChange={(value) => updateField('min_age', value)} onMaxAgeChange={(value) => updateField('max_age', value)} disabled={isDisabled} />
         <ExperienceSelector minExperience={formData.min_experience_years} onExperienceChange={(value) => updateField('min_experience_years', value)} disabled={isDisabled} />
         <WorkScheduleCard startDate={formData.start_date} workHours={formData.work_hours} daysOff={formData.days_off} onStartDateChange={(value) => updateField('start_date', value)} onWorkHoursChange={(value) => updateField('work_hours', value)} onDaysOffToggle={handleDaysOffToggle} disabled={isDisabled} />

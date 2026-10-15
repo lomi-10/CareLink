@@ -69,6 +69,7 @@ try {
         FROM users u
         JOIN helper_profiles hp ON u.user_id = hp.user_id
         WHERE u.user_type = 'helper' AND u.status = 'approved'
+          AND hp.verification_status = 'Verified'
           AND COALESCE(hp.availability_status, 'Available') = 'Available'
           AND NOT EXISTS (
               SELECT 1 FROM placements pl

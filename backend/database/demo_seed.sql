@@ -101,69 +101,69 @@ JOIN (
          'Stay-out' AS etype, 'Full-time' AS sched, 9000 AS salary, 21 AS min_age, 50 AS max_age, 1 AS min_exp,
          '8:00 AM - 5:00 PM' AS hours, '["Sunday"]' AS days_off, '1 year' AS duration, 1 AS meals, 0 AS accom, 2 AS age_days
   UNION ALL SELECT 'reyes@carelink-demo.test', 1, '[16,20]', '[1,3]',
-         'All-Around Househelp',
+         'All-around household help',
          'Looking for an all-around helper who can handle cleaning, dishes and light cooking. Friendly household, clear routine, no heavy lifting.',
          'Stay-in', 'Full-time', 11000, 22, 45, 2, '7:00 AM - 6:00 PM', '["Sunday"]', 'Indefinite', 1, 1, 9
   UNION ALL SELECT 'lim@carelink-demo.test', 1, '[1,19]', '[1,2]',
-         'House Cleaner',
+         'Home cleaning',
          'Twice-weekly cleaning for a small apartment. Ideal for someone who prefers part-time work with a predictable schedule.',
          'Stay-out', 'Part-time', 7500, 20, 55, 0, '9:00 AM - 2:00 PM', '["Saturday","Sunday"]', '6 months', 0, 0, 5
 
   -- Yaya (category 2)
   UNION ALL SELECT 'santos@carelink-demo.test', 2, '[3,21]', NULL,
-         'Yaya / Nanny',
+         'Childcare',
          'Caring for a 1-year-old and a 3-year-old while both parents work. Patience and warmth matter most to us. No cooking or heavy cleaning expected.',
          'Stay-in', 'Full-time', 12000, 22, 45, 2, '6:00 AM - 6:00 PM', '["Sunday"]', 'Indefinite', 1, 1, 1
   UNION ALL SELECT 'santos@carelink-demo.test', 2, '[5,22]', NULL,
-         'Infant Care Specialist',
+         'Baby care',
          'Specialised newborn care for our youngest. Experience with infants is essential; we are happy to work around your preferred hours.',
          'Stay-out', 'Full-time', 13500, 25, 50, 3, '7:00 AM - 5:00 PM', '["Sunday"]', '1 year', 1, 0, 4
   UNION ALL SELECT 'lim@carelink-demo.test', 2, '[4,23]', NULL,
-         'After-School Nanny',
+         'After-school childcare',
          'Meet our 7-year-old after school, help with homework and prepare a light snack until we get home. Great fit for someone studying part-time.',
          'Stay-out', 'Part-time', 7000, 20, 45, 0, '3:00 PM - 7:00 PM', '["Saturday","Sunday"]', '6 months', 0, 0, 8
 
   -- Cook (category 3)
   UNION ALL SELECT 'delacruz@carelink-demo.test', 3, '[6]', NULL,
-         'Family Cook',
+         'Family cooking',
          'Preparing lunch and dinner for two. We eat simply — home-style Filipino cooking, low salt. Marketing budget provided.',
          'Stay-out', 'Full-time', 10000, 25, 60, 2, '9:00 AM - 6:00 PM', '["Sunday"]', 'Indefinite', 1, 0, 3
   UNION ALL SELECT 'delacruz@carelink-demo.test', 3, '[28]', NULL,
-         'Special Diet Cook',
+         'Cooking special meals',
          'We both need low-sodium, diabetic-friendly meals. Someone comfortable following a doctor-recommended meal plan would suit us well.',
          'Stay-out', 'Part-time', 9500, 25, 60, 3, '8:00 AM - 1:00 PM', '["Saturday","Sunday"]', '1 year', 1, 0, 11
   UNION ALL SELECT 'reyes@carelink-demo.test', 3, '[7,27]', NULL,
-         'Meal Prep Cook',
+         'Meal preparation',
          'Batch-cook for the week every Saturday plus tidy the kitchen afterwards. One long day rather than daily visits.',
          'Stay-out', 'Part-time', 8000, 21, 55, 1, '7:00 AM - 3:00 PM', '["Sunday","Monday"]', '6 months', 1, 0, 14
 
   -- Gardening (category 4)
   UNION ALL SELECT 'bautista@carelink-demo.test', 4, '[8,30]', NULL,
-         'Gardener',
+         'Garden care',
          'Maintaining our garden, fruit trees and lawn. Physically active outdoor work; tools and equipment are all provided.',
          'Stay-out', 'Full-time', 9000, 21, 55, 1, '6:00 AM - 3:00 PM', '["Sunday"]', '1 year', 1, 0, 6
   UNION ALL SELECT 'bautista@carelink-demo.test', 4, '[31,33]', NULL,
-         'Lawn & Vegetable Garden Aide',
+         'Lawn and vegetable garden care',
          'Weekend help with mowing, trimming and tending our vegetable plot. Perfect as extra income alongside other work.',
          'Stay-out', 'Part-time', 7200, 18, 60, 0, '7:00 AM - 12:00 NN', '["Monday","Tuesday","Wednesday","Thursday","Friday"]', '6 months', 0, 0, 16
 
   -- Laundry (category 5)
   UNION ALL SELECT 'villanueva@carelink-demo.test', 5, '[10,11]', NULL,
-         'Laundry Person',
+         'Laundry',
          'Washing, drying and ironing for a household of five. We have a washing machine; you would handle sorting, folding and ironing.',
          'Stay-out', 'Full-time', 8500, 20, 55, 1, '8:00 AM - 4:00 PM', '["Sunday"]', 'Indefinite', 1, 0, 3
   UNION ALL SELECT 'villanueva@carelink-demo.test', 5, '[11]', NULL,
-         'Ironing Specialist',
+         'Ironing',
          'Ironing only, three mornings a week. Office clothes and school uniforms — someone careful with fabrics would be ideal.',
          'Stay-out', 'Part-time', 7000, 20, 60, 0, '8:00 AM - 12:00 NN', '["Saturday","Sunday"]', '6 months', 0, 0, 10
 
   -- Others (category 6)
   UNION ALL SELECT 'lim@carelink-demo.test', 6, '[12]', NULL,
-         'Elderly Caregiver',
+         'Care for an older adult',
          'Daytime companionship and care for our grandmother — meals, medication reminders and light housekeeping. She is mobile and independent.',
          'Stay-out', 'Full-time', 11000, 25, 55, 2, '7:00 AM - 5:00 PM', '["Sunday"]', 'Indefinite', 1, 0, 7
   UNION ALL SELECT 'bautista@carelink-demo.test', 6, '[14,15]', NULL,
-         'Errand Runner & Pet Care Aide',
+         'Errands and pet care',
          'Grocery runs, bills, and walking our two dogs. Flexible hours as long as the errands get done.',
          'Stay-out', 'Part-time', 7500, 18, 50, 0, 'Flexible', '["Sunday"]', '6 months', 0, 0, 20
 ) v ON v.email = u.email;

@@ -315,6 +315,8 @@ CREATE TABLE IF NOT EXISTS `job_posts` (
   `job_post_id` int NOT NULL AUTO_INCREMENT,
   `parent_id` int NOT NULL COMMENT 'users.user_id of parent',
   `category_id` int NOT NULL COMMENT 'ref_categories.category_id',
+  `category_ids` json DEFAULT NULL COMMENT 'All selected ref_categories.category_id values',
+  `slots` int unsigned NOT NULL DEFAULT '1' COMMENT 'Number of helpers hired through this post',
   `custom_category` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `job_ids` json DEFAULT NULL COMMENT 'Array of selected job IDs',
   `title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
@@ -855,6 +857,19 @@ CREATE TABLE IF NOT EXISTS `profile_view_log` (
 ALTER TABLE `job_posts`
   ADD COLUMN IF NOT EXISTS `salary_min` decimal(10,2) DEFAULT NULL COMMENT 'Minimum salary offered (≥ ₱7,000)',
   ADD COLUMN IF NOT EXISTS `salary_max` decimal(10,2) DEFAULT NULL COMMENT 'Maximum salary offered (optional)';
+
+-- ---------------------------------------------------------------------------
+-- Migration: mixed-category job posts and hiring slots
+-- category_id remains the primary category for compatibility; category_ids
+-- stores the complete selection. Existing jobs retain their original category.
+-- ---------------------------------------------------------------------------
+ALTER TABLE `job_posts`
+  ADD COLUMN IF NOT EXISTS `category_ids` json DEFAULT NULL COMMENT 'All selected ref_categories.category_id values',
+  ADD COLUMN IF NOT EXISTS `slots` int unsigned NOT NULL DEFAULT '1' COMMENT 'Number of helpers hired through this post';
+
+UPDATE `job_posts`
+SET `category_ids` = JSON_ARRAY(`category_id`)
+WHERE `category_ids` IS NULL OR JSON_LENGTH(`category_ids`) = 0;
 
 -- ---------------------------------------------------------------------------
 -- Migration: new contract confirmation fields on contracts table

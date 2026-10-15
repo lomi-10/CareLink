@@ -55,7 +55,10 @@ export function CategorySelector({
   return (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>
-        Select Work Category <Text style={styles.asterisk}>*</Text>
+        Select Work Categories <Text style={styles.asterisk}>*</Text>
+      </Text>
+      <Text style={styles.helperText}>
+        Choose every specialty this helper should cover. General Househelp is all-around and cannot be combined with another category.
       </Text>
       
       <View style={styles.gridContainer}>
@@ -222,7 +225,7 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 12,
     color: '#6B7280',
-    marginTop: 8,
+    marginBottom: 12,
     fontStyle: 'italic',
   },
   errorText: {

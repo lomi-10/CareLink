@@ -66,6 +66,87 @@ if (!function_exists('carelink_normalize_job_ids')) {
     }
 }
 
+if (!function_exists('carelink_normalize_category_ids')) {
+    /**
+     * Canonical sorted int list from selected category IDs or their JSON value.
+     * @return int[]
+     */
+    function carelink_normalize_category_ids($categoryIds): array
+    {
+        $ids = is_array($categoryIds) ? $categoryIds : (json_decode((string) $categoryIds, true) ?: []);
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn($n) => $n > 0)));
+        sort($ids, SORT_NUMERIC);
+        return $ids;
+    }
+}
+
+if (!function_exists('carelink_validate_job_categories')) {
+    /**
+     * Validate selected categories and ensure every selected role belongs to one.
+     *
+     * @return array{category_id:int, category_ids:int[], category_names:string[]}
+     */
+    function carelink_validate_job_categories(mysqli $conn, $categoryIds, int $fallbackCategoryId, array $jobIds): array
+    {
+        $requested = is_array($categoryIds) ? $categoryIds : [];
+        if (!$requested && $fallbackCategoryId > 0) $requested = [$fallbackCategoryId];
+        $ids = carelink_normalize_category_ids($requested);
+        if (!$ids) throw new Exception('Select at least one valid job category.');
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $conn->prepare("SELECT category_id, category_name FROM ref_categories WHERE category_id IN ($placeholders)");
+        if (!$stmt) throw new Exception('Could not validate job categories: ' . $conn->error);
+        $types = str_repeat('i', count($ids));
+        $params = [$types];
+        foreach ($ids as $index => $id) $params[] = &$ids[$index];
+        call_user_func_array([$stmt, 'bind_param'], $params);
+        if (!$stmt->execute()) throw new Exception('Could not validate job categories: ' . $stmt->error);
+        $result = $stmt->get_result();
+        $categoryNames = [];
+        while ($row = $result->fetch_assoc()) $categoryNames[(int) $row['category_id']] = (string) $row['category_name'];
+        $stmt->close();
+
+        if (count($categoryNames) !== count($ids)) throw new Exception('One or more selected job categories are unavailable.');
+        foreach ($ids as $id) {
+            if (strcasecmp(trim($categoryNames[$id]), 'General Househelp') === 0 && count($ids) > 1) {
+                throw new Exception('General Househelp is an all-around category and cannot be combined with other categories.');
+            }
+        }
+
+        $normalizedJobs = carelink_normalize_job_ids($jobIds);
+        if ($normalizedJobs) {
+            $jobPlaceholders = implode(',', array_fill(0, count($normalizedJobs), '?'));
+            $jobStmt = $conn->prepare("SELECT job_id, category_id FROM ref_jobs WHERE job_id IN ($jobPlaceholders)");
+            if (!$jobStmt) throw new Exception('Could not validate job roles: ' . $conn->error);
+            $jobTypes = str_repeat('i', count($normalizedJobs));
+            $jobParams = [$jobTypes];
+            foreach ($normalizedJobs as $index => $id) $jobParams[] = &$normalizedJobs[$index];
+            call_user_func_array([$jobStmt, 'bind_param'], $jobParams);
+            if (!$jobStmt->execute()) throw new Exception('Could not validate job roles: ' . $jobStmt->error);
+            $jobResult = $jobStmt->get_result();
+            $validJobIds = [];
+            while ($row = $jobResult->fetch_assoc()) {
+                $jobId = (int) $row['job_id'];
+                if (!in_array((int) $row['category_id'], $ids, true)) {
+                    $jobStmt->close();
+                    throw new Exception('Each selected job role must belong to one of the selected categories.');
+                }
+                $validJobIds[] = $jobId;
+            }
+            $jobStmt->close();
+            if (count($validJobIds) !== count($normalizedJobs)) throw new Exception('One or more selected job roles are unavailable.');
+        }
+
+        $orderedNames = array_map(fn($id) => $categoryNames[$id], $ids);
+        $categoryId = (int) (is_array($categoryIds) && count($categoryIds) > 0
+            ? reset($categoryIds)
+            : $fallbackCategoryId);
+        if (!in_array($categoryId, $ids, true)) $categoryId = $ids[0];
+
+        return ['category_id' => $categoryId, 'category_ids' => $ids, 'category_names' => $orderedNames];
+    }
+}
+
 if (!function_exists('carelink_role_names_for_job_ids')) {
     /**
      * Resolve a job_posts.job_ids JSON array to ref_jobs.job_title names.

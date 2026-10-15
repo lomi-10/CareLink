@@ -14,6 +14,7 @@ export interface Job {
   job_id: string | number;
   category_id: string | number;
   job_title: string;
+  description?: string | null;
 }
 
 export interface Skill {
@@ -114,12 +115,6 @@ export function useJobReferences() {
   const getJobsByCategories = (categoryIds: string[]): Job[] => {
     if (categoryIds.length === 0) return [];
 
-    // If General Household (id=1) is selected, show ALL jobs
-    if (categoryIds.includes('1')) {
-      return jobs;
-    }
-
-    // Otherwise, show jobs from selected categories
     return jobs.filter((job) => categoryIds.includes(job.category_id.toString()));
   };
 

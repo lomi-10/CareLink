@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/job_slots.php';
+
 /**
  * Run inside an active transaction. Fills job, creates placement, rejects other applicants.
  * Expects job_applications row already updated to status = 'hired' by caller, or caller passes
@@ -62,6 +64,8 @@ function carelink_finalize_hire_after_contract(
         throw new Exception('Job not found');
     }
 
+    carelink_lock_available_job_slot($conn, $job_post_id, $application_id);
+
     $sql1 = "UPDATE job_applications SET status = 'hired', reviewed_at = NOW(), updated_at = NOW()
              WHERE application_id = ? AND job_post_id = ? AND helper_id = ? AND status = 'contract_pending'";
     $stmt1 = $conn->prepare($sql1);
@@ -73,11 +77,7 @@ function carelink_finalize_hire_after_contract(
     }
     $stmt1->close();
 
-    $sql2 = "UPDATE job_posts SET status = 'Filled', filled_at = NOW() WHERE job_post_id = ? AND parent_id = ?";
-    $stmt2 = $conn->prepare($sql2);
-    $stmt2->bind_param('ii', $job_post_id, $parent_id);
-    $stmt2->execute();
-    $stmt2->close();
+    carelink_refresh_job_post_slots($conn, $job_post_id);
 
     $chkPl = $conn->prepare('SELECT placement_id FROM placements WHERE application_id = ? LIMIT 1');
     $chkPl->bind_param('i', $application_id);
@@ -121,12 +121,12 @@ function carelink_finalize_hire_after_contract(
     // once. Once this placement is final, none of those other opportunities
     // remain available.
     $sql4 = "UPDATE job_applications SET status = 'Rejected',
-                     parent_notes = CASE WHEN job_post_id = ? THEN 'Position has been filled' ELSE 'Helper is already employed by another employer.' END,
+                     parent_notes = 'Helper is already employed by another employer.',
                      updated_at = NOW()
-             WHERE helper_id = ? AND application_id != ?
+             WHERE helper_id = ? AND application_id != ? AND job_post_id != ?
                AND status NOT IN ('hired', 'termination_pending', 'terminated', 'Rejected', 'Withdrawn', 'auto_rejected')";
     $stmt4 = $conn->prepare($sql4);
-    $stmt4->bind_param('iii', $job_post_id, $helper_id, $application_id);
+    $stmt4->bind_param('iii', $helper_id, $application_id, $job_post_id);
     $stmt4->execute();
     $stmt4->close();
 

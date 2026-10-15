@@ -148,15 +148,21 @@ try {
         $jobJobIds   = array_map('intval', $jobJobIds);
         $jobSkillIds = array_map('intval', $jobSkillIds);
 
-        // job_posts.category_id is a single integer
         $jobCatId = (int)$job['category_id'];
+        $jobCatIds = json_decode($job['category_ids'] ?? '[]', true) ?: [$jobCatId];
+        $jobCatIds = array_values(array_unique(array_map('intval', $jobCatIds)));
+        $jobCatNames = array_values(array_filter(array_map(
+            fn($id) => $refCats[$id] ?? null,
+            $jobCatIds
+        )));
 
         // Resolve names
-        $catName    = $job['category_name'] ?? ($refCats[$jobCatId] ?? 'General');
+        $catName    = implode(', ', $jobCatNames) ?: ($job['category_name'] ?? ($refCats[$jobCatId] ?? 'General'));
         $jobNames   = array_values(array_filter(array_map(fn($id) => $refJobs[$id] ?? null, $jobJobIds)));
         $skillNames = array_values(array_filter(array_map(fn($id) => $refSkills[$id] ?? null, $jobSkillIds)));
 
         // ── WEIGHTED SCORING (shared with browse_jobs.php) ───────────────
+        $job = carelink_add_househelp_match_context($job, $refCats);
         $m = carelink_score_job_for_helper($helper, $helperCatIds, $helperJobIds, $helperSkillIds, $job);
         $finalScore = $m['score'];
         $reasons    = $m['reasons'];
@@ -183,8 +189,12 @@ try {
                 'distance_exact'=> $m['distance_exact'], // true = GPS, false = estimate
                 'category_id'   => $jobCatId,
                 'category_name' => $catName,
-                'categories'    => [$catName],
-                'category_ids'  => [$jobCatId],
+                'categories'    => $jobCatNames ?: [$catName],
+                'category_ids'  => $jobCatIds,
+                'general_househelp_category_id' => $job['general_househelp_category_id'],
+                'household_specialty_category_ids' => $job['household_specialty_category_ids'],
+                'household_specialty_category_names' => $job['household_specialty_category_names'],
+                'slots'         => max(1, (int) ($job['slots'] ?? 1)),
                 'job_ids'       => $jobJobIds,
                 'job_names'     => $jobNames,
                 'jobs'          => $jobNames,

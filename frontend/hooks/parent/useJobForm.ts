@@ -3,8 +3,10 @@ import { useState } from 'react';
 import { Category, Job } from '../shared/useJobReferences';
 
 export interface JobFormData {
-  // STRICT 1-to-1: Category & Job
+  // category_id remains the primary category for older clients; category_ids
+  // stores the full selection for mixed-specialty posts.
   category_id: string;
+  category_ids: string[];
   job_ids: string[];
 
   // MULTI-SELECT: Skills & Days off
@@ -26,6 +28,7 @@ export interface JobFormData {
   salary_min: string;
   salary_max: string;
   salary_period: 'Daily' | 'Weekly' | 'Monthly';
+  slots: string;
   province: string;
   municipality: string;
   barangay: string;
@@ -215,10 +218,20 @@ const generateDescription = (
   /** Identity of THIS employer + press count — see the seed note below. */
   variant = '',
 ): string => {
-  const jobTitles = jobs.map(j => j.job_title).join(', ') || 'helper';
+  const selectedJobTitles = jobs.map(j => j.job_title);
+  const jobTitles = selectedJobTitles.join(', ') || 'helper';
   const categoryName = category?.name || 'general household';
   const catId = category?.category_id?.toString() ?? '';
-  const copy = CATEGORY_COPY[catId] ?? {
+  const copy = catId === 'multi'
+    ? {
+      adj: 'reliable',
+      verb: 'to support our household across these responsibilities',
+      body: `Responsibilities include:\n${(selectedJobTitles.length > 0
+        ? selectedJobTitles
+        : categoryName.split(' & ').map((name) => `${name} household duties`)
+      ).map((title) => `• ${title}`).join('\n')}\n• Follow household instructions and agreed work routines\n\nRequirements:\n• Honest, dependable, and respectful\n• Good communication skills\n• Previous household experience is an advantage`,
+    }
+    : CATEGORY_COPY[catId] ?? {
     adj: 'reliable', verb: 'to help around our home',
     body: `Responsibilities include:
 • ${categoryName} related tasks
@@ -246,7 +259,13 @@ Requirements:
   // closings and headers vary independently rather than moving in lockstep.
   // 10 x 10 x 6 = 600 shells per category before the household's own details
   // (location, pay, rest days, benefits) are woven in.
-  const intro = descPick([
+  const intro = selectedJobTitles.length > 1
+    ? descPick([
+      `We are looking for a reliable household helper to cover ${jobTitles}.`,
+      `Our family needs a dependable helper for ${jobTitles}.`,
+      `Join our household in a role covering ${jobTitles}.`,
+    ], seed)
+    : descPick([
     `We are looking for a ${copy.adj} ${jobTitles} ${copy.verb}.`,
     `Our family is searching for a ${copy.adj} ${jobTitles} ${copy.verb}.`,
     `We'd love to welcome a ${copy.adj} ${jobTitles} into our home ${copy.verb}.`,
@@ -291,6 +310,7 @@ const DEFAULT_DESCRIPTION = generateDescription(null, []);
 
 const initialFormData: JobFormData = {
   category_id: '',
+  category_ids: [],
   job_ids: [],
   skill_ids: [],
   custom_category: '',
@@ -303,6 +323,7 @@ const initialFormData: JobFormData = {
   salary_min: '',
   salary_max: '',
   salary_period: 'Monthly',
+  slots: '1',
   province: 'Leyte',
   engagement_type: '',
   municipality: 'Ormoc City',
@@ -340,18 +361,55 @@ export function useJobForm() {
   /** Generate presses used on this post — capped, so it can't be spammed. */
   const [descGenCount, setDescGenCount] = useState(0);
 
+  const errorKeysForField: Partial<Record<keyof JobFormData, string[]>> = {
+    category_id: ['category'],
+    category_ids: ['category'],
+    custom_category: ['category'],
+    job_ids: ['title'],
+    custom_job_title: ['title'],
+    salary_min: ['salary'],
+  };
+
   const updateField = (field: keyof JobFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }));
+    const keysToClear = [field as string, ...(errorKeysForField[field] ?? [])];
+    if (keysToClear.some((key) => errors[key])) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        keysToClear.forEach((key) => { next[key] = ''; });
+        return next;
+      });
     }
   };
 
   const updateFields = (updates: Partial<JobFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
+    const keysToClear = Object.keys(updates).flatMap((key) => [
+      key,
+      ...(errorKeysForField[key as keyof JobFormData] ?? []),
+    ]);
+    if (keysToClear.some((key) => errors[key])) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        keysToClear.forEach((key) => { next[key] = ''; });
+        return next;
+      });
+    }
   };
 
-  const validate = (categories: Category[]): { isValid: boolean; firstError?: string } => {
+  const setValidationErrors = (nextErrors: Record<string, string>) => {
+    setErrors((prev) => ({ ...prev, ...nextErrors }));
+  };
+
+  const clearValidationErrors = (...keys: string[]) => {
+    setErrors((prev) => {
+      const next = { ...prev };
+      keys.forEach((key) => { next[key] = ''; });
+      return next;
+    });
+  };
+
+  const validate = (categories: Category[]): { isValid: boolean; firstError?: string; firstErrorField?: string } => {
     const newErrors: Record<string, string> = {};
     
     // RA 10361 scope, checked before anything else. A one-time task is not
@@ -370,10 +428,18 @@ export function useJobForm() {
     const OTHERS_CATEGORY_ID = othersCat ? othersCat.category_id.toString() : '6';
 
     // 2. USE the dynamic ID for validation
-    if (!formData.category_id) {
+    const categoryIds = formData.category_ids.length > 0
+      ? formData.category_ids
+      : formData.category_id ? [formData.category_id] : [];
+    if (categoryIds.length === 0) {
       newErrors.category = 'Category is required — please select one';
-    } else if (formData.category_id === OTHERS_CATEGORY_ID && !formData.custom_category?.trim()) {
+    } else if (categoryIds.includes(OTHERS_CATEGORY_ID) && !formData.custom_category?.trim()) {
       newErrors.category = 'Please enter a custom category name';
+    }
+
+    const generalCategory = categories.find((c) => c.name.trim().toLowerCase() === 'general househelp');
+    if (generalCategory && categoryIds.includes(generalCategory.category_id.toString()) && categoryIds.length > 1) {
+      newErrors.category = 'General Househelp covers these specialties and cannot be combined with another category';
     }
     
     if (formData.job_ids.length === 0 && !formData.custom_job_title.trim()) {
@@ -400,17 +466,26 @@ export function useJobForm() {
       newErrors.municipality = 'Location is required — enter a municipality';
     }
 
-    if (formData.expires_at) {
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      const deadline = new Date(formData.expires_at + 'T00:00:00');
-      if (deadline < today) {
-        newErrors.expires_at = 'Application deadline cannot be in the past';
-      }
+    const slots = Number(formData.slots);
+    if (!Number.isInteger(slots) || slots < 1) {
+      newErrors.slots = 'Enter at least one helper opening';
     }
 
     setErrors(newErrors);
-    const errorList = Object.values(newErrors).filter(Boolean);
-    return { isValid: errorList.length === 0, firstError: errorList[0] };
+    const firstErrorField = [
+      'engagement_type',
+      'category',
+      'title',
+      'slots',
+      'municipality',
+      'salary',
+      'salary_max',
+    ].find((key) => Boolean(newErrors[key]));
+    return {
+      isValid: !firstErrorField,
+      firstError: firstErrorField ? newErrors[firstErrorField] : undefined,
+      firstErrorField,
+    };
   };
 
   const reset = () => {
@@ -420,6 +495,7 @@ export function useJobForm() {
   };
 
   const populateForm = (data: any) => {
+    setErrors({});
     const parseArray = (val: any) => {
       if (Array.isArray(val)) return val;
       if (typeof val === 'string') {
@@ -427,11 +503,14 @@ export function useJobForm() {
       }
       return [];
     };
+    const categoryId = data.category_id ? data.category_id.toString() : '';
+    const categoryIds = parseArray(data.category_ids).map((id: string | number) => id.toString()).filter((id: string) => id !== '');
 
     setFormData({
       ...initialFormData,
       // Pass IDs as strings for the UI
-      category_id: data.category_id ? data.category_id.toString() : '',
+      category_id: categoryIds[0] || categoryId,
+      category_ids: categoryIds.length > 0 ? categoryIds : categoryId ? [categoryId] : [],
       job_ids: parseArray(data.job_ids),
       skill_ids: parseArray(data.skill_ids),
       custom_job_title: data.custom_job_title || '',
@@ -445,6 +524,7 @@ export function useJobForm() {
       salary_min: data.salary_min ? data.salary_min.toString() : (data.salary_offered ? data.salary_offered.toString() : ''),
       salary_max: data.salary_max ? data.salary_max.toString() : '',
       salary_period: data.salary_period || 'Monthly',
+      slots: data.slots != null && Number(data.slots) > 0 ? String(data.slots) : '1',
       province: data.province || 'Leyte',
       municipality: data.municipality || 'Ormoc City',
       barangay: data.barangay || '',
@@ -475,8 +555,10 @@ export function useJobForm() {
     return {
       parent_id: '', 
       
-      // Send single IDs
-      category_id: formData.category_id,
+      category_id: formData.category_ids[0] || formData.category_id,
+      category_ids: formData.category_ids.length > 0
+        ? formData.category_ids
+        : formData.category_id ? [formData.category_id] : [],
       job_ids: formData.job_ids,
       skill_ids: formData.skill_ids,
       days_off: formData.days_off,
@@ -493,6 +575,7 @@ export function useJobForm() {
       salary_min: parseFloat(formData.salary_min),
       salary_max: formData.salary_max ? parseFloat(formData.salary_max) : null,
       salary_period: formData.salary_period,
+      slots: Number(formData.slots),
       province: formData.province,
       municipality: formData.municipality.trim(),
       barangay: formData.barangay.trim() || null,
@@ -548,6 +631,7 @@ export function useJobForm() {
 
   return {
     formData, errors, updateField, updateFields, validate, reset,
+    setValidationErrors, clearValidationErrors,
     getSubmissionData, populateForm,
     generateDescription: generateDescriptionWithContext,
     descGenCount,

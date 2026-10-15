@@ -23,10 +23,10 @@
  *
  * SAFETY
  *
- * Every statement it runs is CREATE TABLE IF NOT EXISTS or an ADD COLUMN
- * guarded by a column check. It creates and it backfills seed rows; it does
- * not DROP, TRUNCATE, or UPDATE existing data, and running it twice does
- * nothing the second time. It is safe to call on every deploy.
+ * It creates missing tables/columns, backfills category data, and updates
+ * known reference labels without changing IDs or user-authored job titles.
+ * It never drops or truncates data, and the registered steps are safe to
+ * repeat on every deploy.
  *
  * It still runs DDL, so it is NOT public — see the token check below.
  *
@@ -113,6 +113,8 @@ $migrations = [
     'shared/interview_feedback_table.php' => ['ensure_interview_feedback_table'],
     'shared/interview_reviews_table.php'  => ['ensure_interview_reviews_table'],
     'shared/job_invites_table.php'        => ['ensure_job_invites_table'],
+    'shared/job_post_categories_migration.php' => ['ensure_job_post_categories_and_slots'],
+    'shared/plain_language_job_titles_migration.php' => ['ensure_plain_language_job_titles'],
     'shared/placement_settings_table.php' => ['ensure_placement_settings_table'],
     'shared/revenue_tables.php'           => ['ensure_revenue_tables'],
     'shared/subscriptions_table.php'      => ['ensure_subscriptions_table'],

@@ -2,15 +2,16 @@
 import API_URL from '@/constants/api';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  LayoutChangeEvent,
   Modal,
   Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Text, TouchableOpacity,
+  Text, TextInput, TouchableOpacity,
   View, useWindowDimensions
 } from 'react-native';
 
@@ -44,6 +45,26 @@ const DISPLAY_LABELS: Record<string, string> = {
   Any: 'Either',
 };
 
+const ERROR_FIELD_ORDER = [
+  'engagement_type',
+  'category',
+  'title',
+  'slots',
+  'municipality',
+  'salary',
+  'salary_max',
+];
+
+const ERROR_FIELD_TARGETS: Record<string, { step: number; section: string }> = {
+  engagement_type: { step: 1, section: 'engagement' },
+  category: { step: 1, section: 'category' },
+  title: { step: 1, section: 'role' },
+  slots: { step: 1, section: 'slots' },
+  municipality: { step: 2, section: 'location' },
+  salary: { step: 2, section: 'salary' },
+  salary_max: { step: 2, section: 'salary' },
+};
+
 interface JobPostModalProps {
   visible: boolean;
   onClose: () => void;
@@ -63,6 +84,9 @@ export function JobPostModal({
   const [submitting, setSubmitting] = useState(false);
   const [notification, setNotification] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
   const [modalStep, setModalStep] = useState(1); // 1: Job Setup, 2: Work Details, 3: Requirements, 4: Review
+  const [focusedErrorField, setFocusedErrorField] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const layoutOffsets = useRef({ form: 0, step: 0, sections: {} as Record<string, number> });
 
   // Estimated Matches (Review step)
   const [matchEstimate, setMatchEstimate] = useState<{ available: number | null; highlyCompatible: number | null }>({ available: null, highlyCompatible: null });
@@ -83,6 +107,8 @@ export function JobPostModal({
     updateField,
     updateFields,
     validate,
+    setValidationErrors,
+    clearValidationErrors,
     reset,
     populateForm,
     getSubmissionData,
@@ -91,15 +117,73 @@ export function JobPostModal({
 
   const { width, height } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
+  const isMobileWeb = Platform.OS === 'web' && !isDesktop;
+
+  const setFormLayout = (event: LayoutChangeEvent) => {
+    layoutOffsets.current.form = event.nativeEvent.layout.y;
+  };
+
+  const setStepLayout = (event: LayoutChangeEvent) => {
+    layoutOffsets.current.step = event.nativeEvent.layout.y;
+  };
+
+  const setSectionLayout = (section: string) => (event: LayoutChangeEvent) => {
+    layoutOffsets.current.sections[section] = event.nativeEvent.layout.y;
+  };
+
+  const sectionHighlight = (section: string, fields: string[]) => {
+    const hasError = fields.some((field) => Boolean(errors[field]));
+    if (hasError) {
+      return [
+        styles.errorSection,
+        focusedErrorField && ERROR_FIELD_TARGETS[focusedErrorField]?.section === section
+          ? styles.errorSectionFocused
+          : null,
+      ];
+    }
+    return guidedSection === section ? styles.guidedSection : undefined;
+  };
+
+  const focusErrorField = (field: string) => {
+    const target = ERROR_FIELD_TARGETS[field];
+    setFocusedErrorField(field);
+    if (target) setModalStep(target.step);
+  };
+
+  useEffect(() => {
+    if (!focusedErrorField) return;
+    const section = ERROR_FIELD_TARGETS[focusedErrorField]?.section;
+    if (!section) return;
+    const timer = setTimeout(() => {
+      const sectionY = layoutOffsets.current.sections[section];
+      const y = layoutOffsets.current.form + layoutOffsets.current.step + (sectionY ?? 0) - 20;
+      scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [focusedErrorField, modalStep]);
+
+  useEffect(() => {
+    if (!focusedErrorField || errors[focusedErrorField]) return;
+    const nextErrorField = ERROR_FIELD_ORDER.find((field) => Boolean(errors[field]));
+    if (!nextErrorField) {
+      setFocusedErrorField(null);
+      return;
+    }
+    const target = ERROR_FIELD_TARGETS[nextErrorField];
+    setModalStep(target?.step ?? modalStep);
+    setFocusedErrorField(nextErrorField);
+  }, [errors, focusedErrorField, modalStep]);
 
   // Initialize form if editing, and always start on step 1 when (re)opened
   useEffect(() => {
     if (existingJobData && visible) {
       populateForm(existingJobData);
       setModalStep(1);
+      setFocusedErrorField(null);
     } else if (!existingJobData && visible) {
       reset();
       setModalStep(1);
+      setFocusedErrorField(null);
     }
   }, [existingJobData, visible]);
 
@@ -111,22 +195,69 @@ export function JobPostModal({
   [categories]);
 
   const isOthersSelected = useMemo(() =>
-    othersCat ? formData.category_id === othersCat.category_id.toString() : false
-  , [othersCat, formData.category_id]);
+    othersCat ? formData.category_ids.includes(othersCat.category_id.toString()) : false
+  , [othersCat, formData.category_ids]);
 
   const availableJobs = useMemo(() => {
-    if (!formData.category_id) return [];
-    return jobs.filter((job: any) => job.category_id?.toString() === formData.category_id);
-  }, [jobs, formData.category_id]);
+    if (formData.category_ids.length === 0) return [];
+    return jobs.filter((job: any) => formData.category_ids.includes(job.category_id?.toString()));
+  }, [jobs, formData.category_ids]);
 
   const availableSkills = useMemo(() => {
     if (!formData.job_ids || formData.job_ids.length === 0) return [];
     return skills.filter((skill: any) => formData.job_ids.includes(skill.job_id?.toString()));
   }, [skills, formData.job_ids]);
 
-  const selectedCategory = useMemo(() =>
-    categories.find(c => c.category_id.toString() === formData.category_id),
-  [categories, formData.category_id]);
+  const selectedCategories = useMemo(
+    () => categories.filter((category) => formData.category_ids.includes(category.category_id.toString())),
+    [categories, formData.category_ids],
+  );
+  const selectedCategory = selectedCategories[0];
+
+  const guidedSection = useMemo(() => {
+    if (modalStep === 1) {
+      if (!formData.engagement_type || formData.engagement_type === 'one_time') return 'engagement';
+      if (
+        formData.category_ids.length === 0
+        || (isOthersSelected && !formData.custom_category.trim())
+      ) return 'category';
+      if (formData.job_ids.length === 0 && !formData.custom_job_title.trim()) return 'role';
+      const slots = Number(formData.slots);
+      if (!Number.isInteger(slots) || slots < 1) return 'slots';
+    } else if (modalStep === 2) {
+      if (!formData.municipality.trim()) return 'location';
+      const salaryMin = Number(formData.salary_min);
+      const salaryMax = formData.salary_max ? Number(formData.salary_max) : null;
+      if (
+        !Number.isFinite(salaryMin)
+        || salaryMin < 6400
+        || (salaryMax !== null && Number.isFinite(salaryMax) && salaryMax < salaryMin)
+      ) return 'salary';
+    }
+    return null;
+  }, [
+    formData.category_ids.length,
+    formData.custom_category,
+    formData.custom_job_title,
+    formData.engagement_type,
+    formData.job_ids.length,
+    formData.municipality,
+    formData.salary_max,
+    formData.salary_min,
+    formData.slots,
+    isOthersSelected,
+    modalStep,
+  ]);
+
+  useEffect(() => {
+    if (!visible || !guidedSection || focusedErrorField) return;
+    const timer = setTimeout(() => {
+      const sectionY = layoutOffsets.current.sections[guidedSection];
+      const y = layoutOffsets.current.form + layoutOffsets.current.step + (sectionY ?? 0) - 20;
+      scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [focusedErrorField, guidedSection, modalStep, visible]);
 
   const selectedLanguageName = useMemo(() =>
     languages.find(l => l.language_id.toString() === formData.preferred_language_id)?.language_name,
@@ -135,32 +266,45 @@ export function JobPostModal({
   // ==========================================
   // STEP VALIDATION
   // ==========================================
-  const validateStep1 = (): { isValid: boolean; error?: string } => {
-    if (!formData.category_id) {
-      return { isValid: false, error: "Please select a category first" };
+  const validateStep1 = (): { isValid: boolean; error?: string; field?: string } => {
+    if (!formData.engagement_type) {
+      return { isValid: false, field: 'engagement_type', error: 'Please choose recurring household employment' };
+    }
+    if (formData.engagement_type === 'one_time') {
+      return { isValid: false, field: 'engagement_type', error: 'CareLink supports recurring household employment, not one-time tasks' };
+    }
+    if (formData.category_ids.length === 0) {
+      return { isValid: false, field: 'category', error: 'Please select at least one work category' };
+    }
+    if (isOthersSelected && !formData.custom_category.trim()) {
+      return { isValid: false, field: 'category', error: 'Please specify the “Others” category' };
     }
     if (formData.job_ids.length === 0 && !formData.custom_job_title.trim()) {
-      return { isValid: false, error: "Please select a job or enter a custom title" };
+      return { isValid: false, field: 'title', error: 'Please select a job role or enter a job title' };
+    }
+    const slots = Number(formData.slots);
+    if (!Number.isInteger(slots) || slots < 1) {
+      return { isValid: false, field: 'slots', error: 'Please enter at least one helper opening' };
     }
     return { isValid: true };
   };
 
-  const validateStep2 = (): { isValid: boolean; error?: string } => {
+  const validateStep2 = (): { isValid: boolean; error?: string; field?: string } => {
     // Description is optional — auto-written from the role if left blank (see handleNext).
     if (!formData.municipality.trim()) {
-      return { isValid: false, error: "Please select a municipality" };
+      return { isValid: false, field: 'municipality', error: 'Please select the job location' };
     }
     const salaryMin = parseFloat(formData.salary_min);
     if (!formData.salary_min || isNaN(salaryMin)) {
-      return { isValid: false, error: "Please enter the minimum salary" };
+      return { isValid: false, field: 'salary', error: 'Please enter the minimum salary' };
     }
     if (salaryMin < 6400) {
-      return { isValid: false, error: "Minimum salary must be at least ₱6,400 / month (CareLink fair-pay standard)" };
+      return { isValid: false, field: 'salary', error: 'Minimum salary must be at least ₱6,400 / month' };
     }
     if (formData.salary_max) {
       const salaryMax = parseFloat(formData.salary_max);
       if (!isNaN(salaryMax) && salaryMax < salaryMin) {
-        return { isValid: false, error: "Maximum salary must be ≥ minimum salary" };
+        return { isValid: false, field: 'salary_max', error: 'Maximum salary must be at least the minimum salary' };
       }
     }
     return { isValid: true };
@@ -194,6 +338,7 @@ export function JobPostModal({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             category_id: formData.category_id,
+            category_ids: formData.category_ids,
             job_ids: formData.job_ids,
             province: formData.province,
             municipality: formData.municipality,
@@ -232,13 +377,36 @@ export function JobPostModal({
   // ==========================================
   const handleSelectCategory = (categoryId: string) => {
     if (isDisabled) return;
+    const generalId = categories.find((category) => category.name.trim().toLowerCase() === 'general househelp')?.category_id.toString();
+    const isSelected = formData.category_ids.includes(categoryId);
+    const nextCategoryIds = isSelected
+      ? formData.category_ids.filter((id) => id !== categoryId)
+      : categoryId === generalId || formData.category_ids.includes(generalId ?? '')
+        ? [categoryId]
+        : [...formData.category_ids, categoryId];
+    const nextJobs = formData.job_ids.filter((id) => {
+      const job = jobs.find((item: any) => item.job_id.toString() === id);
+      return !!job && nextCategoryIds.includes(job.category_id.toString());
+    });
+    const nextSkills = formData.skill_ids.filter((id) => {
+      const skill = skills.find((item: any) => item.skill_id.toString() === id);
+      return !!skill && nextJobs.includes(skill.job_id.toString());
+    });
+    const categoryName = categories
+      .filter((category) => nextCategoryIds.includes(category.category_id.toString()))
+      .map((category) => category.name)
+      .join(' & ');
+    const selectedTitles = jobs
+      .filter((job: any) => nextJobs.includes(job.job_id.toString()))
+      .map((job: any) => job.job_title);
     updateFields({
-      category_id: categoryId,
-      job_ids: [],
-      skill_ids: [],
-      custom_category: '',
-      custom_job_title: '',
-      title: '',
+      category_id: nextCategoryIds[0] || '',
+      category_ids: nextCategoryIds,
+      job_ids: nextJobs,
+      skill_ids: nextSkills,
+      custom_category: nextCategoryIds.includes(othersCat?.category_id.toString() ?? '') ? formData.custom_category : '',
+      custom_job_title: nextJobs.length > 0 ? formData.custom_job_title : '',
+      title: formData.custom_job_title ? formData.title : buildJobTitle(categoryName, selectedTitles),
     });
   };
 
@@ -266,13 +434,15 @@ export function JobPostModal({
       const selectedTitles = jobs
         .filter((j: any) => newJobs.includes(j.job_id.toString()))
         .map((j: any) => j.job_title);
-      const categoryName = categories.find(c => c.category_id.toString() === formData.category_id)?.name ?? '';
+      const categoryName = selectedCategories.map((category) => category.name).join(' & ');
       updateField('title', buildJobTitle(categoryName, selectedTitles));
     }
   };
 
   const handleGenerateDescription = () => {
-    const selectedCategoryObj = categories.find(c => c.category_id.toString() === formData.category_id);
+    const selectedCategoryObj = selectedCategories.length > 1
+      ? { category_id: 'multi', name: selectedCategories.map((category) => category.name).join(' & '), icon: '' }
+      : selectedCategory || null;
     const selectedJobObjects = jobs.filter(j => formData.job_ids.includes(j.job_id.toString()));
     const generatedText = generateDescription(selectedCategoryObj || null, selectedJobObjects);
     updateField('description', generatedText);
@@ -301,8 +471,9 @@ export function JobPostModal({
       return;
     }
 
-    const { isValid, firstError } = validate(categories);
+    const { isValid, firstError, firstErrorField } = validate(categories);
     if (!isValid) {
+      if (firstErrorField) focusErrorField(firstErrorField);
       setNotification({ visible: true, message: firstError || 'Please fill in all required fields', type: 'error' });
       return;
     }
@@ -315,12 +486,14 @@ export function JobPostModal({
 
       // Others logic: auto-generate custom category name if empty
       let submissionData = { ...getSubmissionData(), parent_id: user.user_id, requester_id: user.user_id };
-      if (formData.category_id === othersCat?.category_id.toString() && !formData.custom_category) {
+      if (isOthersSelected && !formData.custom_category) {
         submissionData.custom_category = "Specialized Work";
       }
       // Safety net: never post an empty description — auto-write one from the role.
       if (!String((submissionData as any).description || '').trim()) {
-        const selCat = categories.find(c => c.category_id.toString() === formData.category_id) || null;
+        const selCat = selectedCategories.length > 1
+          ? { category_id: 'multi', name: selectedCategories.map((category) => category.name).join(' & '), icon: '' }
+          : selectedCategory || null;
         const selJobs = jobs.filter(j => formData.job_ids.includes(j.job_id.toString()));
         (submissionData as any).description = generateDescription(selCat, selJobs);
       }
@@ -391,7 +564,7 @@ export function JobPostModal({
   // RENDER: STEP 1 — JOB SETUP
   // ==========================================
   const renderJobSetupStep = () => (
-    <View style={styles.stepContent}>
+    <View style={styles.stepContent} onLayout={setStepLayout}>
       <Text style={styles.sectionHeader}>Define the Role</Text>
       <Text style={styles.sectionSub}>Answer these in order — each step narrows down the next.</Text>
 
@@ -421,35 +594,50 @@ export function JobPostModal({
       </View>
 
       {/* RA 10361 scope, asked first — a one-time task cannot be posted at all. */}
-      <EngagementTypeSelector
-        value={formData.engagement_type}
-        onChange={(v) => updateField('engagement_type', v)}
-        error={errors.engagement_type}
-        disabled={isDisabled}
-      />
+      <View
+        onLayout={setSectionLayout('engagement')}
+        style={sectionHighlight('engagement', ['engagement_type'])}
+      >
+        <EngagementTypeSelector
+          value={formData.engagement_type}
+          onChange={(v) => updateField('engagement_type', v)}
+          error={errors.engagement_type}
+          disabled={isDisabled}
+        />
+      </View>
 
-      <CategorySelector
-        categories={categories}
-        selectedCategoryIds={formData.category_id ? [formData.category_id] : []}
-        customCategory={formData.custom_category || ''}
-        onToggleCategory={handleSelectCategory}
-        onCustomCategoryChange={(val) => updateField('custom_category', val)}
-        error={errors.category}
-        disabled={isDisabled}
-      />
+      <View
+        onLayout={setSectionLayout('category')}
+        style={sectionHighlight('category', ['category'])}
+      >
+        <CategorySelector
+          categories={categories}
+          selectedCategoryIds={formData.category_ids}
+          customCategory={formData.custom_category || ''}
+          onToggleCategory={handleSelectCategory}
+          onCustomCategoryChange={(val) => updateField('custom_category', val)}
+          error={errors.category}
+          disabled={isDisabled}
+        />
+      </View>
 
-      <JobTitleInput
-        categoryIds={formData.category_id ? [formData.category_id] : []}
-        availableJobs={availableJobs}
-        selectedJobIds={formData.job_ids}
-        customJobTitle={formData.custom_job_title || ''}
-        title={formData.title}
-        onToggleJob={handleToggleJob}
-        onCustomJobChange={(val) => updateField('custom_job_title', val)}
-        onTitleChange={(val) => updateField('title', val)}
-        error={errors.title}
-        disabled={isDisabled || !formData.category_id}
-      />
+      <View
+        onLayout={setSectionLayout('role')}
+        style={sectionHighlight('role', ['title'])}
+      >
+        <JobTitleInput
+          categoryIds={formData.category_ids}
+          availableJobs={availableJobs}
+          selectedJobIds={formData.job_ids}
+          customJobTitle={formData.custom_job_title || ''}
+          title={formData.title}
+          onToggleJob={handleToggleJob}
+          onCustomJobChange={(val) => updateField('custom_job_title', val)}
+          onTitleChange={(val) => updateField('title', val)}
+          error={errors.title}
+          disabled={isDisabled || formData.category_ids.length === 0}
+        />
+      </View>
 
       <SkillsSelector
         selectedJobIds={formData.job_ids}
@@ -463,6 +651,34 @@ export function JobPostModal({
         disabled={isDisabled || (availableJobs.length > 0 && formData.job_ids.length === 0)}
       />
 
+      <View
+        onLayout={setSectionLayout('slots')}
+        style={[{ marginBottom: 20 }, sectionHighlight('slots', ['slots'])]}
+      >
+        <Text style={styles.sectionHeader}>Number of Helpers</Text>
+        <Text style={styles.sectionSub}>How many people are you hiring for this post?</Text>
+        <TextInput
+          style={{
+            borderWidth: 1,
+            borderColor: errors.slots ? '#EF4444' : '#E5E7EB',
+            borderRadius: 10,
+            backgroundColor: isDisabled ? '#F3F4F6' : '#fff',
+            paddingHorizontal: 14,
+            paddingVertical: 12,
+            fontSize: 16,
+            color: DARK,
+          }}
+          value={formData.slots}
+          onChangeText={(value) => updateField('slots', value.replace(/\D/g, ''))}
+          keyboardType="number-pad"
+          inputMode="numeric"
+          placeholder=""
+          editable={!isDisabled}
+          accessibilityLabel="Number of helper openings"
+        />
+        {errors.slots ? <Text style={styles.errorText}>{errors.slots}</Text> : null}
+      </View>
+
       <TrustBanner />
     </View>
   );
@@ -471,7 +687,7 @@ export function JobPostModal({
   // RENDER: STEP 2 — WORK DETAILS
   // ==========================================
   const renderWorkDetailsStep = () => (
-    <View style={styles.stepContent}>
+    <View style={styles.stepContent} onLayout={setStepLayout}>
       <Text style={styles.sectionHeader}>Work Details & Location</Text>
 
       <DescriptionInput
@@ -482,17 +698,23 @@ export function JobPostModal({
         disabled={isDisabled}
       />
 
-      <LocationSelector
-        province={formData.province}
-        municipality={formData.municipality}
-        barangay={formData.barangay}
-        onProvinceChange={(val) => updateField('province', val)}
-        onMunicipalityChange={(val) => updateField('municipality', val)}
-        onBarangayChange={(val) => updateField('barangay', val)}
-        onLatitudeChange={(val) => updateField('latitude', val)}
-        onLongitudeChange={(val) => updateField('longitude', val)}
-        disabled={isDisabled}
-      />
+      <View
+        onLayout={setSectionLayout('location')}
+        style={sectionHighlight('location', ['municipality'])}
+      >
+        <LocationSelector
+          province={formData.province}
+          municipality={formData.municipality}
+          barangay={formData.barangay}
+          onProvinceChange={(val) => updateField('province', val)}
+          onMunicipalityChange={(val) => updateField('municipality', val)}
+          onBarangayChange={(val) => updateField('barangay', val)}
+          onLatitudeChange={(val) => updateField('latitude', val)}
+          onLongitudeChange={(val) => updateField('longitude', val)}
+          error={errors.municipality}
+          disabled={isDisabled}
+        />
+      </View>
 
       <WorkArrangementCard
         employmentType={formData.employment_type}
@@ -502,18 +724,23 @@ export function JobPostModal({
         disabled={isDisabled}
       />
 
-      <SalaryInputCard
-        salaryMin={formData.salary_min}
-        salaryMax={formData.salary_max}
-        salaryPeriod={formData.salary_period}
-        onSalaryMinChange={(val) => updateField('salary_min', val)}
-        onSalaryMaxChange={(val) => updateField('salary_max', val)}
-        onPeriodChange={(period) => updateField('salary_period', period)}
-        categoryIds={formData.category_id ? [formData.category_id] : []}
-        error={errors.salary}
-        errorMax={errors.salary_max}
-        disabled={isDisabled}
-      />
+      <View
+        onLayout={setSectionLayout('salary')}
+        style={sectionHighlight('salary', ['salary', 'salary_max'])}
+      >
+        <SalaryInputCard
+          salaryMin={formData.salary_min}
+          salaryMax={formData.salary_max}
+          salaryPeriod={formData.salary_period}
+          onSalaryMinChange={(val) => updateField('salary_min', val)}
+          onSalaryMaxChange={(val) => updateField('salary_max', val)}
+          onPeriodChange={(period) => updateField('salary_period', period)}
+          categoryIds={formData.category_ids}
+          error={errors.salary}
+          errorMax={errors.salary_max}
+          disabled={isDisabled}
+        />
+      </View>
 
       <TrustBanner />
     </View>
@@ -523,7 +750,7 @@ export function JobPostModal({
   // RENDER: STEP 3 — REQUIREMENTS
   // ==========================================
   const renderRequirementsStep = () => (
-    <View style={styles.stepContent}>
+    <View style={styles.stepContent} onLayout={setStepLayout}>
       <Text style={styles.sectionHeader}>Requirements & Benefits</Text>
 
       <View style={styles.row}>
@@ -599,9 +826,11 @@ export function JobPostModal({
 
   const renderReviewStep = () => {
     const jobTitleDisplay = formData.title?.trim() || 'Untitled Job';
-    const categoryDisplay = isOthersSelected
-      ? (formData.custom_category || 'Custom Category')
-      : (selectedCategory?.name || '—');
+    const categoryDisplay = selectedCategories.map((category) =>
+      category.category_id.toString() === othersCat?.category_id.toString()
+        ? (formData.custom_category || category.name)
+        : category.name,
+    ).join(', ') || '—';
     const employmentDisplay = DISPLAY_LABELS[formData.employment_type] ?? formData.employment_type;
     const scheduleDisplay = DISPLAY_LABELS[formData.work_schedule] ?? formData.work_schedule;
 
@@ -631,7 +860,7 @@ export function JobPostModal({
     if (formData.provides_pagibig) benefitItems.push('Pag-IBIG');
 
     return (
-      <View style={styles.stepContent}>
+      <View style={styles.stepContent} onLayout={setStepLayout}>
         <Text style={styles.sectionHeader}>Review & Publish</Text>
         <Text style={styles.sectionSubheader}>Double-check the details below before posting your job.</Text>
 
@@ -640,7 +869,7 @@ export function JobPostModal({
           <Text style={styles.reviewSubtitle}>{categoryDisplay}</Text>
           <View style={styles.reviewRow}>
             <Ionicons name="people-outline" size={14} color={MUTED} />
-            <Text style={styles.reviewRowText}>{employmentDisplay} · {scheduleDisplay}</Text>
+            <Text style={styles.reviewRowText}>{formData.slots} helper opening{Number(formData.slots) === 1 ? '' : 's'} · {employmentDisplay} · {scheduleDisplay}</Text>
           </View>
           <View style={styles.reviewRow}>
             <Ionicons name="cash-outline" size={14} color={MUTED} />
@@ -738,10 +967,20 @@ export function JobPostModal({
   const handleNext = () => {
     if (modalStep === 1) {
       const result = validateStep1();
-      if (!result.isValid && result.error) return showStepError(result.error);
+      if (!result.isValid && result.error && result.field) {
+        setValidationErrors({ [result.field]: result.error });
+        focusErrorField(result.field);
+        return showStepError(result.error);
+      }
+      clearValidationErrors('engagement_type', 'category', 'title', 'slots');
     } else if (modalStep === 2) {
       const result = validateStep2();
-      if (!result.isValid && result.error) return showStepError(result.error);
+      if (!result.isValid && result.error && result.field) {
+        setValidationErrors({ [result.field]: result.error });
+        focusErrorField(result.field);
+        return showStepError(result.error);
+      }
+      clearValidationErrors('municipality', 'salary', 'salary_max');
       // Left the description blank? Auto-write one from the role so posting stays quick.
       if (!formData.description.trim()) handleGenerateDescription();
     } else if (modalStep === 3) {
@@ -752,14 +991,15 @@ export function JobPostModal({
   };
 
   return (
-    <Modal visible={visible} animationType={isDesktop ? 'fade' : 'slide'} transparent={true} onRequestClose={onClose}>
-      <View style={[styles.overlay, isDesktop && styles.overlayDesktop]}>
+    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onClose}>
+      <View style={[styles.overlay, isMobileWeb && styles.overlayMobileWeb, isDesktop && styles.overlayDesktop]}>
         {/* Plain View, not SafeAreaView: a bottom sheet has to sit flush against
             the bottom and side edges, and the safe-area inset was what left a
             visible gap there. */}
         <View
           style={[
             styles.modalContainer,
+            isMobileWeb && styles.modalContainerMobileWeb,
             isDesktop && styles.modalContainerDesktop,
             isDesktop && { width: Math.min(width * 0.85, 900), height: Math.min(height * 0.9, 900) },
           ]}
@@ -774,10 +1014,10 @@ export function JobPostModal({
           />
 
           <View style={styles.header}>
-            <View>
+            <View style={styles.headerText}>
               <Text style={styles.headerTitle}>{duplicate ? 'Duplicate Job Post' : existingJobData ? 'Update Job Post' : 'Create Job Post'}</Text>
               <Text style={styles.headerSubtitle}>
-                {referencesLoading ? 'Loading job options…' : 'Provide details to find the best helper'}
+                {referencesLoading ? 'Loading job options…' : 'Add details step by step. We’ll guide you to anything you miss.'}
               </Text>
             </View>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -788,13 +1028,15 @@ export function JobPostModal({
           {isPending && <PendingBanner status="Pending" message="Verification required to post new jobs." />}
 
           <ScrollView
+            ref={scrollRef}
+            style={styles.modalScroll}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={isDesktop}
             keyboardShouldPersistTaps="handled"
           >
             {renderStepIndicator()}
 
-            <View style={styles.formContainer}>
+            <View style={styles.formContainer} onLayout={setFormLayout}>
               {modalStep === 1 && renderJobSetupStep()}
               {modalStep === 2 && renderWorkDetailsStep()}
               {modalStep === 3 && renderRequirementsStep()}
@@ -863,22 +1105,38 @@ const styles = StyleSheet.create({
     }),
   },
   overlayDesktop: { justifyContent: 'center', alignItems: 'center', padding: 16 },
-  modalContainer: { backgroundColor: SURFACE, width: '100%', height: '100%', flex: 1, overflow: 'hidden' },
-  modalContainerDesktop: { maxWidth: 900, flex: 0, borderRadius: 24, marginBottom: 20 },
+  overlayMobileWeb: { padding: 8 },
+  modalContainer: { backgroundColor: SURFACE, width: '100%', height: '100%', flex: 1, minWidth: 0, overflow: 'hidden' },
+  modalContainerMobileWeb: { maxWidth: '100%', borderRadius: 20 },
+  modalContainerDesktop: {
+     maxWidth: 900,
+     maxHeight: '90%',
+     minHeight: 600,
+     flex: 1,
+     borderRadius: 24,
+     marginBottom: 20,
+     // Add a fixed height or minHeight for web to prevent collapse
+     ...Platform.select({
+       web: { height: 800 }
+     })
+   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minWidth: 0,
     paddingHorizontal: 24,
     paddingVertical: 20,
     borderBottomWidth: 1,
     borderBottomColor: DIVIDER
   },
+  headerText: { flex: 1, minWidth: 0, marginRight: 12 },
   headerTitle: { fontSize: 22, fontWeight: '800', color: DARK },
   headerSubtitle: { fontSize: 14, color: MUTED, marginTop: 2 },
   closeButton: { padding: 4 },
+  modalScroll: { minWidth: 0 },
   scrollContent: { paddingBottom: 60 },
-  formContainer: { paddingHorizontal: 24, paddingVertical: 12 },
+  formContainer: { minWidth: 0, paddingHorizontal: 24, paddingVertical: 12 },
 
   sectionHeader: { fontSize: 20, fontWeight: '800', color: DARK, marginBottom: 8 },
   sectionSub: { fontSize: 13, color: MUTED, marginBottom: 16, marginTop: -2, lineHeight: 18 },
@@ -921,6 +1179,37 @@ const styles = StyleSheet.create({
   miniStepTextActive: { color: BROWN },
 
   stepContent: { animationDuration: '0.3s' },
+  errorSection: {
+    borderColor: '#EF4444',
+    borderWidth: 1.5,
+    borderRadius: 14,
+    backgroundColor: '#FEF2F2',
+    padding: 10,
+    marginHorizontal: -10,
+    marginBottom: 8,
+  },
+  errorSectionFocused: {
+    borderWidth: 2.5,
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.16,
+    shadowRadius: 7,
+    elevation: 2,
+  },
+  guidedSection: {
+    borderColor: CARAMEL,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    backgroundColor: '#FFF7ED',
+    padding: 10,
+    marginHorizontal: -10,
+    marginBottom: 8,
+    shadowColor: CARAMEL,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 1,
+  },
 
   footerActions: { marginTop: 40, borderTopWidth: 1, borderTopColor: DIVIDER, paddingTop: 24 },
   navButtonsRow: { flexDirection: 'row', gap: 12 },

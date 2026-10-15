@@ -193,12 +193,12 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
 
   // ── Actions ──
   const handlePostJob = () => {
-    if (!verification.canPostJobs) { setNotif({ visible: true, msg: 'You need to be verified to post jobs.', type: 'error' }); return; }
+    if (!verified) { setNotif({ visible: true, msg: 'You need to be verified to post jobs.', type: 'error' }); return; }
     setEditingJob(null); setDuplicating(false); setPostOpen(true);
   };
   const handleEditJob = (job: JobPost) => { setEditingJob(job); setDuplicating(false); setPostOpen(true); };
   const handleDuplicateJob = (job: JobPost) => {
-    if (!verification.canPostJobs) { setNotif({ visible: true, msg: 'You need to be verified to post jobs.', type: 'error' }); return; }
+    if (!verified) { setNotif({ visible: true, msg: 'You need to be verified to post jobs.', type: 'error' }); return; }
     setEditingJob(job); setDuplicating(true); setPostOpen(true);
   };
 
@@ -250,6 +250,7 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
 
   return (
     <View style={s.root}>
+      <JobPostModal visible={postOpen} onClose={() => { setPostOpen(false); setDuplicating(false); }} existingJobData={editingJob} duplicate={duplicating} onSaveSuccess={refreshJobs} />
       <ParentTopNav active={params.tab === 'applicants' ? 'applications' : 'jobs'} mode={isWorkMode ? 'work' : 'recruitment'} userName={userName} avatar={avatar} verified={verified} onLogout={onLogout} />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.inner}>
@@ -260,7 +261,7 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
               <Text style={s.pageTitle}>Work Management</Text>
               <Text style={s.pageSub}>Manage your job posts and review helper applications.</Text>
             </View>
-            <Pressable onPress={handlePostJob} style={({ hovered, pressed }: any) => [TRANS, !verification.canPostJobs && { opacity: 0.5 }, hovered && verification.canPostJobs && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
+            <Pressable onPress={handlePostJob} style={({ hovered, pressed }: any) => [TRANS, !verified && { opacity: 0.5 }, hovered && verified && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
               <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.postBtn}>
                 <Ionicons name="add" size={19} color="#fff" /><Text style={s.postBtnText}>Create Job Post</Text>
               </LinearGradient>
@@ -308,7 +309,7 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
                               <View style={[s.statusPill, { backgroundColor: cfg.bg }]}><Ionicons name={cfg.icon} size={10} color={cfg.text} /><Text style={[s.statusPillText, { color: cfg.text }]}>{job.status}</Text></View>
                               <Text style={s.jobItemSalary}>{formatSalary(job.salary_offered)}</Text>
                             </View>
-                            <Text style={s.jobItemApps}>{job.application_count} Applicant{job.application_count !== 1 ? 's' : ''} · Posted {fmtDate(job.posted_at)}</Text>
+                            <Text style={s.jobItemApps}>{job.slots ?? 1} opening{(job.slots ?? 1) === 1 ? '' : 's'} · {job.application_count} Applicant{job.application_count !== 1 ? 's' : ''} · Posted {fmtDate(job.posted_at)}</Text>
                           </View>
                           <Ionicons name="chevron-forward" size={16} color={pt.subtle} />
                         </Pressable>
@@ -343,6 +344,7 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
                     <View style={s.midMetaItem}><Ionicons name="location-outline" size={13} color={pt.muted} /><Text style={s.midMetaText} numberOfLines={1}>{[selectedJob.municipality, selectedJob.province].filter(Boolean).join(', ') || 'Location not set'}</Text></View>
                     <View style={s.midMetaItem}><Ionicons name="cash-outline" size={13} color={pt.muted} /><Text style={s.midSalary}>{formatSalary(selectedJob.salary_offered)}</Text></View>
                     <View style={s.midMetaItem}><Ionicons name="calendar-outline" size={13} color={pt.muted} /><Text style={s.midMetaText}>{formatPayoutSchedule(selectedJob.salary_period)}</Text></View>
+                    <View style={s.midMetaItem}><Ionicons name="people-outline" size={13} color={pt.muted} /><Text style={s.midMetaText}>{selectedJob.slots ?? 1} helper opening{(selectedJob.slots ?? 1) === 1 ? '' : 's'}</Text></View>
                     {!!applyByLabel(selectedJob.expires_at) && (
                       <View style={s.midMetaItem}><Ionicons name="hourglass-outline" size={13} color={pt.muted} /><Text style={s.midMetaText}>{applyByLabel(selectedJob.expires_at)}</Text></View>
                     )}
@@ -444,7 +446,6 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
         confirmText={archiveModal?.status === 'Closed' ? 'Reopen' : 'Archive'} cancelText="Cancel" type={archiveModal?.status === 'Closed' ? 'success' : 'warning'}
         onConfirm={confirmArchive} onCancel={() => setArchiveModal(null)}
       />
-      <JobPostModal visible={postOpen} onClose={() => { setPostOpen(false); setDuplicating(false); }} existingJobData={editingJob} duplicate={duplicating} onSaveSuccess={refreshJobs} />
       <BoostJobModal
         visible={!!boostJob}
         jobPostId={boostJob?.job_post_id ?? null}

@@ -22,6 +22,8 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
+require_once __DIR__ . '/../shared/job_slots.php';
+$statusTransactionStarted = false;
 
 // 2. Your Standard Response Function
 function sendResponse($success, $message, $data = null) {
@@ -61,6 +63,11 @@ try {
     if (!in_array($new_status, ['Open', 'Filled', 'Closed'])) {
         throw new Exception('Invalid status provided');
     }
+    if ($new_status === 'Open') {
+        $conn->begin_transaction();
+        $statusTransactionStarted = true;
+        carelink_assert_job_post_has_openings($conn, $job_post_id);
+    }
     
     error_log("=== UPDATE JOB STATUS === ID: $job_post_id to $new_status");
 
@@ -90,11 +97,18 @@ try {
     }
     
     $stmt->close();
+    if ($statusTransactionStarted) {
+        $conn->commit();
+        $statusTransactionStarted = false;
+    }
 
     // 5. Success Response
     sendResponse(true, 'Job status updated successfully');
     
 } catch (Exception $e) {
+    if ($statusTransactionStarted && isset($conn) && $conn) {
+        $conn->rollback();
+    }
     error_log("ERROR: " . $e->getMessage());
     sendResponse(false, $e->getMessage());
 }

@@ -21,6 +21,8 @@ export interface VerificationJob {
   parent_email: string;
   title: string;
   category_name: string;
+  categories?: string[];
+  slots?: number;
   custom_category: string;
   salary_offered: number;
   salary_period: string;
@@ -81,7 +83,7 @@ export default function JobVerification() {
   const onStatusChanged = () => { fetchJobs(); };
 
   const renderJobCard = ({ item, index }: { item: VerificationJob; index: number }) => {
-    const category = item.custom_category || item.category_name || "General";
+    const category = (item.categories?.length ? item.categories.join(', ') : item.custom_category || item.category_name) || "General";
     const posted = item.posted_at ? new Date(item.posted_at).toLocaleDateString("en-PH", { dateStyle: "medium" }) : null;
     return (
       <ListRow selected={twoPane && selectedJobId === item.job_post_id} onPress={() => setSelectedJobId(item.job_post_id)} delay={Math.min(index * 45, 320)}>
@@ -92,6 +94,7 @@ export default function JobVerification() {
           <Text style={{ fontFamily: font.semibold, fontSize: 14.5, color: c.ink }} numberOfLines={1}>{item.title || "Untitled Job"}</Text>
           <Text style={{ fontFamily: font.semibold, fontSize: 12, color: c.accentInk }} numberOfLines={1}>{category}</Text>
           <View style={{ flexDirection: "row", gap: 10, marginTop: 5 }}>
+            <Meta icon="people-outline" text={`${item.slots ?? 1} opening${(item.slots ?? 1) === 1 ? '' : 's'}`} />
             <Meta icon="person-outline" text={item.parent_name} />
             {!!posted && <Meta icon="calendar-outline" text={`Posted ${posted}`} />}
           </View>

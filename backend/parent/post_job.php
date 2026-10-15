@@ -60,7 +60,20 @@ try {
     if (!carelink_is_verified($conn, $parent_id)) {
         throw new Exception('Your account is still being verified by PESO. Once you are verified you can post jobs. Finish your profile and documents to move the review along.');
     }
-    $category_id = isset($data['category_id']) ? intval($data['category_id']) : null;
+    $legacy_category_id = isset($data['category_id']) ? intval($data['category_id']) : 0;
+    $job_ids = is_array($data['job_ids'] ?? null) ? $data['job_ids'] : [];
+    $categorySelection = carelink_validate_job_categories(
+        $conn,
+        $data['category_ids'] ?? [],
+        $legacy_category_id,
+        $job_ids
+    );
+    $category_id = $categorySelection['category_id'];
+    $category_ids_json = json_encode($categorySelection['category_ids']);
+    $slots = filter_var($data['slots'] ?? 1, FILTER_VALIDATE_INT);
+    if ($slots === false || $slots < 1 || $slots > 2147483647) {
+        throw new Exception('Number of helper openings must be a positive whole number.');
+    }
     $salary_min = isset($data['salary_min']) ? floatval($data['salary_min']) : (isset($data['salary_offered']) ? floatval($data['salary_offered']) : 0);
     $salary_max = isset($data['salary_max']) && $data['salary_max'] !== null ? floatval($data['salary_max']) : null;
     $salary = $salary_min; // backward compat: salary_offered = salary_min
@@ -102,7 +115,7 @@ try {
         );
     }
 
-    $job_ids_json = json_encode(is_array($data['job_ids'] ?? null) ? $data['job_ids'] : []);
+    $job_ids_json = json_encode($job_ids);
     $skill_ids_json = json_encode(is_array($data['skill_ids'] ?? null) ? $data['skill_ids'] : []);
     $days_off_json = json_encode(is_array($data['days_off'] ?? null) ? $data['days_off'] : []);
 
@@ -116,13 +129,7 @@ try {
     if ($custom_job_title !== '') {
         $final_title = $custom_job_title;
     } else {
-        $cat_name = '';
-        $cat_q = mysqli_prepare($conn, "SELECT category_name FROM ref_categories WHERE category_id = ?");
-        mysqli_stmt_bind_param($cat_q, "i", $category_id);
-        mysqli_stmt_execute($cat_q);
-        mysqli_stmt_bind_result($cat_q, $cat_name_res);
-        if (mysqli_stmt_fetch($cat_q)) $cat_name = (string) $cat_name_res;
-        mysqli_stmt_close($cat_q);
+        $cat_name = implode(' & ', $categorySelection['category_names']);
 
         $role_names = carelink_role_names_for_job_ids($conn, $job_ids_json);
         $final_title = carelink_build_job_title($cat_name, $role_names, null);
@@ -140,12 +147,18 @@ try {
     // Sets are compared in PHP because stored job_ids JSON varies in order and type.
     $new_role_set = carelink_normalize_job_ids($job_ids_json);
     if (!empty($new_role_set)) {
-        $dup_check = mysqli_prepare($conn, "SELECT job_ids FROM job_posts WHERE parent_id = ? AND category_id = ? AND status IN ('Open', 'Pending')");
-        mysqli_stmt_bind_param($dup_check, "ii", $parent_id, $category_id);
+        $dup_check = mysqli_prepare($conn, "SELECT category_ids, category_id, job_ids FROM job_posts WHERE parent_id = ? AND status IN ('Open', 'Pending')");
+        mysqli_stmt_bind_param($dup_check, "i", $parent_id);
         mysqli_stmt_execute($dup_check);
         $dup_res = mysqli_stmt_get_result($dup_check);
         while ($dup_res && ($dup_row = mysqli_fetch_assoc($dup_res))) {
-            if (carelink_normalize_job_ids($dup_row['job_ids']) === $new_role_set) {
+            $existingCategories = carelink_normalize_category_ids(
+                json_decode($dup_row['category_ids'] ?? '[]', true) ?: [(int) $dup_row['category_id']]
+            );
+            if (
+                $existingCategories === carelink_normalize_category_ids($categorySelection['category_ids'])
+                && carelink_normalize_job_ids($dup_row['job_ids']) === $new_role_set
+            ) {
                 mysqli_stmt_close($dup_check);
                 throw new Exception("You already have an active or pending job post with exactly these roles.");
             }
@@ -202,7 +215,7 @@ try {
 
     $stmt = mysqli_prepare($conn, "
         INSERT INTO job_posts (
-            parent_id, category_id, custom_category, job_ids, title,
+            parent_id, category_id, category_ids, custom_category, job_ids, title,
             description, employment_type, work_schedule, salary_offered, salary_min, salary_max, salary_period,
             benefits, province, municipality, barangay, latitude, longitude,
             preferred_religion, preferred_language_id, require_police_clearance, prefer_tesda_nc2,
@@ -210,10 +223,10 @@ try {
             work_hours, days_off, contract_duration,
             provides_meals, provides_accommodation, provides_sss,
             provides_philhealth, provides_pagibig, vacation_days, sick_days,
-            expires_at,
+            expires_at, slots,
             status, posted_at
         ) VALUES (
-            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?,
@@ -228,11 +241,11 @@ try {
 
     if (!$stmt) throw new Exception('Database Error: ' . mysqli_error($conn));
 
-    $types = "iissssssdddsssssddsiiissiiissssiiiiiiis";
+    $types = "iisssssssdddsssssddsiiissiiissssiiiiiiisi";
 
     mysqli_stmt_bind_param(
         $stmt, $types,
-        $parent_id, $category_id, $custom_category, $job_ids_json, $final_title,
+        $parent_id, $category_id, $category_ids_json, $custom_category, $job_ids_json, $final_title,
         $description, $employment_type, $work_schedule, $salary, $salary_min, $salary_max, $salary_period,
         $benefits, $province, $municipality, $barangay, $latitude, $longitude,
         $preferred_religion, $preferred_language_id, $require_police_clearance, $prefer_tesda_nc2,
@@ -240,7 +253,7 @@ try {
         $work_hours, $days_off_json, $contract_duration,
         $provides_meals, $provides_accommodation, $provides_sss,
         $provides_philhealth, $provides_pagibig, $vacation_days, $sick_days,
-        $expires_at
+        $expires_at, $slots
     );
 
     if (!mysqli_stmt_execute($stmt)) throw new Exception('Failed to post job: ' . mysqli_error($conn));

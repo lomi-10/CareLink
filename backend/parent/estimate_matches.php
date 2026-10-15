@@ -29,7 +29,25 @@ try {
     $data = json_decode($input, true);
     if (!$data) throw new Exception('Invalid JSON data');
 
-    $category_id = isset($data['category_id']) ? intval($data['category_id']) : 0;
+    $category_ids = is_array($data['category_ids'] ?? null)
+        ? array_values(array_unique(array_filter(array_map('intval', $data['category_ids']), fn($v) => $v > 0)))
+        : [];
+    if (!$category_ids && !empty($data['category_id'])) $category_ids = [intval($data['category_id'])];
+    $categoryResult = $conn->query('SELECT category_id, category_name FROM ref_categories');
+    if (!$categoryResult) throw new Exception('Could not load job categories: ' . $conn->error);
+    $generalCategoryId = null;
+    $specialtyCategoryIds = [];
+    while ($category = $categoryResult->fetch_assoc()) {
+        $categoryName = strtolower(trim((string) $category['category_name']));
+        if ($categoryName === 'general househelp') {
+            $generalCategoryId = (int) $category['category_id'];
+        } elseif ($categoryName !== 'others') {
+            $specialtyCategoryIds[] = (int) $category['category_id'];
+        }
+    }
+    if ($generalCategoryId !== null && in_array($generalCategoryId, $category_ids, true)) {
+        $category_ids = array_values(array_unique(array_merge($category_ids, $specialtyCategoryIds)));
+    }
     $job_ids = is_array($data['job_ids'] ?? null)
         ? array_values(array_unique(array_filter(array_map('intval', $data['job_ids']), fn($v) => $v > 0)))
         : [];
@@ -44,7 +62,7 @@ try {
     $employment_type = $data['employment_type'] ?? 'Any';
     $work_schedule = $data['work_schedule'] ?? 'Any';
 
-    if ($province === '' || ($category_id <= 0 && empty($job_ids))) {
+    if ($province === '' || (!$category_ids && empty($job_ids))) {
         sendResponse(true, 'Not enough information to estimate matches', [
             'available' => 0,
             'highly_compatible' => 0,
@@ -54,9 +72,10 @@ try {
     $salary_ceiling = $salary_max !== null ? $salary_max : ($salary_min > 0 ? $salary_min * 1.5 : 999999);
 
     // Job/category match: any helper offering this category, or one of the specific job titles
-    $job_filter = 'rj.category_id = ?';
-    $job_params = [$category_id];
-    $job_types = 'i';
+    $category_placeholders = implode(',', array_fill(0, count($category_ids), '?'));
+    $job_filter = $category_ids ? "rj.category_id IN ($category_placeholders)" : '1 = 0';
+    $job_params = $category_ids;
+    $job_types = str_repeat('i', count($category_ids));
     if (!empty($job_ids)) {
         $placeholders = implode(',', array_fill(0, count($job_ids), '?'));
         $job_filter .= " OR hj.job_id IN ($placeholders)";

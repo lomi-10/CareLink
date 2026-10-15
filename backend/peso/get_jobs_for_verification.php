@@ -30,6 +30,13 @@ try {
 
     // Optional filter: ?parent_id=X shows only that parent's jobs
     $parent_id = isset($_GET['parent_id']) ? intval($_GET['parent_id']) : 0;
+    $categoryNames = [];
+    $categoryResult = $conn->query('SELECT category_id, category_name FROM ref_categories');
+    if ($categoryResult) {
+        while ($category = $categoryResult->fetch_assoc()) {
+            $categoryNames[(int) $category['category_id']] = $category['category_name'];
+        }
+    }
 
     $where = $parent_id > 0 ? 'WHERE j.parent_id = ?' : '';
 
@@ -38,6 +45,9 @@ try {
             j.job_post_id,
             j.title,
             j.custom_category,
+            j.category_id,
+            j.category_ids,
+            j.slots,
             j.salary_offered,
             j.salary_period,
             j.status,
@@ -72,6 +82,14 @@ try {
     $jobs = [];
     while ($row = $result->fetch_assoc()) {
         $row['salary_offered'] = (float)$row['salary_offered'];
+        $row['category_ids'] = json_decode($row['category_ids'] ?? '[]', true) ?: [(int) $row['category_id']];
+        $row['category_ids'] = array_values(array_unique(array_map('intval', $row['category_ids'])));
+        $row['categories'] = array_values(array_filter(array_map(
+            fn($categoryId) => $categoryNames[$categoryId] ?? null,
+            $row['category_ids']
+        )));
+        $row['category_name'] = implode(', ', $row['categories']) ?: ($row['category_name'] ?? null);
+        $row['slots'] = max(1, (int) ($row['slots'] ?? 1));
         $jobs[] = $row;
     }
 

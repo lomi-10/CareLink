@@ -249,7 +249,7 @@ export default function SignUpScreen() {
         ))}
       </View>
 
-      {/* ── Privacy consent (RA 10173 / NPC Circular 16-01) ── */}
+      {/* ── Terms & Privacy consent (RA 10173 / NPC Circular 16-01) ── */}
       <View style={{ backgroundColor: t.inputBg, borderWidth: 1, borderColor: t.footerLink, borderRadius: 14, padding: 12, marginTop: 6 }}>
         <TouchableOpacity
           style={s.consentRow}
@@ -262,18 +262,38 @@ export default function SignUpScreen() {
             color={privacyConsent ? t.btn : t.footerText}
           />
           <Text style={[s.consentText, { color: t.label }]}>
-            I agree that CareLink may collect and process my personal information for recruitment and
-            employment matching purposes in accordance with RA 10173 and NPC Circular 16-01.
+            I have read and agree to CareLink&apos;s{' '}
+            <Text
+              style={{ color: t.footerLink, fontFamily: FontFamily.fredokaSemiBold, textDecorationLine: 'underline' }}
+              onPress={() => router.push('/terms-of-service' as any)}
+            >
+              Terms of Service
+            </Text>
+            {' '}and{' '}
+            <Text
+              style={{ color: t.footerLink, fontFamily: FontFamily.fredokaSemiBold, textDecorationLine: 'underline' }}
+              onPress={() => router.push('/privacy-policy' as any)}
+            >
+              Privacy Policy
+            </Text>
+            , including the processing of my data under{' '}
+            <Text
+              style={{ color: t.footerLink, fontFamily: FontFamily.fredokaSemiBold, textDecorationLine: 'underline' }}
+              onPress={() => router.push('/privacy-policy' as any)}
+            >
+              RA 10173
+            </Text>
+            .
           </Text>
         </TouchableOpacity>
         <Pressable
           onPress={() => router.push('/privacy-policy' as any)}
           accessibilityRole="link"
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginLeft: 29, marginTop: 9, paddingVertical: 4 }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginLeft: 29, marginTop: 4, paddingVertical: 4 }}
         >
           <Ionicons name="shield-checkmark-outline" size={16} color={t.footerLink} />
           <Text style={{ color: t.footerLink, fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, textDecorationLine: 'underline' }}>
-            Read CareLink&apos;s Privacy Policy
+            View full Privacy Policy details
           </Text>
           <Ionicons name="arrow-forward" size={13} color={t.footerLink} />
         </Pressable>
@@ -593,18 +613,38 @@ export default function SignUpScreen() {
                     <TouchableOpacity style={d.consentRow} activeOpacity={0.8} onPress={() => setPrivacyConsent(!privacyConsent)}>
                       <Ionicons name={privacyConsent ? 'checkbox' : 'square-outline'} size={19} color={privacyConsent ? t.btn : t.footerText} />
                       <Text style={[d.consentText, { color: t.label }]}>
-                        I agree that CareLink may collect and process my personal information for recruitment and
-                        employment matching purposes in accordance with RA 10173 and NPC Circular 16-01.
+                        I have read and agree to CareLink&apos;s{' '}
+                        <Text
+                          style={{ color: t.footerLink, fontFamily: FontFamily.fredokaSemiBold, textDecorationLine: 'underline' }}
+                          onPress={() => router.push('/terms-of-service' as any)}
+                        >
+                          Terms of Service
+                        </Text>
+                        {' '}and{' '}
+                        <Text
+                          style={{ color: t.footerLink, fontFamily: FontFamily.fredokaSemiBold, textDecorationLine: 'underline' }}
+                          onPress={() => router.push('/privacy-policy' as any)}
+                        >
+                          Privacy Policy
+                        </Text>
+                        , including the processing of my data under{' '}
+                        <Text
+                          style={{ color: t.footerLink, fontFamily: FontFamily.fredokaSemiBold, textDecorationLine: 'underline' }}
+                          onPress={() => router.push('/privacy-policy' as any)}
+                        >
+                          RA 10173
+                        </Text>
+                        .
                       </Text>
                     </TouchableOpacity>
                     <Pressable
                       onPress={() => router.push('/privacy-policy' as any)}
                       accessibilityRole="link"
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginLeft: 28, marginTop: 9, paddingVertical: 4 }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginLeft: 28, marginTop: 4, paddingVertical: 4 }}
                     >
                       <Ionicons name="shield-checkmark-outline" size={16} color={t.footerLink} />
                       <Text style={{ color: t.footerLink, fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, textDecorationLine: 'underline' }}>
-                        Read CareLink&apos;s Privacy Policy
+                        View full Privacy Policy details
                       </Text>
                       <Ionicons name="arrow-forward" size={13} color={t.footerLink} />
                     </Pressable>

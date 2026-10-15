@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
+require_once __DIR__ . '/../shared/job_match.php';
 
 try {
     $helper_id = isset($_GET['helper_id']) ? intval($_GET['helper_id']) : 0;
@@ -53,6 +54,15 @@ try {
     $catRes = $catStmt->get_result();
     while ($row = $catRes->fetch_assoc()) {
         $helperCats[] = (string)$row['category_id'];
+    }
+
+    $helperJobs = [];
+    $jobStmt = $conn->prepare("SELECT job_id FROM helper_jobs WHERE profile_id = ?");
+    if ($jobStmt) {
+        $jobStmt->bind_param("i", $helper['profile_id']);
+        $jobStmt->execute();
+        $jobRes = $jobStmt->get_result();
+        while ($row = $jobRes->fetch_assoc()) $helperJobs[] = (int) $row['job_id'];
     }
 
     $helperSkills = [];
@@ -117,7 +127,9 @@ try {
     while ($job = $jobsResult->fetch_assoc()) {
         
         // Decode JSON arrays safely
-        $category_ids = json_decode($job['category_ids'], true) ?: [];
+        $category_ids = json_decode($job['category_ids'] ?? '[]', true) ?: [];
+        if (!$category_ids && !empty($job['category_id'])) $category_ids = [(int) $job['category_id']];
+        $category_ids = array_values(array_unique(array_map('intval', $category_ids)));
         $job_ids = json_decode($job['job_ids'], true) ?: [];
         $skill_ids = json_decode($job['skill_ids'], true) ?: [];
         $daysOff = json_decode($job['days_off'], true) ?: [];
@@ -127,74 +139,13 @@ try {
         $job_names = array_values(array_filter(array_map(function($id) use ($jobs_ref) { return $jobs_ref[$id] ?? null; }, $job_ids)));
         $skill_names = array_values(array_filter(array_map(function($id) use ($skills_ref) { return $skills_ref[$id] ?? null; }, $skill_ids)));
 
-        // Match Scoring
-        $matchScore = 0;
-        $matchReasons = [];
-        
-        $categoryMatch = count(array_intersect($category_ids, $helperCats));
-        if ($categoryMatch > 0) {
-            $matchScore += 30;
-            $matchReasons[] = "Category matches your profile";
-        }
-        
-        $skillMatch = count(array_intersect($skill_ids, $helperSkills));
-        if ($skillMatch > 0) {
-            $matchScore += 20;
-            $matchReasons[] = "Required skills match yours";
-        }
-        
-        // Distance calculation
-        $sameProvince = ($job['parent_province'] == $helper['province']);
-        $sameMunicipality = ($job['parent_municipality'] == $helper['municipality']);
-        
-        $distance = 0;
-        if (!empty($helper['latitude']) && !empty($helper['longitude']) && !empty($job['parent_lat']) && !empty($job['parent_lng'])) {
-            // Real Haversine calculation if lat/lng available
-            $earth_radius = 6371;
-            $lat1 = deg2rad($helper['latitude']);
-            $lon1 = deg2rad($helper['longitude']);
-            $lat2 = deg2rad($job['parent_lat']);
-            $lon2 = deg2rad($job['parent_lng']);
-            $dlat = $lat2 - $lat1;
-            $dlon = $lon2 - $lon1;
-            $a = sin($dlat/2) * sin($dlat/2) + cos($lat1) * cos($lat2) * sin($dlon/2) * sin($dlon/2);
-            $c = 2 * atan2(sqrt($a), sqrt(1-$a));
-            $distance = round($earth_radius * $c, 1);
-            
-            if ($distance <= 5) { $matchScore += 15; $matchReasons[] = "Very close location"; }
-            elseif ($distance <= 20) { $matchScore += 10; $matchReasons[] = "Location nearby"; }
-        } else {
-            // Fallback
-            if ($sameMunicipality) {
-                $distance = rand(1, 5);
-                $matchScore += 15;
-                $matchReasons[] = "Very close to your location";
-            } elseif ($sameProvince) {
-                $distance = rand(10, 30);
-                $matchScore += 10;
-                $matchReasons[] = "Location nearby";
-            } else {
-                $distance = rand(50, 100); 
-            }
-        }
-        
-        // Salary match
-        $monthlySalary = ($job['salary_period'] == 'Daily') ? $job['salary_offered'] * 26 : $job['salary_offered'];
-        $helperExpectedSalary = $helper['expected_salary'] ?? 8000;
-        
-        if ($monthlySalary >= $helperExpectedSalary * 0.8 && $monthlySalary <= $helperExpectedSalary * 1.2) {
-            $matchScore += 15;
-            $matchReasons[] = "Salary in your range";
-        } elseif ($monthlySalary > $helperExpectedSalary * 1.2) {
-            $matchScore += 10;
-            $matchReasons[] = "Salary above your range";
-        }
-        
-        // Work schedule match
-        $helperPreferredSchedule = $helper['work_schedule'] ?? 'any';
-        if (strtolower($helperPreferredSchedule) == 'any' || strtolower($job['work_schedule']) == strtolower($helperPreferredSchedule)) {
-            $matchScore += 10;
-        }
+        $job['job_ids'] = json_encode($job_ids);
+        $job['skill_ids'] = json_encode($skill_ids);
+        $job = carelink_add_househelp_match_context($job, $categories_ref);
+        $match = carelink_score_job_for_helper($helper, $helperCats, $helperJobs, $helperSkills, $job);
+        $matchScore = $match['score'];
+        $matchReasons = $match['reasons'];
+        $distance = $match['distance'];
         
         $processedJobs[] = [
             'job_post_id' => (string)$job['job_post_id'],
@@ -205,12 +156,16 @@ try {
             'work_schedule' => $job['work_schedule'],
             'salary_offered' => (float)$job['salary_offered'],
             'salary_period' => $job['salary_period'],
+            'slots' => max(1, (int) ($job['slots'] ?? 1)),
             'province' => $job['parent_province'],
             'municipality' => $job['parent_municipality'],
             'barangay' => $job['barangay'] ?? '',
             'distance' => $distance,
             
             'category_ids' => $category_ids,
+            'general_househelp_category_id' => $job['general_househelp_category_id'],
+            'household_specialty_category_ids' => $job['household_specialty_category_ids'],
+            'household_specialty_category_names' => $job['household_specialty_category_names'],
             'categories' => $cat_names,
             'job_ids' => $job_ids,
             'jobs' => $job_names,

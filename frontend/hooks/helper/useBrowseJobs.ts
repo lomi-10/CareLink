@@ -23,6 +23,7 @@ export interface JobPost {
   // Salary
   salary_offered: number;
   salary_period: string;
+  slots?: number;
   
   // Location
   province: string;
@@ -31,7 +32,7 @@ export interface JobPost {
   distance?: number;
   
   // Categories & Skills
-  category_ids: string[];
+  category_ids: (string | number)[];
   categories: string[];
   job_ids: string[];
   jobs: string[];

@@ -62,6 +62,19 @@ try {
 
     if ($row = $result->fetch_assoc()) {
         $row['salary_offered'] = (float)$row['salary_offered'];
+        $row['category_ids'] = json_decode($row['category_ids'] ?? '[]', true) ?: [(int) $row['category_id']];
+        $categoryNames = [];
+        $categoryResult = $conn->query('SELECT category_id, category_name FROM ref_categories');
+        if ($categoryResult) {
+            while ($category = $categoryResult->fetch_assoc()) {
+                if (in_array((int) $category['category_id'], array_map('intval', $row['category_ids']), true)) {
+                    $categoryNames[] = $category['category_name'];
+                }
+            }
+        }
+        $row['categories'] = $categoryNames;
+        $row['category_name'] = implode(', ', $categoryNames) ?: ($row['category_name'] ?? null);
+        $row['slots'] = max(1, (int) ($row['slots'] ?? 1));
 
         // The employer's own standing travels with the posting. An officer
         // deciding whether a job goes live needs to know the household behind it

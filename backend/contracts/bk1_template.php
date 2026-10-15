@@ -10,7 +10,7 @@
  * TERMINATION CLAUSE — rewritten Aug 2026, after the PESO review.
  *
  * The previous clause read: "Either party may terminate this agreement with at
- * least 30 days written notice or payment in lieu thereof (P7,000.00), as
+ * least 30 days written notice or payment in lieu thereof (P6,400.00), as
  * provided under RA 10361." That citation was wrong on two counts, and a wrong
  * citation is worse than none because it reads as authoritative:
  *

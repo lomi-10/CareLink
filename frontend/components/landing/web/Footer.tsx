@@ -26,7 +26,9 @@ export function Footer() {
         <View style={s.footerLinks}>
           <Text style={s.footerLink}>About Us</Text>
           <Text style={s.footerLink}>Help Center</Text>
-          <Text style={s.footerLink}>Terms of Service</Text>
+          <TouchableOpacity onPress={() => router.push('/terms-of-service' as any)}>
+            <Text style={s.footerLink}>Terms of Service</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/privacy-policy' as any)}>
             <Text style={s.footerLink}>Privacy Policy</Text>
           </TouchableOpacity>

@@ -2,7 +2,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { BROWN, CARAMEL, ICON_BG, DARK, MUTED, DIVIDER } from '../home/parentWarmTheme';
 import { SALARY_PERIODS, payoutBreakdown, peso, type SalaryPeriod } from '@/lib/salary';
 
@@ -56,13 +56,14 @@ export function SalaryInputCard({
   errorMax,
   disabled,
 }: SalaryInputCardProps) {
+  const { width } = useWindowDimensions();
+  const stackSalaryInputs = Platform.OS !== 'web' || width < 768;
   const suggested = getSuggestedRange(categoryIds);
   const enteredMin = Number(String(salaryMin).replace(/[^0-9.]/g, ''));
   const lowButLegal =
     Number.isFinite(enteredMin) && enteredMin >= WAGE_FLOOR && enteredMin < WAGE_ENCOURAGED;
   const minNum = Number(String(salaryMin).replace(/[^0-9.]/g, '')) || 0;
   const maxNum = Number(String(salaryMax).replace(/[^0-9.]/g, '')) || 0;
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -70,8 +71,8 @@ export function SalaryInputCard({
         <Text style={styles.title}>Monthly Salary Range <Text style={{ color: '#EF4444' }}>*</Text></Text>
       </View>
 
-      <View style={styles.rangeRow}>
-        <View style={{ flex: 1 }}>
+      <View style={[styles.rangeRow, stackSalaryInputs && styles.rangeRowStacked]}>
+        <View style={[styles.rangeField, stackSalaryInputs ? styles.rangeFieldStacked : styles.rangeFieldInline]}>
           <Text style={styles.label}>Minimum</Text>
           <View style={styles.inputRow}>
             <View style={styles.currencySymbol}>
@@ -79,7 +80,7 @@ export function SalaryInputCard({
             </View>
             <TextInput
               style={[styles.salaryInput, disabled && styles.inputDisabled]}
-              placeholder="7,000"
+              placeholder="6,400"
               value={salaryMin}
               onChangeText={onSalaryMinChange}
               keyboardType="numeric"
@@ -89,11 +90,13 @@ export function SalaryInputCard({
           </View>
         </View>
 
-        <View style={styles.rangeSep}>
-          <Text style={styles.rangeSepText}>–</Text>
-        </View>
+        {!stackSalaryInputs && (
+          <View style={styles.rangeSep}>
+            <Text style={styles.rangeSepText}>–</Text>
+          </View>
+        )}
 
-        <View style={{ flex: 1 }}>
+        <View style={[styles.rangeField, stackSalaryInputs ? styles.rangeFieldStacked : styles.rangeFieldInline]}>
           <Text style={styles.label}>Maximum (optional)</Text>
           <View style={styles.inputRow}>
             <View style={styles.currencySymbol}>
@@ -229,6 +232,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
+    width: '100%',
+  },
+  rangeRowStacked: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 12,
+    width: '100%',
+  },
+  rangeField: {
+    minWidth: 0,
+  },
+  rangeFieldInline: {
+    flex: 1,
+  },
+  rangeFieldStacked: {
+    width: '100%',
   },
   rangeSep: {
     paddingBottom: 14,
@@ -248,6 +267,8 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
+    minWidth: 0,
   },
   currencySymbol: {
     backgroundColor: '#F8F9FA',
@@ -266,6 +287,7 @@ const styles = StyleSheet.create({
   },
   salaryInput: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: DIVIDER,

@@ -6,7 +6,7 @@
  * MUST use this so the SAME job always shows the SAME percentage and reasons.
  *
  * Weighted model (max 100):
- *   Category 25 · Job roles 15 · Skills 15 · Location 10 · Experience 10 ·
+ *   Category coverage 25 · Job roles 15 · Skills 15 · Location 10 · Experience 10 ·
  *   Salary 15 · Employer rating 10
  */
 
@@ -22,6 +22,29 @@ if (!function_exists('carelink_haversine')) {
     }
 }
 
+if (!function_exists('carelink_add_househelp_match_context')) {
+    /** Attach the reference taxonomy used to fairly score an all-around post. */
+    function carelink_add_househelp_match_context(array $job, array $categoryNames): array
+    {
+        $generalId = null;
+        $specialtyIds = [];
+        $specialtyNames = [];
+        foreach ($categoryNames as $id => $name) {
+            $normalizedName = strtolower(trim((string) $name));
+            if ($normalizedName === 'general househelp') {
+                $generalId = (int) $id;
+            } elseif ($normalizedName !== 'others') {
+                $specialtyIds[] = (int) $id;
+                $specialtyNames[] = (string) $name;
+            }
+        }
+        $job['general_househelp_category_id'] = $generalId;
+        $job['household_specialty_category_ids'] = $specialtyIds;
+        $job['household_specialty_category_names'] = $specialtyNames;
+        return $job;
+    }
+}
+
 /**
  * Score one job for one helper.
  *
@@ -31,7 +54,7 @@ if (!function_exists('carelink_haversine')) {
  * @param int[] $helperCatIds   helper's category ids
  * @param int[] $helperJobIds   helper's job-role ids
  * @param int[] $helperSkillIds helper's skill ids
- * @param array $job            job_posts row (category_id, job_ids, skill_ids,
+ * @param array $job            job_posts row (category_id, category_ids, job_ids, skill_ids,
  *                              province, municipality, latitude/longitude or
  *                              job_lat/job_lng, min_experience_years,
  *                              salary_offered, salary_period, parent_rating,
@@ -47,29 +70,44 @@ function carelink_score_job_for_helper(array $helper, array $helperCatIds, array
 
     $jobJobIds   = array_map('intval', json_decode($job['job_ids']   ?? '[]', true) ?: []);
     $jobSkillIds = array_map('intval', json_decode($job['skill_ids'] ?? '[]', true) ?: []);
-    $jobCatId    = (int) ($job['category_id'] ?? 0);
+    $jobCatIds = array_map('intval', json_decode($job['category_ids'] ?? '[]', true) ?: []);
+    if (!$jobCatIds && !empty($job['category_id'])) $jobCatIds = [(int) $job['category_id']];
+    $jobCatIds = array_values(array_unique(array_filter($jobCatIds, fn($id) => $id > 0)));
 
     $score   = 0;
     $reasons = [];
 
-    // 1. Category (25) ---------------------------------------------------------
-    if ($jobCatId && in_array($jobCatId, $helperCatIds, true)) {
-        $score += 25;
-        $reasons[] = 'Category matches your specialty';
+    // 1. Category coverage (25) — multi-specialty posts earn proportional credit.
+    $categoryOverlap = count(array_intersect($jobCatIds, $helperCatIds));
+    $categoryDenominator = count($jobCatIds);
+    $generalCategoryId = (int) ($job['general_househelp_category_id'] ?? 0);
+    if ($generalCategoryId > 0 && in_array($generalCategoryId, $jobCatIds, true)) {
+        $specialtyIds = array_values(array_unique(array_map('intval', $job['household_specialty_category_ids'] ?? [])));
+        if ($specialtyIds) {
+            $categoryDenominator = count($specialtyIds);
+            $categoryOverlap = in_array($generalCategoryId, $helperCatIds, true)
+                ? $categoryDenominator
+                : count(array_intersect($specialtyIds, $helperCatIds));
+        }
+    }
+    if ($categoryOverlap > 0 && $categoryDenominator > 0) {
+        $categoryPoints = (int) round(($categoryOverlap / $categoryDenominator) * 25);
+        $score += $categoryPoints;
+        $reasons[] = $categoryOverlap === $categoryDenominator
+            ? 'All required categories match your specialties'
+            : "$categoryOverlap/" . $categoryDenominator . ' required categories match';
     }
 
-    // 2. Job roles (15) — overlap, but scored against up to 3 "core" roles so a
-    //    broad multi-role post doesn't gut a helper who does its main roles.
-    //    Families routinely over-list roles; a helper strong in the core ones is
-    //    still an excellent fit (category already covers the broad specialty).
+    // 2. Job roles (15) — proportional coverage avoids granting full credit for
+    //    one matching role when the employer explicitly selected several roles.
     if (!empty($jobJobIds) && !empty($helperJobIds)) {
         $overlap = count(array_intersect($jobJobIds, $helperJobIds));
         if ($overlap > 0) {
-            $need = min(count($jobJobIds), 3);
-            $pts  = (int) round(min(1.0, $overlap / $need) * 15);
-            $score += $pts; $reasons[] = 'Job roles align with yours';
+            $pts = (int) round(($overlap / count($jobJobIds)) * 15);
+            $score += $pts;
+            $reasons[] = "$overlap/" . count($jobJobIds) . ' required job roles match';
         }
-    } elseif ($jobCatId && in_array($jobCatId, $helperCatIds, true)) {
+    } elseif ($jobCatIds && $categoryOverlap > 0) {
         $score += 8; // no specific roles required — partial credit if category matched
     }
 

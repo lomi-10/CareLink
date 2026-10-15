@@ -67,7 +67,6 @@ export interface HelperProfile {
 export interface BrowseFilters {
   category: string; 
   distance: number; 
-  verification: string; 
   gender: string; 
   experience: string; 
   sort: string; 
@@ -76,7 +75,6 @@ export interface BrowseFilters {
 export const DEFAULT_BROWSE_FILTERS: BrowseFilters = {
   category: 'all',
   distance: 9999,
-  verification: 'all',
   gender: 'all',
   experience: 'all',
   sort: 'nearest',
@@ -126,9 +124,6 @@ export function useBrowseHelpers() {
       filtered = filtered.filter((h) =>
         typeof h.distance === 'number' && Number.isFinite(h.distance) && h.distance <= filters.distance
       );
-    }
-    if (filters.verification !== 'all') {
-      filtered = filtered.filter((h) => h.verification_status === filters.verification);
     }
     if (filters.gender !== 'all') {
       filtered = filtered.filter((h) => h.gender === filters.gender);

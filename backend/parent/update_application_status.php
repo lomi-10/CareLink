@@ -22,6 +22,9 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
+require_once __DIR__ . '/../shared/job_slots.php';
+require_once __DIR__ . '/../shared/finalize_hire_after_contract.inc.php';
+$slotTransactionStarted = false;
 
 // 2. Standardized Response Function
 function sendResponse($success, $message, $data = null) {
@@ -57,7 +60,7 @@ try {
     // application_id could have its status changed by anyone. Look up the
     // application's real owning parent and require the caller to be them.
     $ownerStmt = $conn->prepare('
-        SELECT jp.parent_id
+        SELECT jp.parent_id, jp.job_post_id
         FROM job_applications ja
         INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
         WHERE ja.application_id = ?
@@ -75,6 +78,13 @@ try {
     }
     
     error_log("=== UPDATE APP STATUS === ID: $application_id to $new_status");
+
+    $slotsReached = false;
+    if (in_array($new_status, ['Accepted', 'hired'], true)) {
+        $conn->begin_transaction();
+        $slotTransactionStarted = true;
+        carelink_lock_available_job_slot($conn, (int) $ownerRow['job_post_id'], $application_id);
+    }
 
     // 5. mysqli Update Logic
     $sql = "UPDATE job_applications SET 
@@ -101,11 +111,24 @@ try {
     // Notify the helper about their application status change
     require_once '../shared/create_notification.php';
     $appRow = $conn->query(
-        "SELECT ja.helper_id, jp.title AS job_title
+        "SELECT ja.helper_id, ja.job_post_id, jp.title AS job_title
          FROM job_applications ja
          JOIN job_posts jp ON ja.job_post_id = jp.job_post_id
          WHERE ja.application_id = $application_id"
     )->fetch_assoc();
+    if ($slotTransactionStarted) {
+        $slotsReached = carelink_refresh_job_post_slots($conn, (int) $ownerRow['job_post_id']);
+        $conn->commit();
+        $slotTransactionStarted = false;
+    }
+    if ($slotsReached && $appRow) {
+        carelink_notify_rejected_after_fill(
+            $conn,
+            (int) $appRow['job_post_id'],
+            $application_id,
+            (string) $appRow['job_title']
+        );
+    }
     if ($appRow) {
         $statusMessages = [
             'Reviewed'           => ['title' => 'Application Reviewed', 'msg' => 'The employer has reviewed your application for: ' . $appRow['job_title']],
@@ -137,6 +160,9 @@ try {
     sendResponse(true, 'Application status updated successfully');
     
 } catch (Exception $e) {
+    if ($slotTransactionStarted && isset($conn) && $conn) {
+        $conn->rollback();
+    }
     error_log("ERROR: " . $e->getMessage());
     sendResponse(false, $e->getMessage());
 }

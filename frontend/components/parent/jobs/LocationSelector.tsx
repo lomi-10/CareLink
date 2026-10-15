@@ -18,6 +18,7 @@ interface LocationSelectorProps {
   onBarangayChange: (value: string) => void;
   onLatitudeChange?: (value: number | null) => void;
   onLongitudeChange?: (value: number | null) => void;
+  error?: string;
   disabled?: boolean;
 }
 
@@ -25,6 +26,7 @@ export function LocationSelector({
   province, municipality, barangay,
   onProvinceChange, onMunicipalityChange, onBarangayChange,
   onLatitudeChange, onLongitudeChange,
+  error,
   disabled = false,
 }: LocationSelectorProps) {
   const [parentAddress, setParentAddress] = useState<{
@@ -99,6 +101,7 @@ export function LocationSelector({
     <View style={s.container}>
       <Text style={s.label}>Job Location <Text style={{ color: '#EF4444' }}>*</Text></Text>
       <Text style={s.hint}>Where will the helper work?</Text>
+      {error ? <Text style={s.errorText}>{error}</Text> : null}
 
       {!editing && hasLocation ? (
         /* Collapsed summary view */
@@ -230,6 +233,7 @@ const s = StyleSheet.create({
   container:   { marginBottom: 24 },
   label:       { fontSize: 16, fontWeight: '700', color: DARK, marginBottom: 4 },
   hint:        { fontSize: 13, color: MUTED, marginBottom: 10 },
+  errorText:   { fontSize: 13, color: '#DC2626', fontWeight: '600', marginBottom: 8 },
 
   summaryBox:  { backgroundColor: SURFACE, borderWidth: 1, borderColor: DIVIDER, borderRadius: 14, padding: 12, gap: 10 },
   summaryRow:  { flexDirection: 'row', alignItems: 'center', gap: 10 },

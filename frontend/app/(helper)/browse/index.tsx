@@ -197,33 +197,9 @@ export default function BrowseJobs() {
     </>
   );
 
-  // ── FlatList header: recommended cards + families label ──────────────────────
+  // ── Keep the employer feed at the top; recommendations follow the listings on mobile.
   const listHeader = (
     <View>
-      {topRecommended.length > 0 && (
-        <View style={s.recommendedSection}>
-          <View style={s.recommendedHeader}>
-            <Ionicons name="sparkles" size={17} color={ORANGE} />
-            <Text style={s.recommendedTitle}>Recommended Jobs For You</Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.recommendedScroll}
-          >
-            {topRecommended.map((job, idx) => (
-              <RecommendedJobCard
-                key={job.job_post_id}
-                job={job}
-                topColor={REC_TOPS[idx % REC_TOPS.length]}
-                onPress={() => handleViewJob(job)}
-                onSave={() => toggleSaveJob(job.job_post_id)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
       <View style={s.familiesHeader}>
         <Ionicons name="people" size={17} color={MUTED} />
         <Text style={s.familiesHeaderText}>Families Hiring Near You</Text>
@@ -231,62 +207,84 @@ export default function BrowseJobs() {
     </View>
   );
 
+  const listFooter = topRecommended.length > 0 ? (
+    <View style={s.recommendedSection}>
+      <View style={s.recommendedHeader}>
+        <Ionicons name="sparkles" size={17} color={ORANGE} />
+        <Text style={s.recommendedTitle}>Recommended Jobs For You</Text>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={s.recommendedScroll}
+      >
+        {topRecommended.map((job, idx) => (
+          <RecommendedJobCard
+            key={job.job_post_id}
+            job={job}
+            topColor={REC_TOPS[idx % REC_TOPS.length]}
+            onPress={() => handleViewJob(job)}
+            onSave={() => toggleSaveJob(job.job_post_id)}
+          />
+        ))}
+      </ScrollView>
+    </View>
+  ) : null;
+
   // ── Feed (search + filter + results) ────────────────────────────────────────
   const browseContent = (
     <View style={s.feed}>
+      <View style={s.browseHeader}>
+        <View style={s.searchStrip}>
+          <SearchBar
+            value={filters.search_query}
+            placeholder="Search jobs, categories, skills, or places..."
+            onChangeText={(text) => updateFilter('search_query', text)}
+            onSubmit={() => {
+              if (filters.search_query.trim()) saveRecentSearch(filters.search_query);
+            }}
+            suggestions={searchSuggestions}
+            recentSearches={recentSearches}
+            onSelectSuggestion={(text) => { updateFilter('search_query', text); saveRecentSearch(text); }}
+            onClearRecent={clearRecentSearches}
+            helperTheme
+          />
+        </View>
 
-      {/* Search bar — warm helper theme */}
-      <View style={s.searchStrip}>
-        <SearchBar
-          value={filters.search_query}
-          placeholder="Search jobs, categories, skills, or places..."
-          onChangeText={(text) => updateFilter('search_query', text)}
-          onSubmit={() => {
-            if (filters.search_query.trim()) saveRecentSearch(filters.search_query);
-          }}
-          suggestions={searchSuggestions}
-          recentSearches={recentSearches}
-          onSelectSuggestion={(text) => { updateFilter('search_query', text); saveRecentSearch(text); }}
-          onClearRecent={clearRecentSearches}
+        <FilterBar
+          filters={filters}
+          onFilterChange={updateFilter}
+          onReset={resetFilters}
+          categories={categories}
+          activeFilterCount={activeFilterCount}
+          onOpenAdvanced={() => setAdvancedSearch(true)}
           helperTheme
         />
-      </View>
 
-      {/* Filter bar — warm helper theme */}
-      <FilterBar
-        filters={filters}
-        onFilterChange={updateFilter}
-        onReset={resetFilters}
-        categories={categories}
-        activeFilterCount={activeFilterCount}
-        onOpenAdvanced={() => setAdvancedSearch(true)}
-        helperTheme
-      />
-
-      {/* Results count row */}
-      <View style={s.resultsBar}>
-        <View style={s.resultsLeft}>
-          <Text style={s.resultsCount}>
-            <Text style={{ fontFamily: FontFamily.fredokaSemiBold, color: DARK }}>
-              {parentGroups.length}
+        <View style={s.resultsBar}>
+          <View style={s.resultsLeft}>
+            <Text style={s.resultsCount}>
+              <Text style={{ fontFamily: FontFamily.fredokaSemiBold, color: DARK }}>
+                {parentGroups.length}
+              </Text>
+              {' '}employer{parentGroups.length !== 1 ? 's' : ''}
+              {'  ·  '}
+              <Text style={{ fontFamily: FontFamily.fredokaSemiBold, color: DARK }}>
+                {filteredCount}
+              </Text>
+              {' '}job{filteredCount !== 1 ? 's' : ''}
             </Text>
-            {' '}employer{parentGroups.length !== 1 ? 's' : ''}
-            {'  ·  '}
-            <Text style={{ fontFamily: FontFamily.fredokaSemiBold, color: DARK }}>
-              {filteredCount}
-            </Text>
-            {' '}job{filteredCount !== 1 ? 's' : ''}
-          </Text>
-          {filteredCount !== totalCount && (
-            <Text style={s.resultsFiltered}>{'  ·  '}filtered from {totalCount}</Text>
+            {filteredCount !== totalCount && (
+              <Text style={s.resultsFiltered}>{'  ·  '}filtered from {totalCount}</Text>
+            )}
+          </View>
+          {hasBrowseCriteria && (
+            <TouchableOpacity style={s.clearFiltersBtn} onPress={resetFilters} hitSlop={8}>
+              <Ionicons name="close-circle" size={14} color={ORANGE} />
+              <Text style={s.clearFiltersBtnText}>Clear filters</Text>
+            </TouchableOpacity>
           )}
         </View>
-        {hasBrowseCriteria && (
-          <TouchableOpacity style={s.clearFiltersBtn} onPress={resetFilters} hitSlop={8}>
-            <Ionicons name="close-circle" size={14} color={ORANGE} />
-            <Text style={s.clearFiltersBtnText}>Clear filters</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Empty state / list */}
@@ -310,9 +308,11 @@ export default function BrowseJobs() {
         </View>
       ) : (
         <FlatList
+          style={s.jobsList}
           data={parentGroups}
           keyExtractor={(item) => item.parent_id}
           ListHeaderComponent={listHeader}
+          ListFooterComponent={listFooter}
           renderItem={({ item }) => (
             <View style={isDesktop ? s.desktopParentWrap : s.mobileCardWrap}>
               <ParentEmployerBrowseCard

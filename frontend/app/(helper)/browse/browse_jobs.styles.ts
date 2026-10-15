@@ -101,6 +101,8 @@ export function createHelperBrowseJobsStyles(t: BrowseTheme = makeBrowseTheme())
 
     // ── Feed ───────────────────────────────────────────────────────────────────
     feed: { flex: 1 },
+    browseHeader: { flexShrink: 0 },
+    jobsList: { flex: 1, minHeight: 0 },
 
     searchStrip: {
       paddingHorizontal: 16,
@@ -155,7 +157,7 @@ export function createHelperBrowseJobsStyles(t: BrowseTheme = makeBrowseTheme())
       alignItems: 'center',
       gap: 8,
       paddingHorizontal: 16,
-      paddingTop: 20,
+      paddingTop: 12,
       paddingBottom: 10,
     },
     familiesHeaderText: {

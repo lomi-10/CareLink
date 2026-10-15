@@ -18,6 +18,7 @@ ini_set('display_errors', 0);
 error_reporting(0);
 include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
+require_once __DIR__ . '/../shared/job_match.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -38,6 +39,14 @@ try {
     $requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
     if (!$parent_id) throw new Exception('Parent ID is required');
     carelink_require_self($requester_id, $parent_id, 'You are not allowed to view these job posts.');
+
+    $categoryNames = [];
+    $categoryResult = $conn->query('SELECT category_id, category_name FROM ref_categories');
+    if ($categoryResult) {
+        while ($category = $categoryResult->fetch_assoc()) {
+            $categoryNames[(int) $category['category_id']] = $category['category_name'];
+        }
+    }
 
     $sql = "
         SELECT
@@ -86,7 +95,7 @@ try {
         $row['new_application_count'] = intval($row['new_application_count']);
         
         // Parse JSON fields
-        $json_fields = ['job_ids', 'skill_ids', 'days_off'];
+        $json_fields = ['category_ids', 'job_ids', 'skill_ids', 'days_off'];
         foreach ($json_fields as $field) {
             if (isset($row[$field]) && !empty($row[$field])) {
                 // Keep as JSON string for frontend if needed, but here we decode for consistency
@@ -100,7 +109,18 @@ try {
                 $row[$field] = ($field === 'days_off') ? '[]' : [];
             }
         }
-        
+        if (!$row['category_ids'] && !empty($row['category_id'])) {
+            $row['category_ids'] = [(int) $row['category_id']];
+        }
+        $row['category_ids'] = array_values(array_unique(array_map('intval', $row['category_ids'])));
+        $row['categories'] = array_values(array_filter(array_map(
+            fn($categoryId) => $categoryNames[$categoryId] ?? null,
+            $row['category_ids']
+        )));
+        $row['category_name'] = implode(', ', $row['categories']) ?: ($row['category_name'] ?? null);
+        $row['slots'] = max(1, (int) ($row['slots'] ?? 1));
+        $row = carelink_add_househelp_match_context($row, $categoryNames);
+
         $jobs[] = $row;
     }
     $stmt->close();

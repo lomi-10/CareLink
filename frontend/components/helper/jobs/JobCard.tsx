@@ -176,7 +176,7 @@ export function JobCard({ job, onPress, onApply, onToggleSave, onEmployerPress }
   const { color: c } = useHelperTheme();
   const styles = useMemo(() => createJobCardStyles(c), [c]);
 
-  const displayCategory = job.category_name || (job.categories && job.categories[0]) || 'General';
+  const displayCategory = (job.categories?.length ? job.categories.join(', ') : job.category_name) || 'General';
   const jobNames: string[] = (job as any).job_names ?? (job as any).jobs ?? [];
 
   const hasGoodMatch = job.match_score && job.match_score >= 70;
@@ -257,6 +257,11 @@ export function JobCard({ job, onPress, onApply, onToggleSave, onEmployerPress }
             <Text style={styles.quickText} numberOfLines={1}>
               {job.municipality}
             </Text>
+          </View>
+          <View style={styles.dot} />
+          <View style={styles.quickItem}>
+            <Ionicons name="people-outline" size={13} color={c.muted} />
+            <Text style={styles.quickText}>{job.slots ?? 1} opening{(job.slots ?? 1) === 1 ? '' : 's'}</Text>
           </View>
           <View style={styles.dot} />
           <View style={styles.quickItem}>

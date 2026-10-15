@@ -143,27 +143,6 @@ export function FilterModal({
               </Text>
             </FilterSection>
 
-            {/* Verification Filter */}
-            <FilterSection title="Verification Status">
-              <View style={styles.chipContainer}>
-                <FilterChip
-                  label="All"
-                  selected={localFilters.verification === 'all'}
-                  onPress={() => updateLocalFilter('verification', 'all')}
-                />
-                <FilterChip
-                  label="Verified Only"
-                  selected={localFilters.verification === 'Verified'}
-                  onPress={() => updateLocalFilter('verification', 'Verified')}
-                />
-                <FilterChip
-                  label="Pending"
-                  selected={localFilters.verification === 'Pending'}
-                  onPress={() => updateLocalFilter('verification', 'Pending')}
-                />
-              </View>
-            </FilterSection>
-
             {/* Experience Filter */}
             <FilterSection title="Experience">
               <View style={styles.chipContainer}>

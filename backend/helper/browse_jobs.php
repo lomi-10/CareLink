@@ -55,6 +55,14 @@ try {
         }
     }
 
+    $allRefCategories = [];
+    $refCategoriesRes = $conn->query("SELECT category_id, category_name FROM ref_categories");
+    if ($refCategoriesRes) {
+        while ($r = $refCategoriesRes->fetch_assoc()) {
+            $allRefCategories[(int) $r['category_id']] = $r['category_name'];
+        }
+    }
+
     $helperStmt = $conn->prepare("SELECT * FROM helper_profiles WHERE user_id = ?");
     $helperStmt->bind_param("i", $helper_id);
     $helperStmt->execute();
@@ -147,8 +155,13 @@ try {
     $processedJobs = [];
     while ($job = $jobsResult->fetch_assoc()) {
         
-        // job_posts uses a single category_id column (not a JSON array)
-        $category_ids = !empty($job['category_id']) ? [(string)$job['category_id']] : [];
+        $category_ids = json_decode($job['category_ids'] ?? '[]', true) ?: [];
+        if (!$category_ids && !empty($job['category_id'])) $category_ids = [(int) $job['category_id']];
+        $category_ids = array_values(array_unique(array_map('intval', $category_ids)));
+        $category_names = array_values(array_filter(array_map(
+            fn($id) => $allRefCategories[(int) $id] ?? null,
+            $category_ids
+        )));
         $job_ids = json_decode($job['job_ids'], true) ?: [];
         $skill_ids = json_decode($job['skill_ids'], true) ?: [];
         $daysOff = json_decode($job['days_off'], true) ?: [];
@@ -162,6 +175,7 @@ try {
         }
 
         // ── WEIGHTED SCORING (shared with recommendations.php) ────────────
+        $job = carelink_add_househelp_match_context($job, $allRefCategories);
         $m = carelink_score_job_for_helper($helper, $helperCats, $helperJobs, $helperSkills, $job);
         $matchScore   = $m['score'];
         $matchReasons = $m['reasons'];
@@ -196,8 +210,12 @@ try {
             'distance' => $distance,
             
             'category_ids'  => $category_ids,
-            'category_name' => $job['category_name'] ?? null,
-            'categories'    => $job['category_name'] ? [$job['category_name']] : [],
+            'general_househelp_category_id' => $job['general_househelp_category_id'],
+            'household_specialty_category_ids' => $job['household_specialty_category_ids'],
+            'household_specialty_category_names' => $job['household_specialty_category_names'],
+            'category_name' => implode(', ', $category_names) ?: ($job['category_name'] ?? null),
+            'categories'    => $category_names ?: (!empty($job['category_name']) ? [$job['category_name']] : []),
+            'slots'         => max(1, (int) ($job['slots'] ?? 1)),
             'job_ids'       => $job_ids,
             'job_names'     => array_values(array_filter(array_map(fn($id) => $allRefJobs[(int)$id] ?? null, $job_ids))),
             'jobs'          => array_values(array_filter(array_map(fn($id) => $allRefJobs[(int)$id] ?? null, $job_ids))),

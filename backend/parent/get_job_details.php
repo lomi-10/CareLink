@@ -49,7 +49,7 @@ try {
     $job['salary_offered'] = floatval($job['salary_offered']);
     
     // Decode JSON fields
-    $json_fields = ['job_ids', 'skill_ids', 'days_off'];
+    $json_fields = ['category_ids', 'job_ids', 'skill_ids', 'days_off'];
     foreach ($json_fields as $field) {
         if (isset($job[$field]) && !empty($job[$field])) {
             $decoded = json_decode($job[$field], true);
@@ -57,6 +57,10 @@ try {
         } else {
             $job[$field] = [];
         }
+        if (empty($job['category_ids']) && !empty($job['category_id'])) {
+            $job['category_ids'] = [(int) $job['category_id']];
+        }
+        $job['slots'] = max(1, (int) ($job['slots'] ?? 1));
     }
     
     // Convert DB integers to booleans

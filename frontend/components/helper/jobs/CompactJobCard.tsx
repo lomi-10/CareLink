@@ -118,7 +118,7 @@ export function CompactJobCard({ job, onPress, onToggleSave }: CompactJobCardPro
   const s = useMemo(() => createCompactJobCardStyles(c), [c]);
 
   const displayCategory =
-    job.category_name || (job.categories && job.categories[0]) || 'General';
+    (job.categories?.length ? job.categories.join(', ') : job.category_name) || 'General';
   const matchPct = Math.min(100, Math.max(0, Math.round(Number(job.match_score ?? 0))));
 
   return (
@@ -170,6 +170,10 @@ export function CompactJobCard({ job, onPress, onToggleSave }: CompactJobCardPro
           <Text style={s.detailText} numberOfLines={1}>
             {job.municipality}
           </Text>
+        </View>
+        <View style={s.detailRow}>
+          <Ionicons name="people-outline" size={12} color={c.muted} />
+          <Text style={s.detailText}>{job.slots ?? 1} opening{(job.slots ?? 1) === 1 ? '' : 's'}</Text>
         </View>
       </View>
 

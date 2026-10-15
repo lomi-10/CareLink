@@ -66,7 +66,7 @@ export function JobTitleInput({
   return (
     <View style={styles.container}>
       <Text style={styles.label}>
-        Select Job Titles <Text style={styles.asterisk}>*</Text>
+        What work needs doing? <Text style={styles.asterisk}>*</Text>
       </Text>
 
       {availableJobs.length > 0 ? (
@@ -78,7 +78,7 @@ export function JobTitleInput({
             disabled={disabled}
           >
             <Text style={[styles.selectButtonText, selectedJobs.length === 0 && styles.placeholder]}>
-              {selectedJobs.length > 0 ? `${selectedJobs.length} selected` : 'Select from available jobs'}
+              {selectedJobs.length > 0 ? `${selectedJobs.length} selected` : 'Choose work from the list'}
             </Text>
             <Ionicons
               name={showJobList ? 'chevron-up' : 'chevron-down'}
@@ -122,9 +122,12 @@ export function JobTitleInput({
                           size={22}
                           color={selected ? CARAMEL : '#9CA3AF'}
                         />
-                        <Text style={[styles.jobItemText, selected && styles.jobItemTextActive]}>
-                          {job.job_title}
-                        </Text>
+                        <View style={styles.jobTextBlock}>
+                          <Text style={[styles.jobItemText, selected && styles.jobItemTextActive]}>
+                            {job.job_title}
+                          </Text>
+                          {job.description ? <Text style={styles.jobDescription}>{job.description}</Text> : null}
+                        </View>
                       </View>
                     </TouchableOpacity>
                   );
@@ -144,22 +147,22 @@ export function JobTitleInput({
               color={BROWN}
             />
             <Text style={styles.customToggleText}>
-              {isCustom ? "I'll pick from the list instead" : "Add a custom job title"}
+              {isCustom ? 'Choose from the list instead' : 'Add work that is not listed'}
             </Text>
           </TouchableOpacity>
         </View>
       ) : (
         <Text style={styles.noJobsText}>
-          No predefined jobs for this category. Please enter a custom title.
+          No work options are listed for this category. Add a simple title for the work instead.
         </Text>
       )}
 
       {(isCustom || availableJobs.length === 0) && (
         <View style={styles.customInputWrapper}>
-          <Text style={styles.inputLabel}>Custom Job Title</Text>
+          <Text style={styles.inputLabel}>Name the work</Text>
           <TextInput
             style={[styles.input, disabled && styles.disabled]}
-            placeholder="e.g., Senior Caregiver, Pet Groomer..."
+            placeholder="e.g., Household driver, home cleaning"
             value={customJobTitle}
             onChangeText={(val) => {
               onCustomJobChange(val);
@@ -195,8 +198,10 @@ const styles = StyleSheet.create({
   jobList: { padding: 4 },
   jobItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 8 },
   jobItemActive: { backgroundColor: ICON_BG },
-  jobItemContent: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  jobItemText: { fontSize: 14, color: '#374151' },
+  jobItemContent: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, flex: 1 },
+  jobTextBlock: { flex: 1, gap: 3 },
+  jobItemText: { fontSize: 14, color: '#374151', fontWeight: '600' },
+  jobDescription: { fontSize: 12, color: MUTED, lineHeight: 17 },
   jobItemTextActive: { color: BROWN, fontWeight: '600' },
   customToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
   customToggleText: { fontSize: 14, color: BROWN, fontWeight: '600' },

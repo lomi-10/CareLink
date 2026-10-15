@@ -11,12 +11,18 @@ export interface JobPost {
   custom_job_title?: string;
   description: string;
   category_id?: string;
+  category_ids?: (string | number)[];
   category_name?: string;
+  categories?: string[];
+  general_househelp_category_id?: string | number | null;
+  household_specialty_category_ids?: (string | number)[];
+  household_specialty_category_names?: string[];
   custom_category?: string;
   employment_type: string;
   work_schedule: string;
   salary_offered: number;
   salary_period: string;
+  slots?: number;
   benefits?: string;
   barangay?: string;
   municipality?: string;

@@ -145,7 +145,7 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
     : (typeof job.skill_names === 'string' && job.skill_names.trim()
       ? job.skill_names.split(',').map((t: string) => t.trim()).filter(Boolean)
       : []);
-  const category = job.category_name || (Array.isArray(job.categories) ? job.categories.filter(Boolean).join(', ') : '') || tr('helper.jobDetails.generalCategory');
+  const category = (Array.isArray(job.categories) ? job.categories.filter(Boolean).join(', ') : '') || job.category_name || tr('helper.jobDetails.generalCategory');
   const jobNames: string[] = Array.isArray(job.job_names)
     ? job.job_names.filter((name: unknown) => typeof name === 'string' && name.trim())
     : [];
@@ -320,6 +320,7 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
                   <View style={s.section}>
                     <Text style={s.sectionTitle}>{tr('helper.jobDetails.jobDetails')}</Text>
                     <View style={s.detailGrid}>
+                      <DetailItem icon="people-outline" label="Openings" value={`${job.slots ?? 1} helper${Number(job.slots ?? 1) === 1 ? '' : 's'}`} />
                       {location ? <DetailItem icon="location-outline" label={tr('helper.jobDetails.location')} value={`${location}${job.distance ? `  ·  ~${job.distance} km` : ''}`} /> : null}
                       {job.employment_type ? <DetailItem icon="briefcase-outline" label={tr('helper.jobDetails.employmentType')} value={job.employment_type} /> : null}
                       {job.work_schedule ? <DetailItem icon="time-outline" label={tr('helper.jobDetails.schedule')} value={job.work_schedule} /> : null}
