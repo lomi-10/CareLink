@@ -89,7 +89,7 @@ export function JobPostModal({
     generateDescription
   } = useJobForm();
 
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 768;
 
   // Initialize form if editing, and always start on step 1 when (re)opened
@@ -154,8 +154,8 @@ export function JobPostModal({
     if (!formData.salary_min || isNaN(salaryMin)) {
       return { isValid: false, error: "Please enter the minimum salary" };
     }
-    if (salaryMin < 7000) {
-      return { isValid: false, error: "Minimum salary must be at least ₱7,000 / month (CareLink fair-pay standard)" };
+    if (salaryMin < 6400) {
+      return { isValid: false, error: "Minimum salary must be at least ₱6,400 / month (CareLink fair-pay standard)" };
     }
     if (formData.salary_max) {
       const salaryMax = parseFloat(formData.salary_max);
@@ -752,14 +752,20 @@ export function JobPostModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
+    <Modal visible={visible} animationType={isDesktop ? 'fade' : 'slide'} transparent={true} onRequestClose={onClose}>
       <View style={[styles.overlay, isDesktop && styles.overlayDesktop]}>
         {/* Plain View, not SafeAreaView: a bottom sheet has to sit flush against
             the bottom and side edges, and the safe-area inset was what left a
             visible gap there. */}
-        <View style={[styles.modalContainer, isDesktop && styles.modalContainerDesktop]}>
+        <View
+          style={[
+            styles.modalContainer,
+            isDesktop && styles.modalContainerDesktop,
+            isDesktop && { width: Math.min(width * 0.85, 900), height: Math.min(height * 0.9, 900) },
+          ]}
+        >
 
-          <LoadingSpinner visible={submitting || referencesLoading} message="Processing..." />
+          <LoadingSpinner visible={submitting || (!isDesktop && referencesLoading)} message="Processing..." />
           <NotificationModal
             visible={notification.visible}
             message={notification.message}
@@ -770,7 +776,9 @@ export function JobPostModal({
           <View style={styles.header}>
             <View>
               <Text style={styles.headerTitle}>{duplicate ? 'Duplicate Job Post' : existingJobData ? 'Update Job Post' : 'Create Job Post'}</Text>
-              <Text style={styles.headerSubtitle}>Provide details to find the best helper</Text>
+              <Text style={styles.headerSubtitle}>
+                {referencesLoading ? 'Loading job options…' : 'Provide details to find the best helper'}
+              </Text>
             </View>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <Ionicons name="close" size={28} color={DARK} />
@@ -856,7 +864,7 @@ const styles = StyleSheet.create({
   },
   overlayDesktop: { justifyContent: 'center', alignItems: 'center', padding: 16 },
   modalContainer: { backgroundColor: SURFACE, width: '100%', height: '100%', flex: 1, overflow: 'hidden' },
-  modalContainerDesktop: { width: '85%', maxWidth: 900, height: '90%', flex: 0, borderRadius: 24, marginBottom: 20 },
+  modalContainerDesktop: { maxWidth: 900, flex: 0, borderRadius: 24, marginBottom: 20 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

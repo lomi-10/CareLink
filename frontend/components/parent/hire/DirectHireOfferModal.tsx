@@ -34,7 +34,7 @@ const LINE  = '#EFE0CB';
 const INPUT = '#FDF5E8';
 
 /** CareLink's fair-pay floor — mirrors DIRECT_HIRE_MIN_MONTHLY on the server. */
-const MIN_MONTHLY = 7000;
+const MIN_MONTHLY = 6400;
 
 const EMPLOYMENT = ['Stay-in', 'Stay-out', 'Any'] as const;
 const SCHEDULE   = ['Full-time', 'Part-time', 'Any'] as const;

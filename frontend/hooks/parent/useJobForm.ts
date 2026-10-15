@@ -386,8 +386,8 @@ export function useJobForm() {
     const salaryMin = parseFloat(formData.salary_min);
     if (!formData.salary_min || isNaN(salaryMin)) {
       newErrors.salary = 'Minimum salary is required — enter an amount';
-    } else if (salaryMin < 7000) {
-      newErrors.salary = 'CareLink’s minimum is ₱7,000 / month (set above the legal minimum for fair pay)';
+    } else if (salaryMin < 6400) {
+      newErrors.salary = 'CareLink’s minimum is ₱6,400 / month (set above the legal minimum for fair pay)';
     }
     if (formData.salary_max) {
       const salaryMax = parseFloat(formData.salary_max);

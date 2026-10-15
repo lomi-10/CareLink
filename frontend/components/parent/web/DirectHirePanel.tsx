@@ -29,7 +29,7 @@ import { pt, ACCENT_GRADIENT } from './parentWebTheme';
 const TRANS = { transitionDuration: '150ms', transitionProperty: 'all', transitionTimingFunction: 'ease' } as any;
 
 /** Mirrors DIRECT_HIRE_MIN_MONTHLY on the server. */
-const MIN_MONTHLY = 7000;
+const MIN_MONTHLY = 6400;
 
 const PERIODS    = ['Monthly', 'Weekly', 'Daily'] as const;
 const EMPLOYMENT = ['Stay-in', 'Stay-out', 'Any'] as const;

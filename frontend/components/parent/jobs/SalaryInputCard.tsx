@@ -14,12 +14,12 @@ const WAGE_ENCOURAGED = 7000;
 
 // Suggested monthly salary range per category (PHP), keyed by ref_categories.category_id
 const SUGGESTED_RANGES: Record<string, { min: number; max: number }> = {
-  '1': { min: 7000, max: 10000 }, // General Househelp
-  '2': { min: 8000, max: 12000 }, // Yaya
-  '3': { min: 8000, max: 12000 }, // Cook
-  '4': { min: 7000, max: 9000 },  // Gardening
-  '5': { min: 7000, max: 9000 },  // Laundry Person
-  '6': { min: 7000, max: 12000 }, // Others
+  '1': { min: 6400, max: 10000 }, // General Househelp
+  '2': { min: 6400, max: 12000 }, // Yaya
+  '3': { min: 6400, max: 12000 }, // Cook
+  '4': { min: 6400, max: 9000 },  // Gardening
+  '5': { min: 6400, max: 9000 },  // Laundry Person
+  '6': { min: 6400, max: 12000 }, // Others
 };
 
 function getSuggestedRange(categoryIds: string[]) {
