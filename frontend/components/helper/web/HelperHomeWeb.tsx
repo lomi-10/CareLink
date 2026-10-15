@@ -141,7 +141,7 @@ export function HelperHomeWeb({
             {/* Recommended */}
             <View style={s.card}>
               <View style={s.head}>
-                <Text style={s.headTitle}>✨ Recommended for You</Text>
+                <Text style={s.headTitle}>✨ Recommended Jobs For You</Text>
                 <TouchableOpacity onPress={onBrowse}><Text style={s.headLink}>See all jobs →</Text></TouchableOpacity>
               </View>
               {recLoading ? (

@@ -204,7 +204,7 @@ export default function BrowseJobs() {
         <View style={s.recommendedSection}>
           <View style={s.recommendedHeader}>
             <Ionicons name="sparkles" size={17} color={ORANGE} />
-            <Text style={s.recommendedTitle}>Recommended for You</Text>
+            <Text style={s.recommendedTitle}>Recommended Jobs For You</Text>
           </View>
           <ScrollView
             horizontal

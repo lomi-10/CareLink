@@ -171,7 +171,7 @@ export function HelperBrowseWeb({ userName, avatar, verified, currentlyEmployed,
               {topRecommended.length > 0 && (
                 <View style={{ marginTop: 22 }}>
                   <View style={s.secHead}>
-                    <View style={s.secHeadLeft}><Ionicons name="sparkles" size={17} color={wt.accent} /><Text style={s.secTitle}>Recommended for You</Text></View>
+                    <View style={s.secHeadLeft}><Ionicons name="sparkles" size={17} color={wt.accent} /><Text style={s.secTitle}>Recommended Jobs For You</Text></View>
                   </View>
                   <View style={s.recRow}>
                     {topRecommended.map((job) => (

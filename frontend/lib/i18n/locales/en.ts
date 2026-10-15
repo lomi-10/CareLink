@@ -208,7 +208,7 @@ export default {
       evening: 'Good evening,',
       opportunity: 'Your next opportunity\nis just around the corner.',
       browseJobs: 'Browse Jobs',
-      recommended: 'Recommended for you',
+      recommended: 'Recommended Jobs For You',
       seeAll: 'See all',
       noRecommendations: 'No strong matches yet. Try adding more skills or job roles to your profile, or broaden your salary range.',
       findJobs: 'Find Jobs',
