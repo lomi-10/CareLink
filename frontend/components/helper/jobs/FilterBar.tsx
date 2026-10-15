@@ -75,6 +75,7 @@ interface FilterBarProps {
   activeFilterCount: number;
   onOpenAdvanced?: () => void;
   helperTheme?: boolean;   // true → warm brown/orange palette
+  compact?: boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -87,6 +88,7 @@ export function FilterBar({
   activeFilterCount,
   onOpenAdvanced,
   helperTheme = false,
+  compact = false,
 }: FilterBarProps) {
   const t = helperTheme ? HELPER_FILTER_THEME : DEFAULT_THEME;
 
@@ -105,7 +107,7 @@ export function FilterBar({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, compact && styles.scrollContentCompact]}
       >
         {/* "All" chip */}
         {(['all'] as const).map(() => {
@@ -115,12 +117,13 @@ export function FilterBar({
               key="all"
               style={[
                 styles.pill,
+                compact && styles.pillCompact,
                 { backgroundColor: selected ? t.pillSelectedBg : t.pillBg, borderColor: selected ? t.pillSelectedBg : t.pillBorderColor },
               ]}
               onPress={() => onFilterChange('category', 'all')}
               activeOpacity={0.7}
             >
-              <Text style={[styles.pillText, { color: selected ? t.pillSelectedText : t.pillText, fontFamily: t.fontFamily }]}>
+              <Text style={[styles.pillText, compact && styles.pillTextCompact, { color: selected ? t.pillSelectedText : t.pillText, fontFamily: t.fontFamily }]}>
                 All
               </Text>
             </TouchableOpacity>
@@ -134,12 +137,13 @@ export function FilterBar({
               key={cat.category_id}
               style={[
                 styles.pill,
+                compact && styles.pillCompact,
                 { backgroundColor: selected ? t.pillSelectedBg : t.pillBg, borderColor: selected ? t.pillSelectedBg : t.pillBorderColor },
               ]}
               onPress={() => onFilterChange('category', cat.category_id.toString())}
               activeOpacity={0.7}
             >
-              <Text style={[styles.pillText, { color: selected ? t.pillSelectedText : t.pillText, fontFamily: t.fontFamily }]}>
+              <Text style={[styles.pillText, compact && styles.pillTextCompact, { color: selected ? t.pillSelectedText : t.pillText, fontFamily: t.fontFamily }]}>
                 {cat.name}
               </Text>
             </TouchableOpacity>
@@ -148,7 +152,7 @@ export function FilterBar({
       </ScrollView>
 
       {/* ── Sort + Filters row ── */}
-      <View style={styles.actionsRow}>
+      <View style={[styles.actionsRow, compact && styles.actionsRowCompact]}>
         {/* Sort */}
         <View style={styles.sortContainer}>
           <Ionicons name="swap-vertical-outline" size={15} color={t.muted} />
@@ -156,7 +160,7 @@ export function FilterBar({
             Sort:
           </Text>
           <TouchableOpacity
-            style={styles.sortBtn}
+            style={[styles.sortBtn, compact && styles.sortBtnCompact]}
             onPress={() => {
               const idx  = sorts.indexOf(filters.sort);
               onFilterChange('sort', sorts[(idx + 1) % sorts.length]);
@@ -173,7 +177,7 @@ export function FilterBar({
         {/* Filters button */}
         {onOpenAdvanced && (
           <TouchableOpacity
-            style={[styles.filtersBtn, { borderColor: t.accent }]}
+            style={[styles.filtersBtn, compact && styles.actionButtonCompact, { borderColor: t.accent }]}
             onPress={onOpenAdvanced}
             activeOpacity={0.7}
           >
@@ -192,7 +196,7 @@ export function FilterBar({
         {/* Reset */}
         {activeFilterCount > 0 && (
           <TouchableOpacity
-            style={[styles.resetBtn, { borderColor: t.pillBorderColor }]}
+            style={[styles.resetBtn, compact && styles.actionButtonCompact, { borderColor: t.pillBorderColor }]}
             onPress={onReset}
             activeOpacity={0.7}
           >
@@ -217,22 +221,36 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
+  scrollContentCompact: {
+    paddingVertical: 6,
+    gap: 6,
+  },
   pill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
   },
+  pillCompact: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
   pillText: {
     fontSize: 13,
     fontWeight: '600',
   },
+  pillTextCompact: { fontSize: 12 },
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 12,
     gap: 8,
+  },
+  actionsRowCompact: {
+    paddingTop: 2,
+    paddingBottom: 6,
+    gap: 6,
   },
   sortContainer: {
     flexDirection: 'row',
@@ -250,6 +268,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 4,
   },
+  sortBtnCompact: { paddingVertical: 2 },
   sortValue: {
     fontSize: 13,
     fontWeight: '600',
@@ -262,6 +281,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
+  },
+  actionButtonCompact: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   filtersBtnText: {
     fontSize: 13,

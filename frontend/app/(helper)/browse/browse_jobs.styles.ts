@@ -106,8 +106,8 @@ export function createHelperBrowseJobsStyles(t: BrowseTheme = makeBrowseTheme())
 
     searchStrip: {
       paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 8,
+      paddingTop: 8,
+      paddingBottom: 4,
       backgroundColor: BAR_BG,
     },
 
@@ -121,6 +121,7 @@ export function createHelperBrowseJobsStyles(t: BrowseTheme = makeBrowseTheme())
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: DIVIDER,
     },
+    resultsBarCompact: { paddingVertical: 5 },
     resultsLeft:         { flexDirection: 'row', alignItems: 'center' },
     resultsCount:        { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED },
     resultsFiltered:     { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },

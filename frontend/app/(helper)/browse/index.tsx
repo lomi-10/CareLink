@@ -248,6 +248,7 @@ export default function BrowseJobs() {
             onSelectSuggestion={(text) => { updateFilter('search_query', text); saveRecentSearch(text); }}
             onClearRecent={clearRecentSearches}
             helperTheme
+            compact
           />
         </View>
 
@@ -259,9 +260,10 @@ export default function BrowseJobs() {
           activeFilterCount={activeFilterCount}
           onOpenAdvanced={() => setAdvancedSearch(true)}
           helperTheme
+          compact
         />
 
-        <View style={s.resultsBar}>
+        <View style={[s.resultsBar, s.resultsBarCompact]}>
           <View style={s.resultsLeft}>
             <Text style={s.resultsCount}>
               <Text style={{ fontFamily: FontFamily.fredokaSemiBold, color: DARK }}>

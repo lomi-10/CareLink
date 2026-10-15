@@ -26,6 +26,7 @@ interface SearchBarProps {
   onClearRecent: () => void;
   placeholder?: string;
   helperTheme?: boolean;   // true → warm brown/orange palette
+  compact?: boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -40,6 +41,7 @@ export function SearchBar({
   onClearRecent,
   placeholder = 'Search jobs, skills, or locations...',
   helperTheme = false,
+  compact = false,
 }: SearchBarProps) {
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -101,6 +103,7 @@ export function SearchBar({
       <View
         style={[
           styles.inputWrap,
+          compact && styles.inputWrapCompact,
           {
             backgroundColor: isFocused ? c.inputBgFocused : c.inputBg,
             borderColor:     isFocused ? c.inputBorderFocus : c.inputBorder,
@@ -115,7 +118,7 @@ export function SearchBar({
 
         <TextInput
           ref={inputRef}
-          style={[styles.input, { color: c.inputText, fontFamily: fontRegular }]}
+          style={[styles.input, compact && styles.inputCompact, { color: c.inputText, fontFamily: fontRegular }]}
           placeholder={placeholder}
           placeholderTextColor={c.placeholder}
           value={value}
@@ -138,6 +141,7 @@ export function SearchBar({
         <View
           style={[
             styles.dropdown,
+            compact && styles.dropdownCompact,
             { backgroundColor: c.dropdownBg },
             Platform.select({
               ios:     { shadowColor: c.shadowColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 },
@@ -208,8 +212,14 @@ const styles = StyleSheet.create({
     height: 48,
     borderWidth: 1.5,
   },
+  inputWrapCompact: {
+    height: 40,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+  },
   icon:     { marginRight: 8 },
   input:    { flex: 1, fontSize: 15, paddingVertical: 0 },
+  inputCompact: { fontSize: 14 },
   clearBtn: { padding: 4, marginLeft: 8 },
 
   dropdown: {
@@ -222,6 +232,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     zIndex: 200,
   },
+  dropdownCompact: { top: 46 },
   dropdownHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
