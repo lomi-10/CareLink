@@ -110,6 +110,8 @@ CareLink is a mobile and web app where:
    readability issue, then wait for PESO review. The scan does
    not replace PESO approval; check Notifications for updates.
 3. BROWSE JOBS: From Home (before hired), tap "Browse Jobs"
+   To browse jobs, make sure that your availability status is set to "Available" in your profile. 
+   But make sure that you are not currently employed or in an active placement.
    → filter by location, job type, salary → tap a listing
    to review duties, pay, schedule, benefits and location.
    Save interesting posts, or tap "Apply" and submit an application.
