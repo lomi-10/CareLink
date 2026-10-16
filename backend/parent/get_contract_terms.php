@@ -21,6 +21,7 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
+require_once __DIR__ . '/../shared/wage_floor.php';
 
 try {
     if (!$conn) {
@@ -46,6 +47,8 @@ try {
             ja.status,
             jp.title AS job_title,
             jp.work_schedule,
+            jp.salary_min,
+            jp.salary_offered,
             c.employment_start_date,
             c.employment_end_date,
             c.terms_notes,
@@ -97,6 +100,12 @@ try {
         'job_title' => $row['job_title'],
         'status' => $row['status'],
         'work_schedule' => $row['work_schedule'],
+        'minimum_contract_salary' => max(
+            CARELINK_WAGE_FLOOR,
+            (float) ($row['salary_min'] ?? 0) > 0
+                ? (float) $row['salary_min']
+                : (float) ($row['salary_offered'] ?? 0)
+        ),
         'contract' => [
             'employment_start_date' => $row['employment_start_date'],
             'employment_end_date' => $row['employment_end_date'],

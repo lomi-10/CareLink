@@ -18,6 +18,7 @@ import { MatchBreakdown } from './MatchBreakdown';
 import { formatSalary, formatPayoutSchedule } from '@/lib/salary';
 import { applyByLabel } from '@/lib/jobExpiry';
 import { ConfirmationModal, InterviewModal, NotificationModal, LoadingSpinner } from '@/components/shared';
+import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
 import { JobPostModal, BoostJobModal } from '@/components/parent/jobs';
 import { PendingBanner } from '@/components/parent/verification/PendingBanner';
 import { ParentTopNav } from './ParentTopNav';
@@ -103,10 +104,24 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
   const [deleteModal, setDeleteModal] = useState({ visible: false, jobId: '', jobTitle: '' });
   const [archiveModal, setArchiveModal] = useState<JobPost | null>(null);
   const [notif, setNotif] = useState({ visible: false, msg: '', type: 'success' as 'success' | 'error' });
-  const [sharedDocs, setSharedDocs] = useState<{ document_id: number; document_type: string; status: string; file_url?: string }[]>([]);
+  const [sharedDocs, setSharedDocs] = useState<{
+    document_id: number;
+    document_type: string;
+    status: string;
+    file_url?: string;
+    is_pdf?: boolean;
+    file_url_back?: string;
+    is_pdf_back?: boolean;
+  }[]>([]);
   const [applicantWork, setApplicantWork] = useState<any[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
-  const [viewingDoc, setViewingDoc] = useState<{ file_url: string; document_type: string } | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<{
+    file_url: string;
+    document_type: string;
+    is_pdf?: boolean;
+    file_url_back?: string;
+    is_pdf_back?: boolean;
+  } | null>(null);
   const [statusConfirm, setStatusConfirm] = useState<{ visible: boolean; appId: string; action: 'Shortlisted' | 'Rejected' | null }>({ visible: false, appId: '', action: null });
   const [rejectReason, setRejectReason] = useState('');
   const [interviewTarget, setInterviewTarget] = useState<{ appId: number; helperName: string; jobTitle: string } | null>(null);
@@ -487,17 +502,17 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
           </View>
         </View>
       </Modal>
-      <Modal visible={!!viewingDoc} transparent animationType="fade" onRequestClose={() => setViewingDoc(null)}>
-        <View style={s.docOverlay}>
-          <View style={s.docHeader}>
-            <Text style={s.docHeaderTitle} numberOfLines={1}>{viewingDoc?.document_type}</Text>
-            <Pressable onPress={() => setViewingDoc(null)} style={s.docClose}><Ionicons name="close" size={22} color="#fff" /></Pressable>
-          </View>
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={s.docImgWrap} maximumZoomScale={4} minimumZoomScale={1}>
-            {viewingDoc && <Image source={{ uri: viewingDoc.file_url }} style={s.docImg} resizeMode="contain" />}
-          </ScrollView>
-        </View>
-      </Modal>
+      <ImageZoomModal
+        visible={!!viewingDoc}
+        uri={viewingDoc?.file_url ?? null}
+        uriBack={viewingDoc?.file_url_back ?? null}
+        isPdf={viewingDoc?.is_pdf}
+        isPdfBack={viewingDoc?.is_pdf_back}
+        title={viewingDoc?.document_type}
+        onClose={() => setViewingDoc(null)}
+        preventScreenCapture
+        watermarked
+      />
     </View>
   );
 }
@@ -545,7 +560,7 @@ function ApplicantCard({ app, match, active, showJob, jobTitle, onPress }: { app
 // ─── Applicant profile panel (right column) ───
 function ApplicantPanel({ app, match, profileTab, onTab, sharedDocs, workHistory, docsLoading, onViewDoc, onMessage, onReject, onShortlist, onSchedule, onManage }: {
   app: JobApplication | null; match: any; profileTab: 'overview' | 'skills' | 'documents'; onTab: (t: 'overview' | 'skills' | 'documents') => void;
-  sharedDocs: any[]; workHistory: any[]; docsLoading: boolean; onViewDoc: (d: { file_url: string; document_type: string }) => void;
+  sharedDocs: any[]; workHistory: any[]; docsLoading: boolean; onViewDoc: (d: { file_url: string; document_type: string; is_pdf?: boolean; file_url_back?: string; is_pdf_back?: boolean }) => void;
   onMessage: (a: JobApplication) => void; onReject: (a: JobApplication) => void; onShortlist: (a: JobApplication) => void; onSchedule: (a: JobApplication) => void; onManage: (a: JobApplication) => void;
 }) {
   if (!app) {
@@ -683,7 +698,13 @@ function ApplicantPanel({ app, match, profileTab, onTab, sharedDocs, workHistory
           {docsLoading ? <ActivityIndicator size="small" color={pt.accent} style={{ marginVertical: 24 }} />
             : sharedDocs.length === 0 ? <Text style={s.emptyText}>No documents have been shared for this application yet.</Text>
             : sharedDocs.map((doc) => (
-              <Pressable key={doc.document_id} onPress={() => doc.file_url && onViewDoc({ file_url: doc.file_url, document_type: doc.document_type })} disabled={!doc.file_url}
+              <Pressable key={doc.document_id} onPress={() => doc.file_url && onViewDoc({
+                file_url: doc.file_url,
+                document_type: doc.document_type,
+                is_pdf: doc.is_pdf,
+                file_url_back: doc.file_url_back,
+                is_pdf_back: doc.is_pdf_back,
+              })} disabled={!doc.file_url}
                 style={({ hovered }: any) => [s.docRow, TRANS, hovered && doc.file_url && { borderColor: pt.accent }]}>
                 <View style={s.docIc}><Ionicons name="document-text-outline" size={18} color={pt.accent} /></View>
                 <View style={{ flex: 1, minWidth: 0 }}><Text style={s.docTitle} numberOfLines={1}>{doc.document_type}</Text><Text style={s.docStatus}>{doc.status}</Text></View>

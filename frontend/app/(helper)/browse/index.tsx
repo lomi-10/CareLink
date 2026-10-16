@@ -14,7 +14,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { FontFamily } from '@/constants/GlobalStyles';
 import { useBrowseJobs, type JobFilters, type JobPost } from '@/hooks/helper';
 import { useAuth, useJobReferences, useResponsive, useNotifications } from '@/hooks/shared';
 
@@ -58,7 +57,7 @@ export default function BrowseJobs() {
 
   const {
     jobs, filters, loading, updateFilter, resetFilters, refresh,
-    totalCount, filteredCount, searchSuggestions, recentSearches,
+    searchSuggestions, recentSearches,
     saveRecentSearch, clearRecentSearches, toggleSaveJob, savedCount, activeFilterCount,
   } = useBrowseJobs();
 
@@ -261,32 +260,8 @@ export default function BrowseJobs() {
           onOpenAdvanced={() => setAdvancedSearch(true)}
           helperTheme
           compact
+          showCategories={false}
         />
-
-        <View style={[s.resultsBar, s.resultsBarCompact]}>
-          <View style={s.resultsLeft}>
-            <Text style={s.resultsCount}>
-              <Text style={{ fontFamily: FontFamily.fredokaSemiBold, color: DARK }}>
-                {parentGroups.length}
-              </Text>
-              {' '}employer{parentGroups.length !== 1 ? 's' : ''}
-              {'  ·  '}
-              <Text style={{ fontFamily: FontFamily.fredokaSemiBold, color: DARK }}>
-                {filteredCount}
-              </Text>
-              {' '}job{filteredCount !== 1 ? 's' : ''}
-            </Text>
-            {filteredCount !== totalCount && (
-              <Text style={s.resultsFiltered}>{'  ·  '}filtered from {totalCount}</Text>
-            )}
-          </View>
-          {hasBrowseCriteria && (
-            <TouchableOpacity style={s.clearFiltersBtn} onPress={resetFilters} hitSlop={8}>
-              <Ionicons name="close-circle" size={14} color={ORANGE} />
-              <Text style={s.clearFiltersBtnText}>Clear filters</Text>
-            </TouchableOpacity>
-          )}
-        </View>
       </View>
 
       {/* Empty state / list */}

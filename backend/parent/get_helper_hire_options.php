@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/wage_floor.php';
 
 try {
     if (!$conn) {
@@ -37,9 +38,15 @@ try {
             jp.title AS job_title,
             jp.start_date AS job_start_date,
             jp.salary_offered,
+            jp.salary_min,
+            jp.salary_max,
             jp.salary_period,
             jp.employment_type,
-            jp.work_schedule
+            jp.work_schedule,
+            jp.work_hours,
+            jp.days_off,
+            jp.contract_duration,
+            jp.benefits
         FROM job_applications ja
         INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
         WHERE jp.parent_id = ?
@@ -57,6 +64,10 @@ try {
     $res = $st->get_result();
     $applications = [];
     while ($row = $res->fetch_assoc()) {
+        $salaryMin = (float) ($row['salary_min'] ?? 0);
+        if ($salaryMin <= 0) {
+            $salaryMin = (float) ($row['salary_offered'] ?? 0);
+        }
         $applications[] = [
             'application_id' => (int) $row['application_id'],
             'job_post_id' => (int) $row['job_post_id'],
@@ -65,9 +76,16 @@ try {
             'applied_at' => $row['applied_at'],
             'job_start_date' => $row['job_start_date'],
             'salary_offered' => $row['salary_offered'] !== null ? (float) $row['salary_offered'] : null,
+            'salary_min' => $row['salary_min'] !== null ? (float) $row['salary_min'] : null,
+            'salary_max' => $row['salary_max'] !== null ? (float) $row['salary_max'] : null,
+            'minimum_contract_salary' => max(CARELINK_WAGE_FLOOR, $salaryMin),
             'salary_period' => $row['salary_period'],
             'employment_type' => $row['employment_type'],
             'work_schedule' => $row['work_schedule'],
+            'work_hours' => $row['work_hours'],
+            'days_off' => $row['days_off'],
+            'contract_duration' => $row['contract_duration'],
+            'benefits' => $row['benefits'],
         ];
     }
     $st->close();

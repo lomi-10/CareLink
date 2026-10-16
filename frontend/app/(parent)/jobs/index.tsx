@@ -28,17 +28,21 @@ import { computeHelperJobMatch, applicationToMatchable } from '@/lib/parentHelpe
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { useUserVerification } from '@/hooks/peso';
 
-import { ConfirmationModal, InterviewModal, LoadingSpinner, NotificationModal } from '@/components/shared';
+import {
+  ConfirmationModal, CredentialBadge, InterviewModal, LoadingSpinner, NotificationModal,
+  PesoVerifiedBanner, credentialStateFor,
+} from '@/components/shared';
 import { MobileMenu, Sidebar, ParentTabBar } from '@/components/parent/home';
 import { ParentJobsWeb } from '@/components/parent/web/ParentJobsWeb';
 import { JobPostModal, BoostJobModal } from '@/components/parent/jobs';
+import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
 import { isJobBoosted } from '@/lib/boost';
 import { JobDetailsModal } from '@/components/parent/jobs/JobDetailsModal';
 import { PendingBanner } from '@/components/parent/verification/PendingBanner';
 import API_URL from '@/constants/api';
 
 import {
-  w, BROWN, CARAMEL, GOLD, DARK, MUTED, GREEN, SUCCESS_BG, WARNING_BG, DANGER, DANGER_BG, ICON_BG,
+  w, BROWN, CARAMEL, GOLD, DARK, MUTED, SUBTLE, GREEN, SUCCESS_BG, WARNING_BG, DANGER, DANGER_BG, ICON_BG,
 } from './work.styles';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -214,9 +218,23 @@ export default function WorkManagement() {
   const [selectedApplicantId, setSelectedApplicantId] = useState('');
   const [profileTab, setProfileTab] = useState<'overview' | 'skills' | 'documents'>('overview');
   const [applicantMobileView, setApplicantMobileView] = useState<'list' | 'detail'>('list');
-  const [sharedDocs, setSharedDocs] = useState<{ document_id: number; document_type: string; status: string; file_url?: string }[]>([]);
+  const [sharedDocs, setSharedDocs] = useState<{
+    document_id: number;
+    document_type: string;
+    status: string;
+    file_url?: string;
+    is_pdf?: boolean;
+    file_url_back?: string;
+    is_pdf_back?: boolean;
+  }[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
-  const [viewingDoc, setViewingDoc] = useState<{ file_url: string; document_type: string } | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<{
+    file_url: string;
+    document_type: string;
+    is_pdf?: boolean;
+    file_url_back?: string;
+    is_pdf_back?: boolean;
+  } | null>(null);
   const [statusConfirm, setStatusConfirm]         = useState<{ visible: boolean; appId: string; action: 'Shortlisted' | 'Rejected' | null }>({ visible: false, appId: '', action: null });
   const [rejectReason, setRejectReason]           = useState('');
   const [interviewTarget, setInterviewTarget]     = useState<{ appId: number; helperName: string; jobTitle: string } | null>(null);
@@ -716,6 +734,34 @@ export default function WorkManagement() {
     const canDecide  = ['Pending', 'Reviewed'].includes(selectedApplicant.status);
     const canSchedule = ['Shortlisted', 'Interview Scheduled'].includes(selectedApplicant.status);
     const isHired    = ['hired', 'Accepted'].includes(selectedApplicant.status);
+    const helperIsVerified = a.verification_status === 'Verified';
+    const unsharedVerifiedCoreDocs = helperIsVerified
+      ? ['Valid ID', 'Barangay Clearance'].filter(type => !sharedDocs.some(doc => doc.document_type === type))
+      : [];
+    const renderSkillGroup = (
+      title: string,
+      icon: keyof typeof Ionicons.glyphMap,
+      items: string[],
+    ) => items.length > 0 ? (
+      <View key={title} style={w.skillGroupCard}>
+        <View style={w.skillGroupHeader}>
+          <View style={w.skillGroupIcon}>
+            <Ionicons name={icon} size={17} color={BROWN} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={w.skillGroupLabel}>{title}</Text>
+            <Text style={w.skillGroupCaption}>{items.length} {items.length === 1 ? 'item' : 'items'}</Text>
+          </View>
+        </View>
+        <View style={w.chipsWrap}>
+          {items.map((item, index) => (
+            <View key={`${title}-${item}-${index}`} style={w.skillChip}>
+              <Text style={w.skillChipText}>{item}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    ) : null;
 
     return (
       <View style={w.detailCard}>
@@ -729,13 +775,14 @@ export default function WorkManagement() {
             </View>
           )}
           <Text style={w.profileName}>{a.helper_name}</Text>
+          {a.verification_status === 'Verified' && (
+            <PesoVerifiedBanner
+              role="helper"
+              location={location === 'Not specified' ? undefined : location}
+              compact
+            />
+          )}
           <View style={w.profileBadgesRow}>
-            {a.verification_status === 'Verified' && (
-              <View style={[w.miniBadge, w.miniBadgeGreen]}>
-                <Ionicons name="shield-checkmark" size={12} color={GREEN} />
-                <Text style={[w.miniBadgeText, { color: GREEN }]}>PESO Verified</Text>
-              </View>
-            )}
             {a.availability_status === 'Available' && (
               <View style={[w.miniBadge, w.miniBadgeBlue]}>
                 <Ionicons name="briefcase" size={12} color="#1D4ED8" />
@@ -768,12 +815,12 @@ export default function WorkManagement() {
           </View>
           <View style={w.infoTile}>
             <Ionicons name="school-outline" size={16} color={MUTED} />
-            <Text style={w.infoTileValue} numberOfLines={1}>{a.helper_education_level || '—'}</Text>
+            <Text style={w.infoTileValue}>{a.helper_education_level || '—'}</Text>
             <Text style={w.infoTileLabel}>Education</Text>
           </View>
-          <View style={w.infoTile}>
+          <View style={[w.infoTile, w.infoTileFullWidth]}>
             <Ionicons name="location-outline" size={16} color={MUTED} />
-            <Text style={w.infoTileValue} numberOfLines={1}>{a.helper_municipality || '—'}</Text>
+            <Text style={w.infoTileValue}>{a.helper_municipality || '—'}</Text>
             <Text style={w.infoTileLabel}>Location</Text>
           </View>
         </View>
@@ -874,42 +921,9 @@ export default function WorkManagement() {
         {/* ── Skills ── */}
         {profileTab === 'skills' && (
           <View style={w.profileSection}>
-            {a.helper_categories?.length > 0 && (
-              <View style={w.skillGroup}>
-                <Text style={w.skillGroupLabel}>Categories</Text>
-                <View style={w.chipsWrap}>
-                  {a.helper_categories.map((c: string, i: number) => (
-                    <View key={`cat-${i}`} style={[w.skillChip, w.skillChipBlue]}>
-                      <Text style={[w.skillChipText, { color: '#1D4ED8' }]}>{c}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-            {a.helper_jobs?.length > 0 && (
-              <View style={w.skillGroup}>
-                <Text style={w.skillGroupLabel}>Specific Roles</Text>
-                <View style={w.chipsWrap}>
-                  {a.helper_jobs.map((j: string, i: number) => (
-                    <View key={`job-${i}`} style={[w.skillChip, w.skillChipGreen]}>
-                      <Text style={[w.skillChipText, { color: GREEN }]}>{j}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-            {a.helper_skills?.length > 0 && (
-              <View style={w.skillGroup}>
-                <Text style={w.skillGroupLabel}>Skills & Abilities</Text>
-                <View style={w.chipsWrap}>
-                  {a.helper_skills.map((s: string, i: number) => (
-                    <View key={`skill-${i}`} style={w.skillChip}>
-                      <Text style={w.skillChipText}>{s}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
+            {renderSkillGroup('Work categories', 'grid-outline', a.helper_categories ?? [])}
+            {renderSkillGroup('Specific roles', 'briefcase-outline', a.helper_jobs ?? [])}
+            {renderSkillGroup('Skills & abilities', 'checkmark-done-outline', a.helper_skills ?? [])}
             {!a.helper_categories?.length && !a.helper_jobs?.length && !a.helper_skills?.length && (
               <Text style={w.recentEmptyText}>No skills or roles listed yet.</Text>
             )}
@@ -919,30 +933,43 @@ export default function WorkManagement() {
         {/* ── Documents ── */}
         {profileTab === 'documents' && (
           <View style={w.profileSection}>
-            {docsLoading ? (
-              <ActivityIndicator size="small" color={CARAMEL} style={{ marginVertical: 24 }} />
-            ) : sharedDocs.length === 0 ? (
-              <Text style={w.recentEmptyText}>No documents have been shared for this application yet.</Text>
-            ) : (
-              sharedDocs.map(doc => (
-                <TouchableOpacity
-                  key={doc.document_id}
-                  style={w.docRow}
-                  activeOpacity={0.75}
-                  onPress={() => doc.file_url && setViewingDoc({ file_url: doc.file_url, document_type: doc.document_type })}
-                  disabled={!doc.file_url}
-                >
-                  <View style={w.docIconWrap}>
-                    <Ionicons name="document-text-outline" size={18} color={BROWN} />
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={w.docTitle} numberOfLines={1}>{doc.document_type}</Text>
-                    <Text style={w.docStatus}>{doc.status}</Text>
-                  </View>
-                  <Ionicons name="eye-outline" size={18} color={MUTED} />
-                </TouchableOpacity>
-              ))
+            <View style={w.docCredentialStack}>
+              {unsharedVerifiedCoreDocs.map(documentType => (
+                <CredentialBadge key={documentType} documentType={documentType} state="sealed" size="sm" style={w.docCredentialBadge} />
+              ))}
+              {!docsLoading && sharedDocs.map(doc => {
+                const isVerifiedCoreDoc = helperIsVerified && ['Valid ID', 'Barangay Clearance'].includes(doc.document_type);
+                return (
+                  <TouchableOpacity
+                    key={doc.document_id}
+                    style={w.docCredentialAction}
+                    onPress={() => doc.file_url && setViewingDoc({
+                      file_url: doc.file_url,
+                      document_type: doc.document_type,
+                      is_pdf: doc.is_pdf,
+                      file_url_back: doc.file_url_back,
+                      is_pdf_back: doc.is_pdf_back,
+                    })}
+                    disabled={!doc.file_url}
+                    accessibilityRole={doc.file_url ? 'button' : undefined}
+                    accessibilityLabel={doc.file_url ? `View watermarked ${doc.document_type}` : `${doc.document_type}, ${doc.status}`}
+                  >
+                    <CredentialBadge
+                      documentType={doc.document_type}
+                      state={isVerifiedCoreDoc ? 'sealed' : credentialStateFor(doc)}
+                      size="sm"
+                      style={w.docCredentialActionBadge}
+                    />
+                    <Ionicons name={doc.file_url ? 'eye-outline' : 'lock-closed-outline'} size={18} color={doc.file_url ? MUTED : SUBTLE} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {docsLoading && <ActivityIndicator size="small" color={CARAMEL} style={{ marginVertical: 12 }} />}
+            {!helperIsVerified && !docsLoading && sharedDocs.length === 0 && (
+              <Text style={w.recentEmptyText}>No verified document badges are available for this application.</Text>
             )}
+            <Text style={w.docPrivacyNote}>Only documents shared for this application can be opened. Previews are watermarked; screenshot prevention depends on device and platform.</Text>
           </View>
         )}
 
@@ -1199,35 +1226,6 @@ export default function WorkManagement() {
           onScheduled={() => { setInterviewTarget(null); refreshApps(); setNotification({ visible: true, message: 'Interview invite sent!', type: 'success' }); }}
         />
       )}
-      <Modal visible={!!viewingDoc} transparent animationType="fade" onRequestClose={() => setViewingDoc(null)}>
-        <View style={docViewer.overlay}>
-          <SafeAreaView style={docViewer.safeArea}>
-            <View style={docViewer.header}>
-              <Text style={docViewer.headerTitle} numberOfLines={1}>{viewingDoc?.document_type}</Text>
-              <TouchableOpacity style={docViewer.closeBtn} onPress={() => setViewingDoc(null)} activeOpacity={0.8}>
-                <Ionicons name="close" size={22} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={docViewer.imageWrap}
-              maximumZoomScale={4}
-              minimumZoomScale={1}
-              showsVerticalScrollIndicator={false}
-              showsHorizontalScrollIndicator={false}
-            >
-              {viewingDoc && (
-                <Image
-                  source={{ uri: viewingDoc.file_url }}
-                  style={docViewer.image}
-                  contentFit="contain"
-                />
-              )}
-            </ScrollView>
-          </SafeAreaView>
-        </View>
-      </Modal>
-
       {/* Shortlist confirm (plain); Reject needs a reason (below). */}
       <ConfirmationModal
         visible={statusConfirm.visible && statusConfirm.action === 'Shortlisted'}
@@ -1358,51 +1356,20 @@ export default function WorkManagement() {
       </SafeAreaView>
 
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setMobileMenu(false)} handleLogout={initiateLogout} />
+      <ImageZoomModal
+        visible={!!viewingDoc}
+        uri={viewingDoc?.file_url ?? null}
+        uriBack={viewingDoc?.file_url_back ?? null}
+        isPdf={viewingDoc?.is_pdf}
+        isPdfBack={viewingDoc?.is_pdf_back}
+        title={viewingDoc?.document_type}
+        onClose={() => setViewingDoc(null)}
+        preventScreenCapture
+        watermarked
+      />
     </View>
   );
 }
-
-const docViewer = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.92)',
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  headerTitle: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: 'Fredoka-SemiBold',
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  imageWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-  },
-  image: {
-    width: '100%',
-    height: undefined,
-    aspectRatio: 0.75,
-    borderRadius: 8,
-  },
-});
 
 // Reject-with-reason modal
 const rj = StyleSheet.create({

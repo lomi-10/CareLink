@@ -289,14 +289,16 @@ export const w = StyleSheet.create({
   profileName: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 19, color: DARK },
   profileBadgesRow: { flexDirection: 'row', gap: 7, flexWrap: 'wrap', justifyContent: 'center' },
 
-  infoTilesRow: { flexDirection: 'row', gap: 8, marginBottom: 18 },
+  infoTilesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 },
   infoTile: {
-    flex: 1, alignItems: 'center', gap: 3,
-    backgroundColor: SURFACE, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 4,
+    flexGrow: 1, flexBasis: '47%', minWidth: 120, minHeight: 84,
+    alignItems: 'center', justifyContent: 'center', gap: 4,
+    backgroundColor: SURFACE, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 10,
     borderWidth: 1, borderColor: DIVIDER,
   },
-  infoTileValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK },
-  infoTileLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 9.5, color: MUTED },
+  infoTileFullWidth: { flexBasis: '100%' },
+  infoTileValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, textAlign: 'center', lineHeight: 17, flexShrink: 1 },
+  infoTileLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 10.5, color: MUTED, textAlign: 'center' },
 
   profileTabsRow: {
     flexDirection: 'row', backgroundColor: ICON_BG, borderRadius: 12, padding: 4, gap: 4, marginBottom: 16,
@@ -336,28 +338,28 @@ export const w = StyleSheet.create({
   detailValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: DARK },
   detailValueRight: { flex: 1, textAlign: 'right', marginLeft: 16 },
 
-  skillGroup: { marginBottom: 14 },
-  skillGroupLabel: {
-    fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: MUTED,
-    textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8,
-  },
-  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  skillChip: {
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
-    backgroundColor: ICON_BG, borderWidth: 1, borderColor: DIVIDER,
-  },
-  skillChipBlue:  { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' },
-  skillChipGreen: { backgroundColor: SUCCESS_BG, borderColor: '#A7F3D0' },
-  skillChipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: BROWN },
-
-  docRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: SURFACE, borderRadius: 14, padding: 12, marginBottom: 10,
+  skillGroupCard: {
+    backgroundColor: SURFACE, borderRadius: 15, padding: 13, marginBottom: 12,
     borderWidth: 1, borderColor: DIVIDER,
   },
-  docIconWrap: { width: 38, height: 38, borderRadius: 11, backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center' },
-  docTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK },
-  docStatus: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginTop: 1 },
+  skillGroupHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  skillGroupIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center' },
+  skillGroupCaption: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED, marginTop: 1 },
+  skillGroupLabel: {
+    fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: DARK,
+  },
+  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  skillChip: {
+    paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9,
+    backgroundColor: '#FAF5ED', borderWidth: 1, borderColor: '#E8DCCB',
+  },
+  skillChipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: BROWN },
+
+  docCredentialStack: { gap: 8, marginBottom: 10 },
+  docCredentialBadge: { width: '100%', minWidth: 0 },
+  docCredentialAction: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  docCredentialActionBadge: { flex: 1, minWidth: 0 },
+  docPrivacyNote: { fontSize: 12, lineHeight: 17, color: MUTED, marginTop: 4 },
 
   profileStageLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, marginBottom: 10 },
   profileActionsRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginTop: 4 },

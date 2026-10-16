@@ -10,14 +10,21 @@ import {
   type DurationUnit,
 } from '@/components/parent/hire/hireFlowDates';
 import { computeWorkHoursLabel } from '@/components/parent/hire/hireFlowWorkHours';
-import { BROWN, CARAMEL, SUBTLE, DIVIDER, SURFACE, GREEN, ICON_BG } from '@/components/parent/home/parentWarmTheme';
+import { CARELINK_MINIMUM_MONTHLY_SALARY } from '@/components/parent/hire/hireJobOption';
+import { BROWN, CARAMEL, SUBTLE, DIVIDER, SURFACE, GREEN } from '@/components/parent/home/parentWarmTheme';
 
 const REST_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const LEAVE_OPTIONS = [5, 10, 15, 20, 30];
 const PAYMENT_SCHEDULE_DAILY = 'Daily';
+const PAYMENT_SCHEDULE_WEEKLY = 'Every week';
 const PAYMENT_SCHEDULE_SEMI = 'Every 15th and 30th';
 const PAYMENT_SCHEDULE_MONTHLY = 'Every end of month';
-const KNOWN_PAYMENT_SCHEDULES = [PAYMENT_SCHEDULE_DAILY, PAYMENT_SCHEDULE_SEMI, PAYMENT_SCHEDULE_MONTHLY];
+const KNOWN_PAYMENT_SCHEDULES = [
+  PAYMENT_SCHEDULE_DAILY,
+  PAYMENT_SCHEDULE_WEEKLY,
+  PAYMENT_SCHEDULE_SEMI,
+  PAYMENT_SCHEDULE_MONTHLY,
+];
 
 type ContractType = 'Fixed Term' | 'Indefinite';
 type WorkScheduleType = 'Full-time' | 'Part-time' | 'Any';
@@ -27,6 +34,11 @@ type Props = {
   jobTitle: string;
   helperName: string;
   workSchedule: WorkScheduleType;
+  minimumSalary: number;
+  jobPostSalaryMin?: number | null;
+  jobPostSalaryMax?: number | null;
+  hasJobPostDefaults?: boolean;
+  onPrefillFromJobPost?: () => void;
 
   contractStartDate: string;
   onChangeStart: (v: string) => void;
@@ -82,6 +94,11 @@ export function HireContractTermsModal({
   jobTitle,
   helperName,
   workSchedule,
+  minimumSalary,
+  jobPostSalaryMin,
+  jobPostSalaryMax,
+  hasJobPostDefaults = false,
+  onPrefillFromJobPost,
   contractStartDate,
   onChangeStart,
   contractType,
@@ -131,6 +148,7 @@ export function HireContractTermsModal({
   const isPartTime = workSchedule === 'Part-time';
   const isKnownSchedule = KNOWN_PAYMENT_SCHEDULES.includes(paymentSchedule);
   const showCustomPaymentInput = customPayment || (paymentSchedule !== '' && !isKnownSchedule);
+  const minimumMonthlySalary = Math.max(CARELINK_MINIMUM_MONTHLY_SALARY, minimumSalary);
 
   const computedEndDate = useMemo(
     () => computeContractEndDate(contractStartDate, contractType, durationAmount, durationUnit),
@@ -140,13 +158,18 @@ export function HireContractTermsModal({
 
   const workHoursLabel = flexibleHours ? null : computeWorkHoursLabel(workHoursStart, workHoursEnd);
 
-  const salaryNum = parseFloat(confirmedSalary.trim());
-  const showLowSalaryWarning = !isPartTime && !isNaN(salaryNum) && salaryNum > 0 && salaryNum < 7000;
+  const salaryNum = Number(confirmedSalary.trim());
+  const salaryValid = Number.isFinite(salaryNum) && salaryNum >= minimumMonthlySalary;
+  const showSalaryWarning = confirmedSalary.trim() !== '' && !salaryValid;
+
+  useEffect(() => {
+    if (KNOWN_PAYMENT_SCHEDULES.includes(paymentSchedule)) setCustomPayment(false);
+  }, [paymentSchedule]);
 
   // RA 10364 (Anti-Trafficking) safeguard: flag debt/deployment amounts that
   // exceed one month's salary — a classic debt-bondage risk indicator.
   const debtAmountNum = parseFloat(debtAmount.trim());
-  const monthlySalaryEquivalent = isPartTime ? NaN : salaryNum;
+  const monthlySalaryEquivalent = salaryNum;
   const showDebtWarning =
     !isNaN(debtAmountNum) && debtAmountNum > 0 &&
     !isNaN(monthlySalaryEquivalent) && monthlySalaryEquivalent > 0 &&
@@ -193,9 +216,25 @@ export function HireContractTermsModal({
 
               <View style={s.preFillBanner}>
                 <Ionicons name="information-circle-outline" size={16} color={BROWN} />
-                <Text style={s.preFillBannerText}>
-                  Some fields have been pre-filled from the job post. Review and adjust as needed.
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.preFillBannerText}>
+                    {hasJobPostDefaults
+                      ? 'Some terms are pre-filled from this job post. Review and adjust them as needed.'
+                      : 'Review the agreed employment terms before continuing.'}
+                  </Text>
+                  {hasJobPostDefaults && onPrefillFromJobPost && (
+                    <TouchableOpacity
+                      style={s.preFillAction}
+                      onPress={() => {
+                        setCustomPayment(false);
+                        onPrefillFromJobPost();
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={s.preFillActionText}>Use job post terms</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
 
               <View style={[s.pill, isPartTime ? s.pillGreen : s.pillBlue]}>
@@ -296,11 +335,11 @@ export function HireContractTermsModal({
               {/* ── Compensation ── */}
               <Text style={s.sectionTitle}>Compensation</Text>
 
-              <Text style={s.label}>{isPartTime ? 'Rate (₱ per hour or per day)' : 'Monthly salary (₱)'}</Text>
+              <Text style={s.label}>Monthly salary (₱)</Text>
               <Text style={s.hint}>
-                {isPartTime
-                  ? 'For part-time, enter hourly or daily rate.'
-                  : 'Minimum ₱7,000/month — a CareLink platform standard for fair compensation.'}
+                {jobPostSalaryMin != null
+                  ? `Job post: ₱${Number(jobPostSalaryMin).toLocaleString()}${jobPostSalaryMax != null ? `–₱${Number(jobPostSalaryMax).toLocaleString()}` : ''} per month. Minimum allowed: ₱${minimumMonthlySalary.toLocaleString()}/month.`
+                  : `Enter the agreed monthly amount. Minimum allowed: ₱${minimumMonthlySalary.toLocaleString()}/month.`}
               </Text>
               <View style={s.salaryRow}>
                 <View style={s.currencyBox}>
@@ -309,19 +348,17 @@ export function HireContractTermsModal({
                 <TextInput
                   style={[s.input, s.salaryInput]}
                   value={confirmedSalary}
-                  onChangeText={onChangeSalary}
-                  placeholder={isPartTime ? 'e.g. 80/hour or 600/day' : 'e.g. 9000'}
+                  onChangeText={(value) => onChangeSalary(value.replace(/\D/g, ''))}
+                  placeholder="e.g. 9000"
                   placeholderTextColor={SUBTLE}
-                  keyboardType="numeric"
+                  keyboardType="number-pad"
+                  maxLength={10}
                 />
               </View>
-              {showLowSalaryWarning && (
-                <View style={s.warningBanner}>
-                  <Ionicons name="warning-outline" size={16} color={BROWN} />
-                  <Text style={s.warningBannerText}>
-                    CareLink requires at least ₱7,000/month as a platform standard for fair compensation.
-                  </Text>
-                </View>
+              {showSalaryWarning && (
+                <Text style={s.salaryErrorText}>
+                  Monthly salary must be at least ₱{minimumMonthlySalary.toLocaleString()}.
+                </Text>
               )}
 
               <Text style={[s.label, { marginTop: 10 }]}>Salary payment schedule</Text>
@@ -336,6 +373,18 @@ export function HireContractTermsModal({
                 >
                   <Text style={[s.segmentText, paymentSchedule === PAYMENT_SCHEDULE_DAILY && s.segmentTextActive]}>
                     Daily
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.segment, paymentSchedule === PAYMENT_SCHEDULE_WEEKLY && s.segmentActive]}
+                  onPress={() => {
+                    setCustomPayment(false);
+                    onChangePaymentSchedule(PAYMENT_SCHEDULE_WEEKLY);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.segmentText, paymentSchedule === PAYMENT_SCHEDULE_WEEKLY && s.segmentTextActive]}>
+                    Weekly
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -641,7 +690,12 @@ export function HireContractTermsModal({
               <TouchableOpacity style={s.cancel} onPress={onCancel}>
                 <Text style={s.cancelTxt}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.confirm} onPress={onContinue}>
+              <TouchableOpacity
+                style={[s.confirm, !salaryValid && s.confirmDisabled]}
+                onPress={onContinue}
+                disabled={!salaryValid}
+                accessibilityState={{ disabled: !salaryValid }}
+              >
                 <Text style={s.confirmTxt}>Continue</Text>
               </TouchableOpacity>
             </View>

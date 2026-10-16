@@ -12,6 +12,8 @@ import {
   parseWorkHoursString,
   DEFAULT_WORK_START,
   DEFAULT_WORK_END,
+  CARELINK_MINIMUM_MONTHLY_SALARY,
+  getHireJobPrefill,
   type HireJobOptionRow,
   type DurationUnit,
 } from '@/components/parent/hire';
@@ -35,6 +37,8 @@ export function useHireFlow({
   const [hirePickHelperName, setHirePickHelperName] = useState('');
   const [hirePickApps, setHirePickApps] = useState<HireJobOptionRow[]>([]);
   const [hirePickSelectedId, setHirePickSelectedId] = useState<number | null>(null);
+  const [hireSelectedJob, setHireSelectedJob] = useState<HireJobOptionRow | null>(null);
+  const [hireMinimumSalary, setHireMinimumSalary] = useState(CARELINK_MINIMUM_MONTHLY_SALARY);
   const [hirePayload, setHirePayload] = useState<{
     application_id: number;
     job_post_id: number;
@@ -92,6 +96,24 @@ export function useHireFlow({
     setHireTerminationConditions('');
   }, []);
 
+  const applyJobPostTerms = (row: HireJobOptionRow) => {
+    const prefill = getHireJobPrefill(row);
+    setHireSelectedJob(row);
+    setHireMinimumSalary(prefill.minimumSalary);
+    setHireContractStartDate(prefill.startDate);
+    setHireContractType(prefill.contractType);
+    setHireDurationAmount(prefill.durationAmount);
+    setHireDurationUnit(prefill.durationUnit);
+    setHireConfirmedSalary(prefill.salary);
+    setHirePaymentSchedule(prefill.paymentSchedule);
+    setHireWorkSchedule(prefill.workSchedule);
+    setHireWorkHoursStart(prefill.workHoursStart);
+    setHireWorkHoursEnd(prefill.workHoursEnd);
+    setHireFlexibleHours(prefill.flexibleHours);
+    setHireRestDays(prefill.restDays);
+    setHireOtherBenefits(prefill.otherBenefits);
+  };
+
   // Pre-fill the contract terms from the interview guide the parent filled in
   // (parent/interview_guide.php). Salary, rest day and start date map to their
   // fields; the free-text answers are composed into the special conditions.
@@ -100,7 +122,10 @@ export function useHireFlow({
     wed: 'Wed', wednesday: 'Wed', thu: 'Thu', thurs: 'Thu', thursday: 'Thu',
     fri: 'Fri', friday: 'Fri', sat: 'Sat', saturday: 'Sat',
   };
-  const applyInterviewGuide = async (applicationId: number) => {
+  const applyInterviewGuide = async (
+    applicationId: number,
+    minimumSalary = hireMinimumSalary,
+  ) => {
     try {
       const raw = await AsyncStorage.getItem('user_data');
       const uid = raw ? JSON.parse(raw)?.user_id : '';
@@ -110,7 +135,10 @@ export function useHireFlow({
       if (!a) return;
 
       const salary = String(a.salary ?? '').replace(/[^0-9.]/g, '');
-      if (salary) setHireConfirmedSalary(salary);
+      const salaryAmount = Number(salary);
+      if (Number.isFinite(salaryAmount) && salaryAmount > 0) {
+        setHireConfirmedSalary(String(Math.max(minimumSalary, salaryAmount)));
+      }
 
       const day = REST_DAY_ABBR[String(a.rest_day ?? '').trim().toLowerCase()];
       if (day) setHireRestDays([day]);
@@ -132,6 +160,7 @@ export function useHireFlow({
     setContractFlowMode('hire');
     setHiringAction(true);
     setHirePayload(null);
+    setHireSelectedJob(null);
     try {
       const raw = await AsyncStorage.getItem('user_data');
       if (!raw) throw new Error('Not logged in');
@@ -144,18 +173,7 @@ export function useHireFlow({
         message?: string;
         needs_selection?: boolean;
         helper_name?: string;
-        applications?: Array<{
-          application_id: number;
-          job_post_id: number;
-          job_title: string;
-          status: string;
-          applied_at: string;
-          job_start_date?: string | null;
-          salary_offered?: number | null;
-          salary_period?: string | null;
-          employment_type?: string | null;
-          work_schedule?: string | null;
-        }>;
+        applications?: HireJobOptionRow[];
       };
       if (!data.success) throw new Error(data.message || 'Could not load hire options');
       const apps = (data.applications ?? []).map(a => ({
@@ -166,23 +184,38 @@ export function useHireFlow({
         applied_at:     String(a.applied_at ?? ''),
         job_start_date: a.job_start_date ?? null,
         salary_offered: a.salary_offered ?? null,
+        salary_min: a.salary_min ?? null,
+        salary_max: a.salary_max ?? null,
+        minimum_contract_salary: a.minimum_contract_salary ?? null,
         salary_period:  a.salary_period ?? null,
         employment_type: a.employment_type ?? null,
         work_schedule:  a.work_schedule ?? null,
+        work_hours: a.work_hours ?? null,
+        days_off: a.days_off ?? null,
+        contract_duration: a.contract_duration ?? null,
+        benefits: a.benefits ?? null,
       }));
       if (!data.needs_selection) {
         const row = apps.find(a => a.application_id === resolvedApp.application_id) ?? apps[0] ?? null;
+        const applicationId = row?.application_id ?? resolvedApp.application_id;
+        const jobPostId = row?.job_post_id ?? resolvedApp.job_post_id;
+        const jobTitle = row?.job_title ?? resolvedApp.job_title;
         setHirePayload({
-          application_id: resolvedApp.application_id,
-          job_post_id:    resolvedApp.job_post_id,
-          job_title:      resolvedApp.job_title,
-          job_start_date: resolvedApp.job_start_date ?? null,
+          application_id: applicationId,
+          job_post_id:    jobPostId,
+          job_title:      jobTitle,
+          job_start_date: row?.job_start_date ?? resolvedApp.job_start_date ?? null,
         });
-        setHireContractStartDate(toYmdInput(resolvedApp.job_start_date));
         resetHireFormState();
-        setHireConfirmedSalary(row?.salary_offered != null ? String(row.salary_offered) : '');
-        setHireWorkSchedule(row?.work_schedule === 'Part-time' ? 'Part-time' : row?.work_schedule === 'Any' ? 'Any' : 'Full-time');
-        await applyInterviewGuide(resolvedApp.application_id); // overlay saved interview answers
+        if (row) {
+          applyJobPostTerms(row);
+        } else {
+          setHireMinimumSalary(CARELINK_MINIMUM_MONTHLY_SALARY);
+          setHireContractStartDate(toYmdInput(resolvedApp.job_start_date));
+          setHireConfirmedSalary('');
+          setHireWorkSchedule('Full-time');
+        }
+        await applyInterviewGuide(applicationId, row ? getHireJobPrefill(row).minimumSalary : undefined);
         setHireTermsVisible(true);
         return;
       }
@@ -208,11 +241,9 @@ export function useHireFlow({
       job_title:      row.job_title,
       job_start_date: row.job_start_date ?? null,
     });
-    setHireContractStartDate(toYmdInput(row.job_start_date));
     resetHireFormState();
-    setHireConfirmedSalary(row.salary_offered != null ? String(row.salary_offered) : '');
-    setHireWorkSchedule(row.work_schedule === 'Part-time' ? 'Part-time' : row.work_schedule === 'Any' ? 'Any' : 'Full-time');
-    await applyInterviewGuide(row.application_id); // overlay saved interview answers
+    applyJobPostTerms(row);
+    await applyInterviewGuide(row.application_id, getHireJobPrefill(row).minimumSalary);
     setHirePickVisible(false);
     setHireTermsVisible(true);
   };
@@ -234,6 +265,7 @@ export function useHireFlow({
         job_post_id?: number;
         job_title?: string;
         work_schedule?: string | null;
+        minimum_contract_salary?: number;
         contract?: {
           employment_start_date?: string | null;
           terms_notes?: string | null;
@@ -256,6 +288,13 @@ export function useHireFlow({
       if (!data.success) throw new Error(data.message || 'Could not load contract terms');
       const c = data.contract ?? {};
 
+      setHireSelectedJob(null);
+      setHireMinimumSalary(
+        Math.max(
+          CARELINK_MINIMUM_MONTHLY_SALARY,
+          Number(data.minimum_contract_salary) || CARELINK_MINIMUM_MONTHLY_SALARY,
+        ),
+      );
       setHirePayload({
         application_id: resolvedApp.application_id,
         job_post_id:    Number(data.job_post_id ?? resolvedApp.job_post_id),
@@ -312,9 +351,12 @@ export function useHireFlow({
       showChatNotif('Could not compute the contract end date. Check the start date and duration.', 'warning');
       return;
     }
-    const salary = parseFloat(hireConfirmedSalary.trim());
-    if (!hireConfirmedSalary.trim() || isNaN(salary) || salary <= 0) {
-      showChatNotif('Enter the confirmed salary for this contract.', 'warning');
+    const salary = Number(hireConfirmedSalary.trim());
+    if (!Number.isFinite(salary) || salary < hireMinimumSalary) {
+      showChatNotif(
+        `Enter a monthly salary of at least ₱${hireMinimumSalary.toLocaleString()}.`,
+        'warning',
+      );
       return;
     }
     if (!hirePaymentSchedule.trim()) {
@@ -380,6 +422,8 @@ export function useHireFlow({
       if (!hireData.success) throw new Error(hireData.message || 'Could not start contract');
 
       setHirePayload(null);
+      setHireSelectedJob(null);
+      setHireMinimumSalary(CARELINK_MINIMUM_MONTHLY_SALARY);
       setHireContractStartDate('');
       setHireConfirmedSalary('');
       setHireWorkSchedule('Full-time');
@@ -453,6 +497,8 @@ export function useHireFlow({
       if (!editData.success) throw new Error(editData.message || 'Could not update contract');
 
       setHirePayload(null);
+      setHireSelectedJob(null);
+      setHireMinimumSalary(CARELINK_MINIMUM_MONTHLY_SALARY);
       setHireContractStartDate('');
       setHireConfirmedSalary('');
       setHireWorkSchedule('Full-time');
@@ -518,6 +564,11 @@ export function useHireFlow({
     hirePickVisible, setHirePickVisible,
     hirePickHelperName,
     hirePickApps,
+    hireSelectedJob,
+    hireMinimumSalary,
+    prefillHireTermsFromJobPost: () => {
+      if (hireSelectedJob) applyJobPostTerms(hireSelectedJob);
+    },
     hirePickSelectedId, setHirePickSelectedId,
     hirePayload, setHirePayload,
     hireTermsVisible, setHireTermsVisible,

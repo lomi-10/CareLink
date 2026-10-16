@@ -111,23 +111,6 @@ export function createHelperBrowseJobsStyles(t: BrowseTheme = makeBrowseTheme())
       backgroundColor: BAR_BG,
     },
 
-    resultsBar: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      backgroundColor: BAR_BG,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: DIVIDER,
-    },
-    resultsBarCompact: { paddingVertical: 5 },
-    resultsLeft:         { flexDirection: 'row', alignItems: 'center' },
-    resultsCount:        { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: MUTED },
-    resultsFiltered:     { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED },
-    clearFiltersBtn:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    clearFiltersBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12, color: ORANGE },
-
     // ── Recommended section ────────────────────────────────────────────────────
     recommendedSection: {
       paddingTop: 20,

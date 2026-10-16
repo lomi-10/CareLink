@@ -76,6 +76,7 @@ interface FilterBarProps {
   onOpenAdvanced?: () => void;
   helperTheme?: boolean;   // true → warm brown/orange palette
   compact?: boolean;
+  showCategories?: boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -89,6 +90,7 @@ export function FilterBar({
   onOpenAdvanced,
   helperTheme = false,
   compact = false,
+  showCategories = true,
 }: FilterBarProps) {
   const t = helperTheme ? HELPER_FILTER_THEME : DEFAULT_THEME;
 
@@ -103,53 +105,47 @@ export function FilterBar({
   return (
     <View style={[styles.container, { backgroundColor: t.containerBg, borderBottomColor: t.dividerColor }]}>
 
-      {/* ── Category chips ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, compact && styles.scrollContentCompact]}
-      >
-        {/* "All" chip */}
-        {(['all'] as const).map(() => {
-          const selected = filters.category === 'all';
-          return (
-            <TouchableOpacity
-              key="all"
-              style={[
-                styles.pill,
-                compact && styles.pillCompact,
-                { backgroundColor: selected ? t.pillSelectedBg : t.pillBg, borderColor: selected ? t.pillSelectedBg : t.pillBorderColor },
-              ]}
-              onPress={() => onFilterChange('category', 'all')}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.pillText, compact && styles.pillTextCompact, { color: selected ? t.pillSelectedText : t.pillText, fontFamily: t.fontFamily }]}>
-                All
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+      {showCategories && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.scrollContent, compact && styles.scrollContentCompact]}
+        >
+          <TouchableOpacity
+            style={[
+              styles.pill,
+              compact && styles.pillCompact,
+              { backgroundColor: filters.category === 'all' ? t.pillSelectedBg : t.pillBg, borderColor: filters.category === 'all' ? t.pillSelectedBg : t.pillBorderColor },
+            ]}
+            onPress={() => onFilterChange('category', 'all')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.pillText, compact && styles.pillTextCompact, { color: filters.category === 'all' ? t.pillSelectedText : t.pillText, fontFamily: t.fontFamily }]}>
+              All
+            </Text>
+          </TouchableOpacity>
 
-        {categories.map((cat) => {
-          const selected = filters.category === cat.category_id.toString();
-          return (
-            <TouchableOpacity
-              key={cat.category_id}
-              style={[
-                styles.pill,
-                compact && styles.pillCompact,
-                { backgroundColor: selected ? t.pillSelectedBg : t.pillBg, borderColor: selected ? t.pillSelectedBg : t.pillBorderColor },
-              ]}
-              onPress={() => onFilterChange('category', cat.category_id.toString())}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.pillText, compact && styles.pillTextCompact, { color: selected ? t.pillSelectedText : t.pillText, fontFamily: t.fontFamily }]}>
-                {cat.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+          {categories.map((cat) => {
+            const selected = filters.category === cat.category_id.toString();
+            return (
+              <TouchableOpacity
+                key={cat.category_id}
+                style={[
+                  styles.pill,
+                  compact && styles.pillCompact,
+                  { backgroundColor: selected ? t.pillSelectedBg : t.pillBg, borderColor: selected ? t.pillSelectedBg : t.pillBorderColor },
+                ]}
+                onPress={() => onFilterChange('category', cat.category_id.toString())}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.pillText, compact && styles.pillTextCompact, { color: selected ? t.pillSelectedText : t.pillText, fontFamily: t.fontFamily }]}>
+                  {cat.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {/* ── Sort + Filters row ── */}
       <View style={[styles.actionsRow, compact && styles.actionsRowCompact]}>

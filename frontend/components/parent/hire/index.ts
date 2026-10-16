@@ -18,6 +18,13 @@ export {
   workHoursToString,
   parseWorkHoursString,
 } from '@/components/parent/hire/hireFlowWorkHours';
-export type { HireJobOptionRow } from '@/components/parent/hire/hireJobOption';
+export {
+  CARELINK_MINIMUM_MONTHLY_SALARY,
+  getHireJobPrefill,
+} from '@/components/parent/hire/hireJobOption';
+export type {
+  HireJobOptionRow,
+  HireJobPrefill,
+} from '@/components/parent/hire/hireJobOption';
 export { HireJobPickerModal } from '@/components/parent/hire/HireJobPickerModal';
 export { HireContractTermsModal } from '@/components/parent/hire/HireContractTermsModal';

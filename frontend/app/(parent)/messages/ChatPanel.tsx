@@ -405,6 +405,9 @@ export default function ChatPanel({
     hirePickVisible, setHirePickVisible,
     hirePickHelperName,
     hirePickApps,
+    hireSelectedJob,
+    hireMinimumSalary,
+    prefillHireTermsFromJobPost,
     hirePickSelectedId, setHirePickSelectedId,
     hirePayload, setHirePayload,
     hireTermsVisible, setHireTermsVisible,
@@ -598,6 +601,15 @@ export default function ChatPanel({
         jobTitle={hirePayload?.job_title ?? resolvedApp?.job_title ?? 'this job'}
         helperName={partnerName ? decodeURIComponent(String(partnerName)) : ''}
         workSchedule={hireWorkSchedule}
+        minimumSalary={hireMinimumSalary}
+        jobPostSalaryMin={
+          Number(hireSelectedJob?.salary_min) > 0
+            ? hireSelectedJob?.salary_min
+            : hireSelectedJob?.salary_offered
+        }
+        jobPostSalaryMax={hireSelectedJob?.salary_max}
+        hasJobPostDefaults={Boolean(hireSelectedJob)}
+        onPrefillFromJobPost={prefillHireTermsFromJobPost}
         contractStartDate={hireContractStartDate}
         onChangeStart={setHireContractStartDate}
         contractType={hireContractType}

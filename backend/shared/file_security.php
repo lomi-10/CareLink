@@ -140,3 +140,41 @@ function carelink_signed_document_url(int $documentId, string $side = 'front'): 
     return "{$scheme}{$host}/carelink_api/shared/serve_document.php"
         . "?document_id={$documentId}&expires={$expires}&token=" . urlencode($token) . $sideParam;
 }
+
+function carelink_signed_shared_document_url(int $applicationId, int $documentId, int $parentId, string $side = 'front', int $ttlSeconds = 900): string
+{
+    $expires = time() + $ttlSeconds;
+    $token = hash_hmac(
+        'sha256',
+        "shared.{$applicationId}.{$documentId}.{$parentId}.{$side}.{$expires}",
+        carelink_doc_signing_secret()
+    );
+    $scheme = carelink_url_scheme();
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+    return "{$scheme}{$host}/carelink_api/parent/serve_shared_document.php"
+        . "?application_id={$applicationId}&document_id={$documentId}&parent_id={$parentId}"
+        . "&side={$side}&expires={$expires}&token=" . urlencode($token);
+}
+
+function carelink_verify_shared_document_token(
+    int $applicationId,
+    int $documentId,
+    int $parentId,
+    string $side,
+    int $expires,
+    string $token
+): bool {
+    if ($applicationId <= 0 || $documentId <= 0 || $parentId <= 0
+        || !in_array($side, ['front', 'back'], true)
+        || $expires < time() || $expires > time() + 1800) {
+        return false;
+    }
+
+    $expected = hash_hmac(
+        'sha256',
+        "shared.{$applicationId}.{$documentId}.{$parentId}.{$side}.{$expires}",
+        carelink_doc_signing_secret()
+    );
+    return hash_equals($expected, $token);
+}

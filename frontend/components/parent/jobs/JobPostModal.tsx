@@ -17,6 +17,8 @@ import {
 
 // Custom Components
 import { LoadingSpinner, NotificationModal } from '@/components/shared';
+import { DateField } from '@/components/shared/DateField';
+import { formatLongDate, toYmdInput } from '@/components/parent/hire/hireFlowDates';
 import { PendingBanner } from '../verification/PendingBanner';
 import { AgeRangeSelector } from './AgeRangeSelector';
 import { BenefitsCard } from './BenefitsCard';
@@ -724,6 +726,32 @@ export function JobPostModal({
         disabled={isDisabled}
       />
 
+      <View style={styles.startDateCard}>
+        <View style={styles.startDateHeader}>
+          <Ionicons name="calendar-outline" size={20} color={BROWN} />
+          <Text style={styles.startDateTitle}>Preferred Start Date (Optional)</Text>
+        </View>
+        <Text style={styles.startDateHint}>
+          If you know when the helper should start, choose a date here. It will be prefilled in the contract terms.
+        </Text>
+        <DateField
+          value={toYmdInput(formData.start_date)}
+          onChange={(value) => updateField('start_date', value)}
+          placeholder="Select a preferred start date"
+          minimumDate={new Date()}
+          disabled={isDisabled}
+        />
+        {formData.start_date ? (
+          <TouchableOpacity
+            style={styles.startDateClearButton}
+            onPress={() => updateField('start_date', '')}
+            disabled={isDisabled}
+          >
+            <Text style={styles.startDateClearText}>Clear start date</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
       <View
         onLayout={setSectionLayout('salary')}
         style={sectionHighlight('salary', ['salary', 'salary_max'])}
@@ -843,6 +871,8 @@ export function JobPostModal({
       : '—';
 
     const locationDisplay = [formData.barangay, formData.municipality, formData.province].filter(Boolean).join(', ') || '—';
+    const startDateYmd = toYmdInput(formData.start_date);
+    const startDateDisplay = startDateYmd ? formatLongDate(startDateYmd) : 'Not specified';
 
     const requirementItems: string[] = [];
     if (formData.min_experience_years > 0) requirementItems.push(`${formData.min_experience_years}+ years of experience`);
@@ -874,6 +904,10 @@ export function JobPostModal({
           <View style={styles.reviewRow}>
             <Ionicons name="cash-outline" size={14} color={MUTED} />
             <Text style={styles.reviewRowText}>{salaryDisplay}</Text>
+          </View>
+          <View style={styles.reviewRow}>
+            <Ionicons name="calendar-outline" size={14} color={MUTED} />
+            <Text style={styles.reviewRowText}>Preferred start: {startDateDisplay}</Text>
           </View>
           <View style={styles.reviewRow}>
             <Ionicons name="location-outline" size={14} color={MUTED} />
@@ -1141,6 +1175,19 @@ const styles = StyleSheet.create({
   sectionHeader: { fontSize: 20, fontWeight: '800', color: DARK, marginBottom: 8 },
   sectionSub: { fontSize: 13, color: MUTED, marginBottom: 16, marginTop: -2, lineHeight: 18 },
   sectionSubheader: { fontSize: 14, color: MUTED, marginBottom: 24 },
+  startDateCard: {
+    backgroundColor: SURFACE,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: DIVIDER,
+    padding: 16,
+    marginBottom: 20,
+  },
+  startDateHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  startDateTitle: { fontSize: 15, fontWeight: '700', color: DARK },
+  startDateHint: { fontSize: 12, color: MUTED, lineHeight: 17, marginBottom: 10 },
+  startDateClearButton: { alignSelf: 'flex-start', paddingTop: 8 },
+  startDateClearText: { fontSize: 12, fontWeight: '700', color: BROWN },
 
   // Category → Role → Tasks explainer chain
   chainCard: {

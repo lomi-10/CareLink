@@ -135,7 +135,7 @@ try {
     }
 
     $js = $conn->prepare('
-        SELECT jp.start_date, jp.work_schedule
+        SELECT jp.start_date, jp.salary_min, jp.salary_offered
         FROM job_posts jp
         INNER JOIN job_applications ja ON ja.job_post_id = jp.job_post_id
         WHERE ja.application_id = ? AND jp.parent_id = ?
@@ -156,14 +156,22 @@ try {
         }
     }
 
-    $isPartTime = ($jr['work_schedule'] ?? 'Full-time') === 'Part-time';
     if ($confirmed_salary === null || $confirmed_salary <= 0) {
         throw new Exception('Confirmed salary is required.');
     }
-    // Regional minimum wage. See shared/wage_floor.php for the wage order and
-    // why no message here may attribute the figure to RA 10361.
     require_once __DIR__ . '/../shared/wage_floor.php';
-    if (!$isPartTime && $confirmed_salary < CARELINK_WAGE_FLOOR) {
+    $postedSalaryMinimum = (float) ($jr['salary_min'] ?? 0);
+    if ($postedSalaryMinimum <= 0) {
+        $postedSalaryMinimum = (float) ($jr['salary_offered'] ?? 0);
+    }
+    $minimumContractSalary = max(CARELINK_WAGE_FLOOR, $postedSalaryMinimum);
+    if ($confirmed_salary < $minimumContractSalary) {
+        if ($postedSalaryMinimum > CARELINK_WAGE_FLOOR) {
+            throw new Exception(
+                'The confirmed monthly salary cannot be below the job post minimum of ₱'
+                . number_format($postedSalaryMinimum, 2) . '.'
+            );
+        }
         throw new Exception(carelink_wage_floor_message());
     }
 

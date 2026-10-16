@@ -7,6 +7,7 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json; charset=UTF-8");
+header("Cache-Control: private, no-store, max-age=0");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -46,6 +47,7 @@ try {
     $application_id = isset($_GET['application_id']) ? intval($_GET['application_id']) : null;
     $helper_id = isset($_GET['helper_id']) ? intval($_GET['helper_id']) : null;
     $requester_id = isset($_GET['requester_id']) ? intval($_GET['requester_id']) : 0;
+    $include_file_urls = !isset($_GET['include_file_urls']) || $_GET['include_file_urls'] !== '0';
 
     if (!$application_id || !$helper_id) {
         throw new Exception("Application ID and Helper ID are required");
@@ -65,7 +67,14 @@ try {
     $ownerStmt->execute();
     $ownerRow = $ownerStmt->get_result()->fetch_assoc();
     $ownerStmt->close();
-    carelink_require_self($requester_id, $ownerRow ? (int)$ownerRow['parent_id'] : 0, "You are not allowed to view this applicant's profile.");
+    $parent_id = $ownerRow ? (int)$ownerRow['parent_id'] : 0;
+    carelink_require_self($requester_id, $parent_id, "You are not allowed to view this applicant's profile.");
+    if ($include_file_urls) {
+        require_once __DIR__ . '/../shared/auth_tokens.php';
+        if (carelink_authenticated_user_id($conn) !== $parent_id) {
+            throw new Exception("A valid session is required to view shared document previews.");
+        }
+    }
 
     // 4. Converting SQL to mysqli style (Replacing :names with ?)
     $sql = "
@@ -117,8 +126,9 @@ try {
     // 5b. Documents the helper explicitly chose to share with this employer for this application
     //     (consent-based — never expose documents the helper has not shared for this application)
     $shared_documents = [];
+    $file_path_columns = $include_file_urls ? "ud.file_path, ud.file_path_back, " : "";
     $docs_stmt = $conn->prepare("
-        SELECT ud.document_id, ud.document_type, ud.file_path, ud.status, ud.uploaded_at
+        SELECT ud.document_id, ud.document_type, {$file_path_columns}ud.status, ud.uploaded_at
         FROM application_document_shares ads
         INNER JOIN user_documents ud ON ud.document_id = ads.document_id
         WHERE ads.application_id = ?
@@ -128,8 +138,24 @@ try {
     $docs_stmt->execute();
     $docs_result = $docs_stmt->get_result();
     while ($doc = $docs_result->fetch_assoc()) {
-        $doc['file_url'] = $doc['file_path'] ? carelink_signed_document_url((int)$doc['document_id']) : null;
-        $shared_documents[] = $doc;
+        $shared_document = [
+            'document_id' => (int)$doc['document_id'],
+            'document_type' => $doc['document_type'],
+            'status' => $doc['status'],
+            'uploaded_at' => $doc['uploaded_at'],
+        ];
+        if ($include_file_urls) {
+            $document_id = (int)$doc['document_id'];
+            if (!empty($doc['file_path'])) {
+                $shared_document['file_url'] = carelink_signed_shared_document_url($application_id, $document_id, $parent_id);
+                $shared_document['is_pdf'] = strtolower(pathinfo($doc['file_path'], PATHINFO_EXTENSION)) === 'pdf';
+            }
+            if (!empty($doc['file_path_back'])) {
+                $shared_document['file_url_back'] = carelink_signed_shared_document_url($application_id, $document_id, $parent_id, 'back');
+                $shared_document['is_pdf_back'] = strtolower(pathinfo($doc['file_path_back'], PATHINFO_EXTENSION)) === 'pdf';
+            }
+        }
+        $shared_documents[] = $shared_document;
     }
     $docs_stmt->close();
 

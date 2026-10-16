@@ -11,8 +11,6 @@ import {
   Image,
   TextInput,
   ActivityIndicator,
-  Platform,
-  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Components
 import { NotificationModal, LoadingSpinner, ConfirmationModal } from '@/components/shared';
+import { ImageZoomModal } from '@/components/shared/ImageZoomModal';
 import API_URL from '@/constants/api';
 import { theme } from '@/constants/theme';
 import {
@@ -31,6 +30,8 @@ import {
   workHoursToString,
   DEFAULT_WORK_START,
   DEFAULT_WORK_END,
+  CARELINK_MINIMUM_MONTHLY_SALARY,
+  getHireJobPrefill,
   type HireJobOptionRow,
   type DurationUnit,
 } from '@/components/parent/hire';
@@ -64,6 +65,9 @@ interface SharedDocument {
   document_type: string;
   status: string;
   file_url?: string | null;
+  is_pdf?: boolean;
+  file_url_back?: string | null;
+  is_pdf_back?: boolean;
   uploaded_at?: string;
 }
 
@@ -77,6 +81,7 @@ export default function ApplicantProfile() {
 
   const [applicant, setApplicant] = useState<ApplicantDetails | null>(null);
   const [sharedDocuments, setSharedDocuments] = useState<SharedDocument[]>([]);
+  const [viewingDoc, setViewingDoc] = useState<SharedDocument | null>(null);
   const [workHistory, setWorkHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState('');
@@ -98,6 +103,8 @@ export default function ApplicantProfile() {
   const [hirePickHelperName, setHirePickHelperName] = useState('');
   const [hirePickApps, setHirePickApps] = useState<HireJobOptionRow[]>([]);
   const [hirePickSelectedId, setHirePickSelectedId] = useState<number | null>(null);
+  const [hireSelectedJob, setHireSelectedJob] = useState<HireJobOptionRow | null>(null);
+  const [hireMinimumSalary, setHireMinimumSalary] = useState(CARELINK_MINIMUM_MONTHLY_SALARY);
   const [hireTarget, setHireTarget] = useState<{
     application_id: string;
     job_post_id: string;
@@ -153,6 +160,24 @@ export default function ApplicantProfile() {
     setHireDeploymentAgreement('');
     setHireTerminationConditions('');
   }, []);
+
+  const applyJobPostTerms = (row: HireJobOptionRow) => {
+    const prefill = getHireJobPrefill(row);
+    setHireSelectedJob(row);
+    setHireMinimumSalary(prefill.minimumSalary);
+    setHireContractStartDate(prefill.startDate);
+    setHireContractType(prefill.contractType);
+    setHireDurationAmount(prefill.durationAmount);
+    setHireDurationUnit(prefill.durationUnit);
+    setHireConfirmedSalary(prefill.salary);
+    setHirePaymentSchedule(prefill.paymentSchedule);
+    setHireWorkSchedule(prefill.workSchedule);
+    setHireWorkHoursStart(prefill.workHoursStart);
+    setHireWorkHoursEnd(prefill.workHoursEnd);
+    setHireFlexibleHours(prefill.flexibleHours);
+    setHireRestDays(prefill.restDays);
+    setHireOtherBenefits(prefill.otherBenefits);
+  };
 
   const dismissNotification = () => {
     setNotification((prev) => ({ ...prev, visible: false }));
@@ -219,18 +244,36 @@ export default function ApplicantProfile() {
         applied_at: String(a.applied_at ?? ''),
         job_start_date: a.job_start_date ?? null,
         salary_offered: a.salary_offered ?? null,
+        salary_min: a.salary_min ?? null,
+        salary_max: a.salary_max ?? null,
+        minimum_contract_salary: a.minimum_contract_salary ?? null,
         salary_period: a.salary_period ?? null,
         employment_type: a.employment_type ?? null,
         work_schedule: a.work_schedule ?? null,
+        work_hours: a.work_hours ?? null,
+        days_off: a.days_off ?? null,
+        contract_duration: a.contract_duration ?? null,
+        benefits: a.benefits ?? null,
       }));
       if (!data.needs_selection) {
         const curId = Number(applicationId);
         const row = apps.find((a: HireJobOptionRow) => a.application_id === curId) ?? apps[0] ?? null;
-        setHireTarget(null);
-        setHireContractStartDate(toYmdInput(applicant?.job_start_date));
+        setHireTarget(row ? {
+          application_id: String(row.application_id),
+          job_post_id: String(row.job_post_id),
+          job_title: row.job_title,
+          job_start_date: row.job_start_date ?? null,
+        } : null);
         resetHireFormState();
-        setHireConfirmedSalary(row?.salary_offered != null ? String(row.salary_offered) : '');
-        setHireWorkSchedule(row?.work_schedule === 'Part-time' ? 'Part-time' : row?.work_schedule === 'Any' ? 'Any' : 'Full-time');
+        if (row) {
+          applyJobPostTerms(row);
+        } else {
+          setHireSelectedJob(null);
+          setHireMinimumSalary(CARELINK_MINIMUM_MONTHLY_SALARY);
+          setHireContractStartDate(toYmdInput(applicant?.job_start_date));
+          setHireConfirmedSalary('');
+          setHireWorkSchedule('Full-time');
+        }
         setHireTermsVisible(true);
         return;
       }
@@ -261,10 +304,8 @@ export default function ApplicantProfile() {
       job_title: row.job_title,
       job_start_date: row.job_start_date ?? null,
     });
-    setHireContractStartDate(toYmdInput(row.job_start_date));
     resetHireFormState();
-    setHireConfirmedSalary(row.salary_offered != null ? String(row.salary_offered) : '');
-    setHireWorkSchedule(row.work_schedule === 'Part-time' ? 'Part-time' : row.work_schedule === 'Any' ? 'Any' : 'Full-time');
+    applyJobPostTerms(row);
     setHirePickVisible(false);
     setHireTermsVisible(true);
   };
@@ -286,9 +327,9 @@ export default function ApplicantProfile() {
       warn('Contract end date', 'Could not compute the contract end date. Check the start date and duration.');
       return;
     }
-    const salary = parseFloat(hireConfirmedSalary.trim());
-    if (!hireConfirmedSalary.trim() || isNaN(salary) || salary <= 0) {
-      warn('Salary', 'Enter the confirmed salary for this contract.');
+    const salary = Number(hireConfirmedSalary.trim());
+    if (!Number.isFinite(salary) || salary < hireMinimumSalary) {
+      warn('Salary', `Enter a monthly salary of at least ₱${hireMinimumSalary.toLocaleString()}.`);
       return;
     }
     if (!hirePaymentSchedule.trim()) {
@@ -521,6 +562,17 @@ export default function ApplicantProfile() {
         jobTitle={hireTarget?.job_title ?? 'this position'}
         helperName={applicant.helper_name}
         workSchedule={hireWorkSchedule}
+        minimumSalary={hireMinimumSalary}
+        jobPostSalaryMin={
+          Number(hireSelectedJob?.salary_min) > 0
+            ? hireSelectedJob?.salary_min
+            : hireSelectedJob?.salary_offered
+        }
+        jobPostSalaryMax={hireSelectedJob?.salary_max}
+        hasJobPostDefaults={Boolean(hireSelectedJob)}
+        onPrefillFromJobPost={() => {
+          if (hireSelectedJob) applyJobPostTerms(hireSelectedJob);
+        }}
         contractStartDate={hireContractStartDate}
         onChangeStart={setHireContractStartDate}
         contractType={hireContractType}
@@ -561,7 +613,7 @@ export default function ApplicantProfile() {
         onChangeSpecialConditions={setHireSpecialConditions}
         contractNotes={hireContractNotes}
         onChangeNotes={setHireContractNotes}
-        onCancel={() => { setHireTermsVisible(false); setHireTarget(null); }}
+        onCancel={() => { setHireTermsVisible(false); setHireTarget(null); setHireSelectedJob(null); }}
         onContinue={confirmHireTerms}
       />
 
@@ -751,7 +803,7 @@ export default function ApplicantProfile() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Shared Documents</Text>
             <Text style={[styles.sectionText, { marginBottom: 10, color: '#999' }]}>
-              The helper chose to share these verified documents with you for this application.
+              Only documents shared for this application can be opened. Previews are watermarked; screenshot prevention depends on device and platform.
             </Text>
             <View style={{ gap: 8 }}>
               {sharedDocuments.map((doc) => (
@@ -759,7 +811,7 @@ export default function ApplicantProfile() {
                   key={doc.document_id}
                   style={styles.docRow}
                   activeOpacity={0.8}
-                  onPress={() => doc.file_url && Linking.openURL(doc.file_url)}
+                  onPress={() => doc.file_url && setViewingDoc(doc)}
                 >
                   <View style={styles.docIconBox}>
                     <Ionicons name="document-text" size={18} color={theme.color.parent} />
@@ -866,6 +918,17 @@ export default function ApplicantProfile() {
           <Text style={styles.hiredText}>You hired this helper!</Text>
         </View>
       )}
+      <ImageZoomModal
+        visible={!!viewingDoc}
+        uri={viewingDoc?.file_url ?? null}
+        uriBack={viewingDoc?.file_url_back ?? null}
+        isPdf={viewingDoc?.is_pdf}
+        isPdfBack={viewingDoc?.is_pdf_back}
+        title={viewingDoc?.document_type}
+        onClose={() => setViewingDoc(null)}
+        preventScreenCapture
+        watermarked
+      />
     </View>
   );
 }

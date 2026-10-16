@@ -165,6 +165,26 @@ export const hireContractTermsStyles = StyleSheet.create({
     color: BROWN,
     lineHeight: 16,
   },
+  preFillAction: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: CARAMEL,
+    borderRadius: 8,
+  },
+  preFillActionText: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 12,
+    color: BROWN,
+  },
+  salaryErrorText: {
+    fontFamily: FontFamily.fredokaSemiBold,
+    fontSize: 12,
+    color: '#B42318',
+    marginTop: 6,
+  },
   pill: {
     alignSelf: 'flex-start',
     borderRadius: 20,
@@ -434,5 +454,6 @@ export const hireContractTermsStyles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 8,
   },
+  confirmDisabled: { opacity: 0.45 },
   confirmTxt: { fontFamily: FontFamily.fredokaSemiBold, color: SURFACE, fontSize: 15 },
 });
