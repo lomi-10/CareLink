@@ -1,31 +1,23 @@
 // components/helper/work/WorkHome.tsx
-// Work Mode "Work Home" — an earnings-first, fintech-style home screen for a hired
-// helper. Leads with ONE hero number (expected pay this period), then a calm
-// at-a-glance row and a compact month summary, with placement management tucked
-// below. Tasks/check-in live on "My Work"; the calendar + leave live on "Schedule"
-// — this screen deliberately stays calm and financial. Reuses existing data only
-// (payroll, leave, conversations, work context) — no new endpoints.
+// Work Mode home for a hired helper: agreed pay, actual payslip records,
+// contract access, employer messages, and assistance are the primary actions.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily } from '@/constants/GlobalStyles';
 import {
   DARK, MUTED, SUBTLE, ORANGE, GREEN, BLUE, DIVIDER, ICON_BG, SURFACE,
-  SUCCESS_BG, DANGER, INFO_BG,
+  DANGER, INFO_BG,
 } from '@/components/helper/home/helperWarmTheme';
-import { applicationContractPdfUrl } from '@/constants/applications';
 import type { ActiveHire } from '@/contexts/HelperWorkModeContext';
-import { ymdLocal } from '@/lib/helperWorkApi';
-import { nextRestDayYmd } from '@/lib/attendanceUi';
-import { fetchLeaveRequests, type LeaveRequestRow } from '@/lib/leaveRequestsApi';
-import { fetchPayrollSummary, formatPeso, salaryPeriodAbbr, type PayrollSummary } from '@/lib/payrollApi';
+import { formatPeso, salaryPeriodAbbr } from '@/lib/payrollApi';
+import { fetchHelperPayslips, type HelperPayslip } from '@/lib/payslipsApi';
 import { useConversations, useNotice, useResponsive } from '@/hooks/shared';
-import { EndEmploymentModal, SubmitComplaintModal } from '@/components/shared';
+import { EndEmploymentModal } from '@/components/shared';
 
 type Props = {
   helperId: number;
@@ -38,14 +30,6 @@ type Props = {
   announcement?: React.ReactNode;
 };
 
-function longDate(ymd: string | null | undefined): string | null {
-  if (!ymd) return null;
-  try {
-    const [y, m, d] = ymd.split('-').map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-  } catch { return ymd; }
-}
-
 export function WorkHome({
   helperId, userFirstName, userFullName, activeHire, profileImage, verified, onRefreshWorkContext, announcement,
 }: Props) {
@@ -55,32 +39,22 @@ export function WorkHome({
   const { isDesktop } = useResponsive();
 
   const [loading, setLoading] = useState(true);
-  const [payroll, setPayroll] = useState<PayrollSummary | null>(null);
-  const [leaves, setLeaves] = useState<LeaveRequestRow[]>([]);
+  const [payslips, setPayslips] = useState<HelperPayslip[]>([]);
   const [endModal, setEndModal] = useState(false);
-  const [complaintModal, setComplaintModal] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [payRes, leaveRes] = await Promise.all([
-        fetchPayrollSummary(activeHire.application_id, helperId, 'helper'),
-        fetchLeaveRequests(activeHire.application_id, helperId, 'helper'),
-      ]);
-      if (payRes.success && payRes.data?.has_contract) setPayroll(payRes.data);
-      if (leaveRes.success && leaveRes.data) setLeaves(leaveRes.data);
+      const payslipRes = await fetchHelperPayslips(activeHire.application_id, helperId);
+      if (payslipRes.success) setPayslips(payslipRes.payslips ?? []);
+      else notify('Payslips', payslipRes.message || 'Could not load payment records.', 'error');
     } catch (e) { console.error(e); } finally { setLoading(false); }
-  }, [helperId, activeHire.application_id]);
+  }, [helperId, activeHire.application_id, notify]);
 
   useEffect(() => { void load(); }, [load]);
 
-  const todayYmd = ymdLocal();
-  const restDayYmd = useMemo(() => nextRestDayYmd(activeHire.rest_days, todayYmd), [activeHire.rest_days, todayYmd]);
-  const pendingLeaveCount = useMemo(() => leaves.filter((l) => l.status === 'pending').length, [leaves]);
-  const nextApprovedLeave = useMemo(
-    () => leaves.filter((l) => l.status === 'approved' && l.date >= todayYmd).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null,
-    [leaves, todayYmd],
-  );
+  const pendingPayslipCount = useMemo(() => payslips.filter((row) => row.status === 'pending').length, [payslips]);
+  const disputedPayslipCount = useMemo(() => payslips.filter((row) => row.status === 'disputed').length, [payslips]);
 
   const employerConv = useMemo(
     () => conversations.find((c) => String(c.partner_id) === String(activeHire.parent_id)),
@@ -92,6 +66,7 @@ export function WorkHome({
   const firstName = (userFullName || userFirstName || 'there').split(' ')[0];
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const agreedSalary = Number(activeHire.salary_amount ?? 0);
 
   const openMessages = () => {
     router.push({
@@ -99,18 +74,13 @@ export function WorkHome({
       params: { partner_id: String(activeHire.parent_id), partner_name: activeHire.employer_name || 'Employer', job_post_id: String(activeHire.job_post_id) },
     } as any);
   };
-  const openContract = async () => {
-    try { await WebBrowser.openBrowserAsync(applicationContractPdfUrl(activeHire.application_id, helperId, 'helper')); }
-    catch { notify('Contract', 'Could not open the contract.', 'error'); }
-  };
-  const goSchedule = () => router.push('/(helper)/work' as any);
-  const requestLeave = () => router.push('/(helper)/work?action=request-leave' as any);
-
-  const attOn = payroll?.attendance_tracking ?? false;
+  const openContract = () => router.push('/(helper)/work/contract' as any);
+  const openAssistance = () => router.push('/(helper)/work/assistance' as any);
+  const goPayslips = () => router.push('/(helper)/work/payslips' as any);
 
   return (
     <View style={[s.content, isDesktop && s.contentDesktop]}>
-      {loading && !payroll ? (
+      {loading && payslips.length === 0 ? (
         <ActivityIndicator color={ORANGE} style={{ marginTop: 40 }} />
       ) : (
         <>
@@ -153,17 +123,22 @@ export function WorkHome({
             {/* Earnings */}
             <View style={[s.heroEarnings, isDesktop && s.heroEarningsDesktop]}>
               <View style={s.heroTopRow}>
-                <Text style={s.heroLabel}>{attOn ? 'ESTIMATED THIS PERIOD' : 'AGREED THIS PERIOD'}</Text>
-                <View style={s.periodChip}><Text style={s.periodChipTxt}>{payroll?.period_label ?? 'This month'}</Text></View>
+                <Text style={s.heroLabel}>AGREED PAY</Text>
+                <View style={s.periodChip}><Text style={s.periodChipTxt}>{activeHire.salary_period ?? 'Contract'}</Text></View>
               </View>
-              <Text style={[s.heroAmount, isDesktop && { fontSize: 34, marginTop: 6 }]}>{payroll ? formatPeso(payroll.estimated_earned) : '—'}</Text>
+              <Text style={[s.heroAmount, isDesktop && { fontSize: 34, marginTop: 6 }]}>{agreedSalary > 0 ? formatPeso(agreedSalary) : '—'}</Text>
               <Text style={s.heroSub}>
-                {payroll?.salary_amount ? `Agreed ${formatPeso(payroll.salary_amount)}/${salaryPeriodAbbr(payroll.salary_period)}` : ''}
-                {attOn && payroll ? ` · ${payroll.days_worked} day${payroll.days_worked === 1 ? '' : 's'} worked` : ''}
+                {agreedSalary > 0
+                  ? `${salaryPeriodAbbr(activeHire.salary_period || 'Monthly')} rate · See actual paydays in Payslips`
+                  : 'Your agreed pay is listed in your signed contract.'}
               </Text>
               <View style={[s.heroFooter, isDesktop && { marginTop: 10, paddingTop: 8 }]}>
                 <Ionicons name="shield-checkmark" size={13} color="rgba(255,255,255,0.7)" />
-                <Text style={s.heroFootTxt}>Final pay is set by your employer · payout {payroll?.next_payout ?? 'end of month'}</Text>
+                <Text style={s.heroFootTxt}>
+                  {activeHire.payment_schedule
+                    ? `Payment schedule: ${activeHire.payment_schedule}. Each payday is recorded separately.`
+                    : 'Agreed salary is separate from payment records; each payday is recorded separately.'}
+                </Text>
               </View>
             </View>
           </LinearGradient>
@@ -171,16 +146,16 @@ export function WorkHome({
 
           {/* ── At a glance ── */}
           <View style={[s.glanceRow, isDesktop && { marginBottom: 10 }]}>
-            <TouchableOpacity style={[s.glanceCard, isDesktop && s.glanceCardDesktop]} onPress={goSchedule} activeOpacity={0.85}>
-              <View style={[s.glanceIcon, { backgroundColor: ICON_BG }]}><Ionicons name="bed-outline" size={17} color={ORANGE} /></View>
-              <Text style={s.glanceValue} numberOfLines={1}>{restDayYmd ? longDate(restDayYmd) : 'None'}</Text>
-              <Text style={s.glanceLabel}>Next rest day</Text>
+            <TouchableOpacity style={[s.glanceCard, isDesktop && s.glanceCardDesktop]} onPress={goPayslips} activeOpacity={0.85}>
+              <View style={[s.glanceIcon, { backgroundColor: ICON_BG }]}><Ionicons name="receipt-outline" size={17} color={ORANGE} /></View>
+              <Text style={s.glanceValue} numberOfLines={1}>{pendingPayslipCount > 0 ? `${pendingPayslipCount} to review` : `${payslips.length} recorded`}</Text>
+              <Text style={s.glanceLabel}>Payslips</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[s.glanceCard, isDesktop && s.glanceCardDesktop]} onPress={goSchedule} activeOpacity={0.85}>
-              <View style={[s.glanceIcon, { backgroundColor: SUCCESS_BG }]}><Ionicons name="airplane-outline" size={17} color={GREEN} /></View>
-              <Text style={s.glanceValue}>{pendingLeaveCount > 0 ? `${pendingLeaveCount} pending` : nextApprovedLeave ? 'Approved' : 'None'}</Text>
-              <Text style={s.glanceLabel}>Leave</Text>
+            <TouchableOpacity style={[s.glanceCard, isDesktop && s.glanceCardDesktop]} onPress={openContract} activeOpacity={0.85}>
+              <View style={[s.glanceIcon, { backgroundColor: '#EDF3FF' }]}><Ionicons name="document-text-outline" size={17} color={BLUE} /></View>
+              <Text style={s.glanceValue} numberOfLines={1}>View terms</Text>
+              <Text style={s.glanceLabel}>Contract reference</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={[s.glanceCard, isDesktop && s.glanceCardDesktop]} onPress={openMessages} activeOpacity={0.85}>
@@ -192,28 +167,30 @@ export function WorkHome({
             </TouchableOpacity>
           </View>
 
-          {/* ── This month + Manage (side-by-side on desktop) ── */}
+          {/* ── Payment records + placement tools (side-by-side on desktop) ── */}
           <View style={isDesktop ? [s.twoCol, { marginBottom: 10 }] : undefined}>
             <View style={[s.card, isDesktop && s.colItem, isDesktop && s.cardDesktop]}>
-              <Text style={s.cardTitle}>This month</Text>
+              <Text style={s.cardTitle}>Payment records</Text>
               <View style={s.monthRow}>
-                <MonthStat value={attOn && payroll ? String(payroll.days_worked) : '—'} label="Days worked" />
+                <MonthStat value={String(payslips.length)} label="Payslips" />
                 <View style={s.monthDivider} />
-                <MonthStat value={payroll ? String(payroll.leave_used) : '0'} label="Leave used" />
+                <MonthStat value={String(pendingPayslipCount)} label="Need response" />
                 <View style={s.monthDivider} />
-                <MonthStat value={nextApprovedLeave ? (longDate(nextApprovedLeave.date) ?? '—') : '—'} label="Next leave" small />
+                <MonthStat value={String(disputedPayslipCount)} label="Issues" />
               </View>
-              {!attOn && (
-                <Text style={s.monthNote}>Attendance tracking is off, so pay is your flat agreed salary. Days worked shows when your employer turns tracking on.</Text>
-              )}
+              <Text style={s.monthNote}>A payslip appears after your employer records a payday. You can confirm receipt or report a problem.</Text>
+              <TouchableOpacity style={s.viewRecordsButton} onPress={goPayslips} activeOpacity={0.8}>
+                <Text style={s.viewRecordsText}>Open payslips</Text>
+                <Ionicons name="arrow-forward" size={15} color={ORANGE} />
+              </TouchableOpacity>
             </View>
 
             <View style={[s.card, isDesktop && s.colItem, isDesktop && s.cardDesktop]}>
               <Text style={s.cardTitle}>Manage</Text>
               <ManageRow icon="chatbubbles-outline" color={ORANGE} label="Message employer" badge={unreadMessages} onPress={openMessages} />
-              <ManageRow icon="calendar-outline" color={ORANGE} label="Request leave" onPress={requestLeave} />
-              <ManageRow icon="document-text-outline" color={BLUE} label="View contract" onPress={() => void openContract()} />
-              <ManageRow icon="alert-circle-outline" color={MUTED} label="Report a concern" onPress={() => setComplaintModal(true)} />
+              <ManageRow icon="receipt-outline" color={ORANGE} label="Payslips" badge={pendingPayslipCount} onPress={goPayslips} />
+              <ManageRow icon="document-text-outline" color={BLUE} label="Contract reference" onPress={openContract} />
+              <ManageRow icon="help-buoy-outline" color={MUTED} label="Request assistance" onPress={openAssistance} />
               <ManageRow icon="exit-outline" color={DANGER} label="End employment" onPress={() => setEndModal(true)} last />
             </View>
           </View>
@@ -233,13 +210,6 @@ export function WorkHome({
         userType="helper"
         counterpartyName={activeHire.employer_name || 'employer'}
         onSuccess={() => { void onRefreshWorkContext(); void load(); }}
-      />
-      <SubmitComplaintModal
-        visible={complaintModal}
-        onClose={() => setComplaintModal(false)}
-        applicationId={activeHire.application_id}
-        userType="helper"
-        counterpartyLabel={activeHire.employer_name}
       />
       {noticeHost}
     </View>
@@ -328,6 +298,8 @@ const s = StyleSheet.create({
   monthValue: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 19, color: DARK },
   monthLabel: { fontFamily: FontFamily.fredokaRegular, fontSize: 10.5, color: MUTED, marginTop: 2, textAlign: 'center' },
   monthNote: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, color: SUBTLE, marginTop: 12, lineHeight: 16 },
+  viewRecordsButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderTopWidth: 1, borderTopColor: DIVIDER, marginTop: 12, paddingTop: 12 },
+  viewRecordsText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: ORANGE },
 
   // Manage list
   manageRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },

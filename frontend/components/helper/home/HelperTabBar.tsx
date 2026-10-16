@@ -12,6 +12,7 @@ import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import { useResponsive } from '@/hooks/shared';
 import { useConversations } from '@/hooks/shared/useMessages';
 import { useT } from '@/contexts/LocaleContext';
+import { WorkModeTabBar } from '@/components/helper/work/WorkModeTabBar';
 import { isHelperNavActive } from './helperPortalNav';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -48,12 +49,12 @@ export function HelperTabBar() {
   const pathname = usePathname() ?? '';
   const insets   = useSafeAreaInsets();
   const { isDesktop }           = useResponsive();
-  const { ready, isWorkMode, activeHire } = useHelperWorkMode();
+  const { ready, portalMode } = useHelperWorkMode();
   const { conversations }       = useConversations();
   const unreadMessages = conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
 
-  if (!ready || isDesktop)         return null;
-  if (isWorkMode && activeHire)    return null;
+  if (!ready || isDesktop) return null;
+  if (portalMode === 'work') return <WorkModeTabBar />;
 
   return (
     <View style={[s.wrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>

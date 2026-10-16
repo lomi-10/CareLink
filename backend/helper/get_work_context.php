@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../dbcon.php';
 require_once __DIR__ . '/../shared/placement_settings_table.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
 
 
 
@@ -54,6 +55,8 @@ try {
         throw new Exception('helper_id is required');
 
     }
+
+    carelink_require_self($helper_id, $helper_id, 'You are not allowed to view this work context.');
 
     // ── Self-heal ended employment (no cron dependency) ─────────────────────
     // A termination whose last working day has passed becomes 'terminated', and
@@ -95,6 +98,8 @@ try {
 
             jp.title AS job_title,
 
+            jp.description AS job_description,
+
             pp.barangay AS work_barangay,
 
             pp.municipality AS work_municipality,
@@ -107,7 +112,39 @@ try {
 
             c.rest_days AS contract_rest_days,
 
+            c.rest_day AS legacy_contract_rest_day,
+
+            c.confirmed_salary AS agreed_salary,
+
+            jp.salary_period AS salary_period,
+
+            c.payment_schedule,
+
             c.employment_start_date,
+
+            c.employment_end_date,
+
+            c.contract_duration,
+
+            c.vacation_leave_days,
+
+            c.sick_leave_days,
+
+            c.overtime_rate,
+
+            c.terms_notes,
+
+            c.special_conditions,
+
+            c.termination_conditions,
+
+            c.other_benefits,
+
+            c.debt_agreement,
+
+            c.debt_amount,
+
+            c.deployment_agreement,
 
             TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS employer_name
 
@@ -243,7 +280,17 @@ try {
 
             $restDays = $decoded;
 
+        } else {
+
+            $restDays = array_values(array_filter(array_map('trim', explode(',', (string) $row['contract_rest_days']))));
+
         }
+
+    }
+
+    if (count($restDays) === 0 && !empty($row['legacy_contract_rest_day'])) {
+
+        $restDays = array_values(array_filter(array_map('trim', explode(',', (string) $row['legacy_contract_rest_day']))));
 
     }
 
@@ -276,6 +323,8 @@ try {
 
             'job_title' => $row['job_title'],
 
+            'job_description' => $row['job_description'] !== null ? (string) $row['job_description'] : null,
+
             'employer_name' => trim((string) $row['employer_name']),
 
             'work_location' => $workLocation !== '' ? $workLocation : null,
@@ -284,7 +333,37 @@ try {
 
             'rest_days' => $restDays,
 
+            'salary_amount' => $row['agreed_salary'] !== null ? (float) $row['agreed_salary'] : null,
+
+            'salary_period' => $row['salary_period'] !== null ? (string) $row['salary_period'] : null,
+
+            'payment_schedule' => $row['payment_schedule'] !== null ? (string) $row['payment_schedule'] : null,
+
             'employment_start_date' => $employmentStartDate,
+
+            'employment_end_date' => !empty($row['employment_end_date']) ? (string) $row['employment_end_date'] : null,
+
+            'contract_duration' => $row['contract_duration'] !== null ? (string) $row['contract_duration'] : null,
+
+            'vacation_leave_days' => $row['vacation_leave_days'] !== null ? (int) $row['vacation_leave_days'] : null,
+
+            'sick_leave_days' => $row['sick_leave_days'] !== null ? (int) $row['sick_leave_days'] : null,
+
+            'overtime_rate' => $row['overtime_rate'] !== null ? (string) $row['overtime_rate'] : null,
+
+            'terms_notes' => $row['terms_notes'] !== null ? (string) $row['terms_notes'] : null,
+
+            'special_conditions' => $row['special_conditions'] !== null ? (string) $row['special_conditions'] : null,
+
+            'termination_conditions' => $row['termination_conditions'] !== null ? (string) $row['termination_conditions'] : null,
+
+            'other_benefits' => $row['other_benefits'] !== null ? (string) $row['other_benefits'] : null,
+
+            'debt_agreement' => $row['debt_agreement'] !== null ? (string) $row['debt_agreement'] : null,
+
+            'debt_amount' => $row['debt_amount'] !== null ? (float) $row['debt_amount'] : null,
+
+            'deployment_agreement' => $row['deployment_agreement'] !== null ? (string) $row['deployment_agreement'] : null,
 
             'attendance_tracking' => get_attendance_tracking($conn, (int) $row['application_id']),
 
@@ -305,4 +384,3 @@ if (isset($conn) && $conn) {
     $conn->close();
 
 }
-

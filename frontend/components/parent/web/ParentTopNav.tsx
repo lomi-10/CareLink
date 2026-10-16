@@ -15,7 +15,7 @@ import { useGuide } from '@/contexts/GuideContext';
 import { usePlusStatus } from '@/hooks/parent';
 import { pt } from './parentWebTheme';
 
-export type ParentNavKey = 'home' | 'browse' | 'jobs' | 'applications' | 'messages' | 'helpers' | 'tasks' | 'attendance' | 'requests';
+export type ParentNavKey = 'home' | 'browse' | 'jobs' | 'applications' | 'messages' | 'helpers' | 'tasks' | 'attendance' | 'requests' | 'contract' | 'assistance' | 'profile';
 type Mode = 'recruitment' | 'work';
 type Item = { key: ParentNavKey; label: string; icon: keyof typeof Ionicons.glyphMap; path: string };
 
@@ -27,15 +27,14 @@ const RECRUITMENT_TABS: Item[] = [
   { key: 'applications', label: 'Applications',   icon: 'document-text-outline', path: '/(parent)/jobs?tab=applicants' },
   { key: 'messages',     label: 'Messages',       icon: 'chatbubble-outline',    path: '/(parent)/messages' },
 ];
-// Work mode: managing active helpers. Mirrors the mobile Work Mode tab bar
-// (Home / Helpers / Tasks / Messages, Profile via the user menu) — attendance
-// and requests now live inside Helper Management / Work Home instead of
-// competing as their own persistent tabs.
+// Work mode follows the five-tab employer workflow; helper management remains
+// available from Home rather than taking a persistent tab.
 const WORK_TABS: Item[] = [
-  { key: 'home',       label: 'Home',       icon: 'wallet-outline',      path: '/(parent)/home' },
-  { key: 'helpers',    label: 'Helpers',    icon: 'people-outline',      path: '/(parent)/hire' },
-  { key: 'tasks',      label: 'Tasks',      icon: 'clipboard-outline',   path: '/(parent)/hire/placement_tasks' },
-  { key: 'messages',   label: 'Messages',   icon: 'chatbubble-outline',  path: '/(parent)/messages' },
+  { key: 'home',       label: 'Home',       icon: 'wallet-outline',       path: '/(parent)/home' },
+  { key: 'contract',   label: 'Contract',   icon: 'document-text-outline', path: '/(parent)/work/contract' },
+  { key: 'assistance', label: 'Assistance', icon: 'help-buoy-outline',    path: '/(parent)/work/assistance' },
+  { key: 'messages',   label: 'Messages',   icon: 'chatbubble-outline',   path: '/(parent)/messages' },
+  { key: 'profile',    label: 'Profile',    icon: 'person-outline',       path: '/(parent)/profile' },
 ];
 
 export function ParentTopNav({

@@ -10,7 +10,7 @@ import { useConversations } from '@/hooks/shared/useMessages';
 import { useGuide } from '@/contexts/GuideContext';
 import { wt } from './webTheme';
 
-type NavKey = 'dashboard' | 'jobs' | 'applications' | 'messages' | 'home' | 'mywork' | 'schedule';
+type NavKey = 'dashboard' | 'jobs' | 'applications' | 'messages' | 'home' | 'contract' | 'assistance' | 'profile';
 
 const ITEMS: { key: NavKey; label: string; icon: keyof typeof Ionicons.glyphMap; path: string }[] = [
   { key: 'dashboard',    label: 'Dashboard',       icon: 'home-outline',        path: '/(helper)/home' },
@@ -21,10 +21,11 @@ const ITEMS: { key: NavKey; label: string; icon: keyof typeof Ionicons.glyphMap;
 
 // Work Mode nav (after a contract is signed) — mirrors the recruitment top nav.
 const WORK_ITEMS: { key: NavKey; label: string; icon: keyof typeof Ionicons.glyphMap; path: string }[] = [
-  { key: 'home',     label: 'Home',      icon: 'wallet-outline',   path: '/(helper)/home' },
-  { key: 'mywork',   label: 'My Work',   icon: 'today-outline',    path: '/(helper)/work/tasks' },
-  { key: 'schedule', label: 'Schedule',  icon: 'calendar-outline', path: '/(helper)/work' },
-  { key: 'messages', label: 'Messages',  icon: 'chatbubble-outline', path: '/(helper)/messages' },
+  { key: 'home',       label: 'Home',       icon: 'wallet-outline',       path: '/(helper)/home' },
+  { key: 'contract',   label: 'Contract',   icon: 'document-text-outline', path: '/(helper)/work/contract' },
+  { key: 'assistance', label: 'Assistance', icon: 'help-buoy-outline',    path: '/(helper)/work/assistance' },
+  { key: 'messages',   label: 'Messages',   icon: 'chatbubble-outline',  path: '/(helper)/messages' },
+  { key: 'profile',    label: 'Profile',    icon: 'person-outline',      path: '/(helper)/profile' },
 ];
 
 export function HelperTopNav({

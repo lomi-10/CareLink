@@ -143,14 +143,15 @@ export function MobileMenu({
   const router = useRouter();
   const { t } = useT();
   const pathname = usePathname();
-  const { isWorkMode, activeHire } = useHelperWorkMode();
+  const { isWorkMode, activeHire, portalMode } = useHelperWorkMode();
   const { openGuide } = useGuide();
   const { unreadCount: hookUnread } = useNotifications('helper');
   const notif = notificationUnread ?? hookUnread;
   const w = useHelperWarm();
   const styles = useMemo(() => makeStyles(w), [w]);
 
-  const workShell = isWorkMode && activeHire;
+  const workPreviewRoute = pathname?.includes('/work/contract') || pathname?.includes('/work/assistance');
+  const workShell = (isWorkMode && activeHire) || portalMode === 'work' || workPreviewRoute;
   const items: HelperNavItem[] = useMemo(
     () => (workShell ? getHelperWorkModeDrawerItems() : getHelperNonWorkMobileDrawerItems()),
     [workShell],

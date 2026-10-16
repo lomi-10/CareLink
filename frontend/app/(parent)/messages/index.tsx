@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useConversations, useSupportContact, supportConversation, Conversation } from '@/hooks/shared';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { Sidebar, MobileMenu, ParentTabBar, ParentWorkModeTabBar } from '@/components/parent/home';
-import { useParentProfile, useParentWorkModeUnlocked } from '@/hooks/parent';
+import { useParentProfile, useParentPortalMode } from '@/hooks/parent';
 import { ParentMessagesWeb } from '@/components/parent/web/ParentMessagesWeb';
 import { LoadingSpinner, ConfirmationModal, NotificationModal } from '@/components/shared/';
 import { BG, BROWN, CARAMEL, DARK, MUTED, SUBTLE } from '@/components/parent/home/parentWarmTheme';
@@ -26,10 +26,7 @@ export default function ParentMessages() {
   const { handleLogout, getFullName } = useAuth();
   const { profileData } = useParentProfile();
   const { unreadCount: notifUnread } = useNotifications('parent');
-  // Toggling into Work Mode with no active hire must NOT unlock the Work Mode
-  // tab bar (Tasks, Helper Management) — Home already enforces this; this
-  // screen was checking only the toggle, which is how those got reachable.
-  const { unlocked: workModeUnlocked } = useParentWorkModeUnlocked();
+  const isWorkMode = useParentPortalMode();
   const params = useLocalSearchParams<{ partner_id?: string; partner_name?: string; job_post_id?: string }>();
 
   const { conversations, loading: loadingConvs, refresh } = useConversations();
@@ -189,7 +186,7 @@ export default function ParentMessages() {
           </SafeAreaView>
         )}
 
-        {!activePartner ? (workModeUnlocked ? <ParentWorkModeTabBar /> : <ParentTabBar />) : null}
+        {!activePartner ? (isWorkMode ? <ParentWorkModeTabBar /> : <ParentTabBar />) : null}
 
         <MobileMenu
           isOpen={isMobileMenuOpen}

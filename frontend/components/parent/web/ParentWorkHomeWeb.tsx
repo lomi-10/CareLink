@@ -1,8 +1,7 @@
 // components/parent/web/ParentWorkHomeWeb.tsx — desktop WORK-mode "Work Home".
 // Mirrors the mobile rebuild: identity hero (shared ParentHeroCard), a full-width
 // "Total Monthly Payroll" band, a "needs your attention" list (leave + helper
-// requests together), compact active-helper rows, and a tucked Manage row.
-// Attendance/task detail live on their own screens now, not crammed in here.
+// requests together), compact active-helper rows, and payment/contract links.
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,9 +18,12 @@ const CAREBOT_ICON = require('../../../assets/images/chatbot_icon.png');
 const TRANS = { transitionDuration: '150ms', transitionProperty: 'all', transitionTimingFunction: 'ease' } as any;
 function greeting() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
 const initials = (n: string) => (n || '?').trim().split(/\s+/).map((x) => x[0]).slice(0, 2).join('').toUpperCase();
-const monthly = (p: any) => (String(p.salary_period).toLowerCase() === 'daily' ? Number(p.salary_offered || 0) * 26 : String(p.salary_period).toLowerCase() === 'weekly' ? Math.round(Number(p.salary_offered || 0) * 4.33) : Number(p.salary_offered || 0));
+const monthly = (p: any) => {
+  const amount = Number(p.confirmed_salary ?? p.salary_offered ?? 0);
+  return String(p.salary_period).toLowerCase() === 'daily' ? amount * 26 : String(p.salary_period).toLowerCase() === 'weekly' ? Math.round(amount * 4.33) : amount;
+};
+const formatPesos = (amount: number) => `₱${Math.round(amount).toLocaleString('en-PH')}`;
 function fmtLeaveDate(ymd: string) { try { const d = new Date(ymd.replace(/-/g, '/')); return isNaN(d.getTime()) ? ymd : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch { return ymd; } }
-function fmtCheckTime(v?: string | null) { if (!v) return ''; const d = new Date(String(v).replace(' ', 'T')); return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }); }
 
 type AttentionItem =
   | { kind: 'leave'; key: string; placement: ActivePlacement; leave: LeaveRequestRow }
@@ -61,7 +63,7 @@ export function ParentWorkHomeWeb({
               <View style={s.modeIc}><Ionicons name="briefcase" size={20} color={pt.accent} /></View>
               <Text style={s.modeName}>Work Mode</Text>
             </View>
-            <Text style={s.modeDesc}>Manage your active helpers and daily household operations.</Text>
+            <Text style={s.modeDesc}>Manage signed terms, payment records, and requests for assistance.</Text>
             <Pressable onPress={() => onSwitchMode('recruitment')} style={({ hovered }: any) => [s.switchBtn, TRANS, hovered && { backgroundColor: pt.accentSoft }]}>
               <Text style={s.switchBtnText}>Switch to Recruitment Mode</Text>
               <Ionicons name="arrow-forward" size={15} color={pt.accent} />
@@ -70,7 +72,7 @@ export function ParentWorkHomeWeb({
           <View style={s.botCard}>
             <Image source={CAREBOT_ICON} style={s.botMascot} resizeMode="contain" />
             <Text style={s.botTitle}>Need help?</Text>
-            <Text style={s.botText}>Ask CareBot about tasks, leave, payroll & the Kasambahay Law.</Text>
+            <Text style={s.botText}>Ask CareBot about contracts, wages, leave, or the Kasambahay Law.</Text>
             <Pressable onPress={openCareBot} style={({ hovered, pressed }: any) => [{ alignSelf: 'stretch' }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
               <View style={s.botBtnGrad}>
                 <Ionicons name="chatbubble-ellipses-outline" size={16} color={pt.ink} />
@@ -86,11 +88,11 @@ export function ParentWorkHomeWeb({
             badge={{ icon: 'briefcase', label: 'WORK MODE' }}
             greeting={greeting()}
             name={first}
-            tagline="Manage pay, rest days, and day-to-day coordination for your helpers. Attendance tracking is optional."
+            tagline="Review agreed terms, record payments already made, and request assistance when a placement needs support."
             avatar={avatar}
             verified={verified}
             primary={{ label: 'Helper Management', icon: 'people-outline', onPress: () => go('/(parent)/hire') }}
-            secondary={{ label: 'Tasks', icon: 'clipboard-outline', onPress: () => go('/(parent)/hire/placement_tasks') }}
+            secondary={{ label: 'Payment records', icon: 'wallet-outline', onPress: () => go('/(parent)/work/payslips') }}
           />
           {announcement}
 
@@ -100,8 +102,9 @@ export function ParentWorkHomeWeb({
             <View style={[s.card, { alignItems: 'center', paddingVertical: 44 }]}>
               <View style={s.emptyIc}><Ionicons name="briefcase-outline" size={28} color={pt.accent} /></View>
               <Text style={s.emptyTitle}>No active helpers yet</Text>
-              <Text style={s.emptyText}>Once you hire a helper, Work Mode unlocks tasks, leave and payroll here.</Text>
+              <Text style={s.emptyText}>Your contract references, payment records, and assistance options will appear here after a placement starts.</Text>
               <Pressable onPress={() => onSwitchMode('recruitment')} style={({ hovered }: any) => [s.emptyBtn, TRANS, hovered && { transform: [{ translateY: -2 }] }]}><Text style={s.emptyBtnText}>Switch to Recruitment</Text></Pressable>
+              <Pressable onPress={() => go('/(parent)/browse')} style={({ hovered }: any) => [TRANS, hovered && { opacity: 0.7 }]}><Text style={s.headLink}>Browse helpers to hire</Text></Pressable>
             </View>
           ) : (
             <>
@@ -152,7 +155,7 @@ export function ParentWorkHomeWeb({
                   {perPlacement.map((p: PlacementDashData) => (
                     <Pressable
                       key={p.placement.application_id}
-                      onPress={() => go(`/(parent)/hire/helper_profile?application_id=${p.placement.application_id}&helper_id=${p.placement.helper_id}&helper_name=${encodeURIComponent(p.placement.helper_name)}&job_title=${encodeURIComponent(p.placement.job_title)}&status=${encodeURIComponent(p.placement.status)}`)}
+                      onPress={() => go(`/(parent)/work/helper?application_id=${p.placement.application_id}`)}
                       style={({ hovered }: any) => [s.helperRow, TRANS, hovered && { borderColor: pt.accent }]}
                     >
                       {p.placement.helper_photo ? <Image source={{ uri: p.placement.helper_photo }} style={s.helperAva} /> : <View style={[s.helperAva, s.avaFb]}><Text style={s.avaInit}>{initials(p.placement.helper_name)}</Text></View>}
@@ -160,10 +163,7 @@ export function ParentWorkHomeWeb({
                         <Text style={s.helperName} numberOfLines={1}>{p.placement.helper_name}</Text>
                         <Text style={s.helperRole} numberOfLines={1}>{p.placement.job_title}</Text>
                       </View>
-                      <View style={[s.checkPill, { backgroundColor: p.checkedIn ? pt.greenSoft : pt.lineSoft }]}>
-                        <Ionicons name={p.checkedIn ? 'checkmark-circle' : 'ellipse-outline'} size={12} color={p.checkedIn ? pt.green : pt.subtle} />
-                        <Text style={[s.checkText, { color: p.checkedIn ? pt.green : pt.subtle }]}>{p.checkedIn ? `Checked in ${fmtCheckTime(p.checkInAt)}` : 'Not checked in'}</Text>
-                      </View>
+                      <Text style={s.agreedPay}>{p.placement.confirmed_salary != null ? `Agreed ${formatPesos(p.placement.confirmed_salary)}${p.placement.salary_period ? ` / ${p.placement.salary_period}` : ''}` : 'Contract terms on file'}</Text>
                       <Ionicons name="chevron-forward" size={16} color={pt.subtle} />
                     </Pressable>
                   ))}
@@ -175,7 +175,9 @@ export function ParentWorkHomeWeb({
                 <Text style={[s.cardTitle, { marginBottom: 14 }]}>Manage</Text>
                 <View style={s.qaRow}>
                   <WQA icon="people-outline" label="Helper Management" onPress={() => go('/(parent)/hire')} />
-                  <WQA icon="clipboard-outline" label="Tasks" onPress={() => go('/(parent)/hire/placement_tasks')} />
+                  <WQA icon="wallet-outline" label="Payment records" onPress={() => go('/(parent)/work/payslips')} />
+                  <WQA icon="document-text-outline" label="Contract reference" onPress={() => go('/(parent)/work/contract')} />
+                  <WQA icon="help-buoy-outline" label="Assistance" onPress={() => go('/(parent)/work/assistance')} />
                   <WQA icon="time-outline" label="Placement History" onPress={() => go('/(parent)/hire/history')} />
                   <WQA icon="add-circle-outline" label="Post New Job" onPress={() => { onSwitchMode('recruitment'); go('/(parent)/jobs'); }} />
                 </View>
@@ -246,8 +248,7 @@ const s = StyleSheet.create({
   helperAva: { width: 44, height: 44, borderRadius: 13 },
   helperName: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5, color: pt.ink },
   helperRole: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: pt.muted, marginTop: 1 },
-  checkPill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
-  checkText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11 },
+  agreedPay: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: pt.muted },
 
   // Manage / quick actions
   qaRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },

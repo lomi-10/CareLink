@@ -100,16 +100,16 @@ export function Sidebar({ onLogout }: SidebarProps) {
   const { t } = useT();
   const pathname = usePathname() ?? '';
   const { unreadCount } = useNotifications('helper');
-  const { isWorkMode } = useHelperWorkMode();
+  const { isWorkMode, portalMode } = useHelperWorkMode();
   const w = useHelperWarm();
   const styles = useMemo(() => makeStyles(w), [w]);
 
-  const navItems = isWorkMode
+  const workNav = isWorkMode || portalMode === 'work';
+  const navItems = workNav
     ? [
         { icon: 'home' as const, labelKey: 'nav.dashboard', path: '/(helper)/home' },
-        { icon: 'list' as const, labelKey: 'helper.nav.tasks', path: '/(helper)/work/tasks' },
-        { icon: 'calendar' as const, labelKey: 'helper.nav.schedule', path: '/(helper)/work' },
-        { icon: 'time' as const, labelKey: 'helper.nav.history', path: '/(helper)/work/history' },
+        { icon: 'document-text' as const, labelKey: 'helper.nav.contract', path: '/(helper)/work/contract' },
+        { icon: 'help-buoy' as const, labelKey: 'helper.nav.assistance', path: '/(helper)/work/assistance' },
         {
           icon: 'notifications' as const,
           labelKey: 'nav.notifications',
@@ -141,7 +141,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
         <CareLinkLogoMark size={44} />
         <View>
           <Text style={styles.logoText}>CareLink</Text>
-          <Text style={styles.logoSubtext}>{isWorkMode ? t('helper.menu.workMode') : t('helper.menu.helperPortal')}</Text>
+          <Text style={styles.logoSubtext}>{workNav ? t('helper.menu.workMode') : t('helper.menu.helperPortal')}</Text>
         </View>
       </View>
 

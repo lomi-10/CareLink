@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useConversations, pendingConnectionLabel, supportConversation, type Conversation, type SupportContact } from '@/hooks/shared/useMessages';
-import { useParentWorkModeUnlocked } from '@/hooks/parent';
+import { useParentPortalMode } from '@/hooks/parent';
 import { useCareBot } from '@/contexts/CareBotContext';
 import ChatPanel from '@/app/(parent)/messages/ChatPanel';
 import { ParentTopNav } from './ParentTopNav';
@@ -31,9 +31,7 @@ export function ParentMessagesWeb({ userName, avatar, verified, onLogout, suppor
   userName: string; avatar: string | null; verified: boolean; onLogout: () => void;
   supportContact: SupportContact | null; supportContactError: string | null;
 }) {
-  // Toggling into Work Mode with no active hire must not unlock the Work Mode
-  // nav (Tasks, Helper Management) — mirrors the same gate on Home.
-  const { unlocked: workModeUnlocked } = useParentWorkModeUnlocked();
+  const isWorkMode = useParentPortalMode();
   const { open: openCareBot } = useCareBot();
   const { conversations, loading, refresh } = useConversations();
   const params = useLocalSearchParams<{ partner_id?: string; partner_name?: string; job_post_id?: string }>();
@@ -76,7 +74,7 @@ export function ParentMessagesWeb({ userName, avatar, verified, onLogout, suppor
 
   return (
     <View style={s.root}>
-      <ParentTopNav active="messages" mode={workModeUnlocked ? 'work' : 'recruitment'} userName={userName} avatar={avatar} verified={verified} onLogout={onLogout} />
+      <ParentTopNav active="messages" mode={isWorkMode ? 'work' : 'recruitment'} userName={userName} avatar={avatar} verified={verified} onLogout={onLogout} />
       <View style={s.body}>
         {/* ── conversation list ── */}
         <View style={s.convPanel}>

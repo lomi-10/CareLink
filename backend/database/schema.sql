@@ -310,6 +310,29 @@ CREATE TABLE IF NOT EXISTS `job_applications` (
 
 -- Dumping data for table carelink.job_applications: ~7 rows (approximately)
 
+-- Dumping structure for table carelink.payslip_records
+CREATE TABLE IF NOT EXISTS `payslip_records` (
+  `payslip_id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `application_id` int NOT NULL,
+  `pay_period_start` date NOT NULL,
+  `pay_period_end` date NOT NULL,
+  `paid_at` date NOT NULL,
+  `gross_amount` decimal(10,2) NOT NULL,
+  `deductions_json` json DEFAULT NULL,
+  `deductions_total` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `net_amount` decimal(10,2) NOT NULL,
+  `payment_method` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Cash',
+  `employer_note` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` enum('pending','acknowledged','disputed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `helper_acknowledged_at` datetime DEFAULT NULL,
+  `helper_disputed_at` datetime DEFAULT NULL,
+  `helper_dispute_reason` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`payslip_id`),
+  KEY `idx_payslips_application_paid` (`application_id`,`paid_at`),
+  CONSTRAINT `fk_payslips_application` FOREIGN KEY (`application_id`) REFERENCES `job_applications` (`application_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Dumping structure for table carelink.job_posts
 CREATE TABLE IF NOT EXISTS `job_posts` (
   `job_post_id` int NOT NULL AUTO_INCREMENT,

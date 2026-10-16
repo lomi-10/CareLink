@@ -47,11 +47,6 @@ export default function ParentProfile() {
   const isWorkMode = useParentPortalMode();
   const { profileData, loading, error, refresh, getFullName, getVerificationBadge } = useParentProfile();
   const { stats } = useParentStats();
-  // Toggling into Work Mode with no active hire must NOT unlock the Work Mode
-  // tab bar (Tasks, Helper Management) — Home already enforces this; this
-  // screen was checking only the toggle, which is how those got reachable.
-  const workModeUnlocked = isWorkMode && (stats?.active_placements ?? 0) > 0;
-
   const [menuOpen,      setMenuOpen]      = useState(false);
   const [editOpen,      setEditOpen]      = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -355,7 +350,7 @@ export default function ParentProfile() {
 
         {content}
 
-        {workModeUnlocked ? <ParentWorkModeTabBar /> : <ParentTabBar />}
+        {isWorkMode ? <ParentWorkModeTabBar /> : <ParentTabBar />}
       </SafeAreaView>
 
       <MobileMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} handleLogout={initiateLogout} />

@@ -164,7 +164,7 @@ function HelperTaskCard({
 function TasksHub() {
   const { notify, noticeHost } = useNotice();
   const router = useRouter();
-  const { perPlacement, stats, loading, refresh } = useParentWorkDashboard();
+  const { perPlacement, stats, loading, refresh } = useParentWorkDashboard({ includeOperations: true });
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [categories, setCategories] = useState<DbCategory[]>([]);

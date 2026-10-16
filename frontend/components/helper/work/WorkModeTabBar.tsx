@@ -13,8 +13,8 @@ const TABS: {
   iconActive: React.ComponentProps<typeof Ionicons>['name'];
 }[] = [
   { path: '/(helper)/home', label: 'Home', icon: 'wallet-outline', iconActive: 'wallet' },
-  { path: '/(helper)/work/tasks', label: 'My Work', icon: 'today-outline', iconActive: 'today' },
-  { path: '/(helper)/work', label: 'Schedule', icon: 'calendar-outline', iconActive: 'calendar' },
+  { path: '/(helper)/work/contract', label: 'Contract', icon: 'document-text-outline', iconActive: 'document-text' },
+  { path: '/(helper)/work/assistance', label: 'Assistance', icon: 'help-buoy-outline', iconActive: 'help-buoy' },
   { path: '/(helper)/messages', label: 'Messages', icon: 'chatbubbles-outline', iconActive: 'chatbubbles' },
   { path: '/(helper)/profile', label: 'Profile', icon: 'person-outline', iconActive: 'person' },
 ];
@@ -41,7 +41,8 @@ export function WorkModeTabBar() {
       }}
     >
       {TABS.map((tab) => {
-        const active = isHelperNavActive(pathname, tab.path);
+        const active = (tab.path === '/(helper)/home' && pathname.includes('/work/payslips'))
+          || isHelperNavActive(pathname, tab.path);
         return (
           <TouchableOpacity
             key={tab.path}

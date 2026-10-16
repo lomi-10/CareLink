@@ -1,8 +1,8 @@
 // app/(parent)/home/ParentWorkDashboard.tsx
 // Work Mode dashboard ("Work Home") — mobile. Fintech-calm, mirroring the helper
 // side: ONE hero (identity + total monthly payroll), a "needs your attention" row
-// (leave + helper requests together), compact active-helper cards, and a tucked
-// "Manage" list. Attendance/tasks detail live on their own screens, not here.
+// (leave + helper requests together), compact active-helper cards, and links to
+// helper management, payment records, contract references, and assistance.
 import React, { useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator,
@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 
 import { FontFamily } from '@/constants/GlobalStyles';
 import {
-  BROWN, DARK, MUTED, SUBTLE, DIVIDER, ICON_BG, GREEN, DANGER, SURFACE,
+  BROWN, DARK, MUTED, SUBTLE, DIVIDER, ICON_BG, DANGER, SURFACE,
 } from '@/components/parent/home/parentWarmTheme';
 import { useParentWorkDashboard, type PlacementDashData } from '@/hooks/parent/useParentWorkDashboard';
 import type { LeaveRequestRow } from '@/lib/leaveRequestsApi';
@@ -81,21 +81,16 @@ function AttentionRow({ item, onPress }: { item: AttentionItem; onPress: () => v
 
 // ─── Compact active-helper card ───────────────────────────────────────────────
 function HelperCard({ data, onPress }: { data: PlacementDashData; onPress: () => void }) {
-  const { placement: p, checkedIn, checkInAt } = data;
-  const timeStr = checkInAt ? (() => {
-    try { return new Date(checkInAt.replace(' ', 'T')).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
-    catch { return null; }
-  })() : null;
+  const { placement: p } = data;
   return (
     <TouchableOpacity style={s.helperCard} onPress={onPress} activeOpacity={0.85}>
       <Avatar uri={p.helper_photo} name={p.helper_name} size={46} radius={13} />
       <View style={{ flex: 1, marginLeft: 12, minWidth: 0 }}>
         <Text style={s.helperName} numberOfLines={1}>{p.helper_name}</Text>
         <Text style={s.helperRole} numberOfLines={1}>{p.job_title}</Text>
-        <View style={s.checkRow}>
-          <View style={[s.checkDot, { backgroundColor: checkedIn ? GREEN : SUBTLE }]} />
-          <Text style={s.checkText}>{checkedIn ? `Checked in${timeStr ? ` · ${timeStr}` : ''}` : 'Not checked in'}</Text>
-        </View>
+        <Text style={s.helperMeta} numberOfLines={1}>
+          {p.confirmed_salary != null ? `Agreed pay · ${formatPeso(p.confirmed_salary)}${p.salary_period ? ` / ${p.salary_period}` : ''}` : 'Contract terms on file'}
+        </Text>
       </View>
       <Ionicons name="chevron-forward" size={17} color={SUBTLE} />
     </TouchableOpacity>
@@ -124,7 +119,7 @@ export default function ParentWorkDashboard({ userName, profileImage, onSwitchTo
   const { perPlacement, loading, refresh } = useParentWorkDashboard();
 
   const payrollTotal = useMemo(
-    () => perPlacement.reduce((sum, d) => sum + toMonthly(d.placement.salary_offered, d.placement.salary_period), 0),
+    () => perPlacement.reduce((sum, d) => sum + toMonthly(d.placement.confirmed_salary ?? d.placement.salary_offered, d.placement.salary_period), 0),
     [perPlacement],
   );
 
@@ -191,7 +186,7 @@ export default function ParentWorkDashboard({ userName, profileImage, onSwitchTo
       {announcement}
 
       <Text style={s.explainer}>
-        Manage pay, rest days, and day-to-day coordination for your helpers. Attendance tracking is optional.
+        Review agreed terms, record payments already made, and request assistance when a placement needs support.
       </Text>
 
       {/* ── Needs your attention ── */}
@@ -230,6 +225,9 @@ export default function ParentWorkDashboard({ userName, profileImage, onSwitchTo
             <TouchableOpacity style={s.emptyBtn} onPress={onSwitchToRecruitment} activeOpacity={0.85}>
               <Text style={s.emptyBtnText}>Go to Recruitment Mode</Text>
             </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(parent)/browse' as never)} activeOpacity={0.8} style={{ marginTop: 12, paddingVertical: 6 }}>
+              <Text style={{ fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: BROWN }}>Browse helpers to hire</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           perPlacement.map((d) => (
@@ -237,18 +235,8 @@ export default function ParentWorkDashboard({ userName, profileImage, onSwitchTo
               key={d.placement.application_id}
               data={d}
               onPress={() => router.push({
-                pathname: '/(parent)/hire/helper_profile' as never,
-                params: {
-                  application_id: String(d.placement.application_id),
-                  helper_id: String(d.placement.helper_id),
-                  helper_name: encodeURIComponent(d.placement.helper_name),
-                  helper_photo: d.placement.helper_photo ? encodeURIComponent(d.placement.helper_photo) : '',
-                  job_title: encodeURIComponent(d.placement.job_title),
-                  status: encodeURIComponent(d.placement.status),
-                  salary_offered: String(d.placement.salary_offered ?? ''),
-                  salary_period: encodeURIComponent(d.placement.salary_period ?? ''),
-                  helper_phone: d.placement.helper_phone ? encodeURIComponent(d.placement.helper_phone) : '',
-                },
+                pathname: '/(parent)/work/helper' as never,
+                params: { application_id: String(d.placement.application_id) },
               })}
             />
           ))
@@ -260,7 +248,9 @@ export default function ParentWorkDashboard({ userName, profileImage, onSwitchTo
         <Text style={s.sectionTitle}>Manage</Text>
         <View style={s.manageCard}>
           <ManageRow icon="people-outline" label="Helper Management" onPress={() => router.push('/(parent)/hire' as never)} />
-          <ManageRow icon="clipboard-outline" label="Tasks" onPress={() => router.push('/(parent)/hire/placement_tasks' as never)} />
+          <ManageRow icon="wallet-outline" label="Payment records" onPress={() => router.push('/(parent)/work/payslips' as never)} />
+          <ManageRow icon="document-text-outline" label="Contract reference" onPress={() => router.push('/(parent)/work/contract' as never)} />
+          <ManageRow icon="help-buoy-outline" label="Request assistance" onPress={() => router.push('/(parent)/work/assistance' as never)} />
           <ManageRow icon="time-outline" label="Placement History" onPress={() => router.push('/(parent)/hire/history' as never)} />
           <ManageRow icon="swap-horizontal-outline" label="Switch to Recruitment Mode" onPress={onSwitchToRecruitment} last />
         </View>
@@ -321,9 +311,7 @@ const s = StyleSheet.create({
   },
   helperName: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5, color: DARK },
   helperRole: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, marginTop: 1 },
-  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
-  checkDot: { width: 6, height: 6, borderRadius: 3 },
-  checkText: { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED },
+  helperMeta: { fontFamily: FontFamily.fredokaRegular, fontSize: 10.5, color: MUTED, marginTop: 4 },
 
   // Manage
   manageCard: { backgroundColor: SURFACE, borderRadius: 16, borderWidth: 1, borderColor: DIVIDER, paddingHorizontal: 4 },

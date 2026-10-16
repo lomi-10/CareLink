@@ -23,10 +23,28 @@ export type ActiveHire = {
   work_location?: string | null;
   work_hours?: string | null;
   rest_days?: string[];
+  salary_amount?: number | null;
+  salary_period?: string | null;
+  payment_schedule?: string | null;
   employment_start_date?: string | null;
+  employment_end_date?: string | null;
+  contract_duration?: string | null;
+  vacation_leave_days?: number | null;
+  sick_leave_days?: number | null;
+  overtime_rate?: string | null;
+  terms_notes?: string | null;
+  special_conditions?: string | null;
+  termination_conditions?: string | null;
+  other_benefits?: string | null;
+  debt_agreement?: string | null;
+  debt_amount?: number | null;
+  deployment_agreement?: string | null;
+  job_description?: string | null;
   /** Whether the employer keeps attendance tracking on for this placement (default true). */
   attendance_tracking?: boolean;
 };
+
+export type HelperPortalMode = 'recruitment' | 'work';
 
 export type EmploymentEndedInfo = {
   application_id: number;
@@ -40,12 +58,16 @@ export type EmploymentEndedInfo = {
 type HelperWorkModeContextValue = {
   ready: boolean;
   isWorkMode: boolean;
+  portalMode: HelperPortalMode;
+  modeReady: boolean;
   activeHire: ActiveHire | null;
   employmentEnded: EmploymentEndedInfo | null;
+  setPortalMode: (mode: HelperPortalMode) => Promise<void>;
   refresh: () => Promise<void>;
 };
 
 const HelperWorkModeContext = createContext<HelperWorkModeContextValue | undefined>(undefined);
+const HELPER_MODE_KEY = 'helper_portal_mode';
 
 type LoadResult = {
   isWorkMode: boolean;
@@ -119,8 +141,20 @@ async function loadWorkContext(): Promise<LoadResult> {
 export function HelperWorkModeProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [isWorkMode, setIsWorkMode] = useState(false);
+  const [portalMode, setPortalModeState] = useState<HelperPortalMode>('recruitment');
+  const [modeReady, setModeReady] = useState(false);
   const [activeHire, setActiveHire] = useState<ActiveHire | null>(null);
   const [employmentEnded, setEmploymentEnded] = useState<EmploymentEndedInfo | null>(null);
+
+  const setPortalMode = useCallback(async (mode: HelperPortalMode) => {
+    setPortalModeState(mode);
+    try {
+      await AsyncStorage.setItem(HELPER_MODE_KEY, mode);
+    } catch (error) {
+      console.error('Could not save helper portal mode:', error);
+      throw error;
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -138,19 +172,34 @@ export function HelperWorkModeProvider({ children }: { children: React.ReactNode
     (async () => {
       try {
         const next = await loadWorkContext();
+        let savedMode: string | null = null;
+        try {
+          savedMode = await AsyncStorage.getItem(HELPER_MODE_KEY);
+        } catch (error) {
+          console.error('Could not load helper portal mode:', error);
+        }
         if (!alive) return;
         setIsWorkMode(next.isWorkMode);
         setActiveHire(next.activeHire);
         setEmploymentEnded(next.employmentEnded);
+        setPortalModeState(
+          savedMode === 'work' || savedMode === 'recruitment'
+            ? savedMode
+            : next.isWorkMode ? 'work' : 'recruitment',
+        );
       } catch (e) {
         console.error('Work context:', e);
         if (alive) {
           setIsWorkMode(false);
           setActiveHire(null);
           setEmploymentEnded(null);
+          setPortalModeState('recruitment');
         }
       } finally {
-        if (alive) setReady(true);
+        if (alive) {
+          setReady(true);
+          setModeReady(true);
+        }
       }
     })();
     return () => {
@@ -159,8 +208,8 @@ export function HelperWorkModeProvider({ children }: { children: React.ReactNode
   }, []);
 
   const value = useMemo(
-    () => ({ ready, isWorkMode, activeHire, employmentEnded, refresh }),
-    [ready, isWorkMode, activeHire, employmentEnded, refresh],
+    () => ({ ready, isWorkMode, portalMode, modeReady, activeHire, employmentEnded, setPortalMode, refresh }),
+    [ready, isWorkMode, portalMode, modeReady, activeHire, employmentEnded, setPortalMode, refresh],
   );
 
   return (
@@ -174,8 +223,11 @@ export function useHelperWorkMode(): HelperWorkModeContextValue {
   return {
     ready: true,
     isWorkMode: false,
+    portalMode: 'recruitment',
+    modeReady: true,
     activeHire: null,
     employmentEnded: null,
+    setPortalMode: async () => {},
     refresh: async () => {},
   };
 }

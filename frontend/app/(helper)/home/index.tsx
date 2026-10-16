@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View, ScrollView, RefreshControl, ActivityIndicator,
-  SafeAreaView, Text, TouchableOpacity,
+  SafeAreaView, Text, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -14,6 +14,7 @@ import { useHelperWarm, PAGE_BG_WEB } from '@/components/helper/home/helperWarmT
 
 import { useHelperStats, useHelperProfile } from '@/hooks/helper';
 import { useAuth, useResponsive, useNotifications, useDemoSession } from '@/hooks/shared';
+import { FontFamily } from '@/constants/GlobalStyles';
 import FeedbackModal from '@/components/shared/FeedbackModal';
 
 import { AnnouncementFeed, NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard } from '@/components/shared';
@@ -24,7 +25,7 @@ import {
   MobileMenu, RecommendationsSection, HelperTabBar,
   HelperStatsCard, HelperQuickActions,
 } from '@/components/helper/home';
-import { WorkHome, WorkModeTabBar } from '@/components/helper/work';
+import { HelperWorkModePreview, WorkHome, WorkModeTabBar } from '@/components/helper/work';
 import { ProfileSetupGuide } from '@/components/helper/home/ProfileSetupGuide';
 import { AwaitingVerificationCard } from '@/components/shared/AwaitingVerificationCard';
 import { HelperHomeWeb } from '@/components/helper/web/HelperHomeWeb';
@@ -38,6 +39,15 @@ function formatShortDate(ymd: string): string {
   const [y, m, d] = ymd.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+const modeStyles = StyleSheet.create({
+  wrap: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 },
+  pill: { flexDirection: 'row', backgroundColor: '#F3E8D6', borderRadius: 30, padding: 4, borderWidth: 1, borderColor: '#EDE0D0' },
+  option: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, paddingHorizontal: 8, borderRadius: 24 },
+  label: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: '#7A5C3E', letterSpacing: 0.4 },
+  labelActive: { color: '#fff' },
+  hint: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: '#7A5C3E', textAlign: 'center', marginTop: 6, lineHeight: 17 },
+});
 
 export default function HelperHome() {
   const router = useRouter();
@@ -64,6 +74,9 @@ export default function HelperHome() {
   const {
     ready: workReady,
     isWorkMode,
+    portalMode,
+    modeReady,
+    setPortalMode,
     activeHire,
     employmentEnded,
     refresh: refreshWork,
@@ -125,7 +138,17 @@ export default function HelperHome() {
   const initiateLogout = () => { setIsMobileMenuOpen(false); setConfirmLogoutVisible(true); };
   const executeLogout  = () => { setConfirmLogoutVisible(false); setSuccessLogoutVisible(true); };
 
-  const loading = authLoading || statsLoading || !workReady;
+  const switchMode = (mode: 'recruitment' | 'work') => {
+    void setPortalMode(mode).catch((error) => {
+      console.error('Could not save helper portal mode:', error);
+    });
+  };
+
+  const hasActiveWorkMode = isWorkMode && !!activeHire && !!userData;
+  const showWorkDash = portalMode === 'work' && hasActiveWorkMode;
+  const showWorkPreview = portalMode === 'work' && !showWorkDash;
+  const helperIdNum = userData ? Number(userData.user_id) : 0;
+  const loading = authLoading || statsLoading || !workReady || !modeReady;
 
   function QuickActionDesktopInner({ icon, title, desc, color, onPress }: {
     icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -145,8 +168,39 @@ export default function HelperHome() {
     );
   }
 
-  const showWorkDash = isWorkMode && activeHire && userData;
-  const helperIdNum = userData ? Number(userData.user_id) : 0;
+  const renderModeToggle = () => (
+    <View style={modeStyles.wrap}>
+      <View style={modeStyles.pill}>
+        <TouchableOpacity
+          style={[modeStyles.option, portalMode === 'recruitment' && { backgroundColor: ORANGE }]}
+          onPress={() => switchMode('recruitment')}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="search" size={14} color={portalMode === 'recruitment' ? '#fff' : MUTED} />
+          <Text style={[modeStyles.label, portalMode === 'recruitment' && modeStyles.labelActive]}>
+            {t('helper.menu.recruitmentMode')}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[modeStyles.option, portalMode === 'work' && { backgroundColor: ORANGE }]}
+          onPress={() => switchMode('work')}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="briefcase" size={14} color={portalMode === 'work' ? '#fff' : MUTED} />
+          <Text style={[modeStyles.label, portalMode === 'work' && modeStyles.labelActive]}>
+            {t('helper.menu.workMode')}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={modeStyles.hint}>
+        {portalMode === 'recruitment'
+          ? t('helper.menu.recruitmentModeHint')
+          : showWorkDash
+            ? t('helper.menu.workModeActiveHint')
+            : t('helper.menu.workModePreviewHint')}
+      </Text>
+    </View>
+  );
 
   if (loading) {
     return (
@@ -213,7 +267,7 @@ export default function HelperHome() {
 
   // ─── DESKTOP ────────────────────────────────────────────────────────────────
   if (isDesktop) {
-    // Work Mode keeps the existing dashboard; the recruitment home uses the new web design.
+    // Active placements use Work Mode; helpers without one get a tools preview.
     if (showWorkDash) {
       return (
         <View style={{ flex: 1, backgroundColor: PAGE_BG_WEB }}>
@@ -226,6 +280,7 @@ export default function HelperHome() {
             onLogout={initiateLogout}
           />
           <View style={{ flex: 1, width: '100%', maxWidth: 1200, alignSelf: 'center' }}>
+            {renderModeToggle()}
             <WorkHome
               helperId={helperIdNum}
               userFirstName={userData?.first_name ?? ''}
@@ -242,8 +297,37 @@ export default function HelperHome() {
       );
     }
 
+    if (showWorkPreview) {
+      return (
+        <View style={{ flex: 1, backgroundColor: PAGE_BG_WEB }}>
+          <HelperTopNav
+            workMode
+            active="home"
+            userName={getFullName()}
+            avatar={profileImage}
+            verified={profileData?.profile?.verification_status === 'Verified'}
+            onLogout={initiateLogout}
+          />
+          <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+            {renderModeToggle()}
+            <HelperWorkModePreview
+              startDate={activeHire?.employment_start_date && activeHire.employment_start_date > ymdLocal()
+                ? activeHire.employment_start_date
+                : null}
+              onBrowseJobs={() => router.push('/(helper)/browse')}
+              onOpenContract={() => router.push('/(helper)/work/contract')}
+              onOpenAssistance={() => router.push('/(helper)/work/assistance')}
+            />
+            <AnnouncementFeed />
+          </ScrollView>
+          {renderModals()}
+        </View>
+      );
+    }
+
     const desktopBanners = (
       <>
+        {renderModeToggle()}
         <ProfileSetupGuide profileData={profileData} firstName={(getFullName() || '').split(' ')[0]} />
         <AwaitingVerificationCard completeness={profileData?.profile_completeness} status={profileData?.profile?.verification_status} themeKey="helper" />
         <PendingPlacementReviewsBanner
@@ -306,7 +390,11 @@ export default function HelperHome() {
     <SafeAreaView style={[layoutStyles.container, { backgroundColor: '#FBF5EC' }]}>
       <MobileHeader
         onMenuPress={() => setIsMobileMenuOpen(true)}
-        subtitle={showWorkDash ? t('helper.menu.workMode') : t('helper.menu.helperPortal')}
+        subtitle={showWorkDash
+          ? t('helper.menu.workMode')
+          : showWorkPreview
+            ? t('helper.menu.workModePreview')
+            : t('helper.menu.helperPortal')}
         notificationCount={unreadCount}
         onNotificationPress={() => router.push('/(helper)/notifications')}
       />
@@ -326,7 +414,8 @@ export default function HelperHome() {
           />
         }
       >
-        {showWorkDash && userData ? (
+        {renderModeToggle()}
+        {showWorkDash && userData && activeHire ? (
           <WorkHome
             helperId={helperIdNum}
             userFirstName={userData.first_name}
@@ -337,6 +426,18 @@ export default function HelperHome() {
             onRefreshWorkContext={refreshWork}
             announcement={<AnnouncementFeed />}
           />
+        ) : showWorkPreview ? (
+          <>
+            <HelperWorkModePreview
+              startDate={activeHire?.employment_start_date && activeHire.employment_start_date > ymdLocal()
+                ? activeHire.employment_start_date
+                : null}
+              onBrowseJobs={() => router.push('/(helper)/browse')}
+              onOpenContract={() => router.push('/(helper)/work/contract')}
+              onOpenAssistance={() => router.push('/(helper)/work/assistance')}
+            />
+            <AnnouncementFeed />
+          </>
         ) : (
           <>
             <GreetingCard
@@ -435,7 +536,7 @@ export default function HelperHome() {
         )}
       </ScrollView>
 
-      {showWorkDash ? <WorkModeTabBar /> : <HelperTabBar />}
+      {portalMode === 'work' ? <WorkModeTabBar /> : <HelperTabBar />}
 
       <MobileMenu
         isOpen={isMobileMenuOpen}

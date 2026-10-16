@@ -33,7 +33,15 @@ export function WorkModeShell({ children }: Props) {
     setConfirmLogout(true);
   };
 
-  const activeNav = pathname.includes('/work/tasks') ? 'mywork' : pathname.includes('/work') ? 'schedule' : 'home';
+  const activeNav = pathname.includes('/work/contract')
+    ? 'contract'
+    : pathname.includes('/work/assistance')
+      ? 'assistance'
+      : pathname.includes('/messages')
+        ? 'messages'
+        : pathname.includes('/profile')
+          ? 'profile'
+          : 'home';
 
   if (isDesktop) {
     return (

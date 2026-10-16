@@ -73,9 +73,7 @@ export default function ParentHome() {
   // each time they reach a new one, and never again. Re-openable anytime from
   // the menu. See contexts/GuideContext.tsx.
   //
-  // Reads portalMode/stats directly rather than the workModeUnlocked const
-  // below — that's declared after this effect, so naming it in the dependency
-  // array would be a TDZ error during render.
+  // Reads portalMode/stats directly to determine the matching guide chapter.
   useEffect(() => {
     if (!profileData || !modeReady) return; // wait until status + mode are known
     syncStage({
@@ -102,11 +100,6 @@ export default function ParentHome() {
   }, [profileData?.profile_completeness, profileData?.profile?.verification_status]);
 
   const isWorkMode = portalMode === 'work';
-  // Work Mode is only usable once the parent has an active hire. They can still
-  // toggle into it (they can "see" it) but it stays locked until then.
-  const hasActiveHire = (stats?.active_placements ?? 0) > 0;
-  const workModeUnlocked = isWorkMode && hasActiveHire;
-
   // ── Misc state ──────────────────────────────────────────────────────────────
   const [isMobileMenuOpen,         setIsMobileMenuOpen]         = useState(false);
   const [confirmLogoutVisible,      setConfirmLogoutVisible]      = useState(false);
@@ -250,30 +243,9 @@ export default function ParentHome() {
       </View>
       <Text style={ms.toggleSub}>
         {isWorkMode
-          ? 'You are in Work Mode. Manage your active helpers and daily household operations.'
+          ? 'You are in Work Mode. Review agreements, payment records, and assistance for placements.'
           : 'You are in Recruitment Mode. Find and hire the right helper for your home.'}
       </Text>
-    </View>
-  );
-
-  // ── Work Mode locked state (no active hire yet) ─────────────────────────────
-  const renderWorkModeLocked = () => (
-    <View style={ms.lockedWrap}>
-      <View style={ms.lockedIcon}>
-        <Ionicons name="lock-closed" size={32} color={CARAMEL} />
-      </View>
-      <Text style={ms.lockedTitle}>Work Mode is locked</Text>
-      <Text style={ms.lockedBody}>
-        You haven’t hired a helper yet. Once you hire someone, Work Mode unlocks task management,
-        attendance, schedules, and salary.
-      </Text>
-      <TouchableOpacity style={ms.lockedBtn} onPress={() => switchMode('recruitment')} activeOpacity={0.88}>
-        <Ionicons name="search" size={16} color="#fff" />
-        <Text style={ms.lockedBtnText}>Back to Recruitment</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={ms.lockedLink} onPress={() => router.push('/(parent)/browse')} activeOpacity={0.7}>
-        <Text style={ms.lockedLinkText}>Browse helpers to hire →</Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -305,19 +277,13 @@ export default function ParentHome() {
           onLogout={initiateLogout}
         />
         {isWorkMode ? (
-          workModeUnlocked ? (
-            <ParentWorkHomeWeb
-              userName={getFullName()}
-              avatar={profileImage}
-              verified={profileData?.profile?.verification_status === 'Verified'}
-              onSwitchMode={switchMode}
-              announcement={<AnnouncementFeed />}
-            />
-          ) : (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              {renderWorkModeLocked()}
-            </View>
-          )
+          <ParentWorkHomeWeb
+            userName={getFullName()}
+            avatar={profileImage}
+            verified={profileData?.profile?.verification_status === 'Verified'}
+            onSwitchMode={switchMode}
+            announcement={<AnnouncementFeed />}
+          />
         ) : (
           <ParentHomeWeb
             userName={getFullName()}
@@ -347,16 +313,12 @@ export default function ParentHome() {
       {isWorkMode ? (
         <>
           {renderModeToggle()}
-          {workModeUnlocked ? (
-            <ParentWorkDashboard
-              userName={getFullName()}
-              profileImage={profileImage}
-              onSwitchToRecruitment={() => switchMode('recruitment')}
-              announcement={<AnnouncementFeed />}
-            />
-          ) : (
-            renderWorkModeLocked()
-          )}
+          <ParentWorkDashboard
+            userName={getFullName()}
+            profileImage={profileImage}
+            onSwitchToRecruitment={() => switchMode('recruitment')}
+            announcement={<AnnouncementFeed />}
+          />
         </>
       ) : (
         <ScrollView
@@ -403,7 +365,7 @@ export default function ParentHome() {
       )}
 
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} handleLogout={initiateLogout} />
-      {workModeUnlocked ? <ParentWorkModeTabBar /> : <ParentTabBar />}
+      {isWorkMode ? <ParentWorkModeTabBar /> : <ParentTabBar />}
       {renderModals()}
     </SafeAreaView>
   );
@@ -441,18 +403,4 @@ const ms = StyleSheet.create({
     lineHeight: 17,
   },
 
-  lockedWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, paddingBottom: 24 },
-  lockedIcon: {
-    width: 76, height: 76, borderRadius: 38, backgroundColor: ICON_BG,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
-  },
-  lockedTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 18, color: DARK, marginBottom: 8 },
-  lockedBody: { fontFamily: FontFamily.fredokaRegular, fontSize: 13.5, color: MUTED, textAlign: 'center', lineHeight: 20, maxWidth: 340 },
-  lockedBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: CARAMEL,
-    paddingVertical: 13, paddingHorizontal: 22, borderRadius: 13, marginTop: 22,
-  },
-  lockedBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5, color: '#fff' },
-  lockedLink: { marginTop: 14, paddingVertical: 6 },
-  lockedLinkText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: BROWN },
 });

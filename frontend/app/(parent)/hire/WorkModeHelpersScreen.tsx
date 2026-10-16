@@ -1,8 +1,7 @@
 // app/(parent)/hire/WorkModeHelpersScreen.tsx
 // Parent Work Mode — Helper Management (roster). Payroll totals and the
 // "needs attention" list already live on Work Home, so this screen stays
-// focused on one job: here are your helpers, tap one to manage them (the
-// 3-tab Overview / Attendance / Payroll detail). No duplicate hero or stat
+// focused on one job: here are your active helpers. No duplicate hero or stat
 // grid — just a calm, compact list.
 import React, { useCallback, useMemo, useState } from 'react';
 import {
@@ -15,7 +14,7 @@ import { Image } from 'expo-image';
 
 import { FontFamily } from '@/constants/GlobalStyles';
 import {
-  BG, BG_WEB, BROWN, DARK, MUTED, SUBTLE, DIVIDER, ICON_BG, GREEN, SURFACE,
+  BG, BG_WEB, BROWN, DARK, MUTED, SUBTLE, DIVIDER, ICON_BG, SURFACE,
 } from '@/components/parent/home/parentWarmTheme';
 import { ParentWorkModeTabBar, MobileMenu } from '@/components/parent/home';
 import { ParentTopNav } from '@/components/parent/web/ParentTopNav';
@@ -26,21 +25,13 @@ import { useParentProfile } from '@/hooks/parent/useParentProfile';
 import { useAuth, useNotifications, useResponsive } from '@/hooks/shared';
 
 // ── Utils ────────────────────────────────────────────────────────────────
-function formatTime(iso: string | null): string {
-  if (!iso) return '';
-  try {
-    const d = new Date(iso.includes('T') ? iso : iso.replace(' ', 'T'));
-    if (isNaN(d.getTime())) return iso;
-    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  } catch { return iso; }
-}
 function getInitials(name: string): string {
   return name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
 }
 
 // ── Compact helper row ──────────────────────────────────────────────────
 function HelperRow({ data, onPress }: { data: PlacementDashData; onPress: () => void }) {
-  const { placement, checkedIn, checkInAt, tasksTotal, tasksDone } = data;
+  const { placement } = data;
   const initials = getInitials(placement.helper_name);
 
   return (
@@ -51,15 +42,13 @@ function HelperRow({ data, onPress }: { data: PlacementDashData; onPress: () => 
         ) : (
           <View style={[s.photo, s.photoFb]}><Text style={s.photoText}>{initials}</Text></View>
         )}
-        <View style={[s.checkDot, { backgroundColor: checkedIn ? GREEN : SUBTLE }]} />
       </View>
 
       <View style={{ flex: 1, marginLeft: 12, minWidth: 0 }}>
         <Text style={s.name} numberOfLines={1}>{placement.helper_name}</Text>
         <Text style={s.role} numberOfLines={1}>{placement.job_title}</Text>
         <Text style={s.checkText} numberOfLines={1}>
-          {checkedIn ? `Checked in${checkInAt ? ` · ${formatTime(checkInAt)}` : ''}` : 'Not checked in'}
-          {tasksTotal > 0 ? `  ·  ${tasksDone}/${tasksTotal} tasks` : ''}
+          {placement.confirmed_salary != null ? `Agreed pay · ₱${Math.round(placement.confirmed_salary).toLocaleString('en-PH')}${placement.salary_period ? ` / ${placement.salary_period}` : ''}` : 'Contract terms on file'}
         </Text>
       </View>
 
@@ -68,30 +57,30 @@ function HelperRow({ data, onPress }: { data: PlacementDashData; onPress: () => 
   );
 }
 
-type SortKey = 'checkin' | 'name';
+type SortKey = 'role' | 'name';
 
 function HelperList({ perPlacement, loading, onOpen }: {
   perPlacement: PlacementDashData[]; loading: boolean; onOpen: (p: PlacementDashData) => void;
 }) {
-  const [sortKey, setSortKey] = useState<SortKey>('checkin');
+  const [sortKey, setSortKey] = useState<SortKey>('name');
 
   const sorted = useMemo(() => {
     const arr = [...perPlacement];
     if (sortKey === 'name') arr.sort((a, b) => a.placement.helper_name.localeCompare(b.placement.helper_name));
-    else arr.sort((a, b) => (b.checkedIn ? 1 : 0) - (a.checkedIn ? 1 : 0));
+    else arr.sort((a, b) => a.placement.job_title.localeCompare(b.placement.job_title));
     return arr;
   }, [perPlacement, sortKey]);
 
   return (
     <>
-      <Text style={s.lead}>Tap a helper to manage their tasks, attendance and payroll.</Text>
+      <Text style={s.lead}>Tap a helper to open their placement details. Use the Contract and Payment Records tabs to review agreed terms and pay history.</Text>
 
       <View style={s.headRow}>
         <Text style={s.count}>{perPlacement.length} active helper{perPlacement.length !== 1 ? 's' : ''}</Text>
         {perPlacement.length > 1 && (
-          <TouchableOpacity style={s.sortToggle} onPress={() => setSortKey(k => k === 'checkin' ? 'name' : 'checkin')} activeOpacity={0.8}>
+          <TouchableOpacity style={s.sortToggle} onPress={() => setSortKey(k => k === 'name' ? 'role' : 'name')} activeOpacity={0.8}>
             <Ionicons name="swap-vertical-outline" size={13} color={BROWN} />
-            <Text style={s.sortToggleText}>Sort: {sortKey === 'checkin' ? 'Check-in' : 'Name'}</Text>
+            <Text style={s.sortToggleText}>Sort: {sortKey === 'name' ? 'Name' : 'Role'}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -131,18 +120,8 @@ export function WorkModeHelpersScreen() {
 
   const openHelper = (pd: PlacementDashData) => {
     router.push({
-      pathname: '/(parent)/hire/helper_profile' as never,
-      params: {
-        application_id: String(pd.placement.application_id),
-        helper_id: String(pd.placement.helper_id),
-        helper_name: encodeURIComponent(pd.placement.helper_name),
-        helper_photo: pd.placement.helper_photo ? encodeURIComponent(pd.placement.helper_photo) : '',
-        job_title: encodeURIComponent(pd.placement.job_title),
-        status: encodeURIComponent(pd.placement.status),
-        salary_offered: String(pd.placement.salary_offered ?? ''),
-        salary_period: encodeURIComponent(pd.placement.salary_period ?? ''),
-        helper_phone: pd.placement.helper_phone ? encodeURIComponent(pd.placement.helper_phone) : '',
-      },
+      pathname: '/(parent)/work/helper' as never,
+      params: { application_id: String(pd.placement.application_id) },
     });
   };
 
@@ -168,7 +147,7 @@ export function WorkModeHelpersScreen() {
       <View style={{ flex: 1, backgroundColor: BG_WEB }}>
         <ParentTopNav
           mode="work"
-          active="helpers"
+          active="home"
           userName={getFullName()}
           avatar={(profileData?.profile?.profile_image as string) ?? null}
           verified={profileData?.profile?.verification_status === 'Verified'}
@@ -234,7 +213,6 @@ const s = StyleSheet.create({
   photo: { width: 50, height: 50, borderRadius: 25 },
   photoFb: { backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center' },
   photoText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: BROWN },
-  checkDot: { position: 'absolute', bottom: 1, right: 1, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: SURFACE },
   name: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 15, color: DARK },
   role: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: MUTED, marginTop: 1 },
   checkText: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, color: MUTED, marginTop: 3 },

@@ -56,6 +56,23 @@ export interface JobApplication {
   employer_signed_at?: string | null;
   helper_signed_at?: string | null;
   contract_generated_at?: string | null;
+  confirmed_salary?: number | null;
+  work_hours?: string | null;
+  rest_days?: string[];
+  employment_start_date?: string | null;
+  employment_end_date?: string | null;
+  contract_duration?: string | null;
+  payment_schedule?: string | null;
+  other_benefits?: string | null;
+  terms_notes?: string | null;
+  vacation_leave_days?: number | null;
+  sick_leave_days?: number | null;
+  special_conditions?: string | null;
+  overtime_rate?: string | null;
+  debt_agreement?: string | null;
+  debt_amount?: number | null;
+  deployment_agreement?: string | null;
+  termination_conditions?: string | null;
 }
 
 export function useJobApplications(jobPostId: string) {

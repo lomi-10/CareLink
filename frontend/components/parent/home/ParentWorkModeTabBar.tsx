@@ -1,6 +1,6 @@
 // components/parent/home/ParentWorkModeTabBar.tsx
 // Work Mode bottom tab bar for the parent portal.
-// Tabs: Home · Helpers · Tasks · Messages · Profile
+// Tabs: Home · Contract · Assistance · Messages · Profile
 import React from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
@@ -23,11 +23,11 @@ type TabDef = {
 };
 
 const TABS: TabDef[] = [
-  { path: '/(parent)/home',                 label: 'Home',      icon: 'wallet-outline',      iconActive: 'wallet' },
-  { path: '/(parent)/hire',                 label: 'Helpers',   icon: 'people-outline',      iconActive: 'people' },
-  { path: '/(parent)/hire/placement_tasks', label: 'Tasks',     icon: 'clipboard-outline',   iconActive: 'clipboard' },
-  { path: '/(parent)/messages',             label: 'Messages',  icon: 'chatbubbles-outline', iconActive: 'chatbubbles' },
-  { path: '/(parent)/profile',              label: 'Profile',   icon: 'person-outline',      iconActive: 'person' },
+  { path: '/(parent)/home',                  label: 'Home',       icon: 'wallet-outline',       iconActive: 'wallet' },
+  { path: '/(parent)/work/contract',         label: 'Contract',   icon: 'document-text-outline', iconActive: 'document-text' },
+  { path: '/(parent)/work/assistance',       label: 'Assistance', icon: 'help-buoy-outline',    iconActive: 'help-buoy' },
+  { path: '/(parent)/messages',              label: 'Messages',   icon: 'chatbubbles-outline',  iconActive: 'chatbubbles' },
+  { path: '/(parent)/profile',               label: 'Profile',    icon: 'person-outline',       iconActive: 'person' },
 ];
 
 export function ParentWorkModeTabBar() {
@@ -37,15 +37,9 @@ export function ParentWorkModeTabBar() {
   const { conversations } = useConversations();
   const unreadMessages = conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
 
-  const TASK_SCREENS = ['placement_tasks', 'task_board', 'ai_tasks', 'task_details'];
-  const onTaskScreen = TASK_SCREENS.some(p => pathname.includes(p));
-
   function isActive(tab: TabDef): boolean {
-    if (tab.path.includes('placement_tasks')) {
-      return onTaskScreen;
-    }
-    if (tab.path === '/(parent)/hire') {
-      return isParentNavActive(pathname, tab.path) && !onTaskScreen;
+    if (tab.path === '/(parent)/home') {
+      return isParentNavActive(pathname, tab.path) || pathname.includes('/hire');
     }
     return isParentNavActive(pathname, tab.path);
   }

@@ -22,6 +22,25 @@ export type ActivePlacement = {
   job_start_date?: string | null;
   salary_offered?: number;
   salary_period?: string;
+  confirmed_salary?: number | null;
+  work_hours?: string | null;
+  rest_days?: string[];
+  employment_start_date?: string | null;
+  employment_end_date?: string | null;
+  contract_duration?: string | null;
+  payment_schedule?: string | null;
+  other_benefits?: string | null;
+  terms_notes?: string | null;
+  vacation_leave_days?: number | null;
+  sick_leave_days?: number | null;
+  special_conditions?: string | null;
+  overtime_rate?: string | null;
+  debt_agreement?: string | null;
+  debt_amount?: number | null;
+  deployment_agreement?: string | null;
+  termination_conditions?: string | null;
+  employer_signed_at?: string | null;
+  helper_signed_at?: string | null;
   termination_last_day?: string | null;
   /** Helper's profile skills (ref_skills.skill_name) — used to score task/category relevance. */
   helper_skills?: string[];
@@ -97,6 +116,25 @@ function buildPlacements(apps: JobApplication[], jobs: JobPost[]): ActivePlaceme
         job_start_date: a.job_start_date ?? null,
         salary_offered: salaryOffered ?? job?.salary_offered,
         salary_period: salaryPeriod ?? job?.salary_period,
+        confirmed_salary: a.confirmed_salary ?? null,
+        work_hours: a.work_hours ?? null,
+        rest_days: a.rest_days ?? [],
+        employment_start_date: a.employment_start_date ?? null,
+        employment_end_date: a.employment_end_date ?? null,
+        contract_duration: a.contract_duration ?? null,
+        payment_schedule: a.payment_schedule ?? null,
+        other_benefits: a.other_benefits ?? null,
+        terms_notes: a.terms_notes ?? null,
+        vacation_leave_days: a.vacation_leave_days ?? null,
+        sick_leave_days: a.sick_leave_days ?? null,
+        special_conditions: a.special_conditions ?? null,
+        overtime_rate: a.overtime_rate ?? null,
+        debt_agreement: a.debt_agreement ?? null,
+        debt_amount: a.debt_amount ?? null,
+        deployment_agreement: a.deployment_agreement ?? null,
+        termination_conditions: a.termination_conditions ?? null,
+        employer_signed_at: a.employer_signed_at ?? null,
+        helper_signed_at: a.helper_signed_at ?? null,
         termination_last_day: terminationLast,
         helper_skills: a.helper_skills ?? [],
         helper_jobs: a.helper_jobs ?? [],

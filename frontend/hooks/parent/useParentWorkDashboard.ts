@@ -21,7 +21,7 @@ export type WorkDashStats = {
   pendingLeaveTotal: number;
 };
 
-export function useParentWorkDashboard() {
+export function useParentWorkDashboard({ includeOperations = false }: { includeOperations?: boolean } = {}) {
   const { placements, loading: placementsLoading, refresh: refreshPlacements } =
     useParentActivePlacements();
   const [perPlacement, setPerPlacement] = useState<PlacementDashData[]>([]);
@@ -49,19 +49,28 @@ export function useParentWorkDashboard() {
         placements.map(async (p) => {
           const appId = Number(p.application_id);
           const hId = Number(p.helper_id);
-          const [attRes, taskRes, leaveRes] = await Promise.all([
-            fetchAttendanceToday(appId, hId).catch(() => null),
-            fetchApplicationTasks(appId, parentId, 'parent', 'today').catch(() => null),
-            fetchLeaveRequests(appId, parentId, 'parent').catch(() => null),
+          const [attendanceResult, taskResult, leaveRes] = await Promise.all([
+            includeOperations ? fetchAttendanceToday(appId, hId).catch((error) => {
+              console.error(`[useParentWorkDashboard] Could not load attendance for application ${appId}:`, error);
+              return null;
+            }) : Promise.resolve(null),
+            includeOperations ? fetchApplicationTasks(appId, parentId, 'parent', 'today').catch((error) => {
+              console.error(`[useParentWorkDashboard] Could not load tasks for application ${appId}:`, error);
+              return null;
+            }) : Promise.resolve(null),
+            fetchLeaveRequests(appId, parentId, 'parent').catch((error) => {
+            console.error(`[useParentWorkDashboard] Could not load leave requests for application ${appId}:`, error);
+            return null;
+            }),
           ]);
-          const tasks = taskRes?.data ?? [];
+          const tasks = taskResult?.data ?? [];
           const pendingLeaves = (leaveRes?.data ?? []).filter((l) => l.status === 'pending');
           return {
             placement: p,
-            checkedIn: attRes?.data?.checked_in ?? false,
-            checkInAt: attRes?.data?.checked_in_at ?? null,
-            tasksTotal: tasks.length,
-            tasksDone: tasks.filter((t) => t.status === 'done').length,
+            checkedIn: attendanceResult?.data?.checked_in ?? false,
+            checkInAt: attendanceResult?.data?.checked_in_at ?? null,
+            tasksTotal: includeOperations ? tasks.length : 0,
+            tasksDone: includeOperations ? tasks.filter((task) => task.status === 'done').length : 0,
             pendingLeaves,
           } satisfies PlacementDashData;
         }),
@@ -70,13 +79,13 @@ export function useParentWorkDashboard() {
       setStats({
         activeHelpers: results.length,
         checkedInToday: results.filter((r) => r.checkedIn).length,
-        pendingTasksTotal: results.reduce((s, r) => s + (r.tasksTotal - r.tasksDone), 0),
+        pendingTasksTotal: results.reduce((total, r) => total + (r.tasksTotal - r.tasksDone), 0),
         pendingLeaveTotal: results.reduce((s, r) => s + r.pendingLeaves.length, 0),
       });
     } finally {
       setDashLoading(false);
     }
-  }, [placements]);
+  }, [includeOperations, placements]);
 
   useEffect(() => {
     void fetchDashData();
