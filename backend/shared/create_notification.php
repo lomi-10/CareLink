@@ -32,7 +32,11 @@ function carelink_create_notification(
         }
         $st->bind_param('issssi', $user_id, $type, $title, $message, $ref_type, $ref_id);
     }
-    $st->execute();
+    if (!$st->execute()) {
+        error_log('Notification insert failed: ' . $st->error);
+        $st->close();
+        return false;
+    }
     $nid = (int) $conn->insert_id;
     $st->close();
     return $nid > 0 ? $nid : false;

@@ -23,7 +23,7 @@ export default function PersonalInfoScreen() {
   const router = useRouter();
   const { t: tr } = useT();
   const t = useProfileTheme();
-  const { DARK, MUTED, ORANGE, GREEN } = t;
+  const { DARK, ORANGE, GREEN } = t;
   const s = useMemo(() => createStyles(t), [t]);
   const { profileData, loading, refresh } = useHelperProfile();
   const [editOpen, setEditOpen] = useState(false);
@@ -55,6 +55,7 @@ export default function PersonalInfoScreen() {
   const helperAge = (profile?.age as number | undefined) ?? computeAge(profile?.date_of_birth ?? profile?.birth_date);
 
   const personalRows: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }[] = [
+    { icon: 'at-outline',          label: tr('helper.setup.username'),       value: profileData?.user?.username || '—' },
     { icon: 'male',              label: tr('helper.setup.gender'),          value: profile?.gender           || '—' },
     { icon: 'calendar',          label: tr('helper.setup.dateOfBirth'),      value: profile?.date_of_birth    || '—' },
     { icon: 'person',            label: tr('helper.setup.age'),              value: helperAge != null ? tr('helper.setup.yearsOld', { count: helperAge }) : '—' },
@@ -67,7 +68,6 @@ export default function PersonalInfoScreen() {
   const workRows: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }[] = [
     { icon: 'briefcase-outline', label: tr('helper.setup.employmentType'), value: profile?.employment_type || '—' },
     { icon: 'time-outline',      label: tr('helper.setup.workSchedule'),   value: profile?.work_schedule || '—' },
-    { icon: 'trending-up',       label: tr('helper.profile.yearsExperience'), value: profile?.years_experience ? tr('helper.setup.years', { count: profile.years_experience }) : tr('helper.setup.entryLevel') },
     { icon: 'cash-outline',      label: tr('helper.setup.expectedSalary'), value: profile?.expected_salary ? `₱${Number(profile.expected_salary).toLocaleString()} / ${profile.salary_period ?? 'month'}` : tr('helper.setup.negotiable') },
   ];
 
@@ -147,6 +147,7 @@ export default function PersonalInfoScreen() {
 
       <EditHelperProfileModal
         visible={editOpen}
+        initialSection="personal"
         onClose={() => setEditOpen(false)}
         onSaveSuccess={() => { setEditOpen(false); refresh(); }}
       />

@@ -14,6 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST, OPTIONS');
+    echo json_encode(['success' => false, 'message' => 'POST required']);
+    exit();
+}
+
 ini_set('display_errors', 0);
 error_reporting(0);
 
@@ -46,20 +53,31 @@ try {
     $json = file_get_contents('php://input');
     $data = json_decode($json, true);
 
-    if (!isset($data['user_id']) || !isset($data['action'])) {
+    if (!is_array($data) || !isset($data['user_id']) || !isset($data['action'])) {
         throw new Exception("User ID and action are required");
     }
 
     $user_id = intval($data['user_id']);
     $action = $data['action']; // 'approve' or 'reject'
-    $reason = isset($data['reason']) ? $data['reason'] : null;
+    $reason = isset($data['reason']) && is_string($data['reason']) ? trim($data['reason']) : '';
     $verified_by = isset($data['verified_by']) ? intval($data['verified_by']) : 0; // PESO user_id (actor)
 
     error_log("=== VERIFY USER === User ID: $user_id, Action: $action");
 
+    if ($user_id <= 0) {
+        throw new Exception("Invalid user ID");
+    }
+
     // Validate action
     if (!in_array($action, ['approve', 'reject'])) {
         throw new Exception("Invalid action. Must be 'approve' or 'reject'");
+    }
+
+    if ($action === 'reject' && $reason === '') {
+        throw new Exception("A rejection reason is required");
+    }
+    if (strlen($reason) > 1000) {
+        throw new Exception("Rejection reason must be 1000 characters or fewer");
     }
 
     peso_validate_staff_actor($conn, $verified_by);
@@ -73,7 +91,7 @@ try {
         // ====================================================================
         // STEP 1: Get user type
         // ====================================================================
-        $userTypeSql = "SELECT user_type, status FROM users WHERE user_id = ?";
+        $userTypeSql = "SELECT user_type, status FROM users WHERE user_id = ? FOR UPDATE";
         $userTypeStmt = $conn->prepare($userTypeSql);
         $userTypeStmt->bind_param("i", $user_id);
         $userTypeStmt->execute();
@@ -178,6 +196,25 @@ try {
         }
 
         $profileTable = ($user_type === 'helper') ? 'helper_profiles' : 'parent_profiles';
+        if (strtolower(trim((string) $current_status)) !== 'pending') {
+            throw new Exception("Only pending accounts can be verified or rejected");
+        }
+
+        $profileStatusStmt = $conn->prepare(
+            "SELECT verification_status FROM {$profileTable} WHERE user_id = ? FOR UPDATE"
+        );
+        $profileStatusStmt->bind_param("i", $user_id);
+        $profileStatusStmt->execute();
+        $profileStatusResult = $profileStatusStmt->get_result();
+        if ($profileStatusResult->num_rows === 0) {
+            $profileStatusStmt->close();
+            throw new Exception("Profile not found for user");
+        }
+        $profileStatus = $profileStatusResult->fetch_assoc()['verification_status'];
+        $profileStatusStmt->close();
+        if (strtolower(trim((string) $profileStatus)) !== 'pending') {
+            throw new Exception("Only profiles pending PESO review can be verified or rejected");
+        }
 
         if ($action === 'approve') {
             $updateVerificationSql = "UPDATE {$profileTable}
@@ -194,6 +231,8 @@ try {
         } else {
             $updateVerificationSql = "UPDATE {$profileTable}
                                       SET verification_status = 'Rejected',
+                                          verified_by = NULL,
+                                          verified_at = NULL,
                                           rejected_by = ?,
                                           rejected_at = NOW(),
                                           rejection_reason = ?,
@@ -224,24 +263,27 @@ try {
         // ====================================================================
         // STEP 5: Commit transaction (save all changes)
         // ====================================================================
-        
-        $conn->commit();
-        
-        error_log("✓ Transaction committed successfully");
 
-        // Notify the user about verification result
+        // Keep the notification in the same transaction as the decision so
+        // the endpoint cannot report failure after a committed rejection.
         require_once '../shared/create_notification.php';
         if ($action === 'approve') {
-            createNotification($conn, $user_id, 'account_verified',
+            $notificationId = createNotification($conn, $user_id, 'account_verified',
                 'Account Verified! 🎉',
                 'Your CareLink account has been verified by PESO. You can now access all features.',
                 'account', $user_id);
         } else {
-            createNotification($conn, $user_id, 'account_rejected',
+            $notificationId = createNotification($conn, $user_id, 'account_rejected',
                 'Account Verification Update',
-                'Your account verification was not approved by PESO. Please review your documents and resubmit.',
+                'Your account verification was not approved by PESO. Reason: ' . $reason . ' Please correct the issue and resubmit.',
                 'account', $user_id);
         }
+        if ($notificationId === false) {
+            throw new Exception("Failed to create verification notification");
+        }
+
+        $conn->commit();
+        error_log("✓ Transaction committed successfully");
 
         // ====================================================================
         // Send success response

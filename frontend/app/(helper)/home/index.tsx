@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View, ScrollView, RefreshControl, ActivityIndicator,
-  SafeAreaView, Text, TouchableOpacity, StyleSheet,
+  SafeAreaView, Text, TouchableOpacity, StyleSheet, Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -89,6 +89,12 @@ export default function HelperHome() {
   useFocusEffect(useCallback(() => { void refreshWork(); }, [refreshWork]));
 
   const [isMobileMenuOpen,    setIsMobileMenuOpen]    = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const scrollOffsetRef = React.useRef(0);
+  const pullStartYRef = React.useRef<number | null>(null);
+  const pullDistanceRef = React.useRef(0);
   const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
   const [successLogoutVisible, setSuccessLogoutVisible] = useState(false);
   const [placementReviewRefreshTok, setPlacementReviewRefreshTok] = useState(0);
@@ -149,6 +155,55 @@ export default function HelperHome() {
   const showWorkPreview = portalMode === 'work' && !showWorkDash;
   const helperIdNum = userData ? Number(userData.user_id) : 0;
   const loading = authLoading || statsLoading || !workReady || !modeReady;
+  const webPullToRefresh = Platform.OS === 'web' && !isDesktop;
+
+  const refreshHome = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refresh(), refreshProfile(), refreshWork()]);
+      bumpPlacementReviewBanner();
+      setRefreshToken((token) => token + 1);
+    } catch (error) {
+      console.error('Could not refresh helper home:', error);
+    } finally {
+      setIsRefreshing(false);
+      pullStartYRef.current = null;
+      pullDistanceRef.current = 0;
+      setPullDistance(0);
+    }
+  }, [isRefreshing, refresh, refreshProfile, refreshWork]);
+
+  const handleTouchStart = (event: { nativeEvent: { pageY: number } }) => {
+    if (!webPullToRefresh || scrollOffsetRef.current > 0 || isRefreshing) return;
+    pullStartYRef.current = event.nativeEvent.pageY;
+    pullDistanceRef.current = 0;
+  };
+
+  const handleTouchMove = (event: { nativeEvent: { pageY: number } }) => {
+    const startY = pullStartYRef.current;
+    if (startY === null || scrollOffsetRef.current > 0 || isRefreshing) return;
+    const distance = Math.max(0, Math.min(72, event.nativeEvent.pageY - startY));
+    pullDistanceRef.current = distance;
+    setPullDistance(distance);
+  };
+
+  const handleTouchEnd = () => {
+    if (pullStartYRef.current === null) return;
+    pullStartYRef.current = null;
+    if (pullDistanceRef.current >= 56) {
+      void refreshHome();
+    } else {
+      pullDistanceRef.current = 0;
+      setPullDistance(0);
+    }
+  };
+
+  const handleTouchCancel = () => {
+    pullStartYRef.current = null;
+    pullDistanceRef.current = 0;
+    setPullDistance(0);
+  };
 
   function QuickActionDesktopInner({ icon, title, desc, color, onPress }: {
     icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -403,17 +458,30 @@ export default function HelperHome() {
           layoutStyles.mobileScrollContent,
           { paddingBottom: showWorkDash ? 88 : 88 },
         ]}
+        style={webPullToRefresh ? ({ overscrollBehaviorY: 'contain' } as any) : undefined}
+        scrollEventThrottle={16}
+        onScroll={(event) => {
+          scrollOffsetRef.current = Math.max(0, event.nativeEvent.contentOffset.y);
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
         refreshControl={
           <RefreshControl
-            refreshing={false}
-            onRefresh={() => {
-              refresh();
-              void refreshWork();
-              bumpPlacementReviewBanner();
-            }}
+            refreshing={isRefreshing}
+            onRefresh={() => void refreshHome()}
           />
         }
       >
+        {webPullToRefresh && (pullDistance > 0 || isRefreshing) ? (
+          <View style={[layoutStyles.pullToRefresh, { height: isRefreshing ? 56 : pullDistance }]}>
+            <ActivityIndicator size="small" color={ORANGE} />
+            <Text style={layoutStyles.pullToRefreshText}>
+              {isRefreshing ? 'Refreshing…' : pullDistance >= 56 ? 'Release to refresh' : 'Pull down to refresh'}
+            </Text>
+          </View>
+        ) : null}
         {renderModeToggle()}
         {showWorkDash && userData && activeHire ? (
           <WorkHome
@@ -424,6 +492,7 @@ export default function HelperHome() {
             verified={profileData?.profile?.verification_status === 'Verified'}
             activeHire={activeHire}
             onRefreshWorkContext={refreshWork}
+            refreshToken={refreshToken}
             announcement={<AnnouncementFeed />}
           />
         ) : showWorkPreview ? (

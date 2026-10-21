@@ -18,6 +18,8 @@ export function createHelperHomeStyles(w: HelperWarm = makeHelperWarm()) {
     scrollContent: { padding: 32, paddingBottom: 60 },
     statsGrid: { flexDirection: 'row', gap: 20, marginBottom: 40 },
     mobileScrollContent: { padding: 16, paddingBottom: 40 },
+    pullToRefresh: { alignItems: 'center', justifyContent: 'center', gap: 5, overflow: 'hidden' },
+    pullToRefreshText: { color: MUTED, fontSize: 11, fontWeight: '600' },
     mobileStatsRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
     quickActionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 32 },
 

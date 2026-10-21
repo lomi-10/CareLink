@@ -27,7 +27,7 @@ export default function SkillsScreen() {
   const router = useRouter();
   const { t: tr } = useT();
   const t = useProfileTheme();
-  const { DARK, MUTED, ORANGE, GREEN } = t;
+  const { DARK, ORANGE, GREEN } = t;
   const s = useMemo(() => createStyles(t), [t]);
   const { profileData, loading, refresh } = useHelperProfile();
   const refs = useJobReferences();
@@ -64,8 +64,6 @@ export default function SkillsScreen() {
   const jobs      = profileData?.mappedSpecialties?.jobs?.filter(Boolean)      ?? [];
   const skills    = profileData?.mappedSpecialties?.skills?.filter(Boolean)    ?? [];
   const languages = profileData?.mappedSpecialties?.languages?.filter(Boolean) ?? [];
-  const exp       = profileData?.profile?.years_experience;
-
   return (
     <View style={s.page}>
       <SafeAreaView style={{ flex: 1 }}>
@@ -125,20 +123,6 @@ export default function SkillsScreen() {
           <PillSection title={tr('helper.setup.skills')} count={skills.length} items={skills} checkmark accentColor={GREEN} />
           <PillSection title={tr('helper.setup.languages')} count={languages.length} items={languages} checkmark accentColor="#0891B2" />
 
-          {/* Experience */}
-          <Text style={s.groupLabel}>{tr('helper.setup.experience')}</Text>
-          <View style={s.expCard}>
-            <View style={[s.expIcon, { backgroundColor: '#FEE2D5' }]}>
-              <Ionicons name="time" size={22} color={ORANGE} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.expValue}>{exp ? tr('helper.setup.years', { count: exp }) : tr('helper.setup.entryLevel')}</Text>
-              <Text style={s.expLabel}>{tr('helper.setup.totalExperience')}</Text>
-            </View>
-            <TouchableOpacity onPress={() => setEditOpen(true)}>
-              <Text style={s.expEdit}>{tr('helper.setup.update')}</Text>
-            </TouchableOpacity>
-          </View>
         </ScrollView>
 
         <HelperTabBar />

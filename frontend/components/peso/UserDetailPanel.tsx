@@ -715,7 +715,7 @@ function RejectModal({ title, subtitle, value, onChange, onCancel, onConfirm, pr
             </View>
           </>
         )}
-        <TextInput style={st.rejectInput} placeholder="Enter reason…" placeholderTextColor={c.subtle} value={value} onChangeText={onChange} multiline numberOfLines={4} textAlignVertical="top" />
+        <TextInput style={st.rejectInput} placeholder="Enter reason…" placeholderTextColor={c.subtle} value={value} onChangeText={onChange} multiline numberOfLines={4} maxLength={1000} textAlignVertical="top" />
         <View style={st.rejectBtns}>
           <TouchableOpacity style={st.cancelBtn} onPress={onCancel} activeOpacity={0.8}><Text style={st.cancelText}>Cancel</Text></TouchableOpacity>
           <TouchableOpacity style={[st.confirmReject, processing && { opacity: 0.6 }]} onPress={onConfirm} disabled={processing} activeOpacity={0.85}>

@@ -203,6 +203,9 @@ export default function ViewUserProfile() {
       if (data.success) {
         setRejectUserModal(false);
         setRejectReason("");
+        setUserData((prev: any) =>
+          prev ? { ...prev, profile: { ...(prev.profile ?? {}), verification_status: "Rejected" } } : prev
+        );
         showNotif("success", "Account Rejected", "The account has been rejected.", "Back to List", () => router.back());
       } else { showNotif("error", "Failed", data.message || "Failed to reject account."); }
     } catch { showNotif("error", "Error", "Network error occurred."); }
@@ -790,6 +793,7 @@ function RejectModal({
           onChangeText={onChange}
           multiline
           numberOfLines={4}
+          maxLength={1000}
           textAlignVertical="top"
         />
         <View style={styles.rejectModalBtns}>

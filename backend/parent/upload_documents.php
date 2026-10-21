@@ -107,13 +107,13 @@ try {
 
             if ($exists) {
                 if ($pvFront !== null && $pvBack !== null) {
-                    $stmt = $conn->prepare("UPDATE user_documents SET file_path = ?, file_path_back = ?, status = 'Pending', uploaded_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'");
+                    $stmt = $conn->prepare("UPDATE user_documents SET file_path = ?, file_path_back = ?, status = 'Pending', rejection_reason = NULL, verified_by = NULL, verified_at = NULL, uploaded_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'");
                     $stmt->bind_param("ssi", $pvFront, $pvBack, $user_id);
                 } elseif ($pvBack !== null) {
-                    $stmt = $conn->prepare("UPDATE user_documents SET file_path_back = ?, status = 'Pending', uploaded_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'");
+                    $stmt = $conn->prepare("UPDATE user_documents SET file_path_back = ?, status = 'Pending', rejection_reason = NULL, verified_by = NULL, verified_at = NULL, uploaded_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'");
                     $stmt->bind_param("si", $pvBack, $user_id);
                 } else {
-                    $stmt = $conn->prepare("UPDATE user_documents SET file_path = ?, status = 'Pending', uploaded_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'");
+                    $stmt = $conn->prepare("UPDATE user_documents SET file_path = ?, status = 'Pending', rejection_reason = NULL, verified_by = NULL, verified_at = NULL, uploaded_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'");
                     $stmt->bind_param("si", $pvFront, $user_id);
                 }
                 $stmt->execute();
@@ -157,7 +157,10 @@ try {
         if (carelink_has_any_required_document($conn, $user_id)) {
             $updateProfile = $conn->prepare(
                 "UPDATE parent_profiles
-                 SET verification_status = 'Pending', updated_at = NOW()
+                 SET verification_status = 'Pending',
+                     verified_by = NULL, verified_at = NULL,
+                     rejected_by = NULL, rejected_at = NULL, rejection_reason = NULL,
+                     updated_at = NOW()
                  WHERE user_id = ?
                    AND verification_status IN ('Unverified', 'Pending', 'Rejected')"
             );

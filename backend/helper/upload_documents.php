@@ -226,6 +226,9 @@ try {
                 $updateSql = "UPDATE user_documents 
                             SET file_path = ?, 
                                 status = 'Pending', 
+                                rejection_reason = NULL,
+                                verified_by = NULL,
+                                verified_at = NULL,
                                 uploaded_at = NOW(),
                                 updated_at = NOW()
                             WHERE user_id = ? AND document_type = 'Barangay Clearance'";
@@ -267,15 +270,15 @@ try {
                 // Update only the side(s) that were sent this time — front and back
                 // are independent uploads.
                 if ($vidFront !== null && $vidBack !== null) {
-                    $updateSql = "UPDATE user_documents SET file_path = ?, file_path_back = ?, id_type = ?, status = 'Pending', uploaded_at = NOW(), updated_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'";
+                    $updateSql = "UPDATE user_documents SET file_path = ?, file_path_back = ?, id_type = ?, status = 'Pending', rejection_reason = NULL, verified_by = NULL, verified_at = NULL, uploaded_at = NOW(), updated_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'";
                     $updateStmt = $conn->prepare($updateSql);
                     $updateStmt->bind_param("sssi", $vidFront, $vidBack, $vidType, $user_id);
                 } elseif ($vidBack !== null) {
-                    $updateSql = "UPDATE user_documents SET file_path_back = ?, id_type = ?, status = 'Pending', uploaded_at = NOW(), updated_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'";
+                    $updateSql = "UPDATE user_documents SET file_path_back = ?, id_type = ?, status = 'Pending', rejection_reason = NULL, verified_by = NULL, verified_at = NULL, uploaded_at = NOW(), updated_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'";
                     $updateStmt = $conn->prepare($updateSql);
                     $updateStmt->bind_param("ssi", $vidBack, $vidType, $user_id);
                 } else {
-                    $updateSql = "UPDATE user_documents SET file_path = ?, id_type = ?, status = 'Pending', uploaded_at = NOW(), updated_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'";
+                    $updateSql = "UPDATE user_documents SET file_path = ?, id_type = ?, status = 'Pending', rejection_reason = NULL, verified_by = NULL, verified_at = NULL, uploaded_at = NOW(), updated_at = NOW() WHERE user_id = ? AND document_type = 'Valid ID'";
                     $updateStmt = $conn->prepare($updateSql);
                     $updateStmt->bind_param("ssi", $vidFront, $vidType, $user_id);
                 }
@@ -312,6 +315,9 @@ try {
                 $updateSql = "UPDATE user_documents 
                             SET file_path = ?, 
                                 status = 'Pending', 
+                                rejection_reason = NULL,
+                                verified_by = NULL,
+                                verified_at = NULL,
                                 uploaded_at = NOW(),
                                 updated_at = NOW()
                             WHERE user_id = ? AND document_type = 'Police Clearance'";
@@ -349,6 +355,9 @@ try {
                 $updateSql = "UPDATE user_documents 
                             SET file_path = ?, 
                                 status = 'Pending', 
+                                rejection_reason = NULL,
+                                verified_by = NULL,
+                                verified_at = NULL,
                                 uploaded_at = NOW(),
                                 updated_at = NOW()
                             WHERE user_id = ? AND document_type = 'TESDA NC2'";
@@ -377,7 +386,10 @@ try {
         if (carelink_has_any_required_document($conn, $user_id)) {
             $updateProfile = $conn->prepare(
                 "UPDATE helper_profiles
-                 SET verification_status = 'Pending', updated_at = NOW()
+                 SET verification_status = 'Pending',
+                     verified_by = NULL, verified_at = NULL,
+                     rejected_by = NULL, rejected_at = NULL, rejection_reason = NULL,
+                     updated_at = NOW()
                  WHERE user_id = ?
                    AND (verification_status = 'Unverified'
                         OR verification_status IS NULL

@@ -164,9 +164,17 @@ function carelink_sync_helper_profile_completed(mysqli $conn, int $user_id): boo
         $q = $conn->prepare(
             "UPDATE helper_profiles
              SET verification_status = 'Pending',
+                 verified_by = NULL,
+                 verified_at = NULL,
+                 rejected_by = NULL,
+                 rejected_at = NULL,
+                 rejection_reason = NULL,
                  updated_at = NOW()
              WHERE user_id = ?
-               AND (verification_status = 'Unverified' OR verification_status IS NULL OR verification_status = '')"
+               AND (verification_status = 'Unverified'
+                    OR verification_status = 'Rejected'
+                    OR verification_status IS NULL
+                    OR verification_status = '')"
         );
         if ($q) {
             $q->bind_param("i", $user_id);
@@ -248,9 +256,17 @@ function carelink_sync_parent_profile_completed(mysqli $conn, int $user_id): boo
         $q = $conn->prepare(
             "UPDATE parent_profiles
              SET verification_status = 'Pending',
+                 verified_by = NULL,
+                 verified_at = NULL,
+                 rejected_by = NULL,
+                 rejected_at = NULL,
+                 rejection_reason = NULL,
                  updated_at = NOW()
              WHERE user_id = ?
-               AND (verification_status = 'Unverified' OR verification_status IS NULL OR verification_status = '')"
+               AND (verification_status = 'Unverified'
+                    OR verification_status = 'Rejected'
+                    OR verification_status IS NULL
+                    OR verification_status = '')"
         );
         if ($q) {
             $q->bind_param("i", $user_id);

@@ -23,6 +23,7 @@ import { isValidPhMobile, normalizePhMobile } from '@/lib/phone';
 import type { WorkHistoryEntry } from '@/hooks/helper';
 import { AddressSection, SelectionModal } from '.';
 import { useT } from '@/contexts/LocaleContext';
+import { useResponsive } from '@/hooks/shared';
 
 // ─── Category icon map ────────────────────────────────────────────────────────
 // Maps PESO job category names → Ionicons icon + color theme for the card grid.
@@ -109,9 +110,15 @@ const MUTED  = '#7A5C3E';
 
 export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess, onProfileUpdated, initialSection }: Props) {
   const { t: tr } = useT();
+  const { isDesktop } = useResponsive();
+  const mergePersonalPreferences = !isDesktop;
 
   // ── Navigation state ────────────────────────────────────────────────────────
   const [view, setView] = useState<ModalView>({ type: 'chooser' });
+  const sections = mergePersonalPreferences
+    ? SECTIONS.filter((section) => section.key !== 'preferences').map((section) =>
+        section.key === 'personal' ? { ...section, totalSteps: 5 } : section)
+    : SECTIONS;
 
   // ── All profile state (unchanged from original) ──────────────────────────────
   const [userId, setUserId] = useState<string | null>(null);
@@ -349,12 +356,13 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
 
   // Per-section completion + the next section to guide the helper to ("Start here").
   const sectionDone: Record<string, boolean> = {
-    personal:     !!(firstName.trim() && lastName.trim() && birthDate && province && municipality && barangay), // contact number is optional
+    personal:     !!(firstName.trim() && lastName.trim() && birthDate && province && municipality && barangay
+      && (!mergePersonalPreferences || (expectedSalary && parseFloat(expectedSalary) >= 6400))), // contact number is optional
     skills:       selectedCategoryIds.length > 0 && selectedLanguageIds.length > 0,
-    preferences:  !!(expectedSalary && parseFloat(expectedSalary) >= 6400),
+    ...(!mergePersonalPreferences ? { preferences: !!(expectedSalary && parseFloat(expectedSalary) >= 6400) } : {}),
     experience:   !!(parseInt(experienceYears || '0', 10) > 0 || workRows.length > 0),
   };
-  const nextSectionKey = SECTIONS.find(sec => !sectionDone[sec.key])?.key;
+  const nextSectionKey = sections.find(sec => !sectionDone[sec.key])?.key;
 
   // ── Submit profile (shared by section saves and photo auto-save) ───────────
   const submitProfile = async (successMessage: string, onSuccess?: () => void, photoOverride?: string) => {
@@ -472,6 +480,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         if (contactNumber.trim() && !isValidPhMobile(contactNumber)) return tr('helper.setup.validationMobile');
         if (!birthDate) return tr('helper.setup.validationBirthDate');
         if (!province || !municipality || !barangay) return tr('helper.setup.validationAddress');
+        if (mergePersonalPreferences && (!expectedSalary || parseFloat(expectedSalary) < 6400)) return tr('helper.setup.validationSalary');
         return null;
       case 'skills':
         if (!selectedCategoryIds.length) return tr('helper.setup.validationCategory');
@@ -521,6 +530,15 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         <StyledInput value={lastName} onChangeText={setLastName} placeholder={tr('helper.setup.lastNamePlaceholder')} />
         <Label>{tr('helper.setup.middleName')} <OptTag /></Label>
         <StyledInput value={middleName} onChangeText={setMiddleName} placeholder={tr('helper.setup.middleNamePlaceholder')} />
+        <Label>{tr('helper.setup.username')} <OptTag /></Label>
+        <StyledInput
+          value={username}
+          onChangeText={setUsername}
+          placeholder="juandelacruz"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={100}
+        />
       </>
     );
     if (step === 2) return (
@@ -591,6 +609,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         setLatitude={setLatitude} setLongitude={setLongitude}
       />
     );
+    if (step === 5 && mergePersonalPreferences) return renderPreferencesStep();
     return null;
   };
 
@@ -947,7 +966,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
             </View>
 
             {/* Sections — guided: the next incomplete one shows a red "Start here" */}
-            {SECTIONS.map(sec => {
+            {sections.map(sec => {
               const done = sectionDone[sec.key];
               const isNext = sec.key === nextSectionKey;
               return (
@@ -995,7 +1014,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       ) : (
         // ── SECTION STEPS ───────────────────────────────────────────────────
         (() => {
-          const sectionCfg = SECTIONS.find(s => s.key === view.key)!;
+          const sectionCfg = sections.find(s => s.key === view.key)!;
           return (
             <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
               {/* Section header */}

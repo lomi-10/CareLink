@@ -26,12 +26,13 @@ type Props = {
   activeHire: ActiveHire;
   profileImage?: string | null;
   verified?: boolean;
+  refreshToken?: number;
   onRefreshWorkContext: () => Promise<void>;
   announcement?: React.ReactNode;
 };
 
 export function WorkHome({
-  helperId, userFirstName, userFullName, activeHire, profileImage, verified, onRefreshWorkContext, announcement,
+  helperId, userFirstName, userFullName, activeHire, profileImage, verified, refreshToken, onRefreshWorkContext, announcement,
 }: Props) {
   const router = useRouter();
   const { notify, noticeHost } = useNotice();
@@ -51,7 +52,7 @@ export function WorkHome({
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [helperId, activeHire.application_id, notify]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [load, refreshToken]);
 
   const pendingPayslipCount = useMemo(() => payslips.filter((row) => row.status === 'pending').length, [payslips]);
   const disputedPayslipCount = useMemo(() => payslips.filter((row) => row.status === 'disputed').length, [payslips]);

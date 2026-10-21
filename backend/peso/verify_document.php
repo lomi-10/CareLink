@@ -130,6 +130,8 @@ try {
                 $rejStmt = $conn->prepare(
                     "UPDATE helper_profiles
                      SET verification_status = 'Rejected',
+                         verified_by = NULL,
+                         verified_at = NULL,
                          rejection_reason = ?,
                          rejected_by = ?,
                          rejected_at = NOW(),
@@ -140,6 +142,8 @@ try {
                 $rejStmt = $conn->prepare(
                     "UPDATE parent_profiles
                      SET verification_status = 'Rejected',
+                         verified_by = NULL,
+                         verified_at = NULL,
                          rejection_reason = ?,
                          rejected_by = ?,
                          rejected_at = NOW(),

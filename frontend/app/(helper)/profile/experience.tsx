@@ -67,6 +67,11 @@ export default function ExperienceScreen() {
             <Text style={s.cardValue}>{Number(p.years_experience) > 0 ? tr('helper.setup.years', { count: p.years_experience }) : tr('helper.setup.notSet')}</Text>
           </View>
 
+          <View style={s.card}>
+            <Text style={s.cardLabel}>{tr('helper.setup.professionalBio')}</Text>
+            <Text style={s.bioValue}>{String(p.bio ?? '').trim() || tr('helper.setup.notSet')}</Text>
+          </View>
+
           {workHistory.length === 0 ? (
             <View style={s.empty}>
               <View style={s.emptyIc}><Ionicons name="briefcase-outline" size={30} color={ORANGE} /></View>
@@ -132,6 +137,7 @@ const s = StyleSheet.create({
   },
   cardLabel: { fontSize: 12.5, color: MUTED, marginBottom: 4 },
   cardValue: { fontSize: 17, fontWeight: '800', color: DARK },
+  bioValue: { fontSize: 14, color: DARK, lineHeight: 21 },
 
   empty: { alignItems: 'center', paddingVertical: 34, paddingHorizontal: 20 },
   emptyIc: {
