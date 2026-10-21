@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../../dbcon.php';
 require_once __DIR__ . '/../lib/hire_access.php';
+require_once __DIR__ . '/../lib/leave_helpers.php';
 require_once __DIR__ . '/../../shared/mysqli_stmt_helpers.php';
 
 function json_out($data, int $code = 200)
@@ -32,6 +33,7 @@ try {
     if (!$conn) {
         throw new Exception('Database connection failed');
     }
+    carelink_leave_ensure_entitlement_schema($conn);
 
     $application_id = isset($_GET['application_id']) ? (int) $_GET['application_id'] : 0;
     $user_id = isset($_GET['user_id']) ? (int) $_GET['user_id'] : 0;
@@ -47,7 +49,7 @@ try {
 
     $st = $conn->prepare("
         SELECT lr.id, lr.application_id, lr.helper_id, lr.`date`, lr.reason_code, lr.helper_note, lr.reason,
-               lr.status, lr.paid_leave, lr.response_note, lr.responded_at, lr.responded_by,
+               lr.status, lr.paid_leave, lr.paid_leave_source, lr.response_note, lr.responded_at, lr.responded_by,
                lr.created_at, lr.updated_at,
                TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS helper_name
         FROM leave_requests lr
@@ -88,6 +90,7 @@ try {
             'reason' => $r['reason'],
             'status' => $r['status'],
             'paid_leave' => isset($r['paid_leave']) && $r['paid_leave'] !== null ? (int) $r['paid_leave'] : null,
+            'paid_leave_source' => $r['paid_leave_source'] ?? null,
             'response_note' => $r['response_note'] ?? null,
             'responded_at' => $r['responded_at'],
             'responded_by' => isset($r['responded_by']) && $r['responded_by'] !== null ? (int) $r['responded_by'] : null,

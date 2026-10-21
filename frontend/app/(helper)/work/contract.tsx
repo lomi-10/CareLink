@@ -28,10 +28,12 @@ import {
 } from '@/components/helper/home/helperWarmTheme';
 import { applicationContractPdfUrl } from '@/constants/applications';
 import {
+  fetchLeaveBalance,
   fetchLeaveRequests,
   labelForLeaveReasonCode,
   LEAVE_REASON_OPTIONS,
   submitLeaveRequest,
+  type LeaveBalanceData,
   type LeaveReasonCode,
   type LeaveRequestRow,
 } from '@/lib/leaveRequestsApi';
@@ -60,6 +62,9 @@ export default function HelperContractScreen() {
   const isActive = ready && isWorkMode && !!activeHire;
 
   const [requests, setRequests] = useState<LeaveRequestRow[]>([]);
+  const [leaveBalance, setLeaveBalance] = useState<LeaveBalanceData | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceError, setBalanceError] = useState('');
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [requestsError, setRequestsError] = useState('');
   const [leaveOpen, setLeaveOpen] = useState(false);
@@ -87,9 +92,37 @@ export default function HelperContractScreen() {
     }
   }, [activeHire, helperId]);
 
+  const loadLeaveBalance = useCallback(async (asOfDate?: string) => {
+    if (!activeHire || helperId <= 0) return;
+    setBalanceError('');
+    setBalanceLoading(true);
+    try {
+      const result = await fetchLeaveBalance(activeHire.application_id, helperId, asOfDate);
+      if (!result.success || !result.data) {
+        setBalanceError(result.message || 'Could not load leave balances.');
+        return;
+      }
+      setLeaveBalance(result.data);
+    } catch (error) {
+      console.error('Could not load helper leave balances:', error);
+      setBalanceError('Could not load leave balances. Check your connection and try again.');
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, [activeHire, helperId]);
+
   useEffect(() => {
     if (isActive && helperId > 0) void loadRequests();
   }, [helperId, isActive, loadRequests]);
+
+  useEffect(() => {
+    if (isActive && helperId > 0) void loadLeaveBalance();
+  }, [helperId, isActive, loadLeaveBalance]);
+
+  const minimumLeaveDate = activeHire?.employment_start_date
+    && activeHire.employment_start_date > ymdLocal()
+    ? activeHire.employment_start_date
+    : ymdLocal();
 
   const contractDetails = useMemo(() => {
     if (!activeHire) return [];
@@ -104,8 +137,8 @@ export default function HelperContractScreen() {
       { label: 'Contract duration', value: activeHire.contract_duration },
       { label: 'Start date', value: activeHire.employment_start_date ? formatDate(activeHire.employment_start_date) : null },
       { label: 'End date', value: activeHire.employment_end_date ? formatDate(activeHire.employment_end_date) : null },
-      { label: 'Vacation leave days', value: activeHire.vacation_leave_days },
-      { label: 'Sick leave days', value: activeHire.sick_leave_days },
+      { label: 'Contract vacation leave days', value: activeHire.vacation_leave_days },
+      { label: 'Contract sick leave days', value: activeHire.sick_leave_days },
     ];
   }, [activeHire]);
 
@@ -117,6 +150,14 @@ export default function HelperContractScreen() {
     }
     if (activeHire.employment_end_date && leaveDate > activeHire.employment_end_date) {
       notify('Date is outside the contract', 'Choose a date on or before your contract end date.', 'warning');
+      return;
+    }
+    if (activeHire.employment_start_date && leaveDate < activeHire.employment_start_date) {
+      notify('Date is outside the contract', 'Choose a date on or after your contract start date.', 'warning');
+      return;
+    }
+    if (leaveBalance?.blocked_dates.includes(leaveDate)) {
+      notify('Date is not eligible for leave', 'Choose a workday that is not already a rest day, special day, or existing leave request.', 'warning');
       return;
     }
 
@@ -135,8 +176,8 @@ export default function HelperContractScreen() {
       setNote('');
       notify(
         'Leave request sent',
-        result.warnings?.includes('paid_limit_reached')
-          ? 'Your employer will be notified. If approved, this request will be recorded as unpaid leave because your paid leave limit has been reached.'
+        result.warnings?.includes('no_paid_allowance_available')
+          ? 'Your employer will be notified. No matching paid allowance is currently projected for this date; the final paid or unpaid treatment will be confirmed when reviewed.'
           : 'Your employer will be notified. You can check the response here.',
         'success',
       );
@@ -222,8 +263,16 @@ export default function HelperContractScreen() {
             </TouchableOpacity>
 
             <Section title="Leave requests" icon="calendar-outline">
-              <Text style={styles.bodyCopy}>Request a day off here and check your employer’s response. A request is not approved until your employer responds.</Text>
-              <TouchableOpacity style={styles.primaryButton} onPress={() => { setLeaveDate(ymdLocal()); setLeaveOpen(true); }} activeOpacity={0.85}>
+              <Text style={styles.bodyCopy}>Request a workday off and check your employer’s response. Requests are checked against your signed dates, rest days, and special days.</Text>
+              {balanceLoading ? <ActivityIndicator color={ORANGE} style={{ marginTop: 12 }} /> : null}
+              {balanceError ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{balanceError}</Text>
+                  <TouchableOpacity onPress={() => void loadLeaveBalance()}><Text style={styles.retryText}>Try again</Text></TouchableOpacity>
+                </View>
+              ) : null}
+              {leaveBalance ? <LeaveBalanceCard balance={leaveBalance} /> : null}
+              <TouchableOpacity style={styles.primaryButton} onPress={() => { setLeaveDate(minimumLeaveDate); void loadLeaveBalance(minimumLeaveDate); setLeaveOpen(true); }} activeOpacity={0.85}>
                 <Ionicons name="add" size={19} color="#fff" />
                 <Text style={styles.primaryButtonText}>Request leave</Text>
               </TouchableOpacity>
@@ -266,8 +315,13 @@ export default function HelperContractScreen() {
           reasonCode={reasonCode}
           note={note}
           submitting={submitting}
+          minimumDate={minimumLeaveDate}
+          blockedDates={leaveBalance?.blocked_dates ?? []}
           endDate={activeHire.employment_end_date}
-          onDateChange={setLeaveDate}
+          onDateChange={(date) => {
+            setLeaveDate(date);
+            if (date) void loadLeaveBalance(date);
+          }}
           onReasonChange={setReasonCode}
           onNoteChange={setNote}
           onClose={() => setLeaveOpen(false)}
@@ -319,7 +373,52 @@ function LeaveRequestCard({ request }: { request: LeaveRequestRow }) {
       </View>
       <Text style={styles.requestReason}>{labelForLeaveReasonCode(request.reason_code)}</Text>
       {request.helper_note ? <Text style={styles.requestNote}>{request.helper_note}</Text> : null}
+      {request.status === 'approved' && request.paid_leave !== null && request.paid_leave !== undefined ? (
+        <Text style={styles.responseNote}>{paidLeaveLabel(request.paid_leave_source, request.paid_leave === 1)}</Text>
+      ) : null}
       {request.response_note ? <Text style={styles.responseNote}>Employer response: {request.response_note}</Text> : null}
+    </View>
+  );
+}
+
+function paidLeaveLabel(source: string | null | undefined, isPaid: boolean): string {
+  if (!isPaid) return 'Recorded as unpaid leave';
+  const labels: Record<string, string> = {
+    statutory_sil: 'Paid using statutory Service Incentive Leave',
+    contract_sick: 'Paid using agreed contract sick leave',
+    contract_vacation: 'Paid using agreed contract vacation leave',
+  };
+  return labels[source ?? ''] ?? 'Recorded as paid leave';
+}
+
+function LeaveBalanceCard({ balance }: { balance: LeaveBalanceData }) {
+  const serviceYear = balance.service_year_start && balance.service_year_end
+    ? `${formatDate(balance.service_year_start)} – ${formatDate(balance.service_year_end)}`
+    : 'Not available until the contract start date is recorded';
+  return (
+    <View style={styles.balanceCard}>
+      <Text style={styles.balanceTitle}>Paid leave allowances</Text>
+      <Text style={styles.balancePeriod}>Service year: {serviceYear}</Text>
+      <BalanceRow label="Contract vacation" remaining={balance.contract_vacation.remaining} total={balance.contract_vacation.total} />
+      <BalanceRow label="Contract sick leave" remaining={balance.contract_sick.remaining} total={balance.contract_sick.total} />
+      <BalanceRow
+        label="Statutory SIL"
+        remaining={balance.statutory_sil.remaining}
+        total={balance.statutory_sil.available}
+      />
+      {!balance.statutory_sil.eligible && balance.statutory_sil.eligible_on ? (
+        <Text style={styles.balanceNote}>Statutory SIL becomes available after one year of service ({formatDate(balance.statutory_sil.eligible_on)}).</Text>
+      ) : null}
+      <Text style={styles.balanceNote}>Requests use the matching contract allowance first, then eligible SIL. Approval determines the final paid status.</Text>
+    </View>
+  );
+}
+
+function BalanceRow({ label, remaining, total }: { label: string; remaining: number; total: number }) {
+  return (
+    <View style={styles.balanceRow}>
+      <Text style={styles.balanceLabel}>{label}</Text>
+      <Text style={styles.balanceValue}>{remaining} of {total} days remaining</Text>
     </View>
   );
 }
@@ -330,6 +429,8 @@ function LeaveRequestModal({
   reasonCode,
   note,
   submitting,
+  minimumDate,
+  blockedDates,
   endDate,
   onDateChange,
   onReasonChange,
@@ -342,6 +443,8 @@ function LeaveRequestModal({
   reasonCode: LeaveReasonCode;
   note: string;
   submitting: boolean;
+  minimumDate: string;
+  blockedDates: string[];
   endDate?: string | null;
   onDateChange: (date: string) => void;
   onReasonChange: (reason: LeaveReasonCode) => void;
@@ -366,9 +469,10 @@ function LeaveRequestModal({
             <DateField
               value={date}
               onChange={onDateChange}
-              minimumDate={new Date()}
+              minimumDate={new Date(`${minimumDate}T00:00:00`)}
               maximumDate={endDate ? new Date(`${endDate.slice(0, 10)}T00:00:00`) : undefined}
             />
+            {blockedDates.includes(date) ? <Text style={styles.balanceNote}>This date is not eligible for a leave request. Select a different workday.</Text> : null}
             <Text style={styles.inputLabel}>Reason</Text>
             <View style={styles.reasonOptions}>
               {LEAVE_REASON_OPTIONS.map((option) => {
@@ -385,6 +489,7 @@ function LeaveRequestModal({
                 );
               })}
             </View>
+            <Text style={styles.balanceNote}>Sick requests use agreed sick leave first; other reasons use agreed vacation leave first. Eligible statutory SIL may be used after one year of service. Your employer confirms the final paid or unpaid status.</Text>
             <Text style={styles.inputLabel}>Note for your employer <Text style={styles.optionalText}>(optional)</Text></Text>
             <TextInput
               style={styles.noteInput}
@@ -393,7 +498,7 @@ function LeaveRequestModal({
               placeholder="Add any useful details"
               placeholderTextColor={SUBTLE}
               multiline
-              maxLength={1000}
+              maxLength={500}
               textAlignVertical="top"
             />
           </ScrollView>
@@ -449,6 +554,13 @@ const styles = StyleSheet.create({
   requestReason: { color: MUTED, fontSize: 11.5, marginTop: 4 },
   requestNote: { color: MUTED, fontSize: 11, marginTop: 5, lineHeight: 16 },
   responseNote: { color: DARK, fontSize: 11, marginTop: 5, lineHeight: 16 },
+  balanceCard: { marginTop: 12, padding: 12, borderWidth: 1, borderColor: DIVIDER, borderRadius: 12, backgroundColor: '#FBF8F5', gap: 6 },
+  balanceTitle: { color: DARK, fontSize: 12.5, fontWeight: '700' },
+  balancePeriod: { color: MUTED, fontSize: 10.5, lineHeight: 15 },
+  balanceRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, paddingVertical: 5, borderTopWidth: 1, borderTopColor: DIVIDER },
+  balanceLabel: { flex: 1, color: MUTED, fontSize: 11 },
+  balanceValue: { color: DARK, fontSize: 11, fontWeight: '600', textAlign: 'right' },
+  balanceNote: { color: MUTED, fontSize: 10.5, lineHeight: 15, marginTop: 5 },
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 15 },
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(27,17,11,0.55)' },
   modalCard: { width: '100%', maxWidth: 500, maxHeight: '90%', backgroundColor: SURFACE, borderRadius: 18, overflow: 'hidden' },

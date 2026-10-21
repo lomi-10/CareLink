@@ -2,7 +2,7 @@
 /**
  * GET /api/v1/leave-requests/balance.php
  * ?application_id=&helper_id=
- * Returns paid leave balance for the active hire (RA 10361 cap 5 vs job post vacation_days).
+ * Returns contractual leave allowances and eligible statutory SIL separately.
  */
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -33,17 +33,20 @@ try {
 
     $application_id = isset($_GET['application_id']) ? (int) $_GET['application_id'] : 0;
     $helper_id = isset($_GET['helper_id']) ? (int) $_GET['helper_id'] : 0;
+    $asOfDate = isset($_GET['date']) ? trim((string) $_GET['date']) : date('Y-m-d');
 
     if ($application_id <= 0 || $helper_id <= 0) {
         json_out(['success' => false, 'message' => 'application_id and helper_id required'], 400);
+    }
+    if (!carelink_leave_is_valid_date($asOfDate)) {
+        json_out(['success' => false, 'message' => 'date must be a real calendar date in Y-m-d format'], 400);
     }
 
     if (!carelink_v1_assert_helper_hire($conn, $application_id, $helper_id)) {
         json_out(['success' => false, 'message' => 'Forbidden'], 403);
     }
 
-    $bal = carelink_leave_balance($conn, $application_id);
-    $ent = carelink_leave_paid_entitlement($conn, $application_id);
+    $bal = carelink_leave_balance($conn, $application_id, $asOfDate);
 
     $from = date('Y-m-d');
     $to = date('Y-m-d', strtotime('+120 days'));
@@ -56,9 +59,14 @@ try {
             'used' => $bal['used'],
             'remaining' => $bal['remaining'],
             'at_paid_limit' => $bal['at_paid_limit'],
-            'unpaid_if_approved_next' => $bal['unpaid_if_approved'],
-            'job_post_vacation_days' => $ent['raw_job_days'],
-            'paid_cap' => CARELINK_LEAVE_PAID_CAP,
+            'paid_available_for_reason' => $bal['paid_available_for_reason'],
+            'as_of_date' => $bal['as_of_date'],
+            'service_year_start' => $bal['service_year_start'],
+            'service_year_end' => $bal['service_year_end'],
+            'contract_exists' => $bal['contract_exists'],
+            'statutory_sil' => $bal['statutory_sil'],
+            'contract_vacation' => $bal['contract_vacation'],
+            'contract_sick' => $bal['contract_sick'],
             'blocked_dates' => $blocked,
         ],
     ]);

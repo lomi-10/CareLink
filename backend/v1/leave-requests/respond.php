@@ -40,9 +40,11 @@ function carelink_leave_sync_attendance(mysqli $conn, int $application_id, int $
         INSERT INTO attendance_logs (application_id, helper_id, `date`, checked_in_at, checked_out_at, status, note)
         VALUES (?, ?, ?, NULL, NULL, ?, NULL)
         ON DUPLICATE KEY UPDATE
-            status = VALUES(status),
-            checked_in_at = NULL,
-            checked_out_at = NULL,
+            status = IF(
+                status IN ('present', 'holiday', 'rest', 'no_work') OR checked_in_at IS NOT NULL,
+                status,
+                VALUES(status)
+            ),
             updated_at = CURRENT_TIMESTAMP
     ");
     $st->bind_param('iiss', $application_id, $helper_id, $date_ymd, $status_val);
@@ -61,6 +63,7 @@ function carelink_leave_sync_application_paid_count(mysqli $conn, int $applicati
 }
 
 try {
+    $transactionStarted = false;
     if (!$conn) {
         throw new Exception('Database connection failed');
     }
@@ -91,19 +94,11 @@ try {
         json_out(['success' => false, 'message' => 'status must be approved or declined'], 400);
     }
 
-    $st = $conn->prepare("
-        SELECT id, application_id, helper_id, `date`, status
-        FROM leave_requests
-        WHERE id = ?
-        LIMIT 1
-    ");
+    carelink_leave_ensure_entitlement_schema($conn);
+    $st = $conn->prepare("SELECT application_id FROM leave_requests WHERE id = ? LIMIT 1");
     $st->bind_param('i', $leave_id);
     $st->execute();
-    $lr = $st->get_result();
-    $req = $lr instanceof mysqli_result ? $lr->fetch_assoc() : carelink_mysqli_stmt_fetch_assoc($st);
-    if ($lr instanceof mysqli_result) {
-        $lr->free();
-    }
+    $req = $st->get_result()->fetch_assoc();
     $st->close();
 
     if (!$req) {
@@ -111,44 +106,125 @@ try {
     }
 
     $application_id = (int) $req['application_id'];
-    if (!carelink_v1_assert_parent_hire($conn, $application_id, $parent_user_id)) {
+    $conn->begin_transaction();
+    $transactionStarted = true;
+    $lock = $conn->prepare('SELECT application_id FROM job_applications WHERE application_id = ? FOR UPDATE');
+    $lock->bind_param('i', $application_id);
+    $lock->execute();
+    $placement = $lock->get_result()->fetch_assoc();
+    $lock->close();
+    if (!$placement || !carelink_v1_assert_parent_hire($conn, $application_id, $parent_user_id)) {
+        $conn->rollback();
+        $transactionStarted = false;
         json_out(['success' => false, 'message' => 'Forbidden'], 403);
     }
 
+    $st = $conn->prepare("
+        SELECT id, application_id, helper_id, `date`, reason_code, status
+        FROM leave_requests
+        WHERE id = ? AND application_id = ?
+        FOR UPDATE
+    ");
+    $st->bind_param('ii', $leave_id, $application_id);
+    $st->execute();
+    $req = $st->get_result()->fetch_assoc();
+    $st->close();
+    if (!$req) {
+        $conn->rollback();
+        $transactionStarted = false;
+        json_out(['success' => false, 'message' => 'Leave request not found'], 404);
+    }
     if ($req['status'] !== 'pending') {
+        $conn->rollback();
+        $transactionStarted = false;
         json_out(['success' => false, 'message' => 'This request was already responded to'], 409);
     }
 
     $now = date('Y-m-d H:i:s');
     $helper_id = (int) $req['helper_id'];
     $date_ymd = (string) $req['date'];
-
-    $is_paid = false;
-    if ($status_new === 'approved') {
-        $bal = carelink_leave_balance($conn, $application_id);
-        $is_paid = $bal['remaining'] > 0;
-    }
+    $paidSource = null;
 
     if ($status_new === 'approved') {
-        $paid_leave_val = $is_paid ? 1 : 0;
-        $upd = $conn->prepare("
-            UPDATE leave_requests
-            SET status = ?, responded_at = ?, responded_by = ?, response_note = ?, paid_leave = ?, updated_at = NOW()
-            WHERE id = ? AND status = 'pending'
+        $validationError = carelink_leave_validate_work_day($conn, $application_id, $date_ymd);
+        if ($validationError !== null) {
+            $conn->rollback();
+            $transactionStarted = false;
+            json_out(['success' => false, 'message' => $validationError], 409);
+        }
+
+        $duplicate = $conn->prepare("
+            SELECT id
+            FROM leave_requests
+            WHERE application_id = ? AND `date` = ? AND id <> ? AND status = 'approved'
+            LIMIT 1
+            FOR UPDATE
         ");
-        $upd->bind_param('ssisii', $status_new, $now, $parent_user_id, $response_note, $paid_leave_val, $leave_id);
-    } else {
-        $upd = $conn->prepare("
-            UPDATE leave_requests
-            SET status = ?, responded_at = ?, responded_by = ?, response_note = ?, updated_at = NOW()
-            WHERE id = ? AND status = 'pending'
+        $duplicate->bind_param('isi', $application_id, $date_ymd, $leave_id);
+        $duplicate->execute();
+        $duplicateRow = $duplicate->get_result()->fetch_assoc();
+        $duplicate->close();
+        if ($duplicateRow) {
+            $conn->rollback();
+            $transactionStarted = false;
+            json_out(['success' => false, 'message' => 'Another leave request for that date has already been approved.'], 409);
+        }
+
+        $attendance = $conn->prepare("
+            SELECT status, checked_in_at
+            FROM attendance_logs
+            WHERE application_id = ? AND `date` = ?
+            LIMIT 1
         ");
-        $upd->bind_param('ssisi', $status_new, $now, $parent_user_id, $response_note, $leave_id);
+        $attendance->bind_param('is', $application_id, $date_ymd);
+        $attendance->execute();
+        $attendanceRow = $attendance->get_result()->fetch_assoc();
+        $attendance->close();
+        if ($attendanceRow && (
+            ($attendanceRow['status'] ?? '') === 'present'
+            || !empty($attendanceRow['checked_in_at'])
+        )) {
+            $conn->rollback();
+            $transactionStarted = false;
+            json_out([
+                'success' => false,
+                'message' => 'Attendance is already recorded for that date. Resolve the attendance record before approving leave.',
+            ], 409);
+        }
+        if ($attendanceRow && in_array((string) ($attendanceRow['status'] ?? ''), ['holiday', 'rest', 'no_work'], true)) {
+            $conn->rollback();
+            $transactionStarted = false;
+            json_out(['success' => false, 'message' => 'That date is already recorded as a non-work day.'], 409);
+        }
+
+        $bal = carelink_leave_balance($conn, $application_id, $date_ymd);
+        $paidSource = carelink_leave_paid_source($bal, (string) $req['reason_code']);
     }
 
+    $is_paid = $paidSource !== null;
+    $paid_leave_val = $status_new === 'approved' ? ($is_paid ? 1 : 0) : null;
+    $paidSourceForStorage = $status_new === 'approved' ? ($paidSource ?? 'unpaid') : null;
+    $upd = $conn->prepare("
+        UPDATE leave_requests
+        SET status = ?, responded_at = ?, responded_by = ?, response_note = ?,
+            paid_leave = ?, paid_leave_source = ?, updated_at = NOW()
+        WHERE id = ? AND status = 'pending'
+    ");
+    $upd->bind_param(
+        'ssisisi',
+        $status_new,
+        $now,
+        $parent_user_id,
+        $response_note,
+        $paid_leave_val,
+        $paidSourceForStorage,
+        $leave_id
+    );
     $upd->execute();
     if ($upd->affected_rows === 0) {
         $upd->close();
+        $conn->rollback();
+        $transactionStarted = false;
         json_out(['success' => false, 'message' => 'Could not update request'], 409);
     }
     $upd->close();
@@ -162,14 +238,21 @@ try {
     $date_label = carelink_leave_format_date_display($date_ymd);
     $verb = $status_new === 'approved' ? 'approved' : 'declined';
     $msg = 'Your leave request for ' . $date_label . ' was ' . $verb . '.';
-    if ($status_new === 'approved' && !$is_paid) {
-        $msg .= ' (Recorded as unpaid leave — paid leave days for this year are already used.)';
+    if ($status_new === 'approved' && $is_paid) {
+        $sourceLabels = [
+            'statutory_sil' => 'statutory Service Incentive Leave',
+            'contract_sick' => 'agreed contract sick leave',
+            'contract_vacation' => 'agreed contract vacation leave',
+        ];
+        $msg .= ' Recorded as paid using ' . ($sourceLabels[$paidSource] ?? 'your paid leave allowance') . '.';
+    } elseif ($status_new === 'approved') {
+        $msg .= ' Recorded as unpaid because no eligible paid allowance remains for this leave reason.';
     }
     if ($response_note !== null && $status_new === 'declined') {
         $msg .= ' Note: ' . $response_note;
     }
 
-    carelink_create_notification(
+    if (!carelink_create_notification(
         $conn,
         $helper_id,
         'leave_request_responded',
@@ -177,7 +260,12 @@ try {
         $msg,
         'leave_request',
         $leave_id
-    );
+    )) {
+        throw new Exception('Leave decision was not saved because the helper notification could not be created.');
+    }
+
+    $conn->commit();
+    $transactionStarted = false;
 
     json_out([
         'success' => true,
@@ -186,9 +274,13 @@ try {
             'status' => $status_new,
             'responded_at' => $now,
             'paid_leave' => $status_new === 'approved' ? $is_paid : null,
+            'paid_leave_source' => $status_new === 'approved' ? $paidSourceForStorage : null,
         ],
     ]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    if (!empty($transactionStarted) && isset($conn) && $conn) {
+        $conn->rollback();
+    }
     json_out(['success' => false, 'message' => $e->getMessage()], 500);
 }
 

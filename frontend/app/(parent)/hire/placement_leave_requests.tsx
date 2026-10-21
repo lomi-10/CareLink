@@ -144,7 +144,7 @@ export default function PlacementLeaveRequestsScreen() {
         <Text style={styles.cardReasonLabel}>{reasonLabel}</Text>
         {detailText ? <Text style={styles.cardReason}>{detailText}</Text> : null}
         {r.status === 'approved' && r.paid_leave !== null && r.paid_leave !== undefined ? (
-          <Text style={styles.paidTag}>{r.paid_leave === 1 ? 'Paid leave' : 'Unpaid leave'}</Text>
+          <Text style={styles.paidTag}>{paidLeaveLabel(r.paid_leave_source, r.paid_leave === 1)}</Text>
         ) : null}
         {r.status === 'declined' && r.response_note ? (
           <Text style={styles.responseNote}>Employer note: {r.response_note}</Text>
@@ -308,6 +308,16 @@ export default function PlacementLeaveRequestsScreen() {
       {modals}
     </SafeAreaView>
   );
+}
+
+function paidLeaveLabel(source: string | null | undefined, isPaid: boolean): string {
+  if (!isPaid) return 'Unpaid leave';
+  const labels: Record<string, string> = {
+    statutory_sil: 'Paid · statutory SIL',
+    contract_sick: 'Paid · contract sick leave',
+    contract_vacation: 'Paid · contract vacation leave',
+  };
+  return labels[source ?? ''] ?? 'Paid leave';
 }
 
 function formatDisplayDate(ymd: string) {

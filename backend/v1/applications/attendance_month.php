@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../../dbcon.php';
 require_once __DIR__ . '/../lib/hire_access.php';
-require_once __DIR__ . '/../lib/attendance_calendar.php';
+require_once __DIR__ . '/../lib/leave_helpers.php';
 
 function json_out($data, int $code = 200)
 {
@@ -74,7 +74,7 @@ try {
 
     $hoursTotals = carelink_work_hours_totals($monthDays);
 
-    $lb = carelink_attendance_leave_balance($conn, $application_id, $year, $extras['vacation_days']);
+    $lb = carelink_leave_balance($conn, $application_id);
     $summary = carelink_attendance_month_summary($monthDays);
 
     json_out([
@@ -87,11 +87,17 @@ try {
         'employment_end_date' => $extras['employment_end_date'] ?? null,
         'rest_days' => $extras['rest_day'],
         'special_days' => $extras['special_days'],
-        'vacation_days_limit' => $extras['vacation_days'],
+        'vacation_days_limit' => $extras['vacation_leave_days'],
+        'sick_leave_days_limit' => $extras['sick_leave_days'],
         'leave_balance' => [
             'used' => $lb['used'],
-            'limit' => $lb['limit'],
+            'limit' => $lb['total'],
             'remaining' => $lb['remaining'],
+            'service_year_start' => $lb['service_year_start'],
+            'service_year_end' => $lb['service_year_end'],
+            'statutory_sil' => $lb['statutory_sil'],
+            'contract_vacation' => $lb['contract_vacation'],
+            'contract_sick' => $lb['contract_sick'],
         ],
         'summary' => $summary,
         'hours_totals' => $hoursTotals,

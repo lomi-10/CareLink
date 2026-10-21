@@ -425,6 +425,7 @@ CREATE TABLE IF NOT EXISTS `leave_requests` (
   `reason` text COLLATE utf8mb4_unicode_ci,
   `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
   `paid_leave` tinyint(1) DEFAULT NULL,
+  `paid_leave_source` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'statutory_sil, contract_sick, contract_vacation, or unpaid',
   `response_note` text COLLATE utf8mb4_unicode_ci,
   `responded_at` datetime DEFAULT NULL,
   `responded_by` int unsigned DEFAULT NULL,

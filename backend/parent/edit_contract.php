@@ -193,7 +193,7 @@ try {
         $notesDb = $contract_notes_raw;
     }
 
-    $startDb = $contract_start_raw !== '' ? $contract_start_raw : null;
+    $startDb = $contract_start_raw !== '' ? $contract_start_raw : $jobStartNorm;
     $endDb = $contract_end_raw !== '' ? $contract_end_raw : null;
 
     $vendorAutoload = __DIR__ . '/../vendor/autoload.php';

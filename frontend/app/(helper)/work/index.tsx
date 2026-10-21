@@ -238,8 +238,9 @@ export default function WorkScheduleScreen() {
     if (!leaveOpen || !activeHire || !helperId) return;
     let cancelled = false;
     setBalanceLoading(true);
+    setModalLeaveBalance(null);
     void (async () => {
-      const res = await fetchLeaveBalance(activeHire.application_id, helperId);
+      const res = await fetchLeaveBalance(activeHire.application_id, helperId, leaveDate);
       if (!cancelled && res.success && res.data) {
         setModalLeaveBalance(res.data);
       }
@@ -248,12 +249,12 @@ export default function WorkScheduleScreen() {
     return () => {
       cancelled = true;
     };
-  }, [leaveOpen, activeHire, helperId]);
+  }, [leaveOpen, activeHire, helperId, leaveDate]);
 
   const isDateBlocked = (ymd: string) => modalLeaveBalance?.blocked_dates?.includes(ymd) ?? false;
 
   const submitLeave = async () => {
-    if (!activeHire || !helperId) return;
+    if (!activeHire || !helperId || balanceLoading) return;
     if (leaveDate < minLeaveYmd) {
       notify('Day off', 'Choose a date within your employment that is not in the past.');
       return;
@@ -280,10 +281,10 @@ export default function WorkScheduleScreen() {
         notify('Day off', res.message || 'Request failed', 'error');
         return;
       }
-      if (res.warnings?.includes('paid_limit_reached')) {
+      if (res.warnings?.includes('no_paid_allowance_available')) {
         notify(
           'Request sent',
-          'You have used your paid leave days for this year. If your employer approves, it will be recorded as unpaid leave.',
+          'No matching paid allowance is currently projected for this date. Your employer will confirm the paid or unpaid status when reviewing it.',
         );
       } else {
         notify('Sent', 'Your employer will be notified.', 'success');
@@ -419,7 +420,7 @@ export default function WorkScheduleScreen() {
         {leaveBalance ? (
           <>
             <Text style={styles.heroBigValue}>{leaveBalance.remaining ?? 0} Days Remaining</Text>
-            <Text style={styles.heroSubtitle}>of {leaveBalance.limit} days this year</Text>
+            <Text style={styles.heroSubtitle}>across eligible allowances in this service year</Text>
           </>
         ) : (
           <>
@@ -665,9 +666,9 @@ export default function WorkScheduleScreen() {
     </ScrollView>
   );
 
-  const rem = modalLeaveBalance?.remaining ?? 0;
-  const atPaidLimit = modalLeaveBalance?.at_paid_limit ?? false;
-  const remainingAfter = atPaidLimit ? rem : Math.max(0, rem - 1);
+  const paidAvailableForReason = modalLeaveBalance?.paid_available_for_reason[
+    leaveReasonCode === 'sick' ? 'sick' : 'personal'
+  ];
 
   const leaveModal = (
     <Modal visible={leaveOpen} animationType="slide" transparent onRequestClose={() => setLeaveOpen(false)}>
@@ -772,13 +773,13 @@ export default function WorkScheduleScreen() {
           {modalLeaveBalance ? (
             <View style={styles.previewBox}>
               <Text style={styles.previewLine}>
-                Remaining paid balance after this: {remainingAfter} of {modalLeaveBalance.total} days
+                {paidAvailableForReason
+                  ? 'A matching paid allowance is currently available for this reason.'
+                  : 'No matching paid allowance is currently available for this reason.'}
               </Text>
-              {atPaidLimit ? (
-                <Text style={styles.previewWarn}>
-                  You are at your paid leave limit. If approved, this day will be recorded as unpaid leave.
-                </Text>
-              ) : null}
+              <Text style={styles.previewWarn}>
+                Sick leave uses the contract sick allowance first; other reasons use contract vacation leave first. Eligible SIL may cover a request after one year. Employer review confirms the final treatment.
+              </Text>
             </View>
           ) : null}
           <View style={styles.modalActions}>

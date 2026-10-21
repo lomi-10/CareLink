@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit();
 
 require_once __DIR__ . '/../../dbcon.php';
 require_once __DIR__ . '/../lib/hire_access.php';
+require_once __DIR__ . '/../lib/contract_rest_days.php';
 require_once __DIR__ . '/../../shared/placement_settings_table.php';
 
 function json_out($data, int $code = 200)
@@ -45,7 +46,7 @@ try {
     // ── Contract + salary basis ─────────────────────────────────────────────
     $stmt = $conn->prepare(
         "SELECT c.confirmed_salary, c.payment_schedule, c.employment_start_date,
-                c.employment_end_date, c.rest_day, jp.salary_period
+                c.employment_end_date, c.rest_day, c.rest_days, jp.salary_period
          FROM contracts c
          JOIN job_posts jp ON jp.job_post_id = c.job_post_id
          WHERE c.application_id = ?
@@ -64,12 +65,16 @@ try {
     $empStart = $row['employment_start_date'] ?: null;
     $empEnd   = $row['employment_end_date'] ?: null;
 
-    // Rest days (comma-separated weekday names on the contract, e.g. "Sunday").
+    // Normalize both the current multi-day JSON field and the legacy singular field.
     $restDays = [];
-    if (!empty($row['rest_day'])) {
-        foreach (explode(',', (string) $row['rest_day']) as $d) {
-            $d = strtolower(trim($d));
-            if ($d !== '') $restDays[$d] = true;
+    $restDayCsv = carelink_contract_rest_days_csv(
+        isset($row['rest_days']) && is_string($row['rest_days']) ? $row['rest_days'] : null,
+        isset($row['rest_day']) && is_string($row['rest_day']) ? $row['rest_day'] : null
+    );
+    if ($restDayCsv !== null) {
+        foreach (explode(',', $restDayCsv) as $day) {
+            $day = strtolower(trim($day));
+            if ($day !== '') $restDays[] = $day;
         }
     }
 
@@ -102,14 +107,29 @@ try {
     }
 
     // ── Leave used (approved) this period ───────────────────────────────────
-    $stmt = $conn->prepare(
-        "SELECT COUNT(*) AS n FROM leave_requests
-         WHERE application_id = ? AND status = 'approved' AND `date` BETWEEN ? AND ?"
-    );
-    $stmt->bind_param("iss", $application_id, $periodFirst, $periodLast);
-    $stmt->execute();
-    $leaveUsed = (int) ($stmt->get_result()->fetch_assoc()['n'] ?? 0);
-    $stmt->close();
+    $leaveUsed = 0;
+    $paidLeaveUsed = 0;
+    if ($effEnd >= $effStart) {
+        $stmt = $conn->prepare(
+            "SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN lr.paid_leave = 1 OR lr.paid_leave IS NULL THEN 1 ELSE 0 END) AS paid
+             FROM leave_requests lr
+             LEFT JOIN attendance_logs al
+               ON al.application_id = lr.application_id AND al.`date` = lr.`date`
+             WHERE lr.application_id = ?
+               AND lr.status = 'approved'
+               AND lr.`date` BETWEEN ? AND ?
+               AND COALESCE(al.status, '') <> 'present'
+               AND al.checked_in_at IS NULL"
+        );
+        $stmt->bind_param("iss", $application_id, $effStart, $effEnd);
+        $stmt->execute();
+        $leaveRow = $stmt->get_result()->fetch_assoc();
+        $leaveUsed = (int) ($leaveRow['total'] ?? 0);
+        $paidLeaveUsed = (int) ($leaveRow['paid'] ?? 0);
+        $stmt->close();
+    }
 
     // ── Scheduled workdays so far (exclude rest days) ───────────────────────
     $daysScheduled = 0;
@@ -118,7 +138,18 @@ try {
         $end = strtotime($effEnd);
         while ($cursor <= $end) {
             $wd = strtolower(date('l', $cursor)); // "sunday"...
-            if (!isset($restDays[$wd])) $daysScheduled++;
+            $isRestDay = false;
+            foreach ($restDays as $restDay) {
+                if ($restDay === $wd || $restDay === strtolower(date('D', $cursor))) {
+                    $isRestDay = true;
+                    break;
+                }
+                if (strlen($restDay) >= 3 && str_starts_with($wd, $restDay)) {
+                    $isRestDay = true;
+                    break;
+                }
+            }
+            if (!$isRestDay) $daysScheduled++;
             $cursor = strtotime('+1 day', $cursor);
         }
     }
@@ -133,14 +164,14 @@ try {
         $estimated = round($salaryAmount, 2);
         $isEstimate = false;
     } elseif ($period === 'daily') {
-        $estimated = round($salaryAmount * $daysWorked, 2);
+        $estimated = round($salaryAmount * ($daysWorked + $paidLeaveUsed), 2);
         $isEstimate = false;
     } elseif ($period === 'weekly') {
-        $estimated = round($salaryAmount * ($daysWorked / 6.0), 2);
+        $estimated = round($salaryAmount * (($daysWorked + $paidLeaveUsed) / 6.0), 2);
         $isEstimate = true;
     } else { // Monthly (default)
         $estimated = round($daysScheduled > 0
-            ? $salaryAmount * ($daysWorked / $daysScheduled)
+            ? $salaryAmount * (($daysWorked + $paidLeaveUsed) / $daysScheduled)
             : $salaryAmount, 2);
         $isEstimate = true;
     }
@@ -156,6 +187,7 @@ try {
         'period_start'     => $periodFirst,
         'period_end'       => $periodLast,
         'days_worked'      => $daysWorked,
+        'paid_leave_days'  => $paidLeaveUsed,
         'days_scheduled'   => $daysScheduled,
         'leave_used'       => $leaveUsed,
         'estimated_earned'    => $estimated,

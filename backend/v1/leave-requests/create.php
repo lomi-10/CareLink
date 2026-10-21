@@ -68,6 +68,7 @@ function carelink_leave_normalize_input(array $input): array
 }
 
 try {
+    $transactionStarted = false;
     if (!$conn) {
         throw new Exception('Database connection failed');
     }
@@ -82,7 +83,7 @@ try {
 
     [$reason_line, $helper_note, $code] = carelink_leave_normalize_input($input);
 
-    if ($application_id <= 0 || $helper_id <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_raw)) {
+    if ($application_id <= 0 || $helper_id <= 0 || !carelink_leave_is_valid_date($date_raw)) {
         json_out(['success' => false, 'message' => 'application_id, helper_id, and date (Y-m-d) required'], 400);
     }
 
@@ -100,20 +101,41 @@ try {
         json_out(['success' => false, 'message' => $wd], 422);
     }
 
+    $bal = carelink_leave_balance($conn, $application_id, $date_raw);
+    $warnings = [];
+    if (carelink_leave_paid_source($bal, $code) === null) {
+        $warnings[] = 'no_paid_allowance_available';
+    }
+
+    $conn->begin_transaction();
+    $transactionStarted = true;
+    $lock = $conn->prepare('SELECT application_id FROM job_applications WHERE application_id = ? FOR UPDATE');
+    $lock->bind_param('i', $application_id);
+    $lock->execute();
+    $placement = $lock->get_result()->fetch_assoc();
+    $lock->close();
+    if (!$placement || !carelink_v1_assert_helper_hire($conn, $application_id, $helper_id)) {
+        $conn->rollback();
+        $transactionStarted = false;
+        json_out(['success' => false, 'message' => 'This placement is no longer active'], 403);
+    }
+
+    $wd = carelink_leave_validate_work_day($conn, $application_id, $date_raw);
+    if ($wd !== null) {
+        $conn->rollback();
+        $transactionStarted = false;
+        json_out(['success' => false, 'message' => $wd], 422);
+    }
     $dup = carelink_leave_validate_not_duplicate($conn, $application_id, $date_raw);
     if ($dup !== null) {
+        $conn->rollback();
+        $transactionStarted = false;
         json_out(['success' => false, 'message' => $dup], 409);
     }
 
-    $bal = carelink_leave_balance($conn, $application_id);
-    $warnings = [];
-    if ($bal['at_paid_limit']) {
-        $warnings[] = 'paid_limit_reached';
-    }
-
     $ins = $conn->prepare("
-        INSERT INTO leave_requests (application_id, helper_id, `date`, reason_code, helper_note, reason, status, responded_at, paid_leave)
-        VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NULL)
+        INSERT INTO leave_requests (application_id, helper_id, `date`, reason_code, helper_note, reason, status, responded_at, paid_leave, paid_leave_source)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, NULL)
     ");
     $ins->bind_param('iissss', $application_id, $helper_id, $date_raw, $code, $helper_note, $reason_line);
     if (!$ins->execute()) {
@@ -143,8 +165,7 @@ try {
     $date_label = carelink_leave_format_date_display($date_raw);
     $msg = $helper_name . ' is requesting leave on ' . $date_label . '. Reason: ' . $reason_line;
 
-    if ($parent_id > 0) {
-        carelink_create_notification(
+    if ($parent_id <= 0 || !carelink_create_notification(
             $conn,
             $parent_id,
             'leave_request_submitted',
@@ -152,8 +173,11 @@ try {
             $msg,
             'leave_request',
             $new_id
-        );
+        )) {
+        throw new Exception('Leave request was not saved because the employer notification could not be created.');
     }
+    $conn->commit();
+    $transactionStarted = false;
 
     $out = [
         'success' => true,
@@ -164,7 +188,7 @@ try {
             'date' => $date_raw,
             'reason_code' => $code,
             'helper_note' => $helper_note,
-            'reason' => $reason_line_db,
+            'reason' => $reason_line,
             'status' => 'pending',
         ],
     ];
@@ -172,7 +196,10 @@ try {
         $out['warnings'] = $warnings;
     }
     json_out($out);
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    if (!empty($transactionStarted) && isset($conn) && $conn) {
+        $conn->rollback();
+    }
     json_out(['success' => false, 'message' => $e->getMessage()], 500);
 }
 

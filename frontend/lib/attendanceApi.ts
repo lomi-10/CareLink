@@ -40,6 +40,18 @@ export type AttendanceLeaveBalance = {
   used: number;
   limit: number;
   remaining: number | null;
+  service_year_start?: string | null;
+  service_year_end?: string | null;
+  statutory_sil?: {
+    total: number;
+    available: number;
+    used: number;
+    remaining: number;
+    eligible: boolean;
+    eligible_on: string | null;
+  };
+  contract_vacation?: { total: number; used: number; remaining: number };
+  contract_sick?: { total: number; used: number; remaining: number };
 };
 
 export type AttendanceSpecialDay = {

@@ -421,22 +421,6 @@ function InfoRow({ icon, label, value, action, valueColor }: {
   );
 }
 
-// ── Leave usage bar ────────────────────────────────────────────────────────
-function LeaveBar({ used, total, color }: { used: number; total: number; color: string }) {
-  const pct = total > 0 ? Math.min(1, used / total) : 0;
-  const remaining = Math.max(0, total - used);
-  return (
-    <View style={s.leaveBarWrap}>
-      <View style={s.leaveBarTrack}>
-        <View style={[s.leaveBarFill, { width: `${Math.round(pct * 100)}%`, backgroundColor: color }]} />
-      </View>
-      <Text style={s.leaveBarSub}>
-        {used} used · <Text style={{ color: GREEN }}>{remaining} remaining</Text> of {total} days
-      </Text>
-    </View>
-  );
-}
-
 // ── Main screen ────────────────────────────────────────────────────────────
 type Tab = 'overview' | 'attendance' | 'payroll';
 
@@ -921,7 +905,7 @@ export default function HelperProfileScreen() {
                   <Ionicons name="sunny-outline" size={18} color={GREEN} />
                 </View>
                 <Text style={s.leaveTileCount}>{vacDays}</Text>
-                <Text style={s.leaveTileLabel}>Vacation Days</Text>
+                <Text style={s.leaveTileLabel}>Contract vacation</Text>
               </View>
             )}
             {sickDays !== null && (
@@ -930,7 +914,7 @@ export default function HelperProfileScreen() {
                   <Ionicons name="medkit-outline" size={18} color={DANGER} />
                 </View>
                 <Text style={s.leaveTileCount}>{sickDays}</Text>
-                <Text style={s.leaveTileLabel}>Sick Days</Text>
+                <Text style={s.leaveTileLabel}>Contract sick leave</Text>
               </View>
             )}
             {contractTerms?.overtime_rate ? (
@@ -943,12 +927,24 @@ export default function HelperProfileScreen() {
               </View>
             ) : null}
           </View>
-          {vacDays !== null && leaveBalance ? (
-            <LeaveBar
-              used={leaveBalance.used}
-              total={leaveBalance.limit || vacDays}
-              color={GREEN}
-            />
+          {leaveBalance ? (
+            <View style={{ marginTop: 12, gap: 5 }}>
+              <Text style={s.leaveTileLabel}>Current service-year balance</Text>
+              {leaveBalance.contract_vacation ? (
+                <Text style={s.payEstText}>Vacation: {leaveBalance.contract_vacation.remaining} of {leaveBalance.contract_vacation.total} days remaining</Text>
+              ) : null}
+              {leaveBalance.contract_sick ? (
+                <Text style={s.payEstText}>Sick leave: {leaveBalance.contract_sick.remaining} of {leaveBalance.contract_sick.total} days remaining</Text>
+              ) : null}
+              {leaveBalance.statutory_sil ? (
+                <>
+                  <Text style={s.payEstText}>Statutory SIL: {leaveBalance.statutory_sil.remaining} of {leaveBalance.statutory_sil.available} available days remaining</Text>
+                  {!leaveBalance.statutory_sil.eligible && leaveBalance.statutory_sil.eligible_on ? (
+                    <Text style={s.payEstText}>Eligible after one year of service ({formatDateLong(leaveBalance.statutory_sil.eligible_on)}).</Text>
+                  ) : null}
+                </>
+              ) : null}
+            </View>
           ) : null}
         </LinearGradient>
       )}

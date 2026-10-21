@@ -3,6 +3,13 @@ import API_URL from '@/constants/api';
 export type LeaveRequestStatus = 'pending' | 'approved' | 'declined';
 
 export type LeaveReasonCode = 'sick' | 'personal' | 'family_emergency' | 'other';
+export type PaidLeaveSource = 'statutory_sil' | 'contract_sick' | 'contract_vacation' | 'unpaid';
+
+type LeaveBalanceBucket = {
+  total: number;
+  used: number;
+  remaining: number;
+};
 
 export type LeaveRequestRow = {
   id: number;
@@ -14,8 +21,9 @@ export type LeaveRequestRow = {
   helper_note?: string | null;
   reason: string | null;
   status: LeaveRequestStatus;
-  /** 1 = paid annual leave, 0 = unpaid, null = pending or declined */
+  /** 1 = paid leave, 0 = unpaid, null = pending or declined */
   paid_leave?: number | null;
+  paid_leave_source?: PaidLeaveSource | null;
   response_note?: string | null;
   responded_at: string | null;
   responded_by?: number | null;
@@ -28,17 +36,31 @@ export type LeaveBalanceData = {
   used: number;
   remaining: number;
   at_paid_limit: boolean;
-  unpaid_if_approved_next: boolean;
-  job_post_vacation_days: number;
-  paid_cap: number;
+  paid_available_for_reason: {
+    sick: boolean;
+    personal: boolean;
+  };
+  as_of_date: string;
+  service_year_start: string | null;
+  service_year_end: string | null;
+  contract_exists: boolean;
+  statutory_sil: LeaveBalanceBucket & {
+    available: number;
+    eligible: boolean;
+    eligible_on: string | null;
+  };
+  contract_vacation: LeaveBalanceBucket;
+  contract_sick: LeaveBalanceBucket;
   blocked_dates: string[];
 };
 
-export async function fetchLeaveBalance(applicationId: number, helperId: number) {
-  const qs = new URLSearchParams({
+export async function fetchLeaveBalance(applicationId: number, helperId: number, date?: string) {
+  const params: Record<string, string> = {
     application_id: String(applicationId),
     helper_id: String(helperId),
-  });
+  };
+  if (date) params.date = date;
+  const qs = new URLSearchParams(params);
   const r = await fetch(`${API_URL}/v1/leave-requests/balance.php?${qs}`);
   return r.json() as Promise<{
     success: boolean;
@@ -107,7 +129,13 @@ export async function respondToLeaveRequest(
   });
   return r.json() as Promise<{
     success: boolean;
-    data?: { id: number; status: string; responded_at: string; paid_leave?: boolean | null };
+    data?: {
+      id: number;
+      status: string;
+      responded_at: string;
+      paid_leave?: boolean | null;
+      paid_leave_source?: PaidLeaveSource | null;
+    };
     message?: string;
   }>;
 }

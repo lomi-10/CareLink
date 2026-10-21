@@ -1,8 +1,9 @@
 <?php
 
 require_once __DIR__ . '/placement_task_table.php';
+require_once __DIR__ . '/contract_rest_days.php';
 
-/** RA 10361 caps annual paid service incentive leave; we cap paid leave at 5 days/year. */
+/** Statutory service incentive leave is five days after one year of service. */
 const CARELINK_LEAVE_PAID_CAP = 5;
 
 /**
@@ -299,15 +300,14 @@ function carelink_attendance_resolve_day(
 }
 
 /**
- * @return array{rest_day:?string,special_days:array,vacation_days:int}
+ * @return array<string,mixed>
  */
 function carelink_attendance_load_contract_extras(mysqli $conn, int $application_id): array
 {
     $st = $conn->prepare('
-        SELECT c.rest_day, c.special_days, COALESCE(jp.vacation_days, 0) AS vacation_days,
-               c.employment_start_date, c.employment_end_date
+        SELECT c.rest_day, c.rest_days, c.special_days, c.vacation_leave_days,
+               c.sick_leave_days, c.employment_start_date, c.employment_end_date
         FROM contracts c
-        INNER JOIN job_posts jp ON jp.job_post_id = c.job_post_id
         WHERE c.application_id = ?
         LIMIT 1
     ');
@@ -324,9 +324,11 @@ function carelink_attendance_load_contract_extras(mysqli $conn, int $application
         return [
             'rest_day' => null,
             'special_days' => [],
-            'vacation_days' => 0,
+            'vacation_leave_days' => 0,
+            'sick_leave_days' => 0,
             'employment_start_date' => null,
             'employment_end_date' => null,
+            'contract_exists' => false,
         ];
     }
 
@@ -334,13 +336,17 @@ function carelink_attendance_load_contract_extras(mysqli $conn, int $application
     $parsed = carelink_attendance_parse_special_days(is_string($raw) ? $raw : null);
     $es = $row['employment_start_date'] ?? null;
     $ee = $row['employment_end_date'] ?? null;
+    $restDays = isset($row['rest_days']) && is_string($row['rest_days']) ? $row['rest_days'] : null;
+    $legacyRestDay = isset($row['rest_day']) && is_string($row['rest_day']) ? $row['rest_day'] : null;
 
     return [
-        'rest_day' => isset($row['rest_day']) && trim((string) $row['rest_day']) !== '' ? trim((string) $row['rest_day']) : null,
+        'rest_day' => carelink_contract_rest_days_csv($restDays, $legacyRestDay),
         'special_days' => $parsed,
-        'vacation_days' => (int) ($row['vacation_days'] ?? 0),
+        'vacation_leave_days' => max(0, (int) ($row['vacation_leave_days'] ?? 0)),
+        'sick_leave_days' => max(0, (int) ($row['sick_leave_days'] ?? 0)),
         'employment_start_date' => $es !== null && $es !== '' ? (string) $es : null,
         'employment_end_date' => $ee !== null && $ee !== '' ? (string) $ee : null,
+        'contract_exists' => true,
     ];
 }
 
@@ -474,31 +480,6 @@ function carelink_attendance_today_special_block(mysqli $conn, int $application_
     $today = date('Y-m-d');
 
     return carelink_attendance_special_for_date($list, $today);
-}
-
-function carelink_attendance_leave_balance(mysqli $conn, int $application_id, int $year, int $vacationLimit): array
-{
-    $st = $conn->prepare("
-        SELECT COUNT(*) AS c
-        FROM leave_requests
-        WHERE application_id = ?
-          AND status = 'approved'
-          AND YEAR(`date`) = ?
-          AND (paid_leave IS NULL OR paid_leave = 1)
-    ");
-    $st->bind_param('ii', $application_id, $year);
-    $st->execute();
-    $res = $st->get_result();
-    $row = $res ? $res->fetch_assoc() : null;
-    if ($res) {
-        $res->free();
-    }
-    $st->close();
-    $used = $row ? (int) $row['c'] : 0;
-    $limit = $vacationLimit > 0 ? min($vacationLimit, CARELINK_LEAVE_PAID_CAP) : CARELINK_LEAVE_PAID_CAP;
-    $rem = max(0, $limit - $used);
-
-    return ['used' => $used, 'limit' => $limit, 'remaining' => $rem];
 }
 
 /**

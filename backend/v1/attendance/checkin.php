@@ -56,6 +56,9 @@ try {
     if ($contractExtras['employment_start_date'] !== null && $today < $contractExtras['employment_start_date']) {
         json_out(['success' => false, 'message' => 'Your employment has not started yet.'], 422);
     }
+    if ($contractExtras['employment_end_date'] !== null && $today > $contractExtras['employment_end_date']) {
+        json_out(['success' => false, 'message' => 'Your contract has ended.'], 422);
+    }
 
     if (carelink_attendance_today_is_rest_day($conn, $application_id)) {
         json_out(['success' => false, 'message' => 'Cannot check in on a scheduled rest day (contract).'], 422);
