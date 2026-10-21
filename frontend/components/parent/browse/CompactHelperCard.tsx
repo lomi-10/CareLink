@@ -37,7 +37,10 @@ export function CompactHelperCard({ helper, onPress, matchScore, matchReason, ma
           </View>
         )}
         {helper.availability_status === 'Available' && (
-          <View style={styles.availDot} />
+          <View style={styles.availBadge} accessibilityLabel="Available for work">
+            <View style={styles.availDot} />
+            <Text style={styles.availText}>Available for work</Text>
+          </View>
         )}
         {helper.verification_status === 'Verified' && (
           <View style={styles.pesoBadge}>
@@ -123,11 +126,14 @@ const styles = StyleSheet.create({
     backgroundColor: ICON_BG,
     alignItems: 'center', justifyContent: 'center',
   },
-  availDot: {
+  availBadge: {
     position: 'absolute', bottom: 7, left: 7,
-    width: 9, height: 9, borderRadius: 5,
-    backgroundColor: GREEN, borderWidth: 2, borderColor: SURFACE,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: SURFACE, borderRadius: 10,
+    paddingHorizontal: 7, paddingVertical: 4,
   },
+  availDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN },
+  availText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 9.5, color: GREEN },
   pesoBadge: {
     position: 'absolute', top: 6, right: 6,
     width: 20, height: 20, borderRadius: 10,
