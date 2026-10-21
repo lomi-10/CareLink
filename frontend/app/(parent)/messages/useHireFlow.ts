@@ -6,7 +6,9 @@ import { getContractTermsUrl, editContractUrl } from '@/constants/applications';
 import {
   toYmdInput,
   computeContractEndDate,
+  countInclusiveCalendarDays,
   formatDurationString,
+  computeScheduledWorkHours,
   workHoursToString,
   parseDurationString,
   parseWorkHoursString,
@@ -339,16 +341,26 @@ export function useHireFlow({
 
   const confirmHireTerms = () => {
     const start = hireContractStartDate.trim();
-    if (hireContractType === 'Fixed Term' && start === '') {
-      showChatNotif('Pick a start date for a Fixed Term contract, or switch to Indefinite.', 'warning');
+    if (start === '') {
+      showChatNotif('Choose the agreed employment start date before generating the contract.', 'warning');
       return;
     }
-    if (start !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(start)) {
-      showChatNotif('Employment start must be YYYY-MM-DD, or leave blank to use the job post date.', 'warning');
+    if (countInclusiveCalendarDays(start, start) === null) {
+      showChatNotif('Employment start must be a valid date in YYYY-MM-DD format.', 'warning');
       return;
     }
     if (hireContractType === 'Fixed Term' && !hireContractEndDate) {
       showChatNotif('Could not compute the contract end date. Check the start date and duration.', 'warning');
+      return;
+    }
+    if (
+      hireContractType === 'Fixed Term' &&
+      (countInclusiveCalendarDays(start, hireContractEndDate) ?? 0) < 30
+    ) {
+      showChatNotif(
+        'CareLink requires fixed-term contracts to cover at least 30 inclusive calendar days. This is a platform rule, not a statutory minimum.',
+        'warning',
+      );
       return;
     }
     const salary = Number(hireConfirmedSalary.trim());
@@ -363,9 +375,16 @@ export function useHireFlow({
       showChatNotif('Select or enter a salary payment schedule.', 'warning');
       return;
     }
-    if (!hireFlexibleHours && (!hireWorkHoursStart || !hireWorkHoursEnd)) {
-      showChatNotif('Set work hours, or turn on Flexible hours.', 'warning');
-      return;
+    if (!hireFlexibleHours) {
+      const scheduledHours = computeScheduledWorkHours(hireWorkHoursStart, hireWorkHoursEnd);
+      if (scheduledHours === null || scheduledHours <= 0) {
+        showChatNotif('Set valid work hours, or turn on Flexible hours.', 'warning');
+        return;
+      }
+      if (scheduledHours > 12) {
+        showChatNotif('Scheduled work cannot exceed 12 hours per day.', 'warning');
+        return;
+      }
     }
     if (hireRestDays.length === 0) {
       showChatNotif('Select at least one rest day for the contract.', 'warning');

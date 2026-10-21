@@ -96,10 +96,11 @@ try {
     // is someone's occupation is covered; a neighbour paid once to help move
     // furniture is not.
     //
-    // So the gate asks the employer which kind of engagement this is, and
-    // refuses the one that falls outside coverage. It deliberately does NOT
-    // impose a minimum duration: no provision supports one, and an invented
-    // threshold cannot be defended as compliance.
+    // CareLink supports household-employment posts, not standalone one-off
+    // task bookings. The one-time label does not itself determine statutory
+    // coverage; RA 10361 excludes work only when it is both occasional or
+    // sporadic and not performed on an occupational basis. Fixed-term
+    // employment contracts have a separate, disclosed 30-day CareLink floor.
     $engagement = isset($data['engagement_type']) ? trim((string) $data['engagement_type']) : '';
     if ($engagement === '') {
         throw new Exception('Tell us whether this is recurring household employment or a one-time task before posting.');
@@ -109,9 +110,12 @@ try {
     }
     if ($engagement === 'one_time') {
         throw new Exception(
-            'CareLink currently supports recurring household employment covered by the Batas Kasambahay '
-            . '(RA 10361). One-time or occasional tasks fall outside that coverage, so this post cannot be '
-            . 'created and no employment contract can be generated for it.'
+            'CareLink currently supports household-employment posts, not standalone one-time task bookings. '
+            . 'This is a platform limitation, not a legal finding: a one-time task is not automatically '
+            . 'outside the Batas Kasambahay (RA 10361). Its application depends on whether the work is '
+            . 'both occasional or sporadic and not performed on an occupational basis. If this is an '
+            . 'employment arrangement, submit it as household employment; CareLink cannot process '
+            . 'standalone task bookings yet.'
         );
     }
 

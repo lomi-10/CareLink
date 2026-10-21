@@ -88,7 +88,7 @@ supports.
 |---|---|
 | **1 · Auth** | Valid credentials authenticate and are issued a token; wrong passwords are rejected. |
 | **2 · Security checks** | Access control holds: no reading another account's documents (IDOR), no staff endpoint without a staff id, no staff endpoint as an ordinary user, no admin account creation without authorisation. |
-| **3 · RA 10361 scope gate** | The Batas Kasambahay scope is enforced at job posting: engagement type is required, one-time work is refused, and salary below the PESO floor is refused. |
+| **3 · Employment-post support gate** | Engagement type is required, standalone one-time task bookings are refused as a current CareLink product limitation (not classified as legally exempt), and salary below the applicable PESO floor is refused. |
 | **4 · PESO — verification** | Officers can read the case data their work needs, and a safety flag cannot be raised on an unresolved case. |
 | **5 · PESO — reports & export** | Analytics return data, the export preview matches, and the workbook downloads. |
 | **6 · Super admin** | The ISO/IEC 25010 instrument results compute, and a respondent can be removed. |

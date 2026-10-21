@@ -79,8 +79,6 @@ function carelink_bk1_build_html(array $d): string
     $badgeBg = $isSigned ? '#C8733A' : '#F59E0B';
     $badgeLabel = $isSigned ? 'SIGNED' : 'PENDING';
 
-    $salaryPeriodLower = strtolower((string) ($d['salary_period_label'] ?? 'month'));
-
     $numBadge = static function (int $n): string {
         return '<span style="display:inline-block; background:#C8733A; color:#FFFFFF; width:16px; height:16px; '
             . 'line-height:16px; text-align:center; border-radius:8px; font-size:8pt; font-weight:bold; margin-right:6px;">' . $n . '</span>';
@@ -98,7 +96,7 @@ function carelink_bk1_build_html(array $d): string
 
     // Mandatory benefits under RA 10361 (Batas Kasambahay).
     //
-    // 13th month pay is listed UNCONDITIONALLY and first. Sec. 27 entitles a
+    // 13th month pay is listed UNCONDITIONALLY and first. Sec. 25 entitles a
     // kasambahay who has rendered at least one month of service to 13th month
     // pay under PD 851 — it is not a benefit the employer opts into, so it is
     // not driven by a job-post toggle the way SSS/PhilHealth/Pag-IBIG are.
@@ -106,7 +104,7 @@ function carelink_bk1_build_html(array $d): string
     //
     // Service incentive leave (Sec. 29) is likewise statutory: five days paid
     // leave after one year of service.
-    $benefitsListSmall = '&bull; 13th month pay (RA 10361 Sec. 27, PD 851)<br/>'
+    $benefitsListSmall = '&bull; 13th month pay (RA 10361 Sec. 25, PD 851)<br/>'
         . '&bull; 5 days service incentive leave after 1 year (Sec. 29)<br/>';
     if (!empty($d['prov_sss'])) {
         $benefitsListSmall .= '&bull; SSS<br/>';
@@ -121,15 +119,6 @@ function carelink_bk1_build_html(array $d): string
     $mealsText = (($d['other_benefits'] ?? 'Wala') !== 'Wala')
         ? $nl($d['other_benefits'])
         : 'The employer shall provide meals for the helper.';
-
-    $salaryPeriodAdverb = match ($salaryPeriodLower) {
-        'monthly' => 'every month',
-        'weekly' => 'every week',
-        'daily' => 'every day',
-        'bi-weekly', 'biweekly' => 'every two weeks',
-        'semi-monthly', 'semimonthly' => 'twice a month',
-        default => $salaryPeriodLower !== '' ? 'per ' . $salaryPeriodLower : 'periodically',
-    };
 
     $hasAdditionalTerms = (($d['debt_agreement'] ?? 'Wala') !== 'Wala')
         || (($d['deployment_agreement'] ?? 'Wala') !== 'Wala')
@@ -375,7 +364,7 @@ function carelink_bk1_build_html(array $d): string
         ' . $termItem(3, 'Duties and Responsibilities', 'The helper shall perform the duties as listed in Page 1 of this agreement and other reasonable tasks related to the household.') . '
         ' . $termItem(4, 'Working Hours', 'Normal working hours shall not exceed eight (8) hours per day, within the agreed schedule of ' . $d['work_hours'] . '. Work rendered beyond eight (8) hours is overtime and shall be compensated at the agreed overtime rate; it may not be required without the helper&#39;s consent. Total hours of work shall not exceed twelve (12) hours in any day. The helper is entitled to an aggregate daily rest period of eight (8) hours (RA 10361 Sec. 20) and at least twenty-four (24) consecutive hours of rest each week (Sec. 21).') . '
         ' . $termItem(5, 'Rest Day', 'The helper shall have at least one (1) rest day every week, which is ' . $d['rest_days'] . '.') . '
-        ' . $termItem(6, 'Salary', 'The employer shall pay the helper a salary of ' . $d['salary_big'] . ' ' . $salaryPeriodAdverb . ', payable ' . $d['payment_schedule'] . '.') . '
+        ' . $termItem(6, 'Salary', 'The employer shall pay the helper a monthly salary of ' . $d['salary_big'] . ', paid according to this schedule: ' . $d['payment_schedule'] . '.') . '
       </td>
       <td style="width:50%; vertical-align:top; padding-left:14px;">
         ' . $termItem(7, 'Benefits', 'The employer shall shoulder the following mandatory benefits:<br/>' . $benefitsListSmall) . '

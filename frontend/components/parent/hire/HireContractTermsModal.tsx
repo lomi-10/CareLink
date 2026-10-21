@@ -1,16 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, TextInput, Switch, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView, TextInput, Switch, Platform, KeyboardAvoidingView, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DateField, TimeField } from '@/components/shared';
 import { hireContractTermsStyles as s } from '@/components/parent/hire/HireContractTermsModal.styles';
 import {
   DURATION_UNITS,
   computeContractEndDate,
+  countInclusiveCalendarDays,
   formatLongDate,
   type DurationUnit,
 } from '@/components/parent/hire/hireFlowDates';
-import { computeWorkHoursLabel } from '@/components/parent/hire/hireFlowWorkHours';
+import { computeScheduledWorkHours, computeWorkHoursLabel } from '@/components/parent/hire/hireFlowWorkHours';
 import { CARELINK_MINIMUM_MONTHLY_SALARY } from '@/components/parent/hire/hireJobOption';
+import { payoutBreakdown, peso, type SalaryPeriod } from '@/lib/salary';
 import { BROWN, CARAMEL, SUBTLE, DIVIDER, SURFACE, GREEN } from '@/components/parent/home/parentWarmTheme';
 
 const REST_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -19,6 +21,12 @@ const PAYMENT_SCHEDULE_DAILY = 'Daily';
 const PAYMENT_SCHEDULE_WEEKLY = 'Every week';
 const PAYMENT_SCHEDULE_SEMI = 'Every 15th and 30th';
 const PAYMENT_SCHEDULE_MONTHLY = 'Every end of month';
+const PAYMENT_SCHEDULE_PERIODS: Record<string, SalaryPeriod> = {
+  [PAYMENT_SCHEDULE_DAILY]: 'Daily',
+  [PAYMENT_SCHEDULE_WEEKLY]: 'Weekly',
+  [PAYMENT_SCHEDULE_SEMI]: 'Semi-monthly',
+  [PAYMENT_SCHEDULE_MONTHLY]: 'Monthly',
+};
 const KNOWN_PAYMENT_SCHEDULES = [
   PAYMENT_SCHEDULE_DAILY,
   PAYMENT_SCHEDULE_WEEKLY,
@@ -144,8 +152,13 @@ export function HireContractTermsModal({
 }: Props) {
   const [customPayment, setCustomPayment] = useState(false);
   const [additionalOpen, setAdditionalOpen] = useState(false);
+  const { width } = useWindowDimensions();
+  const isMobile = Platform.OS !== 'web' || width < 768;
 
   const isPartTime = workSchedule === 'Part-time';
+  const schedulePillText = workSchedule === 'Any'
+    ? 'Work schedule to be agreed'
+    : `${workSchedule} schedule`;
   const isKnownSchedule = KNOWN_PAYMENT_SCHEDULES.includes(paymentSchedule);
   const showCustomPaymentInput = customPayment || (paymentSchedule !== '' && !isKnownSchedule);
   const minimumMonthlySalary = Math.max(CARELINK_MINIMUM_MONTHLY_SALARY, minimumSalary);
@@ -155,12 +168,47 @@ export function HireContractTermsModal({
     [contractStartDate, contractType, durationAmount, durationUnit]
   );
   const endDateLabel = computedEndDate ? formatLongDate(computedEndDate) : null;
-
+  const maximumFixedTermEndDate = contractStartDate
+    ? computeContractEndDate(contractStartDate, 'Fixed Term', 2, 'Years')
+    : '';
+  const maximumFixedTermDays = maximumFixedTermEndDate
+    ? countInclusiveCalendarDays(contractStartDate, maximumFixedTermEndDate) ?? 731
+    : 731;
+  const maxDurationAmount = durationUnit === 'Days'
+    ? maximumFixedTermDays
+    : durationUnit === 'Weeks' ? 104 : durationUnit === 'Months' ? 24 : 2;
+  const fixedTermDays = computedEndDate
+    ? countInclusiveCalendarDays(contractStartDate, computedEndDate)
+    : null;
+  const fixedTermWithinMaximum =
+    !!computedEndDate && !!maximumFixedTermEndDate && computedEndDate <= maximumFixedTermEndDate;
+  const fixedTermDurationValid =
+    contractType === 'Indefinite' ||
+    (fixedTermDays !== null && fixedTermDays >= 30 && fixedTermWithinMaximum);
+  const employmentStartDateValid = countInclusiveCalendarDays(contractStartDate, contractStartDate) !== null;
+  const scheduledWorkHours = flexibleHours
+    ? null
+    : computeScheduledWorkHours(workHoursStart, workHoursEnd);
+  const scheduledWorkHoursValid = flexibleHours ||
+    (scheduledWorkHours !== null && scheduledWorkHours > 0 && scheduledWorkHours <= 12);
   const workHoursLabel = flexibleHours ? null : computeWorkHoursLabel(workHoursStart, workHoursEnd);
 
   const salaryNum = Number(confirmedSalary.trim());
   const salaryValid = Number.isFinite(salaryNum) && salaryNum >= minimumMonthlySalary;
   const showSalaryWarning = confirmedSalary.trim() !== '' && !salaryValid;
+  const payoutPeriod = PAYMENT_SCHEDULE_PERIODS[paymentSchedule] ?? null;
+  const payoutEstimate = salaryValid && payoutPeriod
+    ? payoutBreakdown(salaryNum, payoutPeriod)
+    : null;
+  const missingTerms = [
+    ...(!employmentStartDateValid ? ['start date'] : []),
+    ...(!salaryValid ? ['monthly salary'] : []),
+    ...(!paymentSchedule.trim() ? ['payment schedule'] : []),
+    ...(!scheduledWorkHoursValid ? ['valid work hours (up to 12 hours/day)'] : []),
+    ...(restDays.length === 0 ? ['at least one rest day'] : []),
+    ...(!fixedTermDurationValid ? ['valid contract duration'] : []),
+  ];
+  const canContinue = missingTerms.length === 0;
 
   useEffect(() => {
     if (KNOWN_PAYMENT_SCHEDULES.includes(paymentSchedule)) setCustomPayment(false);
@@ -193,34 +241,68 @@ export function HireContractTermsModal({
   }, [durationAmount, durationFocused]);
 
   const handleDurationAmountChange = (text: string) => {
-    const digits = text.replace(/[^0-9]/g, '').slice(0, 2);
+    const digits = text.replace(/[^0-9]/g, '').slice(0, 3);
+    if (digits === '') {
+      setDurationText('');
+      return;
+    }
     setDurationText(digits);
-    if (digits === '') return;
-    let num = parseInt(digits, 10);
-    if (num < 1) num = 1;
-    if (num > 99) num = 99;
-    onChangeDurationAmount(num);
+    onChangeDurationAmount(parseInt(digits, 10));
   };
+
+  const normalizeDurationAmount = (amount: number, unit: DurationUnit) => {
+    const minimum = unit === 'Days' ? 30 : unit === 'Weeks' ? 5 : 1;
+    const maximum = unit === 'Days'
+      ? maximumFixedTermDays
+      : unit === 'Weeks' ? 104 : unit === 'Months' ? 24 : 2;
+    return Math.min(maximum, Math.max(minimum, amount));
+  };
+
+  useEffect(() => {
+    if (contractType === 'Fixed Term' && durationAmount > maxDurationAmount) {
+      onChangeDurationAmount(maxDurationAmount);
+    }
+  }, [contractType, durationAmount, maxDurationAmount, onChangeDurationAmount]);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={s.overlay}>
-        <View style={s.card}>
+      <View style={[s.overlay, isMobile ? s.overlayMobile : s.overlayDesktop]}>
+        <View style={[s.card, isMobile && s.cardMobile]}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-            <View style={s.bodyPad}>
-              <Text style={s.title}>Contract Terms</Text>
-              <Text style={s.sub}>
-                Hiring <Text style={s.subBold}>{helperName || 'this helper'}</Text> for &quot;{jobTitle}&quot;.
-                {'\n'}Confirm the details below before generating the contract.
-              </Text>
+            <View style={s.header}>
+              <View style={s.headerText}>
+                <Text style={s.title}>Review hiring terms</Text>
+                <Text style={s.headerSub}>
+                  {helperName || 'Helper'} · {jobTitle}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={s.closeButton}
+                onPress={onCancel}
+                accessibilityRole="button"
+                accessibilityLabel="Close contract terms"
+              >
+                <Ionicons name="close" size={24} color={BROWN} />
+              </TouchableOpacity>
+            </View>
 
+            <ScrollView
+              style={s.list}
+              contentContainerStyle={s.listContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={!isMobile}
+            >
+              <View style={s.bodyPad}>
+                <Text style={s.sub}>
+                  These details will appear in the draft. The hire is finalized after both parties review and sign.
+                </Text>
               <View style={s.preFillBanner}>
                 <Ionicons name="information-circle-outline" size={16} color={BROWN} />
                 <View style={{ flex: 1 }}>
                   <Text style={s.preFillBannerText}>
                     {hasJobPostDefaults
-                      ? 'Some terms are pre-filled from this job post. Review and adjust them as needed.'
-                      : 'Review the agreed employment terms before continuing.'}
+                      ? 'Job-post details are suggestions. Confirm what you and the helper agreed.'
+                      : 'Enter the terms you and the helper agreed on.'}
                   </Text>
                   {hasJobPostDefaults && onPrefillFromJobPost && (
                     <TouchableOpacity
@@ -237,18 +319,18 @@ export function HireContractTermsModal({
                 </View>
               </View>
 
-              <View style={[s.pill, isPartTime ? s.pillGreen : s.pillBlue]}>
-                <Text style={s.pillText}>{isPartTime ? 'Part-time Contract' : 'Full-time Contract'}</Text>
+              <View style={[s.pill, workSchedule === 'Any' ? s.pillNeutral : isPartTime ? s.pillGreen : s.pillBlue]}>
+                <Text style={s.pillText}>{schedulePillText}</Text>
               </View>
-            </View>
-
-            <ScrollView style={s.list} keyboardShouldPersistTaps="handled">
+              </View>
 
               {/* ── Employment Period ── */}
-              <Text style={s.sectionTitle}>Employment Period</Text>
+              <Text style={s.sectionTitle}>Employment period</Text>
 
-              <Text style={s.label}>Employment start date (optional)</Text>
-              <Text style={s.hint}>Leave blank if not yet confirmed.</Text>
+              <Text style={s.label}>Employment start date (required)</Text>
+              <Text style={s.hint}>
+                Enter the agreed date employment begins. The contract must be agreed before service starts.
+              </Text>
               <DateField
                 value={contractStartDate}
                 onChange={onChangeStart}
@@ -296,16 +378,30 @@ export function HireContractTermsModal({
                       value={durationText}
                       onChangeText={handleDurationAmountChange}
                       onFocus={() => setDurationFocused(true)}
-                      onBlur={() => setDurationFocused(false)}
+                      onBlur={() => {
+                        const amount = Number.parseInt(durationText, 10);
+                        const normalized = normalizeDurationAmount(
+                          Number.isFinite(amount) ? amount : durationAmount,
+                          durationUnit
+                        );
+                        setDurationText(String(normalized));
+                        onChangeDurationAmount(normalized);
+                        setDurationFocused(false);
+                      }}
                       keyboardType="number-pad"
-                      maxLength={2}
+                      maxLength={3}
                     />
                     <View style={s.unitChipRow}>
                       {DURATION_UNITS.map((u) => (
                         <TouchableOpacity
                           key={u}
                           style={[s.unitChip, durationUnit === u && s.unitChipActive]}
-                          onPress={() => onChangeDurationUnit(u)}
+                          onPress={() => {
+                            onChangeDurationUnit(u);
+                            const normalized = normalizeDurationAmount(durationAmount, u);
+                            onChangeDurationAmount(normalized);
+                            setDurationText(String(normalized));
+                          }}
                           activeOpacity={0.7}
                         >
                           <Text style={[s.chipText, durationUnit === u && s.chipTextActive]}>{u}</Text>
@@ -329,17 +425,31 @@ export function HireContractTermsModal({
                       </Text>
                     </View>
                   )}
+                  <Text style={s.hint}>
+                    CareLink policy requires fixed-term contracts to cover at least 30 inclusive calendar days.
+                    This is a platform rule, not a statutory minimum.
+                  </Text>
+                  {fixedTermDays !== null && fixedTermDays < 30 && (
+                    <Text style={[s.hint, { color: BROWN }]}>
+                      This term covers {fixedTermDays} calendar days. Increase the duration to at least 30 days.
+                    </Text>
+                  )}
+                  {computedEndDate && maximumFixedTermEndDate && !fixedTermWithinMaximum && (
+                    <Text style={[s.hint, { color: BROWN }]}>
+                      Fixed-term contracts cannot exceed 2 calendar years. Choose Indefinite for longer employment.
+                    </Text>
+                  )}
                 </>
               )}
 
               {/* ── Compensation ── */}
-              <Text style={s.sectionTitle}>Compensation</Text>
+              <Text style={s.sectionTitle}>Pay</Text>
 
-              <Text style={s.label}>Monthly salary (₱)</Text>
+              <Text style={s.label}>Agreed monthly salary (₱)</Text>
               <Text style={s.hint}>
                 {jobPostSalaryMin != null
-                  ? `Job post: ₱${Number(jobPostSalaryMin).toLocaleString()}${jobPostSalaryMax != null ? `–₱${Number(jobPostSalaryMax).toLocaleString()}` : ''} per month. Minimum allowed: ₱${minimumMonthlySalary.toLocaleString()}/month.`
-                  : `Enter the agreed monthly amount. Minimum allowed: ₱${minimumMonthlySalary.toLocaleString()}/month.`}
+                  ? `Job post range: ₱${Number(jobPostSalaryMin).toLocaleString()}${jobPostSalaryMax != null ? `–₱${Number(jobPostSalaryMax).toLocaleString()}` : ''} per month. Minimum allowed: ₱${minimumMonthlySalary.toLocaleString()}/month.`
+                  : `This is the total salary per month. Minimum allowed: ₱${minimumMonthlySalary.toLocaleString()}/month.`}
               </Text>
               <View style={s.salaryRow}>
                 <View style={s.currencyBox}>
@@ -361,58 +471,51 @@ export function HireContractTermsModal({
                 </Text>
               )}
 
-              <Text style={[s.label, { marginTop: 10 }]}>Salary payment schedule</Text>
-              <View style={s.segmentedRow}>
+              <Text style={[s.label, { marginTop: 10 }]}>How often will it be paid? (required)</Text>
+              <Text style={s.hint}>The agreed amount stays monthly; this sets how it is split across paydays.</Text>
+              <View style={s.paymentGrid}>
                 <TouchableOpacity
-                  style={[s.segment, paymentSchedule === PAYMENT_SCHEDULE_DAILY && s.segmentActive]}
+                  style={[s.paymentOption, paymentSchedule === PAYMENT_SCHEDULE_DAILY && s.segmentActive]}
                   onPress={() => {
                     setCustomPayment(false);
                     onChangePaymentSchedule(PAYMENT_SCHEDULE_DAILY);
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={[s.segmentText, paymentSchedule === PAYMENT_SCHEDULE_DAILY && s.segmentTextActive]}>
-                    Daily
-                  </Text>
+                  <Text style={[s.segmentText, paymentSchedule === PAYMENT_SCHEDULE_DAILY && s.segmentTextActive]}>Daily</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[s.segment, paymentSchedule === PAYMENT_SCHEDULE_WEEKLY && s.segmentActive]}
+                  style={[s.paymentOption, paymentSchedule === PAYMENT_SCHEDULE_WEEKLY && s.segmentActive]}
                   onPress={() => {
                     setCustomPayment(false);
                     onChangePaymentSchedule(PAYMENT_SCHEDULE_WEEKLY);
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={[s.segmentText, paymentSchedule === PAYMENT_SCHEDULE_WEEKLY && s.segmentTextActive]}>
-                    Weekly
-                  </Text>
+                  <Text style={[s.segmentText, paymentSchedule === PAYMENT_SCHEDULE_WEEKLY && s.segmentTextActive]}>Weekly</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[s.segment, paymentSchedule === PAYMENT_SCHEDULE_SEMI && s.segmentActive]}
+                  style={[s.paymentOption, paymentSchedule === PAYMENT_SCHEDULE_SEMI && s.segmentActive]}
                   onPress={() => {
                     setCustomPayment(false);
                     onChangePaymentSchedule(PAYMENT_SCHEDULE_SEMI);
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={[s.segmentText, paymentSchedule === PAYMENT_SCHEDULE_SEMI && s.segmentTextActive]}>
-                    Semi-monthly (15th & 30th)
-                  </Text>
+                  <Text style={[s.segmentText, paymentSchedule === PAYMENT_SCHEDULE_SEMI && s.segmentTextActive]}>Twice a month</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[s.segment, paymentSchedule === PAYMENT_SCHEDULE_MONTHLY && s.segmentActive]}
+                  style={[s.paymentOption, paymentSchedule === PAYMENT_SCHEDULE_MONTHLY && s.segmentActive]}
                   onPress={() => {
                     setCustomPayment(false);
                     onChangePaymentSchedule(PAYMENT_SCHEDULE_MONTHLY);
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={[s.segmentText, paymentSchedule === PAYMENT_SCHEDULE_MONTHLY && s.segmentTextActive]}>
-                    Monthly (end of month)
-                  </Text>
+                  <Text style={[s.segmentText, paymentSchedule === PAYMENT_SCHEDULE_MONTHLY && s.segmentTextActive]}>Monthly</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[s.segment, showCustomPaymentInput && s.segmentActive]}
+                  style={[s.paymentOption, s.paymentOptionWide, showCustomPaymentInput && s.segmentActive]}
                   onPress={() => {
                     setCustomPayment(true);
                     if (isKnownSchedule) onChangePaymentSchedule('');
@@ -427,13 +530,42 @@ export function HireContractTermsModal({
                   style={s.input}
                   value={paymentSchedule}
                   onChangeText={onChangePaymentSchedule}
-                  placeholder="e.g. Every Friday, Every 1st of the month"
+                  placeholder="e.g. ₱2,000 every Friday"
                   placeholderTextColor={SUBTLE}
                 />
               )}
+              {payoutEstimate ? (
+                <View style={s.payoutPreview}>
+                  <Text style={s.payoutTitle}>Estimated payout</Text>
+                  {payoutEstimate.slices.map((slice) => (
+                    <View key={slice.label} style={s.payoutRow}>
+                      <Text style={s.payoutLabel}>{slice.label}</Text>
+                      <Text style={s.payoutAmount}>
+                        {payoutEstimate.approximate ? '≈ ' : ''}{peso(slice.amount)}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={s.payoutDivider} />
+                  <View style={s.payoutRow}>
+                    <Text style={s.payoutTotalLabel}>Monthly salary basis</Text>
+                    <Text style={s.payoutTotal}>{peso(payoutEstimate.monthly)}</Text>
+                  </View>
+                  {payoutEstimate.approximate && (
+                    <Text style={s.payoutNote}>
+                      {payoutPeriod === 'Daily'
+                        ? 'Estimate uses 26 working days per month; actual daily pay follows days worked.'
+                        : 'Estimate uses about 4.33 weeks per month, so weekly amounts vary slightly.'}
+                    </Text>
+                  )}
+                </View>
+              ) : paymentSchedule.trim() !== '' ? (
+                <Text style={s.hint}>
+                  Custom schedules have no automatic estimate. Enter the agreed timing and installment amount(s).
+                </Text>
+              ) : null}
 
               {/* ── Schedule ── */}
-              <Text style={s.sectionTitle}>Schedule</Text>
+              <Text style={s.sectionTitle}>Work schedule and rest</Text>
 
               <View style={s.flexibleToggleRow}>
                 <Text style={s.flexibleToggleLabel}>Flexible hours</Text>
@@ -446,7 +578,9 @@ export function HireContractTermsModal({
               </View>
 
               {flexibleHours ? (
-                <Text style={s.hoursCaptionText}>Hours will vary by daily agreement.</Text>
+                <Text style={s.hoursCaptionText}>
+                  Agree on each day&apos;s hours in advance. Work, including overtime, must not exceed 12 hours in a day.
+                </Text>
               ) : (
                 <>
                   <View style={s.timeRow}>
@@ -460,7 +594,27 @@ export function HireContractTermsModal({
                     </View>
                   </View>
                   {workHoursLabel && <Text style={s.hoursComputedText}>{workHoursLabel}</Text>}
-                  <Text style={s.hoursCaptionText}>Excludes 1 hour lunch break by default.</Text>
+                  {!scheduledWorkHoursValid && (
+                    <Text style={s.salaryErrorText}>
+                      {scheduledWorkHours === null
+                        ? 'Choose valid start and end times.'
+                        : scheduledWorkHours <= 0
+                          ? 'The schedule must include working time.'
+                          : 'Scheduled work cannot exceed 12 hours per day.'}
+                    </Text>
+                  )}
+                  {scheduledWorkHours !== null && scheduledWorkHours > 8 && scheduledWorkHours <= 12 && (
+                    <View style={s.warningBanner}>
+                      <Ionicons name="warning-outline" size={16} color={BROWN} />
+                      <Text style={s.warningBannerText}>
+                        This schedule includes more than 8 work hours a day. Agree in writing on any overtime pay;
+                        overtime must not be required without the helper&apos;s consent.
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={s.hoursCaptionText}>
+                    The estimate subtracts a 1-hour lunch break. Agree on the actual break and note any different arrangement under Other terms.
+                  </Text>
                 </>
               )}
 
@@ -484,28 +638,18 @@ export function HireContractTermsModal({
                 })}
               </View>
 
-              {/* ── Leave Benefits ── */}
-              <Text style={s.sectionTitle}>Leave Benefits</Text>
+              {/* ── Leave ── */}
+              <Text style={s.sectionTitle}>Leave</Text>
 
               <View style={s.infoBox}>
                 <Ionicons name="information-circle-outline" size={16} color={BROWN} />
                 <Text style={s.infoBoxText}>
-                  Under RA 10361, kasambahay are entitled to at least 5 days of Service Incentive Leave (SIL) per year.
+                  The contract includes statutory Service Incentive Leave: at least 5 paid days per year after one year of service.
+                  The amounts below are additional leave agreed for this contract.
                 </Text>
               </View>
 
-              {isPartTime && (
-                <View style={s.infoBox}>
-                  <Ionicons name="information-circle-outline" size={16} color={BROWN} />
-                  <Text style={s.infoBoxText}>
-                    For part-time helpers, leave benefits are pro-rated based on actual days/hours worked.
-                  </Text>
-                </View>
-              )}
-
-              <Text style={s.label}>
-                {isPartTime ? 'Vacation leave entitlement (pro-rated, days/year)' : 'Vacation leave (days/year)'}
-              </Text>
+              <Text style={s.label}>Additional vacation leave (days/year)</Text>
               <View style={s.chipRow}>
                 {LEAVE_OPTIONS.map((n) => (
                   <TouchableOpacity
@@ -519,9 +663,7 @@ export function HireContractTermsModal({
                 ))}
               </View>
 
-              <Text style={[s.label, { marginTop: 10 }]}>
-                {isPartTime ? 'Sick leave entitlement (pro-rated, days/year)' : 'Sick leave (days/year)'}
-              </Text>
+              <Text style={[s.label, { marginTop: 10 }]}>Additional sick leave (days/year)</Text>
               <View style={s.chipRow}>
                 {LEAVE_OPTIONS.map((n) => (
                   <TouchableOpacity
@@ -534,7 +676,7 @@ export function HireContractTermsModal({
                   </TouchableOpacity>
                 ))}
               </View>
-              <Text style={s.hint}>These are paid leave days usable at the helper&apos;s discretion.</Text>
+              <Text style={s.hint}>These are additional paid leave days; statutory SIL is listed separately in the contract.</Text>
 
               {/* ── Additional Terms (collapsible) ── */}
               <TouchableOpacity
@@ -545,8 +687,8 @@ export function HireContractTermsModal({
                 <View style={s.collapsibleHeaderLeft}>
                   <Ionicons name={additionalOpen ? 'chevron-down' : 'chevron-forward'} size={18} color={BROWN} />
                   <View>
-                    <Text style={s.collapsibleTitle}>Additional Terms (Optional)</Text>
-                    <Text style={s.collapsibleSub}>Most parents skip this section. Only fill if applicable.</Text>
+                    <Text style={s.collapsibleTitle}>Other terms (optional)</Text>
+                    <Text style={s.collapsibleSub}>Add only terms you and the helper have discussed.</Text>
                   </View>
                 </View>
                 {filledAdditionalCount > 0 && (
@@ -559,7 +701,9 @@ export function HireContractTermsModal({
               {additionalOpen && (
                 <>
                   <Text style={s.label}>Additional benefits (optional)</Text>
-                  <Text style={s.hint}>e.g. transportation allowance, 13th month pay, load allowance.</Text>
+                  <Text style={s.hint}>
+                    e.g. transportation allowance, meal allowance, or load allowance. Statutory benefits such as 13th-month pay are included separately.
+                  </Text>
                   <TextInput
                     style={s.notes}
                     value={otherBenefits}
@@ -687,16 +831,21 @@ export function HireContractTermsModal({
             </ScrollView>
 
             <View style={s.btns}>
+              {!canContinue && (
+                <Text style={s.footerHint}>
+                  Complete: {missingTerms.join(', ')}.
+                </Text>
+              )}
               <TouchableOpacity style={s.cancel} onPress={onCancel}>
                 <Text style={s.cancelTxt}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[s.confirm, !salaryValid && s.confirmDisabled]}
+                style={[s.confirm, !canContinue && s.confirmDisabled]}
                 onPress={onContinue}
-                disabled={!salaryValid}
-                accessibilityState={{ disabled: !salaryValid }}
+                disabled={!canContinue}
+                accessibilityState={{ disabled: !canContinue }}
               >
-                <Text style={s.confirmTxt}>Continue</Text>
+                <Text style={s.confirmTxt}>Review terms</Text>
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>

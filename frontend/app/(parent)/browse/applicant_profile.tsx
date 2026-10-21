@@ -26,7 +26,9 @@ import {
   HireContractTermsModal,
   toYmdInput,
   computeContractEndDate,
+  countInclusiveCalendarDays,
   formatDurationString,
+  computeScheduledWorkHours,
   workHoursToString,
   DEFAULT_WORK_START,
   DEFAULT_WORK_END,
@@ -319,7 +321,7 @@ export default function ApplicantProfile() {
       warn('Start date', 'Pick a start date for a Fixed Term contract, or switch to Indefinite.');
       return;
     }
-    if (start !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(start)) {
+    if (start !== '' && countInclusiveCalendarDays(start, start) === null) {
       warn('Start date', 'Employment start must be YYYY-MM-DD, or leave blank to use the job post date.');
       return;
     }
@@ -336,9 +338,16 @@ export default function ApplicantProfile() {
       warn('Payment schedule', 'Select or enter a salary payment schedule.');
       return;
     }
-    if (!hireFlexibleHours && (!hireWorkHoursStart || !hireWorkHoursEnd)) {
-      warn('Work hours', 'Set work hours, or turn on Flexible hours.');
-      return;
+    if (!hireFlexibleHours) {
+      const scheduledHours = computeScheduledWorkHours(hireWorkHoursStart, hireWorkHoursEnd);
+      if (scheduledHours === null || scheduledHours <= 0) {
+        warn('Work hours', 'Set valid work hours, or turn on Flexible hours.');
+        return;
+      }
+      if (scheduledHours > 12) {
+        warn('Work hours', 'Scheduled work cannot exceed 12 hours per day.');
+        return;
+      }
     }
     if (hireRestDays.length === 0) {
       warn('Rest days', 'Select at least one rest day for the contract.');

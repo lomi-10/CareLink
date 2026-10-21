@@ -28,15 +28,21 @@ export function formatTime12h(value: string): string {
  * Handles an overnight shift (end <= start) by wrapping to the next day.
  */
 export function computeWorkHoursLabel(start: string, end: string): string {
+  const hours = computeScheduledWorkHours(start, end);
+  if (hours == null) return '';
+  const formatted = hours % 1 === 0 ? String(hours) : hours.toFixed(1);
+  return `= ${formatted} hours/day`;
+}
+
+/** Scheduled daily work hours, excluding the default 1-hour lunch break. */
+export function computeScheduledWorkHours(start: string, end: string): number | null {
   const startMin = parseHHMM(start);
   const endMin = parseHHMM(end);
-  if (startMin == null || endMin == null) return '';
+  if (startMin == null || endMin == null) return null;
   let diff = endMin - startMin;
   if (diff <= 0) diff += 24 * 60;
   diff = Math.max(0, diff - 60);
-  const hours = diff / 60;
-  const formatted = hours % 1 === 0 ? String(hours) : hours.toFixed(1);
-  return `= ${formatted} hours/day`;
+  return diff / 60;
 }
 
 /** Free-text "work_hours" value sent to the backend */
@@ -67,13 +73,13 @@ function parseTime12hToHHMM(value: string): string | null {
 /**
  * Reverse of workHoursToString. Parses "8:00 AM – 5:00 PM" back into 24h start/end
  * times, or detects the "Flexible (...)" sentinel. Falls back to the default work
- * hours (not flexible) if the string isn't recognized.
+ * empty times if the string is blank or unrecognized, so an unspecified
+ * schedule is not silently presented as an agreed 8:00 AM–5:00 PM shift.
  */
 export function parseWorkHoursString(s: string): { start: string; end: string; flexible: boolean } {
   const trimmed = s.trim();
-  if (trimmed === '' || /^flexible/i.test(trimmed)) {
-    return { start: DEFAULT_WORK_START, end: DEFAULT_WORK_END, flexible: trimmed !== '' };
-  }
+  if (trimmed === '') return { start: '', end: '', flexible: false };
+  if (/^flexible/i.test(trimmed)) return { start: '', end: '', flexible: true };
   const parts = trimmed.split(/\s*[–—-]\s*/);
   if (parts.length === 2) {
     const start = parseTime12hToHHMM(parts[0]);
@@ -82,5 +88,5 @@ export function parseWorkHoursString(s: string): { start: string; end: string; f
       return { start, end, flexible: false };
     }
   }
-  return { start: DEFAULT_WORK_START, end: DEFAULT_WORK_END, flexible: false };
+  return { start: '', end: '', flexible: false };
 }

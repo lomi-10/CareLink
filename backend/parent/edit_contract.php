@@ -202,6 +202,7 @@ try {
     }
     require_once $vendorAutoload;
     require_once __DIR__ . '/../contracts/contract_helpers.php';
+    carelink_contract_validate_work_hours($work_hours);
     require_once __DIR__ . '/../contracts/bk1_template.php';
     require_once __DIR__ . '/../contracts/contract_generator.inc.php';
 

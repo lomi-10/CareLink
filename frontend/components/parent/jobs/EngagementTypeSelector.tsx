@@ -1,18 +1,9 @@
 // components/parent/jobs/EngagementTypeSelector.tsx
 // The RA 10361 scope question, asked before anything else on the job form.
 //
-// WHY IT EXISTS: CareLink handles kasambahay employment under the Batas
-// Kasambahay only. The statute excludes anyone performing domestic work "only
-// occasionally or sporadically and not on an occupational basis".
-//
-// The test is OCCUPATIONAL BASIS, not length. A short live-in engagement that is
-// someone's occupation is covered; a neighbour paid once to help move furniture
-// is not. So the question asks what KIND of engagement this is, and the app
-// imposes no minimum duration — there is no provision that would support one,
-// and an invented threshold could not be defended as compliance.
-//
-// Choosing "one-time task" blocks the post outright: no job post, no contract,
-// no placement. The refusal explains itself rather than just disabling a button.
+// CareLink currently supports employment posts, not standalone one-off task
+// bookings. A one-off label alone cannot determine whether RA 10361 applies:
+// the exclusion requires work to be both occasional/sporadic and non-occupational.
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
@@ -25,8 +16,8 @@ export type EngagementType = 'recurring' | 'one_time' | '';
 const OPTIONS: { key: Exclude<EngagementType, ''>; title: string; body: string; icon: any }[] = [
   {
     key: 'recurring',
-    title: 'Recurring household employment',
-    body: 'Regular domestic work — a kasambahay, yaya, cook, or household helper employed on an ongoing basis.',
+    title: 'Household employment',
+    body: 'Domestic work in an employment relationship — such as a kasambahay, yaya, cook, gardener, or laundry worker.',
     icon: 'home',
   },
   {
@@ -51,8 +42,9 @@ export function EngagementTypeSelector({ value, onChange, error, disabled }: {
         What kind of work is this? <Text style={s.req}>*</Text>
       </Text>
       <Text style={s.hint}>
-        CareLink creates employment contracts under the Batas Kasambahay (RA 10361), which covers
-        household work done as an occupation.
+        CareLink currently creates employment contracts for household employment under the Batas
+        Kasambahay (RA 10361). Whether a task is covered depends on the actual work arrangement,
+        not only on how often it occurs.
       </Text>
 
       <View style={s.options}>
@@ -89,9 +81,11 @@ export function EngagementTypeSelector({ value, onChange, error, disabled }: {
         <View style={s.blockBox}>
           <Ionicons name="information-circle" size={17} color="#B91C1C" />
           <Text style={s.blockText}>
-            One-time and occasional tasks fall outside the Batas Kasambahay, so CareLink cannot post them
-            or generate an employment contract for them. If this work is actually regular household
-            employment, choose the first option instead.
+            CareLink does not currently support standalone one-time task bookings. This is a platform
+            limitation, not a legal finding: a one-time task is not automatically outside RA 10361.
+            The law's exclusion applies only when domestic work is both occasional or sporadic and
+            not performed on an occupational basis. If this is an employment arrangement, choose the
+            employment option; otherwise CareLink cannot process it yet.
           </Text>
         </View>
       )}

@@ -67,6 +67,17 @@ export function computeContractEndDate(
   return toYmd(new Date(y, m - 1, d - 1));
 }
 
+/** Count both the start and end dates in a YYYY-MM-DD employment period. */
+export function countInclusiveCalendarDays(startYmd: string, endYmd: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startYmd) || !/^\d{4}-\d{2}-\d{2}$/.test(endYmd)) return null;
+  const start = Date.parse(`${startYmd}T00:00:00Z`);
+  const end = Date.parse(`${endYmd}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  if (new Date(start).toISOString().slice(0, 10) !== startYmd) return null;
+  if (new Date(end).toISOString().slice(0, 10) !== endYmd || end < start) return null;
+  return Math.floor((end - start) / 86_400_000) + 1;
+}
+
 /** "2026-12-31" -> "December 31, 2026 (Thursday)" */
 export function formatLongDate(ymd: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '';

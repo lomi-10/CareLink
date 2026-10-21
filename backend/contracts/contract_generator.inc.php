@@ -162,7 +162,6 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
             rc.category_name,
             jp.days_off,
             jp.salary_offered,
-            jp.salary_period,
             jp.start_date,
             jp.benefits,
             jp.employment_type,
@@ -364,8 +363,7 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     $optSalary = isset($opts['confirmed_salary']) && $opts['confirmed_salary'] !== null ? floatval($opts['confirmed_salary']) : null;
     $storedSalary = isset($row['confirmed_salary']) && $row['confirmed_salary'] !== null ? floatval($row['confirmed_salary']) : null;
     $effectiveSalary = $optSalary ?? $storedSalary ?? floatval($row['salary_offered'] ?? 0);
-    $salaryPeriodRaw = trim((string) ($row['salary_period'] ?? 'Monthly'));
-    $salaryAmt = carelink_contract_escape('₱' . number_format($effectiveSalary, 2) . ' / ' . $salaryPeriodRaw . ' (cash)');
+    $salaryAmt = carelink_contract_escape('₱' . number_format($effectiveSalary, 2) . ' per month (cash)');
 
     // Work hours
     $optWorkHours = isset($opts['work_hours']) ? trim((string) $opts['work_hours']) : '';
@@ -401,6 +399,15 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     $contractDurationEsc = $optDuration !== '' ? carelink_contract_escape($optDuration)
         : (isset($row['contract_duration']) && $row['contract_duration'] !== null && trim((string) $row['contract_duration']) !== ''
             ? carelink_contract_escape(trim((string) $row['contract_duration'])) : 'N/A');
+
+    $effectiveDurationRaw = $optDuration !== ''
+        ? $optDuration
+        : (isset($row['contract_duration']) && $row['contract_duration'] !== null
+            ? trim((string) $row['contract_duration'])
+            : '');
+    if (in_array($statusMode, ['hireable', 'editable'], true)) {
+        carelink_contract_validate_period($effectiveDurationRaw, $effectiveStartRaw, $effectiveEndRaw);
+    }
 
     // BK-1 item 2: "Hanggang sa" — show "Walang takdang panahon" for indefinite contracts
     $endDateDisplay = ($contractDurationEsc === 'Indefinite' || $effectiveEndRaw === '')
@@ -449,7 +456,8 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
         ? (float) $opts['debt_amount'] : null;
     $storedDebtAmount = isset($row['debt_amount']) && $row['debt_amount'] !== null ? (float) $row['debt_amount'] : null;
     $effectiveDebtAmount = $optDebtAmount ?? $storedDebtAmount;
-    $debtMonthlySalary = $salaryPeriodRaw === 'Daily' ? $effectiveSalary * 26 : $effectiveSalary;
+    // Payout cadence never changes the monthly salary basis.
+    $debtMonthlySalary = $effectiveSalary;
     $debtExceedsOneMonth = $effectiveDebtAmount !== null && $debtMonthlySalary > 0 && $effectiveDebtAmount > $debtMonthlySalary;
 
     $debtAgreementEsc = $effectiveDebtAgreement !== '' ? carelink_contract_escape($effectiveDebtAgreement) : 'Wala';
@@ -474,10 +482,9 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
 
     // BK-1 item 14: termination pay-in-lieu = one full month's salary, matching
     // the 30-day notice period stated elsewhere in this same contract (see
-    // bk1_template.php's termination clause). Previously this used salary/26*15
-    // (~15 working days, roughly half a month) — inconsistent with the stated
-    // 30-day notice. Daily-rate contracts are converted to a 30-day equivalent.
-    $terminationPayMonthly = $salaryPeriodRaw === 'Daily' ? $effectiveSalary * 30 : $effectiveSalary;
+    // bk1_template.php's termination clause). Salary amounts are always monthly;
+    // the payout schedule does not change the salary basis.
+    $terminationPayMonthly = $effectiveSalary;
     $terminationPayEsc = '₱' . number_format($terminationPayMonthly, 2);
 
     // BK-1 employer/helper signature dates (from job_applications, when already signed)
@@ -524,7 +531,7 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     $workScheduleEsc = carelink_contract_escape(trim((string) ($row['work_schedule'] ?? 'N/A')));
 
     $salaryBigEsc = carelink_contract_escape('₱' . number_format($effectiveSalary, 2));
-    $salaryPeriodEsc = carelink_contract_escape($salaryPeriodRaw);
+    $salaryPeriodEsc = carelink_contract_escape('Monthly');
 
     $contractStatus = ($employerSignedDate !== 'Pending' && $helperSignedDate !== 'Pending') ? 'SIGNED' : 'PENDING';
     $contractIdDisplay = 'CL-' . date('Y') . '-' . $application_id;
