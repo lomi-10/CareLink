@@ -56,6 +56,23 @@ npx expo start
 
 See `DEPLOYMENT_GUIDE.md` for detailed instructions.
 
+## PESO Verification Management
+
+The PESO verification queue supports server-side search, status/role filters, and
+incremental loading. From a verified account's details, staff can **unverify**
+it (returning it to review without changing jobs or applications), **suspend**
+it, or restore a suspended account. Each moderation action requires a reason and
+is recorded. Suspension closes open job posts and withdraws eligible unsigned,
+non-hired applications; signed contracts and hired work are preserved. The
+`peso_user_moderation` audit table is created by `backend/migrate.php` and also
+ensured when the moderation endpoint is first used.
+
+PESO staff can download an **NSRP Form 1 Rev. 3 draft** for a verified helper.
+CareLink fills only information it already has; missing details are identified
+for helper/PESO completion. This is a draft only: the helper must review and
+complete the official form, including its certification and signature, and PESO
+must handle its reserved section and any submission.
+
 ## Tech Stack
 
 - **Frontend**: Expo React Native, TypeScript, Tailwind CSS

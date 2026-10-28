@@ -166,6 +166,7 @@ try {
     // 2b. Extra details per user type
     // ========================================================================
     $helper_specialties = null;
+    $helper_work_history = array();
     $parent_household = null;
     $parent_children = null;
     $parent_elderly = null;
@@ -232,6 +233,27 @@ try {
             'skills' => $skills,
             'languages' => $languages
         );
+
+        $historySql = "SELECT employer_name, employer_contact, position, start_date, end_date,
+                              duties, reason_for_leaving, can_contact
+                         FROM helper_work_history
+                        WHERE profile_id = ?
+                        ORDER BY start_date DESC, history_id DESC";
+        $historyStmt = $conn->prepare($historySql);
+        if (!$historyStmt) {
+            throw new Exception("Failed to load helper work history");
+        }
+        $historyStmt->bind_param("i", $profile_id);
+        if (!$historyStmt->execute()) {
+            $historyStmt->close();
+            throw new Exception("Failed to load helper work history");
+        }
+        $historyResult = $historyStmt->get_result();
+        while ($historyRow = $historyResult->fetch_assoc()) {
+            $historyRow['can_contact'] = (bool) $historyRow['can_contact'];
+            $helper_work_history[] = $historyRow;
+        }
+        $historyStmt->close();
     }
 
     if ($user_type === 'parent' && $profile) {
@@ -367,6 +389,7 @@ try {
         'profile' => $profile,
         'documents' => $documents,
         'helper_specialties' => $helper_specialties,
+        'helper_work_history' => $helper_work_history,
         'parent_household' => $parent_household,
         'parent_children' => $parent_children,
         'parent_elderly' => $parent_elderly

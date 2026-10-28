@@ -124,12 +124,22 @@ if (password_verify($password, $row["password"])) {
             "profile_completed" => (bool)($row['profile_completed'] ?? 0),
         ];
 
+        $isSuspended = strtolower(trim((string) $row['status'])) === 'suspended';
+        $auth_token = null;
+        if (!$isSuspended) {
+            require_once __DIR__ . '/../shared/auth_tokens.php';
+            $auth_token = carelink_issue_auth_token($conn, (int) $row['user_id'], $user_agent ?? null);
+        }
+
         echo json_encode([
             "success" => false,
-            "message" => "Account pending for approval.",
+            "message" => $isSuspended
+                ? "This account is suspended. Please contact PESO for assistance."
+                : "Account pending for approval.",
             "user" => $user,
-            "reason" => "Account Pending",
-            "user_type" => $row['user_type']
+            "reason" => $isSuspended ? "account_suspended" : "Account Pending",
+            "user_type" => $row['user_type'],
+            "auth_token" => $auth_token,
         ]);
         exit;
     }

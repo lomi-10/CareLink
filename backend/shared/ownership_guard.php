@@ -14,6 +14,29 @@
  * matches the existing exception-based error handling already used
  * throughout this codebase.
  */
+if (!function_exists('carelink_assert_account_not_suspended')) {
+    function carelink_assert_account_not_suspended(mysqli $conn, int $userId): void
+    {
+        $st = $conn->prepare("SELECT status FROM users WHERE user_id = ? LIMIT 1");
+        if (!$st) {
+            throw new Exception('Unable to verify account status.');
+        }
+        $st->bind_param('i', $userId);
+        if (!$st->execute()) {
+            $st->close();
+            throw new Exception('Unable to verify account status.');
+        }
+        $row = $st->get_result()->fetch_assoc();
+        $st->close();
+        if (!$row) {
+            throw new Exception('You are not allowed to access this resource.');
+        }
+        if (strtolower(trim((string) $row['status'])) === 'suspended') {
+            throw new Exception('This account is suspended.');
+        }
+    }
+}
+
 function carelink_require_self(int $requesterId, int $targetId, string $message = 'You are not allowed to access this resource.'): void
 {
     if ($targetId <= 0) {
@@ -31,6 +54,7 @@ function carelink_require_self(int $requesterId, int $targetId, string $message 
     // here upgrades all of them at once rather than editing ~160 files.
     global $conn;
     if (isset($conn) && $conn instanceof mysqli) {
+        carelink_assert_account_not_suspended($conn, $targetId);
         require_once __DIR__ . '/auth_tokens.php';
         $authedId = carelink_authenticated_user_id($conn);
 
@@ -66,6 +90,7 @@ function carelink_require_self(int $requesterId, int $targetId, string $message 
 function carelink_require_self_or_staff(mysqli $conn, int $requesterId, int $targetId, string $requesterType, string $message = 'You are not allowed to access this resource.'): void
 {
     if ($requesterId > 0 && $targetId > 0 && $requesterId === $targetId) {
+        carelink_assert_account_not_suspended($conn, $targetId);
         return; // viewing/editing your own data
     }
 
@@ -94,12 +119,12 @@ function carelink_require_authenticated_user(mysqli $conn, int $requesterId, str
     if ($requesterId <= 0) {
         throw new Exception($message);
     }
-    $st = $conn->prepare("SELECT user_id FROM users WHERE user_id = ? LIMIT 1");
+    $st = $conn->prepare("SELECT user_id, status FROM users WHERE user_id = ? LIMIT 1");
     $st->bind_param('i', $requesterId);
     $st->execute();
     $ok = $st->get_result()->fetch_assoc();
     $st->close();
-    if (!$ok) {
+    if (!$ok || strtolower(trim((string) $ok['status'])) === 'suspended') {
         throw new Exception($message);
     }
 }

@@ -15,7 +15,7 @@ ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 include_once '../dbcon.php';
-include_once __DIR__ . '/ownership_guard.php';
+require_once __DIR__ . '/auth_tokens.php';
 
 if (!isset($_GET['user_id']) || empty($_GET['user_id'])) {
     echo json_encode(["success" => false, "message" => "Missing user_id parameter"]);
@@ -29,7 +29,16 @@ try {
     if (!$conn) {
         throw new Exception("Database connection failed");
     }
-    carelink_require_self($requester_id, $user_id, 'You are not allowed to view this account status.');
+    $tokenUserId = carelink_authenticated_user_id_for_status($conn);
+    if ($tokenUserId > 0) {
+        if ($tokenUserId !== $user_id) {
+            throw new Exception('You are not allowed to view this account status.');
+        }
+    } elseif (carelink_auth_is_strict()) {
+        throw new Exception('Your session has expired. Please sign in again.');
+    } elseif ($requester_id <= 0 || $requester_id !== $user_id) {
+        throw new Exception('You are not allowed to view this account status.');
+    }
 
     // 1. Get base user status and find out their user_type
     $user_sql = "SELECT status, profile_completed, user_type FROM users WHERE user_id = ?";

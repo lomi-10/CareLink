@@ -21,6 +21,7 @@ import { ClearanceVerification, isClearanceDocument } from "./ClearanceVerificat
 import { credentialSpec } from "@/constants/credentials";
 import { usePesoTheme, radius, type PesoColors } from "@/contexts/PesoThemeContext";
 import { formatParentHouseholdType } from "@/constants/parentHousehold";
+import UserManagementActions from "./UserManagementActions";
 
 const DOC_ICONS: Record<string, React.ComponentProps<typeof Ionicons>["name"]> = {
   "Valid ID": "card-outline",
@@ -578,6 +579,16 @@ export default function UserDetailPanel({
           </>
         )}
 
+        {vs === "Verified" && (
+          <UserManagementActions
+            userId={userId}
+            userType={isHelper ? "helper" : "parent"}
+            staffId={verifierId}
+            accountStatus={String(user.status ?? "")}
+            verificationStatus={String(vs)}
+            onChanged={() => { void fetchUserDetails(); onChanged?.(); }}
+          />
+        )}
 
         <View style={{ height: 12 }} />
       </ScrollView>

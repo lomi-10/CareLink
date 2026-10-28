@@ -19,7 +19,7 @@ error_reporting(0);
 
 include_once '../dbcon.php';
 
-function sendResponse($success, $message, $data = null) {
+function sendResponse($success, $message, $data = null, $pagination = null) {
     if (ob_get_level()) ob_clean();
     
     $response = array(
@@ -29,6 +29,9 @@ function sendResponse($success, $message, $data = null) {
     
     if ($data !== null) {
         $response['data'] = $data;
+    }
+    if ($pagination !== null) {
+        $response['pagination'] = $pagination;
     }
     
     echo json_encode($response);
@@ -49,20 +52,43 @@ try {
     // - Show users who meet the backend readiness criteria
     // - ALSO show Verified/Rejected users for history, even if profile_completed is old (0)
     // - PESO UI filters handle Pending / Verified / Rejected / All
-    $sql = "SELECT 
+    $roleFilter = isset($_GET['role']) ? trim((string) $_GET['role']) : '';
+    if (!in_array($roleFilter, ['helper', 'parent'], true)) {
+        $roleFilter = '';
+    }
+    $statusFilter = isset($_GET['status']) ? trim((string) $_GET['status']) : '';
+    if (!in_array($statusFilter, ['Pending', 'Verified', 'Rejected', 'Suspended'], true)) {
+        $statusFilter = '';
+    }
+    $search = isset($_GET['search']) ? trim((string) $_GET['search']) : '';
+    $search = mb_substr($search, 0, 120);
+    $scanFilter = isset($_GET['scan']) ? trim((string) $_GET['scan']) : '';
+    if (!in_array($scanFilter, ['scanned', 'unscanned'], true)) {
+        $scanFilter = '';
+    }
+    $paginated = isset($_GET['page']) || isset($_GET['page_size']);
+    $page = max(1, isset($_GET['page']) ? (int) $_GET['page'] : 1);
+    $pageSize = $paginated
+        ? min(50, max(10, isset($_GET['page_size']) ? (int) $_GET['page_size'] : 30))
+        : 0;
+    $offset = $paginated ? ($page - 1) * $pageSize : 0;
+    $verificationStatusSql = "CASE
+                    WHEN COALESCE(u.profile_completed, 0) = 1
+                         AND COALESCE(h.verification_status, p.verification_status, 'Unverified') = 'Unverified'
+                    THEN 'Pending'
+                    ELSE COALESCE(h.verification_status, p.verification_status, 'Unverified')
+                END";
+
+    $sql = "SELECT
                 u.user_id,
                 u.email,
                 u.username,
                 CONCAT(u.first_name, ' ', IFNULL(u.middle_name, ''), ' ', u.last_name) as name,
                 u.user_type,
+                u.status as account_status,
                 COALESCE(h.profile_image, p.profile_image) as profile_image,
                 u.phone as contact_number,
-                CASE
-                    WHEN COALESCE(u.profile_completed, 0) = 1
-                         AND COALESCE(h.verification_status, p.verification_status, 'Unverified') = 'Unverified'
-                    THEN 'Pending'
-                    ELSE COALESCE(h.verification_status, p.verification_status, 'Unverified')
-                END as verification_status,
+                {$verificationStatusSql} as verification_status,
                 COALESCE(h.created_at, p.created_at, u.created_at) as created_at,
                 EXISTS (SELECT 1 FROM user_documents ud WHERE ud.user_id = u.user_id AND ud.ai_checked_at IS NOT NULL) as ai_scanned,
                 EXISTS (
@@ -120,15 +146,39 @@ try {
                       AND d.status IN ('Pending','Verified')
                   ) >= 2
                 )
-              )
-            ORDER BY 
-                CASE 
+              )";
+
+    if ($roleFilter !== '') {
+        $sql .= " AND u.user_type = '" . $conn->real_escape_string($roleFilter) . "'";
+    }
+    if ($statusFilter === 'Suspended') {
+        $sql .= " AND LOWER(TRIM(u.status)) = 'suspended'";
+    } elseif ($statusFilter !== '') {
+        $sql .= " AND ({$verificationStatusSql}) = '" . $conn->real_escape_string($statusFilter) . "'";
+    }
+    if ($search !== '') {
+        $searchValue = $conn->real_escape_string($search);
+        $sql .= " AND (CONCAT_WS(' ', u.first_name, u.middle_name, u.last_name) LIKE '%{$searchValue}%'
+                       OR u.email LIKE '%{$searchValue}%'
+                       OR u.phone LIKE '%{$searchValue}%')";
+    }
+    if ($scanFilter === 'scanned') {
+        $sql .= " AND EXISTS (SELECT 1 FROM user_documents d WHERE d.user_id = u.user_id AND d.ai_checked_at IS NOT NULL)";
+    } elseif ($scanFilter === 'unscanned') {
+        $sql .= " AND NOT EXISTS (SELECT 1 FROM user_documents d WHERE d.user_id = u.user_id AND d.ai_checked_at IS NOT NULL)";
+    }
+
+    $sql .= " ORDER BY
+                CASE
                     WHEN COALESCE(h.verification_status, p.verification_status) = 'Pending' THEN 1
                     WHEN COALESCE(h.verification_status, p.verification_status) = 'Verified' THEN 2
                     WHEN COALESCE(h.verification_status, p.verification_status) = 'Rejected' THEN 3
                     ELSE 4
                 END,
                 COALESCE(h.created_at, p.created_at, u.created_at) DESC";
+    if ($paginated) {
+        $sql .= " LIMIT " . ($pageSize + 1) . " OFFSET " . $offset;
+    }
     
     $result = $conn->query($sql);
     
@@ -137,9 +187,14 @@ try {
     }
     
     $users = array();
+    $hasMore = false;
     $base_url = carelink_url_scheme() . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/";
     
     while ($row = $result->fetch_assoc()) {
+        if ($paginated && count($users) >= $pageSize) {
+            $hasMore = true;
+            break;
+        }
         $row['user_id'] = intval($row['user_id']);
         
         // Build full profile image URL (and repair double-saved URLs)
@@ -181,7 +236,12 @@ try {
     
     error_log("Found " . count($users) . " users");
     
-    sendResponse(true, "Users retrieved successfully", $users);
+    sendResponse(
+        true,
+        "Users retrieved successfully",
+        $users,
+        $paginated ? ['page' => $page, 'page_size' => $pageSize, 'has_more' => $hasMore] : null
+    );
 
 } catch (Exception $e) {
     error_log("ERROR: " . $e->getMessage());

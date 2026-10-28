@@ -19,6 +19,7 @@ import NotificationModal from "../../../components/peso/NotificationModal";
 import API_URL from "../../../constants/api";
 import { usePesoTheme, radius, shadow, type PesoColors } from "@/contexts/PesoThemeContext";
 import { formatParentHouseholdType } from "@/constants/parentHousehold";
+import UserManagementActions from "@/components/peso/UserManagementActions";
 
 const DOC_ICONS: Record<string, React.ComponentProps<typeof Ionicons>["name"]> = {
   "Valid ID":          "card-outline",
@@ -651,6 +652,17 @@ export default function ViewUserProfile() {
             })
           )}
         </SectionCard>
+
+        {vs === "Verified" && (
+          <UserManagementActions
+            userId={String(userIdParam ?? "")}
+            userType={String(userTypeParam ?? user.user_type ?? "")}
+            staffId={verifierId}
+            accountStatus={String(user.status ?? "")}
+            verificationStatus={String(vs)}
+            onChanged={() => { void fetchUserDetails(); }}
+          />
+        )}
 
         {/* ── ACCOUNT ACTIONS ── */}
         {vs === "Pending" && (

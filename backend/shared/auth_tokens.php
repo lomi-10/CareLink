@@ -113,8 +113,13 @@ if (!function_exists('carelink_issue_auth_token')) {
         $hash = hash('sha256', $token);
 
         $st = $conn->prepare(
-            "SELECT user_id FROM auth_tokens
-              WHERE token_hash = ? AND expires_at > NOW() LIMIT 1"
+            "SELECT t.user_id
+               FROM auth_tokens t
+               INNER JOIN users u ON u.user_id = t.user_id
+              WHERE t.token_hash = ?
+                AND t.expires_at > NOW()
+                AND LOWER(TRIM(u.status)) <> 'suspended'
+              LIMIT 1"
         );
         if (!$st) return $cached = 0;
         $st->bind_param('s', $hash);
@@ -128,6 +133,27 @@ if (!function_exists('carelink_issue_auth_token')) {
         if ($upd) { $upd->bind_param('s', $hash); $upd->execute(); $upd->close(); }
 
         return $cached = (int) $row['user_id'];
+    }
+
+    /**
+     * Identity for the self-only account-status endpoint, which must be able
+     * to tell a suspended user why ordinary API access is refused.
+     */
+    function carelink_authenticated_user_id_for_status(mysqli $conn): int
+    {
+        $token = carelink_bearer_token();
+        if ($token === null) return 0;
+
+        ensure_auth_tokens_table($conn);
+        $hash = hash('sha256', $token);
+        $st = $conn->prepare("SELECT user_id FROM auth_tokens WHERE token_hash = ? LIMIT 1");
+        if (!$st) return 0;
+        $st->bind_param('s', $hash);
+        $st->execute();
+        $row = $st->get_result()->fetch_assoc();
+        $st->close();
+
+        return $row ? (int) $row['user_id'] : 0;
     }
 
     /** Sign out: destroy this session's token so it can never be reused. */

@@ -14,6 +14,7 @@ import { LoginCard } from "@/components/admin/login/LoginCard";
 import { MobileWarning } from "@/components/admin/login/MobileWarning";
 import { BG_DARK_2, TEXT_LIGHT_SUBTLE } from "@/components/landing/web/theme";
 import { FontFamily } from "@/constants/GlobalStyles";
+import { setAuthToken } from "@/lib/authFetch";
 import API_URL from "../../constants/api";
 
 export default function AdminLoginScreen() {
@@ -78,8 +79,17 @@ export default function AdminLoginScreen() {
       if (data.success) {
         // SECURITY CHECK: Only admin and peso allowed
         if (data.user_type === "admin" || data.user_type === "peso") {
+          if (data.user_type === "peso" && (typeof data.auth_token !== "string" || !data.auth_token)) {
+            await setAuthToken(null);
+            setModalTitle("Secure Session Unavailable");
+            setModalMessage("CareLink could not create a secure PESO session. Please try again; if this continues, check the local database connection.");
+            setModalVisible(true);
+            return;
+          }
+
           setAttemptsLeft(5);
 
+          await setAuthToken(typeof data.auth_token === "string" ? data.auth_token : null);
           await AsyncStorage.setItem("user_token", data.user.user_id.toString());
           await AsyncStorage.setItem("user_data", JSON.stringify(data.user));
 

@@ -14,6 +14,7 @@ import { MobileDrawer } from "@/components/peso/layout/MobileDrawer";
 import { Sidebar } from "@/components/peso/layout/Sidebar";
 import type { BadgeKey } from "@/components/peso/layout/navConfig";
 import { useNotifications } from "@/hooks/shared";
+import { setAuthToken } from "@/lib/authFetch";
 import { fetchPesoComplaints } from "@/lib/complaintsApi";
 import { PesoThemeProvider, usePesoTheme, font, radius } from "@/contexts/PesoThemeContext";
 import { PesoBackground } from "@/components/peso/ui";
@@ -64,6 +65,7 @@ function PesoLayoutInner() {
   // one step gave no feedback, so on a slow device it looked like nothing had
   // happened and the button got tapped again.
   const confirmLogout = async () => {
+    await setAuthToken(null);
     await AsyncStorage.clear();
     setLogoutModalVisible(false);
     setLoggedOutVisible(true);
