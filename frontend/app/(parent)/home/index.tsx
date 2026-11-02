@@ -15,7 +15,7 @@ import type { PendingReview } from '@/lib/reviewsApi';
 import { useAuth, useResponsive, useNotifications } from '@/hooks/shared';
 import { FontFamily } from '@/constants/GlobalStyles';
 
-import { AnnouncementFeed, NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal } from '@/components/shared';
+import { AnnouncementFeed, NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PlacementExperienceConfirmations } from '@/components/shared';
 import { useGuide } from '@/contexts/GuideContext';
 import { AwaitingVerificationCard } from '@/components/shared/AwaitingVerificationCard';
 import {
@@ -264,6 +264,7 @@ export default function ParentHome() {
             openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
           }
         />
+        <PlacementExperienceConfirmations userType="parent" accentColor={GOLD} refreshToken={placementReviewRefreshTok} />
       </>
     );
     return (
@@ -277,13 +278,18 @@ export default function ParentHome() {
           onLogout={initiateLogout}
         />
         {isWorkMode ? (
-          <ParentWorkHomeWeb
-            userName={getFullName()}
-            avatar={profileImage}
-            verified={profileData?.profile?.verification_status === 'Verified'}
-            onSwitchMode={switchMode}
-            announcement={<AnnouncementFeed />}
-          />
+          <>
+            <View style={{ width: '100%', maxWidth: 1200, alignSelf: 'center', paddingHorizontal: 24 }}>
+              <PlacementExperienceConfirmations userType="parent" accentColor={GOLD} refreshToken={placementReviewRefreshTok} />
+            </View>
+            <ParentWorkHomeWeb
+              userName={getFullName()}
+              avatar={profileImage}
+              verified={profileData?.profile?.verification_status === 'Verified'}
+              onSwitchMode={switchMode}
+              announcement={<AnnouncementFeed />}
+            />
+          </>
         ) : (
           <ParentHomeWeb
             userName={getFullName()}
@@ -313,6 +319,7 @@ export default function ParentHome() {
       {isWorkMode ? (
         <>
           {renderModeToggle()}
+          <PlacementExperienceConfirmations userType="parent" accentColor={BROWN} refreshToken={placementReviewRefreshTok} />
           <ParentWorkDashboard
             userName={getFullName()}
             profileImage={profileImage}
@@ -341,6 +348,7 @@ export default function ParentHome() {
               openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
             }
           />
+          <PlacementExperienceConfirmations userType="parent" accentColor={BROWN} refreshToken={placementReviewRefreshTok} />
           {profileData?.profile?.verification_status === 'Verified' && <RecommendedHelpersSection />}
           <SectionHeader title="My Hiring Activity" />
           {renderStatsGrid(true)}

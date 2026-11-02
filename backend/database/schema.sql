@@ -248,6 +248,11 @@ CREATE TABLE IF NOT EXISTS `helper_work_history` (
   `duties` text COLLATE utf8mb4_general_ci,
   `reason_for_leaving` text COLLATE utf8mb4_general_ci,
   `can_contact` tinyint(1) DEFAULT '1' COMMENT '1 = allow employer to be contacted',
+  `experience_review_status` enum('self_reported','peso_reviewed') NOT NULL DEFAULT 'self_reported',
+  `experience_reviewed_by` int DEFAULT NULL,
+  `experience_reviewed_at` datetime DEFAULT NULL,
+  `experience_review_method` enum('reference_call','document_review','in_person') DEFAULT NULL,
+  `experience_review_note` varchar(500) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`history_id`),
   KEY `idx_profile` (`profile_id`),
@@ -652,6 +657,19 @@ CREATE TABLE IF NOT EXISTS `placement_renewal_intent` (
   PRIMARY KEY (`application_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- A CareLink placement only becomes a platform-verified experience after
+-- both parties independently confirm the ended placement.
+CREATE TABLE IF NOT EXISTS `placement_experience_confirmations` (
+  `placement_id` int NOT NULL,
+  `helper_confirmed_at` datetime DEFAULT NULL,
+  `parent_confirmed_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`placement_id`),
+  CONSTRAINT `fk_placement_experience_confirmation_placement`
+    FOREIGN KEY (`placement_id`) REFERENCES `placements` (`placement_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 -- Dumping data for table carelink.placement_renewal_intent: ~1 rows (approximately)
 
 -- Dumping structure for table carelink.placement_reviews
@@ -824,6 +842,7 @@ CREATE TABLE IF NOT EXISTS `user_documents` (
   `document_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
   `document_type` enum('Barangay Clearance','Valid ID','Police Clearance','TESDA NC2') COLLATE utf8mb4_general_ci NOT NULL,
+  `single_upload_type` varchar(32) COLLATE utf8mb4_general_ci GENERATED ALWAYS AS (CASE WHEN `document_type` = 'TESDA NC2' THEN NULL ELSE `document_type` END) STORED,
   `file_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Server path to uploaded file',
   `id_type` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'For Valid ID: PhilSys, Passport, Driver''s License, etc.',
   `expiry_date` date DEFAULT NULL COMMENT 'Confirm with PESO on validity periods',
@@ -836,7 +855,7 @@ CREATE TABLE IF NOT EXISTS `user_documents` (
   `uploaded_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`document_id`),
-  UNIQUE KEY `uk_user_doctype` (`user_id`,`document_type`) COMMENT 'One record per document type per user',
+  UNIQUE KEY `uk_user_single_doctype` (`user_id`,`single_upload_type`) COMMENT 'Only one record per non-TESDA document type per user',
   KEY `idx_status` (`status`),
   KEY `idx_verified_by` (`verified_by`),
   CONSTRAINT `fk_udocs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,

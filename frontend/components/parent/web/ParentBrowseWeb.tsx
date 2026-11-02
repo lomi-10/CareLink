@@ -19,6 +19,8 @@ import { computeHelperJobMatch, activeJobPosts, bestHelpersForJob, bestJobForHel
 import { MatchBreakdown } from './MatchBreakdown';
 import { useCareBot } from '@/contexts/CareBotContext';
 import { NotificationModal, SubmitComplaintModal } from '@/components/shared';
+import { ExperienceVerificationBadge } from '@/components/shared/ExperienceVerificationBadge';
+import { ExperienceVerificationNotice } from '@/components/shared/ExperienceVerificationNotice';
 import { FilterModal } from '@/components/parent/browse';
 import { DirectHirePanel } from './DirectHirePanel';
 import { ParentTopNav } from './ParentTopNav';
@@ -490,6 +492,7 @@ function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onDirectHire
           {Array.isArray(h.work_history) && h.work_history.length > 0 && (
             <View>
               <Text style={s.fpSecTitle}>Work History</Text>
+              <ExperienceVerificationNotice />
               {h.work_history.map((w: any, i: number) => (
                 <View key={i} style={s.whCard}>
                   <View style={s.whHead}>
@@ -500,8 +503,25 @@ function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onDirectHire
                   </View>
                   <Text style={s.whEmployer}>{w.employer_name}</Text>
                   <Text style={s.whDates}>{whRange(w.start_date, w.end_date)}</Text>
+                  <View style={{ marginTop: 8 }}><ExperienceVerificationBadge status={w.experience_review_status} /></View>
                   {!!w.duties && <Text style={s.whDuties}>{w.duties}</Text>}
                   {w.can_contact && !!w.employer_contact && <Text style={s.whContact}>Reference contact: {w.employer_contact}</Text>}
+                </View>
+              ))}
+            </View>
+          )}
+          {Array.isArray(h.platform_experiences) && h.platform_experiences.length > 0 && (
+            <View>
+              <Text style={s.fpSecTitle}>Completed CareLink Work</Text>
+              <Text style={{ color: pt.muted, fontSize: 12, lineHeight: 17, marginBottom: 10 }}>
+                Both the helper and employer confirmed these completed placements.
+              </Text>
+              {h.platform_experiences.map((w: any) => (
+                <View key={w.placement_id} style={s.whCard}>
+                  <Text style={s.whRole}>{w.position}</Text>
+                  <Text style={s.whEmployer}>{w.employer_name}</Text>
+                  <Text style={s.whDates}>{whRange(w.start_date, w.end_date)}</Text>
+                  <View style={{ marginTop: 8 }}><ExperienceVerificationBadge status="platform_confirmed" /></View>
                 </View>
               ))}
             </View>

@@ -15,6 +15,8 @@ import { useAuth } from '@/hooks/shared';
 import { useUserVerification } from '@/hooks/peso';
 import { computeHelperJobMatch, applicationToMatchable } from '@/lib/parentHelperMatch';
 import { MatchBreakdown } from './MatchBreakdown';
+import { ExperienceVerificationBadge } from '@/components/shared/ExperienceVerificationBadge';
+import { ExperienceVerificationNotice } from '@/components/shared/ExperienceVerificationNotice';
 import { formatSalary, formatPayoutSchedule } from '@/lib/salary';
 import { applyByLabel } from '@/lib/jobExpiry';
 import { ConfirmationModal, InterviewModal, NotificationModal, LoadingSpinner } from '@/components/shared';
@@ -114,6 +116,7 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
     is_pdf_back?: boolean;
   }[]>([]);
   const [applicantWork, setApplicantWork] = useState<any[]>([]);
+  const [applicantPlatformWork, setApplicantPlatformWork] = useState<any[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [viewingDoc, setViewingDoc] = useState<{
     file_url: string;
@@ -177,7 +180,7 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
   // on select (not only on the Documents tab) means Work Experience is ready on the
   // Overview tab, and the endpoint's profile-view count reflects an actual view.
   useEffect(() => {
-    if (!selectedApplicant) { setSharedDocs([]); setApplicantWork([]); return; }
+    if (!selectedApplicant) { setSharedDocs([]); setApplicantWork([]); setApplicantPlatformWork([]); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -187,8 +190,9 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
         if (!cancelled) {
           setSharedDocs(data.success ? (data.shared_documents ?? []) : []);
           setApplicantWork(data.success ? (data.work_history ?? []) : []);
+          setApplicantPlatformWork(data.success ? (data.platform_experiences ?? []) : []);
         }
-      } catch { if (!cancelled) { setSharedDocs([]); setApplicantWork([]); } } finally { if (!cancelled) setDocsLoading(false); }
+      } catch { if (!cancelled) { setSharedDocs([]); setApplicantWork([]); setApplicantPlatformWork([]); } } finally { if (!cancelled) setDocsLoading(false); }
     })();
     return () => { cancelled = true; };
   }, [selectedApplicant?.application_id]);
@@ -437,7 +441,7 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
             {/* RIGHT — applicant profile */}
             <View style={s.colRight}>
               <ApplicantPanel app={selectedApplicant} match={selectedApplicant ? matchForApp(selectedApplicant) : null}
-                profileTab={profileTab} onTab={setProfileTab} sharedDocs={sharedDocs} workHistory={applicantWork} docsLoading={docsLoading}
+                profileTab={profileTab} onTab={setProfileTab} sharedDocs={sharedDocs} workHistory={applicantWork} platformWork={applicantPlatformWork} docsLoading={docsLoading}
                 onViewDoc={(d) => setViewingDoc(d)} onMessage={messageApplicant}
                 onReject={(a) => setStatusConfirm({ visible: true, appId: a.application_id, action: 'Rejected' })}
                 onShortlist={(a) => setStatusConfirm({ visible: true, appId: a.application_id, action: 'Shortlisted' })}
@@ -558,9 +562,9 @@ function ApplicantCard({ app, match, active, showJob, jobTitle, onPress }: { app
 }
 
 // ─── Applicant profile panel (right column) ───
-function ApplicantPanel({ app, match, profileTab, onTab, sharedDocs, workHistory, docsLoading, onViewDoc, onMessage, onReject, onShortlist, onSchedule, onManage }: {
+function ApplicantPanel({ app, match, profileTab, onTab, sharedDocs, workHistory, platformWork, docsLoading, onViewDoc, onMessage, onReject, onShortlist, onSchedule, onManage }: {
   app: JobApplication | null; match: any; profileTab: 'overview' | 'skills' | 'documents'; onTab: (t: 'overview' | 'skills' | 'documents') => void;
-  sharedDocs: any[]; workHistory: any[]; docsLoading: boolean; onViewDoc: (d: { file_url: string; document_type: string; is_pdf?: boolean; file_url_back?: string; is_pdf_back?: boolean }) => void;
+  sharedDocs: any[]; workHistory: any[]; platformWork: any[]; docsLoading: boolean; onViewDoc: (d: { file_url: string; document_type: string; is_pdf?: boolean; file_url_back?: string; is_pdf_back?: boolean }) => void;
   onMessage: (a: JobApplication) => void; onReject: (a: JobApplication) => void; onShortlist: (a: JobApplication) => void; onSchedule: (a: JobApplication) => void; onManage: (a: JobApplication) => void;
 }) {
   if (!app) {
@@ -651,9 +655,10 @@ function ApplicantPanel({ app, match, profileTab, onTab, sharedDocs, workHistory
               <Text style={s.body}>{a.helper_bio || 'This helper has not added an introduction yet.'}</Text>
             </View>
           </View>
-          {workHistory.length > 0 && (
+          {(workHistory.length > 0 || platformWork.length > 0) && (
             <View style={{ width: '100%' }}>
               <Text style={s.secTitle}>Work Experience</Text>
+              <ExperienceVerificationNotice />
               <View style={s.detailsCard}>
                 {workHistory.map((w, i) => (
                   <View key={w.history_id ?? i} style={[s.whRow, i < workHistory.length - 1 && s.whRowBorder]}>
@@ -667,8 +672,16 @@ function ApplicantPanel({ app, match, profileTab, onTab, sharedDocs, workHistory
                       )}
                     </View>
                     <Text style={s.whEmployer}>{w.employer_name} · {workRange(w.start_date, w.end_date)}</Text>
+                    <View style={{ marginTop: 8 }}><ExperienceVerificationBadge status={w.experience_review_status} /></View>
                     {!!w.duties && <Text style={s.whDuties}>{w.duties}</Text>}
                     {!!w.reason_for_leaving && <Text style={s.whReason}>Left: {w.reason_for_leaving}</Text>}
+                  </View>
+                ))}
+                {platformWork.map((w, i) => (
+                  <View key={`platform-${w.placement_id}`} style={[s.whRow, i < platformWork.length - 1 && s.whRowBorder]}>
+                    <View style={s.whTop}><Text style={s.whRole}>{w.position || 'Domestic work'}</Text></View>
+                    <Text style={s.whEmployer}>{w.employer_name} · {workRange(w.start_date, w.end_date)}</Text>
+                    <View style={{ marginTop: 8 }}><ExperienceVerificationBadge status="platform_confirmed" /></View>
                   </View>
                 ))}
               </View>

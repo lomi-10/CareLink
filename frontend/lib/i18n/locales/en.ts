@@ -455,6 +455,8 @@ export default {
       policeDescription: 'PNP police clearance',
       tesdaCertificate: 'TESDA NC2',
       tesdaDescription: 'NC II certificate',
+      addTesdaCertificate: 'Upload another certificate',
+      tesdaMultipleHint: 'Each certificate is reviewed separately by PESO.',
       uploadedTitle: 'Uploaded',
       missingFile: 'This document has no file attached.',
       missingFileTitle: 'No file',

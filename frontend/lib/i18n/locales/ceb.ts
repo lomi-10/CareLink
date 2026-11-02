@@ -477,6 +477,8 @@ export default {
       policeDescription: 'Police clearance gikan sa PNP',
       tesdaCertificate: 'TESDA NC2',
       tesdaDescription: 'Sertipiko sa NC II',
+      addTesdaCertificate: 'Pag-upload og laing sertipiko',
+      tesdaMultipleHint: 'Tagsa-tagsa nga susihon sa PESO ang matag sertipiko.',
       uploadedTitle: 'Na-upload na',
       missingFile: 'Walay gilakip nga file niining dokumento.',
       missingFileTitle: 'Walay file',

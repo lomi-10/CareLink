@@ -344,39 +344,14 @@ try {
         // Save TESDA NC2
         // ====================================================================
         if (isset($uploadedDocs['tesda_nc2'])) {
-            $checkSql = "SELECT document_id FROM user_documents 
-                        WHERE user_id = ? AND document_type = 'TESDA NC2'";
-            $checkStmt = $conn->prepare($checkSql);
-            $checkStmt->bind_param("i", $user_id);
-            $checkStmt->execute();
-            $checkResult = $checkStmt->get_result();
-            
-            if ($checkResult->num_rows > 0) {
-                $updateSql = "UPDATE user_documents 
-                            SET file_path = ?, 
-                                status = 'Pending', 
-                                rejection_reason = NULL,
-                                verified_by = NULL,
-                                verified_at = NULL,
-                                uploaded_at = NOW(),
-                                updated_at = NOW()
-                            WHERE user_id = ? AND document_type = 'TESDA NC2'";
-                $updateStmt = $conn->prepare($updateSql);
-                $updateStmt->bind_param("si", $uploadedDocs['tesda_nc2'], $user_id);
-                $updateStmt->execute();
-                $updateStmt->close();
-                error_log("Updated existing TESDA NC2");
-            } else {
-                $insertSql = "INSERT INTO user_documents 
-                            (user_id, document_type, file_path, status, uploaded_at) 
-                            VALUES (?, 'TESDA NC2', ?, 'Pending', NOW())";
-                $insertStmt = $conn->prepare($insertSql);
-                $insertStmt->bind_param("is", $user_id, $uploadedDocs['tesda_nc2']);
-                $insertStmt->execute();
-                $insertStmt->close();
-                error_log("Inserted new TESDA NC2");
-            }
-            $checkStmt->close();
+            $insertSql = "INSERT INTO user_documents
+                        (user_id, document_type, file_path, status, uploaded_at)
+                        VALUES (?, 'TESDA NC2', ?, 'Pending', NOW())";
+            $insertStmt = $conn->prepare($insertSql);
+            $insertStmt->bind_param("is", $user_id, $uploadedDocs['tesda_nc2']);
+            $insertStmt->execute();
+            $insertStmt->close();
+            error_log("Inserted new TESDA NC2 certificate");
             $savedCount++;
         }
 

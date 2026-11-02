@@ -16,6 +16,7 @@ import { useJobReferences } from '@/hooks/shared/useJobReferences';
 import { isValidPhMobile, normalizePhMobile } from '@/lib/phone';
 import { useCareBot } from '@/contexts/CareBotContext';
 import { NotificationModal, ConfirmationModal, VerifyChangeModal } from '@/components/shared';
+import { ExperienceVerificationBadge } from '@/components/shared/ExperienceVerificationBadge';
 import { PesoVerifiedBanner } from '@/components/shared/PesoVerifiedBanner';
 import { DocumentAIScan, ScanResult } from '@/components/shared/DocumentAIScan';
 import { VerificationHistoryList } from '@/components/shared/VerificationHistoryList';
@@ -99,6 +100,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
   const go = (path: string) => router.push(path as never);
 
   const workHistory: WorkHistoryEntry[] = profileData?.work_history ?? [];
+  const platformExperiences = profileData?.platform_experiences ?? [];
   const docVerified = docs.filter((d) => d.status === 'Verified').length;
   // Contact number is optional — completion is gated on having a location set.
   const personalDone = !!(p.city || p.municipality || p.address);
@@ -186,6 +188,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
     const cleaned = workRows
       .filter((w) => w.employer_name.trim() && w.position.trim() && w.start_date)
       .map((w) => ({
+        ...(w.history_id ? { history_id: w.history_id } : {}),
         employer_name: w.employer_name.trim(),
         position: w.position.trim(),
         start_date: w.start_date,
@@ -693,8 +696,25 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
 
                       <View style={s.workHead}>
                         <Text style={s.workHeadTitle}>Work History</Text>
-                        <Text style={s.workHeadSub}>Past employers make you far more trustworthy to families.</Text>
+                        <Text style={s.workHeadSub}>Entries are self-reported unless PESO reviewed them. Reviews are cleared if the work details change.</Text>
                       </View>
+                      {workRows.filter((w) => w.history_id).map((w) => (
+                        <View key={`review-${w.history_id}`} style={{ marginBottom: 8 }}>
+                          <Text style={{ color: wt.muted, fontSize: 12, marginBottom: 5 }}>{w.position} · {w.employer_name}</Text>
+                          <ExperienceVerificationBadge status={w.experience_review_status} />
+                        </View>
+                      ))}
+                      {platformExperiences.length > 0 && (
+                        <View style={{ marginBottom: 14, padding: 12, borderRadius: 12, backgroundColor: wt.greenSoft }}>
+                        <Text style={{ color: wt.ink, fontSize: 13, fontWeight: '700', marginBottom: 8 }}>Confirmed CareLink work</Text>
+                          {platformExperiences.map((w) => (
+                            <View key={w.placement_id} style={{ marginBottom: 8 }}>
+                            <Text style={{ color: wt.ink, fontSize: 12 }}>{w.position} · {w.employer_name}</Text>
+                              <View style={{ marginTop: 5 }}><ExperienceVerificationBadge status="platform_confirmed" /></View>
+                            </View>
+                          ))}
+                        </View>
+                      )}
 
                       {workRows.map((w, i) => (
                         <View key={i} style={s.workCard}>

@@ -241,7 +241,16 @@ export function CredentialWall({
 
   const { core, extra, coreSealed, coreTotal, bonusSealed, hasUnsealable } = useMemo(() => {
     const byType = new Map<string, any>();
-    for (const d of documents ?? []) if (d?.document_type) byType.set(d.document_type, d);
+    const stateRank: Record<CredentialState, number> = {
+      sealed: 5, onfile: 4, pending: 3, flagged: 2, missing: 1, optional: 0,
+    };
+    for (const d of documents ?? []) {
+      if (!d?.document_type) continue;
+      const current = byType.get(d.document_type);
+      if (!current || stateRank[credentialStateFor(d)] > stateRank[credentialStateFor(current)]) {
+        byType.set(d.document_type, d);
+      }
+    }
 
     const rank: Record<CredentialState, number> = {
       sealed: 0, onfile: 1, pending: 2, flagged: 3, missing: 4, optional: 5,

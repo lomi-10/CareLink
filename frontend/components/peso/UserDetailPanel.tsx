@@ -22,6 +22,7 @@ import { credentialSpec } from "@/constants/credentials";
 import { usePesoTheme, radius, type PesoColors } from "@/contexts/PesoThemeContext";
 import { formatParentHouseholdType } from "@/constants/parentHousehold";
 import UserManagementActions from "./UserManagementActions";
+import { ExperienceVerificationBadge } from "../shared/ExperienceVerificationBadge";
 
 const DOC_ICONS: Record<string, React.ComponentProps<typeof Ionicons>["name"]> = {
   "Valid ID": "card-outline",
@@ -78,6 +79,11 @@ export default function UserDetailPanel({
   const [rejectReason, setRejectReason] = useState("");
   const [rejectingDocument, setRejectingDocument] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
+  const [experienceReviewTarget, setExperienceReviewTarget] = useState<any>(null);
+  const [experienceReviewAction, setExperienceReviewAction] = useState<"review" | "clear">("review");
+  const [experienceReviewMethod, setExperienceReviewMethod] = useState<"reference_call" | "document_review" | "in_person">("reference_call");
+  const [experienceReviewNote, setExperienceReviewNote] = useState("");
+  const [experienceReviewProcessing, setExperienceReviewProcessing] = useState(false);
 
   const [notification, setNotification] = useState({
     visible: false, type: "success" as "success" | "error" | "warning" | "info",
@@ -88,11 +94,48 @@ export default function UserDetailPanel({
     setNotification({ visible: true, type, title, message, actionLabel, onAction });
   const closeNotif = () => setNotification((p) => ({ ...p, visible: false }));
 
+  const submitExperienceReview = async () => {
+    if (!experienceReviewTarget || experienceReviewProcessing) return;
+    if (experienceReviewAction === "clear" && experienceReviewNote.trim().length < 3) {
+      showNotif("warning", "Reason required", "Enter a short reason for removing the PESO review.");
+      return;
+    }
+    try {
+      setExperienceReviewProcessing(true);
+      const raw = await AsyncStorage.getItem("user_data");
+      const staffUserId = raw ? JSON.parse(raw)?.user_id : "";
+      const query = `?staff_user_id=${encodeURIComponent(String(staffUserId))}`;
+      const response = await fetch(`${API_URL}/peso/review_work_experience.php${query}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          history_id: experienceReviewTarget.history_id,
+          action: experienceReviewAction,
+          method: experienceReviewMethod,
+          note: experienceReviewNote.trim(),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || "Unable to update this work-history review.");
+      setExperienceReviewTarget(null);
+      setExperienceReviewNote("");
+      await fetchUserDetails();
+      showNotif("success", "Work history updated", data.message || "The work-history review was updated.");
+      onChanged?.();
+    } catch (error) {
+      showNotif("error", "Review failed", error instanceof Error ? error.message : "Unable to update this work-history review.");
+    } finally {
+      setExperienceReviewProcessing(false);
+    }
+  };
+
   // ── derived ──
   const user = userData?.user ?? ({} as any);
   const profile = userData?.profile ?? ({} as any);
   const docList = (userData?.documents ?? []) as any[];
   const helperSpecialties = userData?.helper_specialties ?? null;
+  const helperWorkHistory = (userData?.helper_work_history ?? []) as any[];
+  const helperPlatformExperiences = (userData?.helper_platform_experiences ?? []) as any[];
   const parentHousehold = userData?.parent_household ?? null;
   const isHelper = (userType ?? user.user_type) === "helper";
   const vs = profile?.verification_status ?? "Unverified";
@@ -386,6 +429,64 @@ export default function UserDetailPanel({
                   <TagBlock label="Skills" tags={helperSpecialties?.skills ?? []} accent={c.accent} accentSoft={c.accentSoft} />
                   <TagBlock label="Languages" tags={helperSpecialties?.languages ?? []} accent={c.info} accentSoft={c.infoSoft} />
                 </Section>
+                <Section title="Work Experience Evidence" icon="shield-checkmark-outline">
+                  <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18, marginBottom: 12 }}>
+                    PESO-reviewed means an officer reviewed the entry using the method shown. It is not a guarantee that every detail is true. CareLink placements appear here only after both people confirm the completed work.
+                  </Text>
+                  {helperWorkHistory.length === 0 && helperPlatformExperiences.length === 0 ? (
+                    <Text style={st.muted}>No work-history entries have been added.</Text>
+                  ) : null}
+                  {helperWorkHistory.map((entry) => (
+                    <View key={`history-${entry.history_id}`} style={{ padding: 12, marginBottom: 10, borderRadius: 12, backgroundColor: c.raise, borderWidth: 1, borderColor: c.line }}>
+                      <Text style={{ color: c.ink, fontSize: 14, fontWeight: "700" }}>{entry.position || "Domestic work"}</Text>
+                      <Text style={{ color: c.muted, fontSize: 12, marginTop: 3 }}>
+                        {entry.employer_name || "Employer not listed"} · {entry.start_date || "Unknown"} – {entry.end_date || "Unknown"}
+                      </Text>
+                      {!!entry.duties && <Text style={{ color: c.muted, fontSize: 12, marginTop: 6 }}>{entry.duties}</Text>}
+                      <View style={{ marginTop: 9 }}>
+                        <ExperienceVerificationBadge status={entry.experience_review_status} />
+                      </View>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setExperienceReviewTarget(entry);
+                            setExperienceReviewAction("review");
+                            setExperienceReviewMethod("reference_call");
+                            setExperienceReviewNote("");
+                          }}
+                          style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: c.accentSoft }}
+                        >
+                          <Text style={{ color: c.accent, fontSize: 12, fontWeight: "700" }}>
+                            {entry.experience_review_status === "peso_reviewed" ? "Update PESO review" : "Review entry"}
+                          </Text>
+                        </TouchableOpacity>
+                        {entry.experience_review_status === "peso_reviewed" && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setExperienceReviewTarget(entry);
+                              setExperienceReviewAction("clear");
+                              setExperienceReviewNote("");
+                            }}
+                            style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: c.surface }}
+                          >
+                            <Text style={{ color: c.muted, fontSize: 12, fontWeight: "700" }}>Remove review</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                  {helperPlatformExperiences.map((entry) => (
+                    <View key={`placement-${entry.placement_id}`} style={{ padding: 12, marginBottom: 10, borderRadius: 12, backgroundColor: c.okSoft, borderWidth: 1, borderColor: c.ok + "33" }}>
+                      <Text style={{ color: c.ink, fontSize: 14, fontWeight: "700" }}>{entry.position || "Domestic work"}</Text>
+                      <Text style={{ color: c.muted, fontSize: 12, marginTop: 3 }}>
+                        {entry.employer_name || "Employer"} · {entry.start_date} – {entry.end_date}
+                      </Text>
+                      <View style={{ marginTop: 9 }}>
+                        <ExperienceVerificationBadge status="platform_confirmed" />
+                      </View>
+                    </View>
+                  ))}
+                </Section>
               </>
             ) : (
               <Section title="Household Information" icon="home-outline">
@@ -633,6 +734,78 @@ export default function UserDetailPanel({
       />
 
       {/* Reject modals */}
+      <Modal
+        visible={!!experienceReviewTarget}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setExperienceReviewTarget(null)}
+      >
+        <View style={{ flex: 1, justifyContent: "center", padding: 24, backgroundColor: "rgba(0,0,0,0.48)" }}>
+          <View style={{ padding: 20, borderRadius: 18, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line }}>
+            <Text style={{ color: c.ink, fontSize: 18, fontWeight: "800" }}>
+              {experienceReviewAction === "review" ? "Review work history" : "Remove PESO review"}
+            </Text>
+            <Text style={{ color: c.muted, fontSize: 13, marginTop: 6, lineHeight: 18 }}>
+              {experienceReviewTarget?.position || "This work-history entry"} · {experienceReviewTarget?.employer_name || "Employer not listed"}
+            </Text>
+            {experienceReviewAction === "review" ? (
+              <>
+                <Text style={{ color: c.ink, fontSize: 13, fontWeight: "700", marginTop: 18, marginBottom: 8 }}>
+                  How did you review this entry?
+                </Text>
+                {([
+                  ["reference_call", "Reference contacted"],
+                  ["document_review", "Document reviewed"],
+                  ["in_person", "Reviewed in person"],
+                ] as const).map(([method, label]) => {
+                  const selected = experienceReviewMethod === method;
+                  return (
+                    <TouchableOpacity
+                      key={method}
+                      onPress={() => setExperienceReviewMethod(method)}
+                      style={{ padding: 11, marginBottom: 7, borderRadius: 9, borderWidth: 1, borderColor: selected ? c.accent : c.line, backgroundColor: selected ? c.accentSoft : c.raise }}
+                    >
+                      <Text style={{ color: selected ? c.accent : c.ink, fontSize: 13, fontWeight: "700" }}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </>
+            ) : (
+              <Text style={{ color: c.muted, fontSize: 12, marginTop: 14, lineHeight: 17 }}>
+                The entry will return to its self-reported status. This does not delete the helper's work-history details.
+              </Text>
+            )}
+            <TextInput
+              value={experienceReviewNote}
+              onChangeText={setExperienceReviewNote}
+              placeholder={experienceReviewAction === "review" ? "Optional note (do not include sensitive details)" : "Reason for removing the review"}
+              placeholderTextColor={c.subtle}
+              maxLength={500}
+              multiline
+              textAlignVertical="top"
+              style={{ minHeight: 76, marginTop: 12, padding: 11, borderWidth: 1, borderColor: c.line, borderRadius: 10, color: c.ink, backgroundColor: c.raise }}
+            />
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+              <TouchableOpacity
+                disabled={experienceReviewProcessing}
+                onPress={() => setExperienceReviewTarget(null)}
+                style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 9, backgroundColor: c.raise }}
+              >
+                <Text style={{ color: c.ink, fontWeight: "700" }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={experienceReviewProcessing}
+                onPress={submitExperienceReview}
+                style={{ minWidth: 95, alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 9, backgroundColor: c.accent, opacity: experienceReviewProcessing ? 0.65 : 1 }}
+              >
+                {experienceReviewProcessing
+                  ? <ActivityIndicator size="small" color="#FFFFFF" />
+                  : <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>{experienceReviewAction === "review" ? "Save review" : "Remove review"}</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <Modal visible={rejectUserModal} animationType="slide" transparent>
         <RejectModal title="Reject Account" subtitle={`Reject ${user.first_name ?? "this user"}'s account?`} value={rejectReason} onChange={setRejectReason}
           presets={["ID does not match the details provided", "Submitted documents are unclear or unreadable", "Information is incomplete or inconsistent", "Suspected fake or invalid credentials", "Duplicate account"]}

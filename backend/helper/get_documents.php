@@ -83,9 +83,10 @@ try {
                 updated_at
             FROM user_documents
             WHERE user_id = ?
-            ORDER BY 
+            ORDER BY
                 FIELD(document_type, 'Barangay Clearance', 'Valid ID', 'Police Clearance', 'TESDA NC2'),
-                uploaded_at DESC";
+                uploaded_at DESC,
+                document_id DESC";
     
     $stmt = $conn->prepare($sql);
     if (!$stmt) {

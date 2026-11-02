@@ -104,12 +104,14 @@ $before = migrate_table_list($conn);
 // to solve, so leaving one off quietly reintroduces it.
 $migrations = [
     'shared/account_verification_migration.php' => ['ensure_account_verified_at_column'],
+    'shared/helper_document_multiples_migration.php' => ['ensure_helper_tesda_multiple_documents'],
     'shared/helper_availability_migration.php' => ['ensure_helper_availability_column'],
     'shared/leave_entitlement_migration.php' => ['ensure_leave_entitlement_source_column'],
     'shared/auth_tokens.php'              => ['ensure_auth_tokens_table'],
     'shared/peso_user_moderation_table.php' => ['ensure_peso_user_moderation_table'],
     'shared/complaint_tracking_tables.php' => ['ensure_complaint_tracking_tables', 'ensure_user_safety_flags_table'],
     'shared/contract_signatures_table.php' => ['ensure_contract_signatures_table'],
+    'shared/experience_verification_migration.php' => ['ensure_experience_verification_schema'],
     'shared/credential_flags_table.php'   => ['ensure_credential_flags_table'],
     'shared/feedback_questions_table.php' => ['ensure_feedback_questions_table'],
     'shared/interview_feedback_table.php' => ['ensure_interview_feedback_table'],
@@ -174,7 +176,7 @@ $known = [
     'messages', 'notifications', 'parent_children', 'parent_elderly',
     'parent_household', 'parent_profiles', 'password_verify_attempts', 'payment_checkouts',
     'payment_events', 'peso_reports', 'peso_user_moderation', 'placement_fees', 'placement_renewal_intent',
-    'placement_reviews', 'placement_settings', 'placement_tasks', 'placements',
+    'placement_experience_confirmations', 'placement_reviews', 'placement_settings', 'placement_tasks', 'placements',
     'ref_categories', 'ref_jobs', 'ref_languages', 'ref_skills',
     'saved_jobs', 'saved_profiles', 'saved_searches', 'subscriptions',
     'system_feedback', 'task_checklist_items', 'user_documents', 'user_safety_flags',

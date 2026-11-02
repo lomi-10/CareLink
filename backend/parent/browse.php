@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/complaint_tracking_tables.php';
+require_once __DIR__ . '/../shared/experience_verification.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Haversine distance (km) between two lat/lng pairs
@@ -27,6 +28,7 @@ function carelink_browse_haversine($lat1, $lon1, $lat2, $lon2) {
 }
 
 try {
+    ensure_experience_verification_schema($conn);
     // Optional: if the requesting parent is known, compute a real distance
     // per helper instead of leaving it unset.
     $parent_id = isset($_GET['parent_id']) ? intval($_GET['parent_id']) : 0;
@@ -147,7 +149,8 @@ try {
         // --- FETCH WORK HISTORY (past employers) --- employer_contact is only
         // exposed when the helper allowed it (can_contact = 1). Current job = end_date NULL.
         $wh_query = "
-            SELECT employer_name, position, start_date, end_date, duties, reason_for_leaving, can_contact,
+            SELECT history_id, employer_name, position, start_date, end_date, duties, reason_for_leaving, can_contact,
+                   experience_review_status,
                    CASE WHEN can_contact = 1 THEN employer_contact ELSE NULL END AS employer_contact
             FROM helper_work_history
             WHERE profile_id = $profile_id
@@ -160,7 +163,10 @@ try {
                 $wh['can_contact'] = ((int) $wh['can_contact'] === 1);
                 $work_history[] = $wh;
             }
+        } else {
+            throw new RuntimeException('Unable to load helper work history: ' . $conn->error);
         }
+        $platform_experiences = carelink_platform_experiences($conn, (int) $row['user_id']);
 
         // NOTE: Documents are private by default. A helper's verification documents are only ever
         // exposed to a parent when the helper explicitly shares them on a specific job application
@@ -208,6 +214,7 @@ try {
             'jobs' => $jobs,
             'skills' => $skills,
             'work_history' => $work_history,
+            'platform_experiences' => $platform_experiences,
             
             'experience_years' => (int)$row['experience_years'],
             'employment_type' => $row['employment_type'],

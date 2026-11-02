@@ -1,7 +1,7 @@
 // app/(helper)/profile/documents.tsx
-// Documents & Verification — four fixed document cards (Valid ID, Barangay,
-// Police, TESDA NC2). Each card uploads its file in place, then opens the
-// Document Details screen where AI scanning starts automatically.
+// Documents & Verification — fixed credential slots, with multiple TESDA NC2
+// certificates supported. Each upload opens Document Details where AI scanning
+// starts automatically.
 // PHP: helper/get_profile.php (list), helper/upload_documents.php (upload),
 //      helper/get_documents.php (resolve new id), helper/scan_id.php (AI scan)
 
@@ -78,7 +78,8 @@ export default function DocumentsScreen() {
   const verified  = documents.filter((d: any) => d.status === 'Verified').length;
   const uploadedCount = DOC_SLOTS.filter((slot) => documents.some((d: any) => d.document_type === slot.type)).length;
 
-  const getDoc = (type: string): any => documents.find((d: any) => d.document_type === type);
+  const getDocs = (type: string): any[] => documents.filter((d: any) => d.document_type === type);
+  const getDoc = (type: string): any => getDocs(type)[0];
 
   const goToDetail = (doc: any, autoscan: boolean, side: 'front' | 'back' = 'front') => {
     router.push({
@@ -110,7 +111,7 @@ export default function DocumentsScreen() {
     try {
       const res = await fetch(`${API_URL}/helper/get_documents.php?user_id=${encodeURIComponent(userId)}&requester_id=${encodeURIComponent(userId)}`);
       const data = await res.json();
-      const list = Array.isArray(data?.documents) ? data.documents : [];
+      const list = Array.isArray(data?.data?.documents) ? data.data.documents : [];
       return list.find((d: any) => d.document_type === type) ?? null;
     } catch {
       return null;
@@ -140,7 +141,8 @@ export default function DocumentsScreen() {
     }
   };
 
-  // Single-file docs (Barangay / Police / TESDA). Valid ID uses uploadValidIdSide.
+  // Single-file docs (Barangay / Police / TESDA). TESDA uploads append a new
+  // record; the other two replace their existing record. Valid ID is separate.
   const pickAndUpload = async (slot: DocSlot) => {
     if (busyType) return;
     try {
@@ -276,6 +278,7 @@ export default function DocumentsScreen() {
             <View style={c.grid}>
               {DOC_SLOTS.map((slot) => {
                 const doc = getDoc(slot.type);
+                const slotDocs = getDocs(slot.type);
                 const uploaded = !!doc;
                 const isVerified = doc?.status === 'Verified';
                 const isRejected = doc?.status === 'Rejected';
@@ -299,6 +302,62 @@ export default function DocumentsScreen() {
                       onOpen={() => goToDetail(doc, false)}
                       highlighted={highlighted}
                     />
+                  );
+                }
+
+                if (slot.field === 'tesda_nc2') {
+                  return (
+                    <View key={slot.type} style={c.credentialGroup}>
+                      {slotDocs.map((certificate, index) => {
+                        const certificateDate = certificate?.uploaded_at
+                          ? new Date(certificate.uploaded_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : null;
+                        const certificateHighlighted = !!highlight_doc_id
+                          && !!certificate?.document_id
+                          && String(certificate.document_id) === String(highlight_doc_id);
+
+                        return (
+                          <TouchableOpacity
+                            key={certificate.document_id ?? index}
+                            style={[c.card, c.cardFilled, certificateHighlighted && c.cardHighlighted]}
+                            activeOpacity={0.85}
+                            onPress={() => goToDetail(certificate, false)}
+                          >
+                            <View style={[c.icon, { backgroundColor: slot.bg }]}>
+                              <Ionicons name={slot.icon} size={22} color={slot.color} />
+                            </View>
+                            <View style={c.info}>
+                              <Text style={c.name}>{tr(`helper.setup.${slot.titleKey}`)}</Text>
+                              <View style={c.statusLine}>
+                                <DocumentStatusTag status={certificate?.status} compact />
+                                <AiScanTag status={certificate?.ai_verification_status} compact />
+                              </View>
+                              {certificateDate ? (
+                                <Text style={c.date}>{tr('helper.setup.uploaded', { date: certificateDate })}</Text>
+                              ) : null}
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={MUTED} />
+                          </TouchableOpacity>
+                        );
+                      })}
+
+                      <TouchableOpacity
+                        style={[c.addCertificateBtn, busy && { opacity: 0.6 }]}
+                        onPress={() => pickAndUpload(slot)}
+                        disabled={busy}
+                        activeOpacity={0.85}
+                      >
+                        {busy ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <>
+                            <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+                            <Text style={c.uploadBtnText}>{tr('helper.setup.addTesdaCertificate')}</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                      <Text style={c.hintText}>{tr('helper.setup.tesdaMultipleHint')}</Text>
+                    </View>
                   );
                 }
 
@@ -393,6 +452,7 @@ export default function DocumentsScreen() {
 // ─── Local styles for the 4-card grid ─────────────────────────────────────────
 const c = StyleSheet.create({
   grid: { gap: 12 },
+  credentialGroup: { gap: 8 },
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 13,
     backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, borderWidth: 1,
@@ -420,6 +480,10 @@ const c = StyleSheet.create({
   uploadBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: '#E86019', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 11, minWidth: 96, justifyContent: 'center',
+  },
+  addCertificateBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#E86019', paddingHorizontal: 14, paddingVertical: 11, borderRadius: 11, justifyContent: 'center',
   },
   uploadBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
   hint: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, paddingTop: 4 },

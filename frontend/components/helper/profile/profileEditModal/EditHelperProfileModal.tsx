@@ -405,6 +405,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         workRows
           .filter((w) => (w.employer_name || '').trim() && (w.position || '').trim() && w.start_date)
           .map((w) => ({
+            ...(w.history_id ? { history_id: w.history_id } : {}),
             employer_name: w.employer_name.trim(),
             position: w.position.trim(),
             start_date: w.start_date,

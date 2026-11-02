@@ -24,6 +24,7 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
 include_once __DIR__ . '/../shared/file_security.php';
+include_once __DIR__ . '/../shared/experience_verification.php';
 
 // 2. Your response helper
 function sendResponse($success, $message, $data = null) {
@@ -42,6 +43,7 @@ try {
     if (!$conn) {
         throw new Exception("Database connection failed");
     }
+    ensure_experience_verification_schema($conn);
 
     // 3. Input validation (using your preferred GET method)
     $application_id = isset($_GET['application_id']) ? intval($_GET['application_id']) : null;
@@ -165,7 +167,7 @@ try {
     $work_history = [];
     $wh_stmt = $conn->prepare("
         SELECT wh.employer_name, wh.position, wh.start_date, wh.end_date,
-               wh.duties, wh.reason_for_leaving, wh.can_contact,
+               wh.duties, wh.reason_for_leaving, wh.can_contact, wh.experience_review_status,
                CASE WHEN wh.can_contact = 1 THEN wh.employer_contact ELSE NULL END AS employer_contact
         FROM helper_work_history wh
         INNER JOIN helper_profiles hp ON hp.profile_id = wh.profile_id
@@ -180,6 +182,7 @@ try {
         $work_history[] = $wh;
     }
     $wh_stmt->close();
+    $platform_experiences = carelink_platform_experiences($conn, $helper_id);
 
     // 5d. Count this as a profile view for the helper (parent looking at their profile)
     $view_stmt = $conn->prepare("UPDATE helper_profiles SET profile_views = profile_views + 1 WHERE user_id = ?");
@@ -194,6 +197,7 @@ try {
         'applicant' => $applicant,
         'shared_documents' => $shared_documents,
         'work_history' => $work_history,
+        'platform_experiences' => $platform_experiences,
     ]);
 
 } catch (Exception $e) {

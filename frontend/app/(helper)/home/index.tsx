@@ -17,7 +17,7 @@ import { useAuth, useResponsive, useNotifications, useDemoSession } from '@/hook
 import { FontFamily } from '@/constants/GlobalStyles';
 import FeedbackModal from '@/components/shared/FeedbackModal';
 
-import { AnnouncementFeed, NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard } from '@/components/shared';
+import { AnnouncementFeed, NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard, PlacementExperienceConfirmations } from '@/components/shared';
 import { useGuide } from '@/contexts/GuideContext';
 import {
   MobileHeader, GreetingCard,
@@ -336,6 +336,7 @@ export default function HelperHome() {
           />
           <View style={{ flex: 1, width: '100%', maxWidth: 1200, alignSelf: 'center' }}>
             {renderModeToggle()}
+            <PlacementExperienceConfirmations userType="helper" accentColor={ORANGE} refreshToken={placementReviewRefreshTok} />
             <WorkHome
               helperId={helperIdNum}
               userFirstName={userData?.first_name ?? ''}
@@ -365,6 +366,7 @@ export default function HelperHome() {
           />
           <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
             {renderModeToggle()}
+            <PlacementExperienceConfirmations userType="helper" accentColor={ORANGE} refreshToken={placementReviewRefreshTok} />
             <HelperWorkModePreview
               startDate={activeHire?.employment_start_date && activeHire.employment_start_date > ymdLocal()
                 ? activeHire.employment_start_date
@@ -392,6 +394,7 @@ export default function HelperHome() {
           refreshToken={placementReviewRefreshTok}
           onReviewPress={(item: PendingReview) => openPlacementReview(item.application_id, item.counterparty_name, item.job_title)}
         />
+        <PlacementExperienceConfirmations userType="helper" accentColor={ORANGE} refreshToken={placementReviewRefreshTok} />
         {!isWorkMode && activeHire?.employment_start_date && activeHire.employment_start_date > ymdLocal() ? (
           <View style={layoutStyles.endedCard}>
             <Text style={layoutStyles.endedTitle}>{t('helper.home.startingSoon')}</Text>
@@ -484,19 +487,23 @@ export default function HelperHome() {
         ) : null}
         {renderModeToggle()}
         {showWorkDash && userData && activeHire ? (
-          <WorkHome
-            helperId={helperIdNum}
-            userFirstName={userData.first_name}
-            userFullName={getFullName()}
-            profileImage={profileImage}
-            verified={profileData?.profile?.verification_status === 'Verified'}
-            activeHire={activeHire}
-            onRefreshWorkContext={refreshWork}
-            refreshToken={refreshToken}
-            announcement={<AnnouncementFeed />}
-          />
+          <>
+            <PlacementExperienceConfirmations userType="helper" accentColor={ORANGE} refreshToken={placementReviewRefreshTok} />
+            <WorkHome
+              helperId={helperIdNum}
+              userFirstName={userData.first_name}
+              userFullName={getFullName()}
+              profileImage={profileImage}
+              verified={profileData?.profile?.verification_status === 'Verified'}
+              activeHire={activeHire}
+              onRefreshWorkContext={refreshWork}
+              refreshToken={refreshToken}
+              announcement={<AnnouncementFeed />}
+            />
+          </>
         ) : showWorkPreview ? (
           <>
+            <PlacementExperienceConfirmations userType="helper" accentColor={ORANGE} refreshToken={placementReviewRefreshTok} />
             <HelperWorkModePreview
               startDate={activeHire?.employment_start_date && activeHire.employment_start_date > ymdLocal()
                 ? activeHire.employment_start_date
@@ -527,6 +534,7 @@ export default function HelperHome() {
                 openPlacementReview(item.application_id, item.counterparty_name, item.job_title)
               }
             />
+            <PlacementExperienceConfirmations userType="helper" accentColor={ORANGE} refreshToken={placementReviewRefreshTok} />
 
             {!isWorkMode && activeHire?.employment_start_date && activeHire.employment_start_date > ymdLocal() ? (
               <View style={layoutStyles.endedCard}>

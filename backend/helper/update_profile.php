@@ -23,6 +23,7 @@ include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/sync_profile_completed.php';
 include_once __DIR__ . '/../shared/create_notification.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
+include_once __DIR__ . '/../shared/experience_verification_migration.php';
 include_once __DIR__ . '/../shared/phone.php';
 include_once __DIR__ . '/../shared/geocode.php';
 
@@ -191,6 +192,9 @@ try {
     // editing that section — an absent key must NOT wipe existing entries, so we
     // track "did the client send it" separately from an empty list.
     $work_history_sent = isset($_POST['work_history']);
+    if ($work_history_sent) {
+        ensure_experience_verification_schema($conn);
+    }
     $work_history = array();
     // The start_date/end_date columns are DATE, so a month-level value like
     // "2025-01" (what the mobile editor collects) must be coerced to a full
@@ -216,6 +220,7 @@ try {
                 if ($employer === '' || $position === '' || $start === null) continue;
                 $end = $to_sql_date($wh['end_date'] ?? '');
                 $work_history[] = array(
+                    'history_id'         => max(0, (int)($wh['history_id'] ?? 0)),
                     'employer_name'      => mb_substr($employer, 0, 255),
                     'position'           => mb_substr($position, 0, 100),
                     'start_date'         => $start,
@@ -587,22 +592,52 @@ try {
         // different section (e.g. skills) never clears a helper's work history.
         // ====================================================================
         if ($work_history_sent) {
-            $deleteWhSql = "DELETE FROM helper_work_history WHERE profile_id = ?";
-            $deleteWhStmt = $conn->prepare($deleteWhSql);
-            $deleteWhStmt->bind_param("i", $profile_id);
-            $deleteWhStmt->execute();
-            $deleteWhStmt->close();
+            $existingStmt = $conn->prepare(
+                "SELECT history_id, employer_name, position, start_date, end_date, duties, reason_for_leaving, employer_contact
+                 FROM helper_work_history WHERE profile_id = ?"
+            );
+            $existingStmt->bind_param("i", $profile_id);
+            $existingStmt->execute();
+            $existingResult = $existingStmt->get_result();
+            $existingHistory = array();
+            while ($existingRow = $existingResult->fetch_assoc()) {
+                $existingHistory[(int) $existingRow['history_id']] = $existingRow;
+            }
+            $existingStmt->close();
 
-            if (count($work_history) > 0) {
-                $insertWhSql = "INSERT INTO helper_work_history
+            $keptHistoryIds = array();
+            $updateWhStmt = $conn->prepare(
+                "UPDATE helper_work_history
+                 SET employer_name = ?, employer_contact = ?, position = ?, start_date = ?, end_date = ?,
+                     duties = ?, reason_for_leaving = ?, can_contact = ?,
+                     experience_review_status = IF(?, 'self_reported', experience_review_status),
+                     experience_reviewed_by = IF(?, NULL, experience_reviewed_by),
+                     experience_reviewed_at = IF(?, NULL, experience_reviewed_at),
+                     experience_review_method = IF(?, NULL, experience_review_method),
+                     experience_review_note = IF(?, NULL, experience_review_note)
+                 WHERE history_id = ? AND profile_id = ?"
+            );
+            $insertWhStmt = $conn->prepare(
+                "INSERT INTO helper_work_history
                     (profile_id, employer_name, employer_contact, position, start_date, end_date, duties, reason_for_leaving, can_contact)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                $insertWhStmt = $conn->prepare($insertWhSql);
-                foreach ($work_history as $wh) {
-                    // 9 params: profile_id(i), 7 strings, can_contact(i) -> "isssssssi"
-                    $insertWhStmt->bind_param(
-                        "isssssssi",
-                        $profile_id,
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+            foreach ($work_history as $wh) {
+                $historyId = (int) $wh['history_id'];
+                if ($historyId > 0 && isset($existingHistory[$historyId])) {
+                    $existing = $existingHistory[$historyId];
+                    $reviewedFactsChanged = (
+                        (string) $existing['employer_name'] !== $wh['employer_name']
+                        || (string) $existing['position'] !== $wh['position']
+                        || (string) $existing['start_date'] !== $wh['start_date']
+                        || (string) ($existing['end_date'] ?? '') !== (string) ($wh['end_date'] ?? '')
+                        || (string) ($existing['duties'] ?? '') !== (string) ($wh['duties'] ?? '')
+                        || (string) ($existing['reason_for_leaving'] ?? '') !== (string) ($wh['reason_for_leaving'] ?? '')
+                        || (string) ($existing['employer_contact'] ?? '') !== (string) ($wh['employer_contact'] ?? '')
+                    );
+                    $changed = $reviewedFactsChanged ? 1 : 0;
+                    $updateWhStmt->bind_param(
+                        "sssssssiiiiiiii",
                         $wh['employer_name'],
                         $wh['employer_contact'],
                         $wh['position'],
@@ -610,13 +645,51 @@ try {
                         $wh['end_date'],
                         $wh['duties'],
                         $wh['reason_for_leaving'],
-                        $wh['can_contact']
+                        $wh['can_contact'],
+                        $changed,
+                        $changed,
+                        $changed,
+                        $changed,
+                        $changed,
+                        $historyId,
+                        $profile_id
                     );
-                    $insertWhStmt->execute();
+                    $updateWhStmt->execute();
+                    $keptHistoryIds[] = $historyId;
+                    continue;
                 }
-                $insertWhStmt->close();
-                error_log("✅ Inserted " . count($work_history) . " work-history entries");
+
+                $insertWhStmt->bind_param(
+                    "isssssssi",
+                    $profile_id,
+                    $wh['employer_name'],
+                    $wh['employer_contact'],
+                    $wh['position'],
+                    $wh['start_date'],
+                    $wh['end_date'],
+                    $wh['duties'],
+                    $wh['reason_for_leaving'],
+                    $wh['can_contact']
+                );
+                $insertWhStmt->execute();
+                $keptHistoryIds[] = (int) $conn->insert_id;
             }
+            $updateWhStmt->close();
+            $insertWhStmt->close();
+
+            $deleteWhStmt = $conn->prepare(
+                "DELETE FROM helper_work_history WHERE profile_id = ? AND history_id = ?"
+            );
+            foreach (array_keys($existingHistory) as $existingId) {
+                if (in_array((int) $existingId, $keptHistoryIds, true)) {
+                    continue;
+                }
+                $existingId = (int) $existingId;
+                $deleteWhStmt->bind_param("ii", $profile_id, $existingId);
+                $deleteWhStmt->execute();
+            }
+            $deleteWhStmt->close();
+            error_log("Updated " . count($work_history) . " work-history entries");
         }
 
         // ====================================================================

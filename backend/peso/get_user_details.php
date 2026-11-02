@@ -20,6 +20,7 @@ error_reporting(0);
 include_once '../dbcon.php';
 include_once __DIR__ . '/peso_auth.php';
 include_once __DIR__ . '/../shared/file_security.php';
+include_once __DIR__ . '/../shared/experience_verification.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -41,6 +42,7 @@ try {
     if (!$conn) {
         throw new Exception("Database connection failed");
     }
+    ensure_experience_verification_schema($conn);
 
     // Only approved PESO staff may pull a user's full details (profile +
     // government ID documents + household composition).
@@ -167,6 +169,7 @@ try {
     // ========================================================================
     $helper_specialties = null;
     $helper_work_history = array();
+    $helper_platform_experiences = array();
     $parent_household = null;
     $parent_children = null;
     $parent_elderly = null;
@@ -234,8 +237,10 @@ try {
             'languages' => $languages
         );
 
-        $historySql = "SELECT employer_name, employer_contact, position, start_date, end_date,
-                              duties, reason_for_leaving, can_contact
+        $historySql = "SELECT history_id, employer_name, employer_contact, position, start_date, end_date,
+                              duties, reason_for_leaving, can_contact, experience_review_status,
+                              experience_reviewed_by, experience_reviewed_at, experience_review_method,
+                              experience_review_note
                          FROM helper_work_history
                         WHERE profile_id = ?
                         ORDER BY start_date DESC, history_id DESC";
@@ -254,6 +259,7 @@ try {
             $helper_work_history[] = $historyRow;
         }
         $historyStmt->close();
+        $helper_platform_experiences = carelink_platform_experiences($conn, $user_id);
     }
 
     if ($user_type === 'parent' && $profile) {
@@ -390,6 +396,7 @@ try {
         'documents' => $documents,
         'helper_specialties' => $helper_specialties,
         'helper_work_history' => $helper_work_history,
+        'helper_platform_experiences' => $helper_platform_experiences,
         'parent_household' => $parent_household,
         'parent_children' => $parent_children,
         'parent_elderly' => $parent_elderly

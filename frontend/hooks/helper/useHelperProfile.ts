@@ -66,6 +66,8 @@ export interface HelperProfileData {
   }>;
   /** Past employers / references (helper_work_history). */
   work_history: WorkHistoryEntry[];
+  /** CareLink placements confirmed as completed by both parties. */
+  platform_experiences?: PlatformExperience[];
   /** 0–100 from API */
   profile_completeness?: number;
   /** Essential details, a job category, and a submitted Valid ID are present. */
@@ -83,6 +85,16 @@ export interface WorkHistoryEntry {
   reason_for_leaving?: string | null;
   employer_contact?: string | null;
   can_contact?: boolean;
+  experience_review_status?: 'self_reported' | 'peso_reviewed';
+}
+
+export interface PlatformExperience {
+  placement_id: number;
+  position: string;
+  employer_name: string;
+  start_date: string;
+  end_date: string;
+  verification_status: 'platform_confirmed';
 }
 
 export function useHelperProfile() {

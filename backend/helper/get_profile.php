@@ -22,6 +22,7 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
 include_once __DIR__ . '/../shared/file_security.php';
+include_once __DIR__ . '/../shared/experience_verification.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -45,6 +46,7 @@ try {
     if (!$conn) {
         throw new Exception("Database connection failed");
     }
+    ensure_experience_verification_schema($conn);
 
     if (!isset($_GET['user_id']) || empty($_GET['user_id'])) {
         throw new Exception("User ID is required");
@@ -326,7 +328,8 @@ try {
                     FROM user_documents ud
                     LEFT JOIN users v ON v.user_id = ud.verified_by
                     WHERE ud.user_id = ?
-                    ORDER BY FIELD(ud.document_type, 'Barangay Clearance', 'Valid ID', 'Police Clearance', 'TESDA NC2')";
+                    ORDER BY FIELD(ud.document_type, 'Barangay Clearance', 'Valid ID', 'Police Clearance', 'TESDA NC2'),
+                             ud.uploaded_at DESC, ud.document_id DESC";
 
     $documentsStmt = $conn->prepare($documentsSql);
     $documentsStmt->bind_param("i", $user_id);
@@ -356,9 +359,11 @@ try {
     // QUERY 10: Work history (past employers / references)
     // ========================================================================
     $work_history = array();
+    $platform_experiences = array();
     if ($profile_id !== null) {
         $whSql = "SELECT history_id, employer_name, employer_contact, position,
-                         start_date, end_date, duties, reason_for_leaving, can_contact
+                         start_date, end_date, duties, reason_for_leaving, can_contact,
+                         experience_review_status, experience_reviewed_at, experience_review_method
                   FROM helper_work_history
                   WHERE profile_id = ?
                   ORDER BY (end_date IS NULL) DESC, start_date DESC";
@@ -371,6 +376,7 @@ try {
             $work_history[] = $row;
         }
         $whStmt->close();
+        $platform_experiences = carelink_platform_experiences($conn, $user_id);
     }
 
     // ========================================================================
@@ -439,6 +445,7 @@ try {
         'selected_languages' => $selected_languages,
         'documents' => $documents,
         'work_history' => $work_history,
+        'platform_experiences' => $platform_experiences,
         'profile_completeness' => $completeness,
         'ready_for_review' => $ready_for_review
     ));

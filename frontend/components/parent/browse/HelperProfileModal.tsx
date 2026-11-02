@@ -12,6 +12,8 @@ import API_URL from '@/constants/api';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { CredentialBadge, credentialStateFor } from '@/components/shared/CredentialBadge';
 import { PesoVerifiedBanner } from '@/components/shared/PesoVerifiedBanner';
+import { ExperienceVerificationBadge } from '@/components/shared/ExperienceVerificationBadge';
+import { ExperienceVerificationNotice } from '@/components/shared/ExperienceVerificationNotice';
 import {
   BG, BROWN, CARAMEL, GOLD, DARK, MUTED, SUBTLE, DIVIDER, ICON_BG, SURFACE,
   GREEN, SUCCESS_BG, WARNING_BG, DANGER, DANGER_BG, OVERLAY,
@@ -326,6 +328,7 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
                 {Array.isArray(h.work_history) && h.work_history.length > 0 && (
                   <View style={{ marginTop: 20 }}>
                     <Text style={st.chipGroupLabel}>Work History</Text>
+                    <ExperienceVerificationNotice />
                     {h.work_history.map((w: any, i: number) => (
                       <View key={i} style={st.whCard}>
                         <View style={st.whHead}>
@@ -339,10 +342,31 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
                         </View>
                         <Text style={st.whEmployer}>{w.employer_name}</Text>
                         <Text style={st.whDates}>{whRange(w.start_date, w.end_date)}</Text>
+                        <View style={{ marginTop: 8 }}>
+                          <ExperienceVerificationBadge status={w.experience_review_status} />
+                        </View>
                         {!!w.duties && <Text style={st.whDuties}>{w.duties}</Text>}
                         {w.can_contact && !!w.employer_contact && (
                           <Text style={st.whContact}>Reference contact: {w.employer_contact}</Text>
                         )}
+                      </View>
+                    ))}
+                  </View>
+                )}
+                {Array.isArray(h.platform_experiences) && h.platform_experiences.length > 0 && (
+                  <View style={{ marginTop: 20 }}>
+                    <Text style={st.chipGroupLabel}>Completed CareLink Work</Text>
+                    <Text style={{ color: MUTED, fontSize: 12, lineHeight: 17, marginBottom: 10 }}>
+                      Both the helper and employer confirmed these completed placements.
+                    </Text>
+                    {h.platform_experiences.map((w: any) => (
+                      <View key={w.placement_id} style={st.whCard}>
+                        <Text style={st.whRole}>{w.position}</Text>
+                        <Text style={st.whEmployer}>{w.employer_name}</Text>
+                        <Text style={st.whDates}>{whRange(w.start_date, w.end_date)}</Text>
+                        <View style={{ marginTop: 8 }}>
+                          <ExperienceVerificationBadge status="platform_confirmed" />
+                        </View>
                       </View>
                     ))}
                   </View>
