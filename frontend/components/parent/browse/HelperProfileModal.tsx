@@ -109,6 +109,13 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
   const ratingAvg    = h.rating_average || h.helper_rating_average;
   const ratingCount  = h.rating_count   || h.helper_rating_count;
   const expYears     = h.experience_years || h.helper_experience_years;
+  const expectedSalaryValue = h.expected_salary ?? h.helper_expected_salary;
+  const expectedSalary = expectedSalaryValue != null
+    && String(expectedSalaryValue).trim() !== ''
+    && Number.isFinite(Number(expectedSalaryValue))
+    && Number(expectedSalaryValue) > 0
+    ? `₱${Number(expectedSalaryValue).toLocaleString('en-PH')} / ${(h.salary_period || h.helper_salary_period || 'Monthly').toLowerCase()}`
+    : 'Not specified';
   const profileImage = h.profile_image
     ? (String(h.profile_image).startsWith('http') ? h.profile_image : `http://localhost/carelink_api/uploads/profiles/${h.profile_image}`)
     : null;
@@ -279,6 +286,16 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
 
                 <View style={st.section}>
                   <View style={st.sectionHeader}>
+                    <Ionicons name="cash-outline" size={16} color={CARAMEL} />
+                    <Text style={st.sectionTitle}>Expected Salary</Text>
+                  </View>
+                  <View style={st.detailsCard}>
+                    <DetailRow label="Helper's stated expectation" value={expectedSalary} last />
+                  </View>
+                </View>
+
+                <View style={st.section}>
+                  <View style={st.sectionHeader}>
                     <Ionicons name="information-circle-outline" size={16} color={CARAMEL} />
                     <Text style={st.sectionTitle}>Background</Text>
                   </View>
@@ -302,14 +319,7 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
                 <View style={st.detailsCard}>
                   <DetailRow label="Years of Experience" value={expYears ? `${expYears} years` : 'New helper'} />
                   <DetailRow label="Preferred Job Type" value={h.employment_type || h.helper_employment_type || 'Any'} />
-                  <DetailRow label="Work Schedule" value={h.work_schedule || h.helper_work_schedule || 'Any'} />
-                  <DetailRow
-                    label="Expected Salary"
-                    value={(h.expected_salary || h.helper_expected_salary)
-                      ? `₱${Number(h.expected_salary || h.helper_expected_salary).toLocaleString()} / ${(h.salary_period || h.helper_salary_period || 'month').toLowerCase()}`
-                      : 'Not specified'}
-                    last={jobs.length === 0}
-                  />
+                  <DetailRow label="Work Schedule" value={h.work_schedule || h.helper_work_schedule || 'Any'} last />
                 </View>
 
                 {jobs.length > 0 && (

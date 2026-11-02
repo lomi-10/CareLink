@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FontFamily } from '@/constants/GlobalStyles';
 import MatchBreakdownModal from '@/components/shared/MatchBreakdownModal';
 import {
-  BROWN, CARAMEL, GOLD, DARK, MUTED, DIVIDER, ICON_BG, SURFACE, GREEN, SUCCESS_BG,
+  BROWN, CARAMEL, GOLD, DARK, DIVIDER, ICON_BG, SURFACE, GREEN, SUCCESS_BG, WARNING_BG,
 } from '@/components/parent/home/parentWarmTheme';
 import type { HelperProfile } from '@/hooks/parent';
 
@@ -19,12 +19,21 @@ interface CompactHelperCardProps {
   helper: HelperProfile;
   onPress: () => void;
   matchScore?: number;
-  matchReason?: string;
   matchReasons?: string[];
 }
 
-export function CompactHelperCard({ helper, onPress, matchScore, matchReason, matchReasons }: CompactHelperCardProps) {
+export function CompactHelperCard({ helper, onPress, matchScore, matchReasons }: CompactHelperCardProps) {
   const [showMatch, setShowMatch] = useState(false);
+  const location = [helper.municipality, helper.province].filter(Boolean).join(', ');
+  const roles = helper.jobs?.filter(Boolean) ?? [];
+  const specialties = roles.length > 0 ? roles : helper.categories ?? [];
+  const nearby = helper.distance != null && helper.distance <= 20;
+  const distanceText = helper.distance == null
+    ? null
+    : helper.distance < 1
+      ? `${Math.round(helper.distance * 1000)} m away`
+      : `${helper.distance.toFixed(1)} km away`;
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       {/* Photo */}
@@ -39,12 +48,7 @@ export function CompactHelperCard({ helper, onPress, matchScore, matchReason, ma
         {helper.availability_status === 'Available' && (
           <View style={styles.availBadge} accessibilityLabel="Available for work">
             <View style={styles.availDot} />
-            <Text style={styles.availText}>Available for work</Text>
-          </View>
-        )}
-        {helper.verification_status === 'Verified' && (
-          <View style={styles.pesoBadge}>
-            <Ionicons name="shield-checkmark" size={10} color={GREEN} />
+            <Text style={styles.availText}>AVAILABLE</Text>
           </View>
         )}
       </View>
@@ -58,40 +62,51 @@ export function CompactHelperCard({ helper, onPress, matchScore, matchReason, ma
             onPress={() => setShowMatch(true)}
             activeOpacity={0.7}
           >
-            <Text style={styles.matchText}>{matchScore}% match</Text>
-            <Ionicons name="information-circle-outline" size={11} color={GREEN} style={{ marginLeft: 2 }} />
+            <Text style={styles.matchText}>{matchScore}% MATCH</Text>
+            <Text style={styles.matchHint}>WHY?</Text>
           </TouchableOpacity>
         )}
 
-        {helper.experience_years != null && (
-          <View style={styles.metaRow}>
-            <Ionicons name="briefcase-outline" size={11} color={MUTED} />
-            <Text style={styles.metaText}>{helper.experience_years} yrs</Text>
-          </View>
-        )}
-
-        {(helper.rating_count ?? 0) > 0 && (
-          <View style={styles.metaRow}>
-            <Ionicons name="star" size={11} color={GOLD} />
-            <Text style={styles.metaText}>{Number(helper.rating_average).toFixed(1)}</Text>
-          </View>
-        )}
-
-        {helper.categories?.length > 0 && (
-          <View style={styles.chipsRow}>
-            {helper.categories.slice(0, 1).map((cat, i) => (
-              <View key={i} style={styles.chip}>
-                <Text style={styles.chipText} numberOfLines={1}>{cat}</Text>
+        {(distanceText || location) && (
+          <View style={[styles.locationRow, { borderLeftColor: nearby ? GREEN : CARAMEL }]}>
+            {distanceText ? (
+              <View style={[styles.locationMark, { backgroundColor: nearby ? SUCCESS_BG : WARNING_BG }]}>
+                <Ionicons name="location" size={13} color={nearby ? GREEN : '#92400E'} />
               </View>
-            ))}
+            ) : null}
+            <View style={styles.locationInfo}>
+              {distanceText ? (
+                <Text style={[styles.distanceText, { color: nearby ? GREEN : '#92400E' }]}>{distanceText}</Text>
+              ) : null}
+              {location ? <Text style={styles.locationText} numberOfLines={1}>{location}</Text> : null}
+            </View>
           </View>
         )}
 
-        {/* Why this match */}
-        {matchScore != null && matchScore > 0 && matchReason && (
-          <View style={styles.reasonRow}>
-            <Ionicons name="sparkles-outline" size={11} color={CARAMEL} />
-            <Text style={styles.reasonText} numberOfLines={1}>{matchReason}</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Ionicons name="briefcase-outline" size={12} color={BROWN} />
+            <Text style={styles.statText}>
+              {helper.experience_years
+                ? `${helper.experience_years} yr${helper.experience_years === 1 ? '' : 's'} experience`
+                : 'Experience not listed'}
+            </Text>
+          </View>
+          {(helper.rating_count ?? 0) > 0 && (
+            <View style={styles.statItem}>
+              <Ionicons name="star" size={11} color={GOLD} />
+              <Text style={styles.statText}>{Number(helper.rating_average).toFixed(1)}</Text>
+            </View>
+          )}
+        </View>
+
+        {specialties.length > 0 && (
+          <View style={styles.roleRow}>
+            <View style={styles.roleMark} />
+            {specialties.slice(0, 1).map((role) => (
+              <Text key={role} style={styles.roleText} numberOfLines={1}>{role}</Text>
+            ))}
+            {specialties.length > 1 && <Text style={styles.moreRoles}>+{specialties.length - 1}</Text>}
           </View>
         )}
       </View>
@@ -100,7 +115,7 @@ export function CompactHelperCard({ helper, onPress, matchScore, matchReason, ma
         visible={showMatch}
         onClose={() => setShowMatch(false)}
         score={matchScore ?? 0}
-        reasons={matchReasons ?? (matchReason ? [matchReason] : [])}
+        reasons={matchReasons ?? []}
         jobTitle={helper.first_name}
         themeKey="parent"
         subjectLabel="helper"
@@ -112,7 +127,7 @@ export function CompactHelperCard({ helper, onPress, matchScore, matchReason, ma
 const styles = StyleSheet.create({
   card: {
     backgroundColor: SURFACE,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: DIVIDER,
@@ -129,35 +144,39 @@ const styles = StyleSheet.create({
   availBadge: {
     position: 'absolute', bottom: 7, left: 7,
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: SURFACE, borderRadius: 10,
+    backgroundColor: SURFACE, borderRadius: 4,
     paddingHorizontal: 7, paddingVertical: 4,
   },
   availDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN },
-  availText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 9.5, color: GREEN },
-  pesoBadge: {
-    position: 'absolute', top: 6, right: 6,
-    width: 20, height: 20, borderRadius: 10,
-    backgroundColor: SUCCESS_BG,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: GREEN,
-  },
+  availText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 9, color: GREEN, letterSpacing: 0.4 },
 
   info: { padding: 10, gap: 5 },
   name: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: DARK },
   matchBadge: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: SUCCESS_BG, borderRadius: 6,
-    paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start',
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: '#F1F8F3',
+    borderLeftWidth: 3, borderLeftColor: GREEN,
+    paddingHorizontal: 7, paddingVertical: 4,
   },
-  matchText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: GREEN },
+  matchText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10, color: DARK, letterSpacing: 0.3 },
+  matchHint: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 8, color: GREEN, letterSpacing: 0.5 },
 
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  metaText: { fontFamily: FontFamily.fredokaRegular, fontSize: 11.5, color: MUTED },
+  locationRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    backgroundColor: '#FFF8EF', borderLeftWidth: 3,
+    paddingHorizontal: 7, paddingVertical: 6,
+  },
+  locationMark: { width: 25, height: 25, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
+  locationInfo: { flex: 1, minWidth: 0 },
+  distanceText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5 },
+  locationText: { fontFamily: FontFamily.fredokaRegular, fontSize: 9.5, color: DARK },
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 2 },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  statText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10, color: DARK },
 
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 },
-  chip: { backgroundColor: ICON_BG, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
-  chipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5, color: BROWN },
-
-  reasonRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  reasonText: { fontFamily: FontFamily.fredokaRegular, fontSize: 10.5, color: MUTED, flexShrink: 1, fontStyle: 'italic' },
+  roleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0, paddingTop: 2 },
+  roleMark: { width: 3, height: 15, backgroundColor: CARAMEL },
+  roleText: { flex: 1, minWidth: 0, fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5, color: DARK },
+  moreRoles: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 9.5, color: BROWN },
 });

@@ -202,7 +202,6 @@ export default function BrowseHelpers() {
             isTopMatch={idx === 0}
             matchPercentage={match.score}
             matchReasons={match.reasons}
-            topReason={match.reasons?.[0]}
             onPress={() => handleViewProfile(helper)}
           />
         ))}
@@ -272,7 +271,6 @@ export default function BrowseHelpers() {
                 <CompactHelperCard
                   helper={item}
                   matchScore={match.score}
-                  matchReason={match.reasons?.[0]}
                   matchReasons={match.reasons}
                   onPress={() => handleViewProfile(item)}
                 />

@@ -83,7 +83,6 @@ export function RecommendedHelpersSection() {
             helper={helper}
             isTopMatch={idx === 0}
             matchPercentage={match.score}
-            topReason={match?.reasons?.[0]}
             matchReasons={match.reasons}
             onPress={() => router.push('/(parent)/browse')}
           />
