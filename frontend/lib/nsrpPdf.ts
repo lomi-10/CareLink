@@ -157,15 +157,6 @@ function splitRepeatedWidgets(pdf: PDFDocument, form: PDFForm): void {
   }
 }
 
-function moveNameFieldsBelowLabels(form: PDFForm): void {
-  ["txt_lastname", "txt_firstname", "txt_middlename", "txt_suffix"].forEach((name) => {
-    form.getTextField(name).acroField.getWidgets().forEach((widget) => {
-      const rect = widget.getRectangle();
-      widget.setRectangle({ ...rect, y: rect.y - 14 });
-    });
-  });
-}
-
 function populateForm(form: PDFForm, data: NsrpPrefill): void {
   const { profile } = data;
   setText(form, "txt_lastname", clean(profile.last_name));
@@ -583,7 +574,6 @@ export async function generateNsrpPdfFromBytes(
   const form = pdf.getForm();
   splitRepeatedWidgets(pdf, form);
   populateForm(form, data);
-  moveNameFieldsBelowLabels(form);
   const pages = pdf.getPages();
   const checkedBoxes = getCheckedBoxPlacements(form, pages);
   form.getFields().forEach((field) => {
