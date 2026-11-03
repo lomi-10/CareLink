@@ -69,6 +69,7 @@ try {
     $userSql = "SELECT 
                     user_id,
                     email,
+                    phone,
                     username,
                     first_name,
                     middle_name,

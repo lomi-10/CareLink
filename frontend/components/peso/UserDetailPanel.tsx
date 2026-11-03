@@ -55,6 +55,24 @@ function legitLabel(v: number) { return v >= 90 ? "High" : v >= 70 ? "Medium" : 
 function clarityLabel(v: number) { return v >= 85 ? "Very Clear" : v >= 60 ? "Readable" : "Low"; }
 function scoreColor(v: number, c: PesoColors) { return v >= 85 ? c.ok : v >= 60 ? c.warn : c.bad; }
 
+function ageFromBirthDate(value?: string | null): number | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return null;
+
+  const [, yearText, monthText, dayText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const birth = new Date(year, month - 1, day);
+  if (birth.getFullYear() !== year || birth.getMonth() !== month - 1 || birth.getDate() !== day) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  if (today.getMonth() < month - 1 || (today.getMonth() === month - 1 && today.getDate() < day)) age--;
+  return age >= 0 ? age : null;
+}
+
 export default function UserDetailPanel({
   userId, userType, onChanged, onClose,
 }: {
@@ -330,7 +348,10 @@ export default function UserDetailPanel({
   };
   const vsCfg = STATUS_VISUAL[vs] ?? STATUS_VISUAL.Unverified;
   const fullName = [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(" ") || user.name || "—";
-  const addressFull = [profile?.address, profile?.barangay, profile?.municipality, profile?.province].filter(Boolean).join(", ") || "—";
+  const addressFull = String(profile?.address ?? "").trim()
+    || [profile?.barangay, profile?.municipality, profile?.province].filter(Boolean).join(", ")
+    || "—";
+  const age = isHelper ? ageFromBirthDate(profile?.birth_date) : null;
   const aiChecked = docList.some((d) => d?.ai_verification_status && d.ai_verification_status !== "Unchecked");
 
   return (
@@ -396,9 +417,10 @@ export default function UserDetailPanel({
               <InfoGrid items={[
                 { label: "Full Name", value: fullName },
                 { label: "Email Address", value: user.email || "—" },
-                { label: "Phone Number", value: profile?.contact_number || "—" },
+                { label: "Phone Number", value: user.phone || profile?.contact_number || "—" },
                 ...(isHelper ? [
                   { label: "Date of Birth", value: profile?.birth_date || "—" },
+                  { label: "Age", value: age === null ? "—" : `${age} years` },
                   { label: "Gender", value: profile?.gender || "—" },
                   { label: "Civil Status", value: profile?.civil_status || "—" },
                 ] : []),
