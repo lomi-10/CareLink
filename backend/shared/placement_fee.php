@@ -1,12 +1,10 @@
 <?php
 /**
- * shared/placement_fee.php — Stream 3: Placement Success Fee.
+ * shared/placement_fee.php — Digital Contract & Facilitation Fee.
  *
- * Charged to the EMPLOYER once, when a contract is fully signed and a placement
- * becomes active. Under RA 8042 and RA 10364 no fee may be charged to a job
- * seeker — so nothing here ever references the helper as payer, and the fee is
- * never deducted from the agreed salary. The helper is not shown this fee at
- * all; it is invisible on their side of the app.
+ * A pending fee is recorded for the EMPLOYER once a contract is fully signed
+ * and a placement becomes active. The helper is never the payer and the fee is
+ * never deducted from the agreed salary.
  *
  * PESO TAKES NO SHARE. peso_share_amount is always 0.00 and platform_share_amount
  * always equals the gross. Under RA 8759 a PESO provides employment facilitation

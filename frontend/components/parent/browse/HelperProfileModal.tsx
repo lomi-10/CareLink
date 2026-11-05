@@ -94,8 +94,6 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
 
   const bio          = h.bio || h.helper_bio || '';
   const education    = h.education_level || h.helper_education_level || 'Not specified';
-  const religion     = h.religion || h.helper_religion || 'Not specified';
-  const civilStatus  = h.civil_status || h.helper_civil_status || 'Not specified';
   const barangay     = h.barangay || h.helper_barangay || '';
   const municipality = h.municipality || h.helper_municipality || 'N/A';
   const province     = h.province || h.helper_province || 'N/A';
@@ -196,12 +194,6 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
           {/* ── Quick stats tiles ──────────────────────────────────────────── */}
           <View style={st.tilesRow}>
             <View style={st.tile}>
-              <Ionicons name="person-outline" size={18} color={MUTED} />
-              <Text style={st.tileValue}>{h.age || h.helper_age || '--'} yrs</Text>
-              <Text style={st.tileLabel}>Age</Text>
-            </View>
-            <View style={st.tileDivider} />
-            <View style={st.tile}>
               <Ionicons name="male-female-outline" size={18} color={MUTED} />
               <Text style={st.tileValue}>{h.gender || h.helper_gender || 'Any'}</Text>
               <Text style={st.tileLabel}>Gender</Text>
@@ -301,8 +293,6 @@ export function HelperProfileModal({ visible, helper, onInvite, onDirectHire, on
                   </View>
                   <View style={st.detailsCard}>
                     <DetailRow label="Education" value={education} />
-                    <DetailRow label="Religion" value={religion} />
-                    <DetailRow label="Civil Status" value={civilStatus} />
                     <DetailRow label="Location" value={fullAddress} last />
                   </View>
                 </View>

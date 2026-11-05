@@ -102,6 +102,12 @@ function toYmd(d: Date): string {
   return `${y}-${m}-${dd}`;
 }
 
+function adultBirthDateMax(): Date {
+  const max = new Date();
+  max.setFullYear(max.getFullYear() - 18);
+  return max;
+}
+
 const ORANGE = '#E86019';
 const DARK   = '#2A1608';
 const MUTED  = '#7A5C3E';
@@ -137,7 +143,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const [birthDate,    setBirthDate]    = useState('');
   const [gender,       setGender]       = useState<'Male' | 'Female'>('Female');
   const [civilStatus,  setCivilStatus]  = useState<string>('Single');
-  const [religion,     setReligion]     = useState('');
+  const [preferredRestDay, setPreferredRestDay] = useState('');
   const [province,     setProvince]     = useState('Leyte');
   const [municipality, setMunicipality] = useState('');
   const [barangay,     setBarangay]     = useState('');
@@ -248,7 +254,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         setBirthDate(p.birth_date || '');
         setGender(p.gender || 'Female');
         setCivilStatus(p.civil_status || 'Single');
-        setReligion(p.religion || '');
+        setPreferredRestDay(p.preferred_rest_day || '');
         setProvince(p.province || 'Leyte');
         setMunicipality(p.municipality || '');
         setBarangay(p.barangay || '');
@@ -379,7 +385,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       fd.append('birth_date',     birthDate);
       fd.append('gender',         gender);
       fd.append('civil_status',   civilStatus);
-      fd.append('religion',       religion);
+      fd.append('preferred_rest_day', preferredRestDay);
       fd.append('province',       province);
       fd.append('municipality',   municipality);
       fd.append('barangay',       barangay);
@@ -547,7 +553,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         <Label>{tr('helper.setup.dateOfBirth')} <Req /></Label>
         {Platform.OS === 'web' ? (
           React.createElement('input', {
-            type: 'date', value: birthDate || '', min: '1940-01-01', max: toYmd(new Date()),
+            type: 'date', value: birthDate || '', min: '1940-01-01', max: toYmd(adultBirthDateMax()),
             onChange: (e: any) => setBirthDate(e.target.value || ''),
             style: { padding: 12, border: '1px solid #E5E5EA', borderRadius: 12, fontSize: 15, width: '100%', fontFamily: 'inherit', backgroundColor: '#FDF5E8', color: DARK, boxSizing: 'border-box', marginBottom: 16 } as any,
           })
@@ -562,7 +568,7 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
             </TouchableOpacity>
             {showBirthPicker && (
               <DateTimePicker value={parseBirthYmd(birthDate)} mode="date" display="default"
-                maximumDate={new Date()} minimumDate={new Date(1940, 0, 1)}
+                maximumDate={adultBirthDateMax()} minimumDate={new Date(1940, 0, 1)}
                 onChange={(_, d) => { setShowBirthPicker(false); if (d) setBirthDate(toYmd(d)); }}
               />
             )}
@@ -572,8 +578,6 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         <ToggleRow options={['Male', 'Female']} value={gender} onChange={v => setGender(v as any)} />
         <Label>{tr('helper.setup.civilStatus')} <Req /></Label>
         <ToggleRow options={['Single', 'Married', 'Widowed', 'Separated']} value={civilStatus} onChange={setCivilStatus} />
-        <Label>{tr('helper.setup.religion')} <OptTag /></Label>
-        <DropdownField value={religion} onChange={setReligion} options={RELIGION_OPTIONS} placeholder={tr('helper.setup.selectReligion')} />
         <Label>{tr('helper.setup.educationalAttainment')} <Req /></Label>
         <ToggleRow
           options={['Elementary', 'High School Undergrad', 'High School Grad', 'College Undergrad', 'College Grad', 'Vocational']}
@@ -884,6 +888,13 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
           setWorkSchedule(v);
         }}
         disabledOptions={employmentType === 'Stay-in' ? ['Part-time', 'Any'] : []}
+      />
+      <Label>{tr('helper.setup.preferredRestDay')} <OptTag /></Label>
+      <DropdownField
+        value={preferredRestDay}
+        onChange={setPreferredRestDay}
+        options={['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']}
+        placeholder={tr('helper.setup.noRestDayPreference')}
       />
       <Label>{tr('helper.setup.salaryLabel')} <Req /></Label>
       <StyledInput value={expectedSalary} onChangeText={setExpectedSalary} placeholder="6400" keyboardType="numeric" />
@@ -1333,12 +1344,6 @@ function ToggleRow({ options, value, onChange, disabledOptions = [] }: {
     </View>
   );
 }
-
-const RELIGION_OPTIONS = [
-  'Roman Catholic', 'Christian', 'Iglesia ni Cristo', 'Islam',
-  'Protestant', 'Seventh-day Adventist', 'Born Again', 'Buddhist',
-  'Aglipayan', 'Other', 'Prefer not to say',
-];
 
 function DropdownField({ value, onChange, options, placeholder, optionLabel }: {
   value: string;

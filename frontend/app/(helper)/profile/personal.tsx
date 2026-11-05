@@ -60,7 +60,6 @@ export default function PersonalInfoScreen() {
     { icon: 'calendar',          label: tr('helper.setup.dateOfBirth'),      value: profile?.date_of_birth    || '—' },
     { icon: 'person',            label: tr('helper.setup.age'),              value: helperAge != null ? tr('helper.setup.yearsOld', { count: helperAge }) : '—' },
     { icon: 'heart-outline',     label: tr('helper.setup.civilStatus'),      value: profile?.civil_status     || '—' },
-    { icon: 'business-outline',  label: tr('helper.setup.religion'),         value: profile?.religion         || '—' },
     { icon: 'school-outline',    label: tr('helper.setup.education'),        value: profile?.education_level  || '—' },
     { icon: 'call-outline',      label: tr('helper.setup.contactNumber'),    value: profile?.contact_number   || '—' },
   ];
@@ -68,6 +67,7 @@ export default function PersonalInfoScreen() {
   const workRows: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }[] = [
     { icon: 'briefcase-outline', label: tr('helper.setup.employmentType'), value: profile?.employment_type || '—' },
     { icon: 'time-outline',      label: tr('helper.setup.workSchedule'),   value: profile?.work_schedule || '—' },
+    { icon: 'calendar-outline',  label: tr('helper.setup.preferredRestDay'), value: profile?.preferred_rest_day || tr('helper.setup.noRestDayPreference') },
     { icon: 'cash-outline',      label: tr('helper.setup.expectedSalary'), value: profile?.expected_salary ? `₱${Number(profile.expected_salary).toLocaleString()} / ${profile.salary_period ?? 'month'}` : tr('helper.setup.negotiable') },
   ];
 

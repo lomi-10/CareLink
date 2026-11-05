@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/complaint_tracking_tables.php';
 require_once __DIR__ . '/../shared/experience_verification.php';
+require_once __DIR__ . '/../shared/helper_safeguards.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Haversine distance (km) between two lat/lng pairs
@@ -29,6 +30,7 @@ function carelink_browse_haversine($lat1, $lon1, $lat2, $lon2) {
 
 try {
     ensure_experience_verification_schema($conn);
+    carelink_ensure_helper_safeguards_schema($conn);
     // Optional: if the requesting parent is known, compute a real distance
     // per helper instead of leaving it unset.
     $parent_id = isset($_GET['parent_id']) ? intval($_GET['parent_id']) : 0;
@@ -58,10 +60,10 @@ try {
     $query = "
         SELECT
             u.user_id, u.first_name, u.last_name, u.email,
-            hp.profile_id, hp.profile_image, hp.birth_date, hp.gender,
+            hp.profile_id, hp.profile_image, hp.gender,
             hp.experience_years, hp.employment_type, hp.work_schedule,
             hp.expected_salary, hp.salary_period, hp.barangay, hp.municipality, hp.province,
-            hp.education_level, hp.religion, hp.civil_status,
+            hp.education_level,
             hp.verification_status, hp.availability_status, hp.latitude, hp.longitude,
             hp.rating_average, hp.rating_count, hp.bio,
             CASE WHEN EXISTS (
@@ -72,6 +74,7 @@ try {
         JOIN helper_profiles hp ON u.user_id = hp.user_id
         WHERE u.user_type = 'helper' AND u.status = 'approved'
           AND hp.verification_status = 'Verified'
+          AND hp.birth_date <= DATE_SUB(CURDATE(), INTERVAL 18 YEAR)
           AND COALESCE(hp.availability_status, 'Available') = 'Available'
           AND NOT EXISTS (
               SELECT 1 FROM placements pl
@@ -90,18 +93,6 @@ try {
     while ($row = $result->fetch_assoc()) {
         $user_id = (int)$row['user_id'];
         $profile_id = (int)$row['profile_id'];
-
-        // Calculate exact age dynamically
-        $age = null;
-        if (!empty($row['birth_date'])) {
-            try {
-                $dob = new DateTime($row['birth_date']);
-                $now = new DateTime();
-                $age = $now->diff($dob)->y;
-            } catch (Exception $e) {
-                $age = null; 
-            }
-        }
 
         // --- FETCH CATEGORIES AND SPECIFIC JOBS ---
         $jobs_query = "
@@ -196,7 +187,6 @@ try {
             'first_name' => $row['first_name'],
             'last_name' => $row['last_name'],
             'profile_image' => $row['profile_image'],
-            'age' => $age,
             'gender' => $row['gender'],
             
             // Contact details are deliberately NOT returned here. This endpoint
@@ -224,8 +214,6 @@ try {
 
             // Background
             'education_level' => $row['education_level'],
-            'religion' => $row['religion'],
-            'civil_status' => $row['civil_status'],
             
             // Location
             'barangay' => $row['barangay'],

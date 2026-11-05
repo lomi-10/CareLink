@@ -34,16 +34,6 @@ export function useJobReferences() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
-  const [religions] = useState<string[]>([
-    'Roman Catholic',
-    'Islam',
-    'Iglesia ni Cristo',
-    'Protestant',
-    'Buddhist',
-    'Mormoons',
-    'Other',
-    'No Preference',
-  ]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,7 +141,6 @@ export function useJobReferences() {
     jobs,
     skills,
     languages,
-    religions,
     loading,
     error,
     refresh: fetchReferences,

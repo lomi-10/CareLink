@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 ini_set('display_errors', 0);
 error_reporting(0);
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/job_description_review.php';
 
 function sendJson($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -44,6 +45,7 @@ try {
         SELECT
             j.job_post_id,
             j.title,
+            j.description,
             j.custom_category,
             j.category_id,
             j.category_ids,
@@ -81,6 +83,7 @@ try {
 
     $jobs = [];
     while ($row = $result->fetch_assoc()) {
+        $row['content_review_flags'] = carelink_job_description_review_flags((string) ($row['description'] ?? ''));
         $row['salary_offered'] = (float)$row['salary_offered'];
         $row['category_ids'] = json_decode($row['category_ids'] ?? '[]', true) ?: [(int) $row['category_id']];
         $row['category_ids'] = array_values(array_unique(array_map('intval', $row['category_ids'])));

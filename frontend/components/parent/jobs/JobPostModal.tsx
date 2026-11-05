@@ -20,7 +20,6 @@ import { LoadingSpinner, NotificationModal } from '@/components/shared';
 import { DateField } from '@/components/shared/DateField';
 import { formatLongDate, toYmdInput } from '@/components/parent/hire/hireFlowDates';
 import { PendingBanner } from '../verification/PendingBanner';
-import { AgeRangeSelector } from './AgeRangeSelector';
 import { BenefitsCard } from './BenefitsCard';
 import { CategorySelector } from './CategorySelector';
 import { DescriptionInput } from './DescriptionInput';
@@ -100,7 +99,7 @@ export function JobPostModal({
   const isDisabled = isPending || submitting;
 
   // Reference Data Hook
-  const { categories, jobs, skills, languages, religions, loading: referencesLoading } = useJobReferences();
+  const { categories, jobs, skills, languages, loading: referencesLoading } = useJobReferences();
 
   // Form Hook
   const {
@@ -347,8 +346,6 @@ export function JobPostModal({
             salary_min: formData.salary_min,
             salary_max: formData.salary_max,
             min_experience_years: formData.min_experience_years,
-            min_age: formData.min_age,
-            max_age: formData.max_age,
             employment_type: formData.employment_type,
             work_schedule: formData.work_schedule,
           }),
@@ -781,14 +778,8 @@ export function JobPostModal({
     <View style={styles.stepContent} onLayout={setStepLayout}>
       <Text style={styles.sectionHeader}>Requirements & Benefits</Text>
 
-      <View style={styles.row}>
-        <View style={{ flex: 1 }}>
-          <AgeRangeSelector minAge={formData.min_age} maxAge={formData.max_age} onMinAgeChange={(val) => updateField('min_age', val)} onMaxAgeChange={(val) => updateField('max_age', val)} disabled={isDisabled} />
-        </View>
-        <View style={{ width: 16 }} />
-        <View style={{ flex: 1 }}>
-          <ExperienceSelector minExperience={formData.min_experience_years} onExperienceChange={(val) => updateField('min_experience_years', val)} disabled={isDisabled} />
-        </View>
+      <View>
+        <ExperienceSelector minExperience={formData.min_experience_years} onExperienceChange={(val) => updateField('min_experience_years', val)} disabled={isDisabled} />
       </View>
 
       <BenefitsCard
@@ -806,11 +797,8 @@ export function JobPostModal({
       />
 
       <PreferencesCard
-        religions={religions}
         languages={languages}
-        selectedReligion={formData.preferred_religion}
         selectedLanguageId={formData.preferred_language_id}
-        onReligionChange={(religion: string) => updateField('preferred_religion', religion)}
         onLanguageChange={(langId: string) => updateField('preferred_language_id', langId)}
         requirePoliceClearance={formData.require_police_clearance}
         preferTesdaNc2={formData.prefer_tesda_nc2}
@@ -876,8 +864,6 @@ export function JobPostModal({
 
     const requirementItems: string[] = [];
     if (formData.min_experience_years > 0) requirementItems.push(`${formData.min_experience_years}+ years of experience`);
-    if (formData.min_age !== 18 || formData.max_age !== 65) requirementItems.push(`Preferred age: ${formData.min_age} - ${formData.max_age} years old`);
-    if (formData.preferred_religion) requirementItems.push(`Religion: ${formData.preferred_religion}`);
     if (formData.preferred_language_id && selectedLanguageName) requirementItems.push(`Language: ${selectedLanguageName}`);
     if (formData.require_police_clearance) requirementItems.push('Police Clearance required');
     if (formData.prefer_tesda_nc2) requirementItems.push('TESDA NC2 Certificate preferred');

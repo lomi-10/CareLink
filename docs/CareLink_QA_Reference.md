@@ -51,10 +51,10 @@ The compatibility score is a starting point, not a decision. Users can browse be
 ### Cover Letter and Job Description Generation
 
 **Q: Do you use AI to write cover letters?**
-No, it's a template. When a helper applies to a job, they can press a "Generate" button that auto-fills a fixed cover letter template with the job title, employer name, and job categories. The helper is expected to review and edit before submitting. Same pattern for parents generating a job description — the system fills in a template based on entered fields; the parent reviews and edits. This is a rule-based string interpolation function, not literal AI.
+No. CareLink creates template-based drafts from a library of cover-letter templates, with seeded variation and personalization from available helper and job details. Helpers can review and edit a draft before submitting. Job descriptions are also template-based and filled from the employer's entered details; employers can review and edit them. These are rule-based features, not generative AI.
 
 **Q: Why call it AI in the marketing but template in the code?**
-The word "AI" is never used in the manuscript or the system's documentation for cover letter generation. Marketing language is separate from academic accuracy. In every academic and technical description of the system, the feature is described as "auto-generated cover letter template" — grounded in Anwar & Bar-Isaac (2025)'s finding that template assistance helps less-articulate applicants compete on more equal footing.
+Use **template-based cover-letter drafts** consistently in the manuscript and technical descriptions; do not describe them as AI-generated. The same template-based wording applies to job-description drafts.
 
 ### Contract Generation and Digital Signing
 
@@ -89,8 +89,8 @@ No. Check-in is a button tap that records timestamp only. GPS tracking would be 
 **Q: What is CareBot?**
 An in-platform AI assistant powered by Google Gemini API. Helps users navigate CareLink, answers questions about features, and explains the Kasambahay Law. Uses a limited non-sensitive context — user type, verification status, profile completion percentage, and whether an active job post or placement exists — to personalize its guidance.
 
-**Q: Does CareBot see personal data?**
-No. Sensitive fields — names, contact numbers, addresses, document contents, salary amounts, message contents — are never sent to the external Gemini service. Only the five non-sensitive contextual flags listed above are passed as part of the AI context. This is grounded in Rese et al. (2020)'s finding that chatbot personalization builds trust only when the chatbot avoids accessing sensitive user data.
+**Q: What information does CareBot send to Gemini?**
+CareBot sends the user's recent chat messages to Gemini; the backend limits the conversation context to the six most recent messages and truncates long messages. A user could include names or other sensitive details in a message, so do not claim that message contents are never sent. The server-added profile context is limited to coarse details such as account type, verification/profile-completion status, and whether a job post or placement exists; it does not include account names, contact details, addresses, uploaded document contents, salary amounts, or other users' data. The transcript is held in app memory while the session is active, survives closing and reopening the chat panel, and is cleared on logout; it is not saved as durable chat history.
 
 **Q: Can CareBot take actions on my behalf?**
 No. CareBot provides guidance only. It cannot post jobs, apply, message, or sign anything. Any action requires the user to do it themselves in the appropriate part of the platform.
@@ -124,19 +124,19 @@ The complaint categories explicitly include "unsafe conditions" and "abuse or mi
 ### Revenue Model
 
 **Q: How does CareLink make money?**
-Three revenue streams, all charged to parent or homeowner employer accounts only. First, Featured Job Post Placement — a parent pays approximately ₱99 to boost a specific job post to the top of helper search results for 7 days. Second, CareLink Plus Subscription — approximately ₱149 per month unlocks featured post credits, priority PESO review queue, unlimited concurrent job posts, extended placement history beyond 6 months, and advanced payroll report exports. Third, Placement Success Fee — approximately ₱199 charged when a contract is successfully signed and both parties become active in a placement. PESO Ormoc City receives none of this. Under RA 8759 a Public Employment Service Office provides employment facilitation free of charge, and PESO confirmed they take no revenue share — the split in code is 0% PESO, 100% platform. What PESO gets from CareLink is operational, not financial: a digitised verification queue, complaint case management, and labour-market data for their reporting.
+The current model has three revenue streams: Featured Job Post boosts, CareLink Plus subscriptions, and the ₱199 **Digital Contract & Facilitation Fee**, recorded for the employer after a signed contract activates a placement. A pending record is created at activation; the employer initiates PayMongo checkout to pay it. The fee does not buy or release helper contact details, and PESO receives no share. RA 10361, Section 13, prohibits charging a domestic worker a share of recruitment or finder's fees. The Act's implementing rules, Section 13, say hiring and employment expenses—including recruitment or placement fees—must be borne by the employer and must not be charged directly or indirectly to the domestic worker. A product label does not determine legal treatment: whether CareLink's fee legally qualifies as a covered recruitment or deployment expense has not been confirmed by counsel or PESO. Do not present the fee's legality as settled until that review is obtained.
 
 **Q: Why don't helpers pay anything?**
-Two reasons. First, legal — RA 8042 and RA 10364 prohibit charging job seekers recruitment or placement fees. Charging helpers would violate these laws and expose CareLink to illegal recruitment liability. Second, strategic — helpers are the network value in Holm & Günzel-Jensen's freemium framework. The more verified helpers on the platform, the more valuable it becomes for employers. Charging the network value side kills the network effect. So helpers stay free forever, and employers pay for enhanced access to the network.
+Helpers are not charged in the current implementation. RA 10361, Section 13, prohibits charging a domestic worker a share of recruitment or finder's fees; Section 13 of the Act's implementing rules places hiring and employment expenses on the employer and prohibits passing recruitment or placement fees to the worker. Get adviser/PESO or legal-counsel confirmation before claiming that this alone establishes the legality of CareLink's employer-facing Digital Contract & Facilitation Fee.
 
 **Q: Is that enough to sustain the platform?**
-Yes, based on operating cost analysis. CareLink's total infrastructure cost is ₱1,800 per year — Hostinger for domain, backend, database, and email service. Cloudinary, Google Gemini API, and Nominatim all operate on free tiers within CareLink's projected usage. At approximately ₱150 per month operating cost, the platform breaks even at fewer than 10 CareLink Plus subscribers or fewer than 8 placement fees per month. That's a very achievable break-even point for a platform serving even a small local user base in Ormoc City.
+Yes, based on operating cost analysis. CareLink's total infrastructure cost is ₱1,800 per year — Hostinger for domain, backend, database, and email service. Cloudinary, Google Gemini API, and Nominatim all operate on free tiers within CareLink's projected usage. At approximately ₱150 per month operating cost, the platform breaks even at fewer than 10 CareLink Plus subscribers or fewer than 8 Digital Contract & Facilitation Fee payments per month. That's a very achievable break-even point for a platform serving even a small local user base in Ormoc City.
 
 **Q: What if usage scales past the free tiers of Gemini or Cloudinary?**
 That's a success problem, not a sustainability problem. If the platform grows to the point where free tier limits are exceeded, revenue will have grown proportionally to cover the increased cost. Cloudinary paid tiers start at $89/month (~₱5,000) which would be justified by even a modest paid subscriber base. Google Gemini paid tier is per-API-call and grows with active users.
 
 **Q: What if PESO doesn't formally partner?**
-The platform still works, and no revenue depends on it. PESO's institutional verification role is what enables trust between strangers on the platform, and that comes from the existing coordination relationship rather than from any commercial agreement. There is no revenue share to negotiate — RA 8759 requires PESO services to be free of charge, so the placement fee is 100% platform by design, not by default. A formal MOA would only formalise the working relationship: data sharing, referral handling, and the escalation path for complaints.
+The platform still works, and no revenue depends on it. PESO's institutional verification role is what enables trust between strangers on the platform, and that comes from the existing coordination relationship rather than from any commercial agreement. There is no revenue share to negotiate — RA 8759 requires PESO services to be free of charge, so the Digital Contract & Facilitation Fee is 100% platform by design, not by default. A formal MOA would only formalise the working relationship: data sharing, referral handling, and the escalation path for complaints.
 
 ### Customers and Market
 
@@ -193,21 +193,21 @@ Two levels of protection. First, the super admin reviews all complaints before e
 Preliminary survey data suggests willingness to pay for verified access is present — 41% of parent respondents in the team's survey (n=62) indicated agreement to pay a small platform fee for premium services. Additionally, the CareLink Plus features (unlimited concurrent posts, priority verification queue, advanced payroll reports) are targeted at higher-volume users — households that hire multiple helpers or manage recurring placements — for whom ₱149/month is a small operational cost relative to the value received. Individual price validation will happen during production launch through A/B testing.
 
 **Q: What if nobody buys the CareLink Plus subscription?**
-Then the placement fee revenue stream carries the platform. The subscription is optional and not required for platform sustainability. Break-even can be reached through placement fees alone at approximately 8 successful placements per month, which is achievable even with modest platform adoption.
+Then Digital Contract & Facilitation Fee revenue carries the platform. The subscription is optional and not required for platform sustainability. Break-even can be reached through these fee payments alone at approximately 8 activated placements per month, which is achievable even with modest platform adoption.
 
-**Q: Isn't ₱199 a lot for a placement fee?**
-It's actually less than most alternatives. Physical placement agencies in Metro Manila charge ₱3,000 to ₱15,000 per placement. Facebook-mediated hiring is "free" but carries the substantial risk of fraud, mismatched hires, and no legal contract. At ₱199, CareLink's placement fee is roughly 1% to 5% of what an agency charges, and includes the DOLE BK-1 contract, digital signing, PESO verification, shared placement record, and CareBot access. The pricing is designed to be genuinely accessible while sustainable for the platform.
+**Q: Isn't ₱199 a lot for the Digital Contract & Facilitation Fee?**
+The ₱199 Digital Contract & Facilitation Fee is intended to support the platform's contract and placement facilitation services. Do not compare it to agency placement charges or present it as legally approved without adviser/PESO or legal-counsel review. The label describes the intended service, but does not settle how the fee is classified under the law.
 
-**Q: Does PESO get a cut of the placement fee?**
-No — and they cannot. RA 8759, the PESO Act of 1999, requires a Public Employment Service Office to provide employment facilitation services free of charge; it is a government service, not a commercial partner. PESO Ormoc City confirmed this directly. The placement fee is 0% PESO and 100% platform in code, and there is no payout mechanism to enable. PESO benefits operationally — a digitised verification queue, complaint case management, and labour-market data — which is what a PESO is meant to gain from a system like this.
+**Q: Does PESO get a cut of the Digital Contract & Facilitation Fee?**
+No. The implementation allocates 0% of the Digital Contract & Facilitation Fee to PESO and includes no PESO payout mechanism. The fee's legal classification still needs adviser/PESO or legal-counsel confirmation. PESO benefits operationally — a digitised verification queue, complaint case management, and labour-market data — without receiving a revenue share.
 
 **Q: How do you scale beyond Ormoc City?**
 The architecture is designed to be replicable — the PESO integration model can be extended to any Philippine city with a PESO office. Expansion would follow a city-by-city model: establish coordination with the local PESO office, adapt job taxonomy to local kasambahay categories, deploy the same platform code with city-specific configuration. This is deliberate; CareLink is a template for city-level PESO-integrated recruitment, not a Metro-Manila-focused product.
 
 ### Ethical Loopholes
 
-**Q: Isn't asking parents to pay a placement fee just repackaging KazamPH's premium model?**
-No. KazamPH's premium is for verification — pay to be verified, or appear un-verified in results. CareLink's placement fee is for a successful hire — payment is only triggered when a contract is signed, which means the platform has delivered a working match. The value is captured only when value is delivered. This is fundamentally different from gating basic identity verification behind payment.
+**Q: Isn't asking parents to pay the Digital Contract & Facilitation Fee just repackaging KazamPH's premium model?**
+No. KazamPH's premium is for verification — pay to be verified, or appear un-verified in results. CareLink does not charge helpers for verification. The employer fee is recorded when the signed contract activates a placement and is intended to support digital contract and facilitation services; its legal classification has not been confirmed. This is different from gating basic identity verification behind payment, but that distinction does not by itself establish the fee's legality.
 
 **Q: What about helpers who can't afford smartphones?**
 92.1% of surveyed helpers already own smartphones with mobile data. For the remaining 7.9%, CareLink integrates with PESO's existing walk-in registration process — a helper can visit PESO Ormoc City, and PESO staff can create the account on their behalf using PESO's device. This is not a new burden on PESO; it's the same walk-in registration they already do.

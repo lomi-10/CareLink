@@ -274,7 +274,7 @@ export default function SubscriptionScreen() {
                 'Unlimited open job posts',
                 'Placement history beyond 6 months',
                 'Export payroll to PDF or CSV',
-                '20% off placement fees',
+                '20% off the Digital Contract & Facilitation Fee',
               ]).map((b, i, arr) => (
                 <View key={b} style={[s.row, i < arr.length - 1 && s.rowLine]}>
                   <Ionicons name="checkmark-circle" size={19} color={GREEN} />

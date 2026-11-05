@@ -13,7 +13,6 @@ export { PreferencesCard } from './PreferencesCard';
 export { SalaryInputCard } from './SalaryInputCard'; 
 export { SkillsSelector } from './SkillsSelector';
 export { WorkArrangementCard } from './WorkArrangementCard';
-export { AgeRangeSelector } from './AgeRangeSelector';
 export { ExperienceSelector } from './ExperienceSelector';
 export { ContractDetailsCard } from './ContractDetailsCard';
 export { ApplicationDeadlineCard } from './ApplicationDeadlineCard';

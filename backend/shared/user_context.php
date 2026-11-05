@@ -73,7 +73,7 @@ function carelink_uc_helper(mysqli $conn, int $userId, array &$ctx): void
         // longer written. See migration_2026_08_06_phone_normalization.sql.
         "SELECT hp.profile_id, u.phone AS contact_number, hp.birth_date, hp.gender,
                 hp.province, hp.municipality, hp.barangay,
-                hp.bio, hp.education_level, hp.religion, hp.landmark, hp.profile_image,
+                hp.bio, hp.education_level, hp.landmark, hp.profile_image,
                 hp.verification_status
          FROM helper_profiles hp
          INNER JOIN users u ON u.user_id = hp.user_id
@@ -111,7 +111,6 @@ function carelink_uc_helper(mysqli $conn, int $userId, array &$ctx): void
         if ($langs > 0) $completed += 5;
         if (!empty($p['bio'])) $completed += 2;
         if (!empty($p['education_level'])) $completed += 1;
-        if (!empty($p['religion'])) $completed += 1;
         if (!empty($p['landmark'])) $completed += 1;
         $ctx['profile_completion_percent'] = min(100, $completed);
     }

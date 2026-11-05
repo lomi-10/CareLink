@@ -24,15 +24,15 @@ cluster you can point at.
 | 1 | **Authentication & Accounts** | Signup, login (email *or* mobile), email verification codes, password reset, verified email/contact changes | `backend/auth/`, `shared/auth_codes.php`, `shared/mailer.php` |
 | 2 | **Helper Profile** | Personal details, address, photo, roles, skills, languages, work history, profile strength | `backend/helper/`, `helper_profiles` + 5 tables |
 | 3 | **Employer Profile** | Household details, size and type, children/elderly, address | `backend/parent/`, `parent_profiles` + 3 tables |
-| 4 | **Document Verification** | Upload, Gemini AI pre-screening, expiry/identity/duplicate checks, PESO approval, sharing rules | `helper/scan_id.php`, `share  d/gemini_id.php`, `user_documents` |
-| 5 | **PESO Verification** | Account review queue, document review, job post approval, rejection with reason | `backend/peso/` (30 endpoints) |
+| 4 | **Document Verification** | Upload, Gemini AI pre-screening, expiry/identity/duplicate checks, PESO approval, sharing rules | `helper/scan_id.php`, `shared/gemini_id.php`, `user_documents` |
+| 5 | **PESO Verification** | Account and document review, job-post approval, NSRP export, reports & analytics | `backend/peso/` (30 endpoints) |
 | 6 | **Job Posting** | Create/edit, categories→roles→skills, salary floor, deadlines, PESO gate, generated descriptions | `parent/post_job.php`, `job_posts` |
 | 7 | **Matching & Search** | Weighted compatibility both directions, browse, filters, saved jobs, recommendations | `shared/job_match.php`, `browse_jobs.php`, `parentHelperMatch.ts` |
 | 8 | **Applications & Hiring** | Apply, cover letters, shortlist, interviews, invitations, status lifecycle | `helper/apply_job.php`, `parent/`, `interviews/`, `job_applications` |
 | 9 | **Contracts** | DOLE-compliant generation, dual digital signature, PDF, amendments, termination | `backend/contracts/`, `v1/applications/sign_contract.php` |
 | 10 | **Work Mode** | Tasks + photo proof, check-in/out, attendance (opt-in), leave requests, payroll view | `backend/v1/` (32 endpoints), `placements` |
 | 11 | **Communication** | Helper⇄employer chat, staff messaging, notifications, CareBot, video interviews | `backend/messages/`, `shared/staff_contacts.php` |
-| 12 | **Administration & Revenue** | Super admin, audit trail, complaints, feedback, boosts, subscriptions, placement fees | `backend/admin/`, `webhooks/paymongo.php` |
+| 12 | **Administration & Revenue** | Super admin, audit trail, complaints, feedback, boosts, subscriptions, Digital Contract & Facilitation Fee | `backend/admin/`, `webhooks/paymongo.php` |
 
 **Four portals:** Helper · Employer · PESO Officer · Super Admin — each with its
 own navigation, theme and permissions.
@@ -46,6 +46,8 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
 
 ### 1. Authentication & Accounts
 - Signup as helper or employer; **login with email *or* mobile number**
+- Helper signup requires a birth date and rejects under-18 or invalid dates on
+  the server before creating the account
 - Email verification by 6-digit code, with resend and expiry
 - Password reset by emailed code; password strength meter on entry
 - **Login lockout** — 5 attempts then a 1-minute lock, persisted so leaving the
@@ -57,7 +59,15 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
 - Role-aware routing: helper, employer, PESO and super admin land in their own portal
 
 ### 2. Helper Profile
-- Personal details, birth date, gender, civil status, religion, bio
+- Personal details, birth date, gender, civil status and bio; helper accounts
+  must meet the platform's 18+ eligibility rule
+- This is a CareLink product safeguard pending child-protection features, not a
+  statement that 18 is the statutory minimum under Philippine law
+- Birth date and civil status remain available for PESO review and required
+  contract generation, but are omitted from employer-facing profile and
+  application data; age is not a matching factor
+- Preferred Weekly Rest Day, requested by the helper and carried into contract
+  terms when the helper has set one
 - Address with barangay/municipality/province plus **map-free geocoding** via
   Nominatim, with a server-side fallback for hand-typed addresses
 - Job roles chosen from the reference catalogue; skills; languages spoken
@@ -72,9 +82,12 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
 - Household composition: size, housing type, children (ages, special needs),
   elderly (ages, condition, care level), pets
 - Address with the same geocoding treatment as helpers
-- Religion and household bio
+- Optional employer-only religion field and household bio; the religion value
+  is omitted from helper-facing profiles and is not a job-post preference or
+  matching factor
 - Profile completion tracking with a 90% gate before PESO review
-- Employer rating and review history visible to helpers before they apply
+- Employer average and individual star ratings visible to helpers before they
+  apply; written comments are visible only to PESO/admin
 
 ### 4. Document Verification
 - Upload Valid ID (front **and** back), Barangay Clearance, and optionally
@@ -83,8 +96,10 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
   of the file, not the filename or the Content-Type header — with a 5 MB cap
 - **Gemini AI pre-screen** returning a legitimacy score, a clarity score,
   extracted fields, and warnings (expiry, name mismatch, tampering signals)
-- Auto-reject below 45 legitimacy; auto-pass at ≥ 70 with no warnings; every
-  other case goes to a human
+- Scores ≥ 70 with no warnings receive an AI **Passed pre-screen** label, not
+  approval; the document remains Pending until PESO acts. Scores from 45–69 or
+  with warnings are Flagged for PESO review. Scores below 45 are automatically
+  Rejected, so do not claim every outcome is decided by a person
 - **Signed, expiring document URLs** — 15-minute HMAC links served through
   `serve_document.php`, never a static path
 - **PESO credential seals** — a scalloped gold/emerald/blue seal per credential
@@ -115,14 +130,23 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
   document, optionally withdrawing verification; flags survive a re-upload
 - PESO staff can create fellow PESO officer accounts (audited)
 - Categories & skills reference management
+- **NSRP PDF export** for a helper's employment-services form
+- PESO reports & analytics, including compliance, placement, complaint and
+  workforce summaries (detailed below)
 
 ### 6. Job Posting
 - Category → roles → skills cascade drawn from the reference catalogue
 - Salary with period, plus meals, accommodation, SSS, PhilHealth, Pag-IBIG
 - Work schedule, days off, contract duration, preferred start date
-- Preferences: age range, language, religion, minimum experience
+- Preferences: language and minimum experience; job posts have no age-range or
+  religion preference
 - **Estimated match count before posting** — how many helpers this post would reach
+- The estimate and candidate discovery include only helpers meeting the 18+
+  platform eligibility rule; age is not disclosed to employers or used in the
+  compatibility score
 - Generated job descriptions personalised from the post's own details
+- Description wording that may imply age or religion restrictions triggers a
+  warning; the post is flagged for contextual PESO review before publication
 - PESO gate: `Pending` until approved, invisible and un-boostable until then
 - Expiry dates remove a post from browse without a cron job
 - **Boosting** — a paid post sorts first, carries a visible "Boosted" tag, and
@@ -131,6 +155,8 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
 ### 7. Matching & Search
 - **Weighted compatibility, both directions**: Category 25 · Roles 15 ·
   Skills 15 · Salary 15 · Distance 10 · Experience 10 · Rating 10
+- Age and religion are not score factors; helper rest-day requests are an
+  employment-term accommodation, not a ranking input
 - One shared scorer, so the same pair scores identically on dashboard and browse
 - **Match breakdown shown to the user** — the reasons, not just the number
 - Browse with filters (category, salary, employment type, schedule, distance)
@@ -150,6 +176,8 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
   or declines in chat, and the invite modal hides jobs they already applied to
 - **Direct hire offers** — an employer hires a helper without a public post,
   routed through PESO review before terms reach the helper
+- A helper's Preferred Weekly Rest Day is shared in application/hiring context
+  and carried into contract terms for employer discussion and agreement
 - Interview scheduling: in-person, video call or phone, with two-sided confirmation
 - Hiring auto-closes that helper's other applications **to the same employer**,
   with a stated reason
@@ -178,7 +206,9 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
 - Job invitations rendered as actionable cards inside chat
 - Staff messaging: PESO ⇄ any user, reachable from any case screen
 - **Notifications** with a detail modal, deep-linking to the exact record
-- **CareBot** — a Gemini assistant whose transcript survives closing the panel
+- **CareBot** — a Gemini assistant whose transcript survives closing the panel;
+  it warns users not to enter sensitive details because messages are processed
+  by an external AI service
 - **Video interviews via Daily.co**, rooms created server-side with a 2-hour expiry
 - **Verification guard** — a pending helper or employer cannot message the other
   side, post, apply, invite or direct-hire; PESO staff are deliberately exempt so
@@ -190,10 +220,12 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
 - **Audit trail** (`log_trail`) on every verification, approval and staff action
 - **Complaint case management** — see the dedicated breakdown below
 - **17-question feedback instrument** with incremental save, exportable
-- Revenue: employer subscriptions (CareLink Plus), post boosts, placement fees
+- Revenue: employer subscriptions (CareLink Plus), post boosts, and the
+  Digital Contract & Facilitation Fee
 - **PayMongo hosted checkout with webhook signature verification**, idempotent
   event handling, and a webhook-independent reconciliation path
-- Fee split recorded per placement — **100% platform, 0% PESO** (RA 8759: a PESO
+- The one-time employer fee is recorded when the signed contract activates a
+  placement — **100% platform, 0% PESO** (RA 8759: a PESO
   provides employment facilitation free of charge; see Part 5 item 6)
 - Demo control panel for user-testing sessions, structurally unable to touch
   non-demo data
@@ -364,14 +396,24 @@ Pick items with a *computable* expected result — those defend best.
 | Documents | Legitimacy < 45 | Auto-rejected; ≥ 70 with no warnings → Passed |
 | Verification | One document uploaded | Does **not** enter PESO queue |
 | Auth | Same mobile on second account | Rejected — one number, one account |
+| Auth | Helper signup with an under-18 or invalid birth date | Rejected by the server before account creation |
 | Auth | Wrong code 5× | Code dead, must request a new one |
+| Privacy | Employer helper-directory, application-list, applicant-profile, and hire-option APIs | No helper birth date, age, civil status, or religion fields |
+| Privacy | Helper views employer profile | Employer religion is not returned |
+| Job posting | Description contains age/religion-only wording | Employer warning; post stays Pending and PESO sees a review flag |
+| Ratings | Helper views employer profile | Star ratings visible; written review text absent |
 | Contracts | PDF generated | All BK-1 fields present and correct |
 | Contracts | One signature only | Placement **not** created |
 | Payments | Webhook with tampered signature | Rejected; nothing granted |
 | Payments | Same webhook event twice | Applied once (idempotent) |
-| Payments | ₱199 placement fee split | ₱0.00 PESO + ₱199.00 platform — PESO takes no share |
+| Payments | ₱199 Digital Contract & Facilitation Fee split | ₱0.00 PESO + ₱199.00 platform — PESO takes no share |
 | Work Mode | Leave approved | Payroll reflects it |
 | Generation | Same job, 10 different employers | 10 different descriptions |
+
+Run the local guard checks with `php backend/tests/safeguards_test.php`. The API
+regression test in `backend/tests/employer_helper_privacy_api_test.php` requires a
+test deployment and fixture IDs for an employer, an available helper, and their
+application; it checks the actual JSON responses and rejects an under-18 signup.
 
 ---
 

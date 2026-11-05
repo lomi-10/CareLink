@@ -387,12 +387,7 @@ export default function EditParentProfileModal({ visible, onClose, onSaveSuccess
       />
       <Text style={s.inputHint}>If provided, must be at least 15 characters</Text>
 
-      {/* Employers can state a religion for the same reason helpers can: both
-          sides judge household fit on it (practices, dietary rules, rest days
-          around worship) before committing. The column and the save path have
-          existed since the 2026-08-03 migration — there was simply no input,
-          so the field could never be set. Optional, with an explicit
-          "Prefer not to say". */}
+      {/* Optional employer profile detail; this is not used as a job preference. */}
       <Label>Religion <OptTag /></Label>
       <SelectField
         value={religion}

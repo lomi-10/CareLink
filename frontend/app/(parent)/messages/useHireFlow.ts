@@ -59,6 +59,7 @@ export function useHireFlow({
   const [hireWorkHoursEnd, setHireWorkHoursEnd] = useState(DEFAULT_WORK_END);
   const [hireFlexibleHours, setHireFlexibleHours] = useState(false);
   const [hireRestDays, setHireRestDays] = useState<string[]>(['Sun']);
+  const [hireHelperPreferredRestDay, setHireHelperPreferredRestDay] = useState<string | null>(null);
   const [hireVacationLeave, setHireVacationLeave] = useState(5);
   const [hireSickLeave, setHireSickLeave] = useState(5);
   const [hireSpecialConditions, setHireSpecialConditions] = useState('');
@@ -98,7 +99,7 @@ export function useHireFlow({
     setHireTerminationConditions('');
   }, []);
 
-  const applyJobPostTerms = (row: HireJobOptionRow) => {
+  const applyJobPostTerms = (row: HireJobOptionRow, preferredRestDay = hireHelperPreferredRestDay) => {
     const prefill = getHireJobPrefill(row);
     setHireSelectedJob(row);
     setHireMinimumSalary(prefill.minimumSalary);
@@ -112,7 +113,9 @@ export function useHireFlow({
     setHireWorkHoursStart(prefill.workHoursStart);
     setHireWorkHoursEnd(prefill.workHoursEnd);
     setHireFlexibleHours(prefill.flexibleHours);
-    setHireRestDays(prefill.restDays);
+    setHireRestDays(preferredRestDay && !prefill.restDays.includes(preferredRestDay)
+      ? [...prefill.restDays, preferredRestDay]
+      : prefill.restDays);
     setHireOtherBenefits(prefill.otherBenefits);
   };
 
@@ -127,6 +130,7 @@ export function useHireFlow({
   const applyInterviewGuide = async (
     applicationId: number,
     minimumSalary = hireMinimumSalary,
+    preferredRestDay = hireHelperPreferredRestDay,
   ) => {
     try {
       const raw = await AsyncStorage.getItem('user_data');
@@ -143,7 +147,7 @@ export function useHireFlow({
       }
 
       const day = REST_DAY_ABBR[String(a.rest_day ?? '').trim().toLowerCase()];
-      if (day) setHireRestDays([day]);
+      if (day) setHireRestDays(preferredRestDay ? [...new Set([day, preferredRestDay])] : [day]);
 
       const start = toYmdInput(a.start_date);
       if (start) setHireContractStartDate(start);
@@ -168,16 +172,19 @@ export function useHireFlow({
       if (!raw) throw new Error('Not logged in');
       const user = JSON.parse(raw);
       const res = await fetch(
-        `${API_URL}/parent/get_helper_hire_options.php?parent_id=${user.user_id}&helper_id=${partnerId}`,
+        `${API_URL}/parent/get_helper_hire_options.php?parent_id=${user.user_id}&helper_id=${partnerId}&requester_id=${user.user_id}`,
       );
       const data = await res.json() as {
         success?: boolean;
         message?: string;
         needs_selection?: boolean;
         helper_name?: string;
+        helper_preferred_rest_day?: string | null;
         applications?: HireJobOptionRow[];
       };
       if (!data.success) throw new Error(data.message || 'Could not load hire options');
+      const preferredRestDay = data.helper_preferred_rest_day ?? null;
+      setHireHelperPreferredRestDay(preferredRestDay);
       const apps = (data.applications ?? []).map(a => ({
         application_id: Number(a.application_id),
         job_post_id:    Number(a.job_post_id),
@@ -210,14 +217,15 @@ export function useHireFlow({
         });
         resetHireFormState();
         if (row) {
-          applyJobPostTerms(row);
+          applyJobPostTerms(row, preferredRestDay);
         } else {
           setHireMinimumSalary(CARELINK_MINIMUM_MONTHLY_SALARY);
           setHireContractStartDate(toYmdInput(resolvedApp.job_start_date));
           setHireConfirmedSalary('');
           setHireWorkSchedule('Full-time');
+          setHireRestDays(preferredRestDay ? [...new Set(['Sun', preferredRestDay])] : ['Sun']);
         }
-        await applyInterviewGuide(applicationId, row ? getHireJobPrefill(row).minimumSalary : undefined);
+        await applyInterviewGuide(applicationId, row ? getHireJobPrefill(row).minimumSalary : undefined, preferredRestDay);
         setHireTermsVisible(true);
         return;
       }
@@ -289,6 +297,13 @@ export function useHireFlow({
       };
       if (!data.success) throw new Error(data.message || 'Could not load contract terms');
       const c = data.contract ?? {};
+      const prefRes = await fetch(
+        `${API_URL}/parent/get_helper_hire_options.php?parent_id=${user.user_id}&helper_id=${partnerId}&requester_id=${user.user_id}`,
+      );
+      const prefData = await prefRes.json() as { success?: boolean; message?: string; helper_preferred_rest_day?: string | null };
+      if (!prefData.success) throw new Error(prefData.message || 'Could not load the helper rest-day request');
+      const preferredRestDay = prefData.helper_preferred_rest_day ?? null;
+      setHireHelperPreferredRestDay(preferredRestDay);
 
       setHireSelectedJob(null);
       setHireMinimumSalary(
@@ -318,7 +333,10 @@ export function useHireFlow({
       setHireWorkHoursEnd(hours.end);
       setHireFlexibleHours(hours.flexible);
 
-      setHireRestDays(c.rest_days && c.rest_days.length > 0 ? c.rest_days : ['Sun']);
+      const existingRestDays = c.rest_days && c.rest_days.length > 0 ? c.rest_days : ['Sun'];
+      setHireRestDays(preferredRestDay && !existingRestDays.includes(preferredRestDay)
+        ? [...existingRestDays, preferredRestDay]
+        : existingRestDays);
       setHireVacationLeave(c.vacation_leave_days ?? 5);
       setHireSickLeave(c.sick_leave_days ?? 5);
       setHireSpecialConditions(c.special_conditions ?? '');
@@ -601,7 +619,7 @@ export function useHireFlow({
     hireWorkHoursStart, setHireWorkHoursStart,
     hireWorkHoursEnd, setHireWorkHoursEnd,
     hireFlexibleHours, setHireFlexibleHours,
-    hireRestDays, setHireRestDays,
+    hireRestDays, setHireRestDays, hireHelperPreferredRestDay,
     hireVacationLeave, setHireVacationLeave,
     hireSickLeave, setHireSickLeave,
     hireSpecialConditions, setHireSpecialConditions,

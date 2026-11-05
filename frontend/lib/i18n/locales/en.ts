@@ -408,6 +408,8 @@ export default {
       age: 'Age',
       yearsOld: '%{count} years old',
       civilStatus: 'Civil Status',
+      preferredRestDay: 'Preferred Weekly Rest Day',
+      noRestDayPreference: 'No preference',
       religion: 'Religion',
       education: 'Education Level',
       contactNumber: 'Contact Number',

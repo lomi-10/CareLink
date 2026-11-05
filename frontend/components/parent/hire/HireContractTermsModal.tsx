@@ -69,6 +69,7 @@ type Props = {
   flexibleHours: boolean;
   onChangeFlexibleHours: (v: boolean) => void;
   restDays: string[];
+  helperPreferredRestDay?: string | null;
   onToggleRestDay: (day: string) => void;
 
   vacationLeaveDays: number;
@@ -126,6 +127,7 @@ export function HireContractTermsModal({
   flexibleHours,
   onChangeFlexibleHours,
   restDays,
+  helperPreferredRestDay,
   onToggleRestDay,
   vacationLeaveDays,
   sickLeaveDays,
@@ -622,6 +624,9 @@ export function HireContractTermsModal({
               <Text style={s.hint}>
                 Domestic workers are entitled to at least 24 consecutive hours of rest per week (RA 10361).
               </Text>
+              {helperPreferredRestDay && (
+                <Text style={s.hint}>The helper requested {helperPreferredRestDay} as their Preferred Weekly Rest Day; it is included in this contract.</Text>
+              )}
               <View style={s.chipRow}>
                 {REST_DAYS.map((day) => {
                   const active = restDays.includes(day);
@@ -629,7 +634,9 @@ export function HireContractTermsModal({
                     <TouchableOpacity
                       key={day}
                       style={[s.dayChip, active && s.dayChipActive]}
-                      onPress={() => onToggleRestDay(day)}
+                      onPress={() => {
+                        if (day !== helperPreferredRestDay || !active) onToggleRestDay(day);
+                      }}
                       activeOpacity={0.7}
                     >
                       <Text style={[s.dayChipText, active && s.dayChipTextActive]}>{day}</Text>

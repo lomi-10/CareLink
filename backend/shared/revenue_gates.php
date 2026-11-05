@@ -3,7 +3,7 @@
  * shared/revenue_gates.php — one switch for the paid RESTRICTIONS.
  *
  * The distinction that matters:
- *   • Purchase screens (boost, CareLink Plus, placement fee) are ALWAYS live.
+ *   • Purchase screens (boost, CareLink Plus, Digital Contract & Facilitation Fee) are ALWAYS live.
  *     The revenue model is real and demonstrable at any time.
  *   • The restrictions Plus lifts (3-post cap, 6-month history) are OFF by
  *     default and only apply when this returns true. Both are now actually

@@ -225,8 +225,6 @@ try {
             'skills' => $job_skills,
             'skill_names' => implode(', ', $job_skills), 
             
-            'min_age' => $job['min_age'],
-            'max_age' => $job['max_age'],
             'min_experience_years' => $job['min_experience_years'],
             
             'start_date' => $job['start_date'],

@@ -15,7 +15,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/ownership_guard.php';
+require_once __DIR__ . '/../shared/job_invites_table.php';
 require_once __DIR__ . '/../shared/wage_floor.php';
+require_once __DIR__ . '/../shared/helper_safeguards.php';
 
 try {
     if (!$conn) {
@@ -24,10 +27,36 @@ try {
 
     $parent_id = isset($_GET['parent_id']) ? (int) $_GET['parent_id'] : 0;
     $helper_id = isset($_GET['helper_id']) ? (int) $_GET['helper_id'] : 0;
+    $requester_id = isset($_GET['requester_id']) ? (int) $_GET['requester_id'] : 0;
 
     if ($parent_id <= 0 || $helper_id <= 0) {
         throw new Exception('parent_id and helper_id are required');
     }
+    carelink_require_self($requester_id, $parent_id, 'You are not allowed to view hire options for this employer account.');
+    ensure_job_invites_table($conn);
+    $relationship = $conn->prepare("
+        SELECT 1
+        FROM job_applications ja
+        INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+        WHERE jp.parent_id = ? AND ja.helper_id = ?
+        UNION ALL
+        SELECT 1 FROM job_invites WHERE parent_id = ? AND helper_id = ?
+        LIMIT 1
+    ");
+    if (!$relationship) {
+        throw new Exception('Unable to verify the hiring relationship: ' . $conn->error);
+    }
+    $relationship->bind_param('iiii', $parent_id, $helper_id, $parent_id, $helper_id);
+    if (!$relationship->execute()) {
+        throw new Exception('Unable to verify the hiring relationship: ' . $relationship->error);
+    }
+    $hasRelationship = (bool) $relationship->get_result()->fetch_assoc();
+    $relationship->close();
+    if (!$hasRelationship) {
+        throw new Exception('A current application or invitation is required to view hire options.');
+    }
+    carelink_require_adult_helper($conn, $helper_id);
+    carelink_ensure_helper_safeguards_schema($conn);
 
     $sql = "
         SELECT
@@ -96,11 +125,22 @@ try {
     $hr = $hn->get_result()->fetch_assoc();
     $hn->close();
     $helper_name = $hr ? trim($hr['first_name'] . ' ' . $hr['last_name']) : 'This helper';
+    $restDayStmt = $conn->prepare('SELECT preferred_rest_day FROM helper_profiles WHERE user_id = ? LIMIT 1');
+    if (!$restDayStmt) {
+        throw new Exception('Unable to load helper rest-day request: ' . $conn->error);
+    }
+    $restDayStmt->bind_param('i', $helper_id);
+    if (!$restDayStmt->execute()) {
+        throw new Exception('Unable to load helper rest-day request: ' . $restDayStmt->error);
+    }
+    $helperRestDay = $restDayStmt->get_result()->fetch_assoc()['preferred_rest_day'] ?? null;
+    $restDayStmt->close();
 
     echo json_encode([
         'success' => true,
         'needs_selection' => count($applications) > 1,
         'helper_name' => $helper_name,
+        'helper_preferred_rest_day' => $helperRestDay,
         'applications' => $applications,
     ]);
 } catch (Exception $e) {

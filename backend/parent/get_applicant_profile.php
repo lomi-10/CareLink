@@ -25,6 +25,7 @@ include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
 include_once __DIR__ . '/../shared/file_security.php';
 include_once __DIR__ . '/../shared/experience_verification.php';
+include_once __DIR__ . '/../shared/helper_safeguards.php';
 
 // 2. Your response helper
 function sendResponse($success, $message, $data = null) {
@@ -44,6 +45,7 @@ try {
         throw new Exception("Database connection failed");
     }
     ensure_experience_verification_schema($conn);
+    carelink_ensure_helper_safeguards_schema($conn);
 
     // 3. Input validation (using your preferred GET method)
     $application_id = isset($_GET['application_id']) ? intval($_GET['application_id']) : null;
@@ -88,7 +90,7 @@ try {
             hp.profile_image as helper_photo,
             u.phone as helper_contact_number,
             hp.gender as helper_gender,
-            TIMESTAMPDIFF(YEAR, hp.birth_date, CURDATE()) as helper_age,
+            hp.preferred_rest_day as helper_preferred_rest_day,
             hp.experience_years as helper_experience_years,
             hp.employment_type as helper_employment_type,
             hp.expected_salary as helper_expected_salary,
@@ -106,6 +108,7 @@ try {
         LEFT JOIN ref_jobs rj ON hj.job_id = rj.job_id
         LEFT JOIN ref_categories rc ON rj.category_id = rc.category_id
         WHERE ja.application_id = ? AND ja.helper_id = ?
+          AND hp.birth_date <= DATE_SUB(CURDATE(), INTERVAL 18 YEAR)
         GROUP BY ja.application_id
     ";
     

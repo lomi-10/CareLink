@@ -398,7 +398,7 @@ const PARENT_NEXT: GuideChapter = {
     {
       icon: 'star-outline',
       title: 'Optional: CareLink Plus',
-      body: 'A ₱149/month plan for employers who hire often. It adds 3 job post boosts a month, unlimited open job posts, priority PESO review, payroll export and 20% off placement fees. Find it under CareLink Plus in the menu.',
+      body: 'A ₱149/month plan for employers who hire often. It adds 3 job post boosts a month, unlimited open job posts, priority PESO review, payroll export and 20% off the Digital Contract & Facilitation Fee. Find it under CareLink Plus in the menu.',
     },
     {
       icon: 'lock-open-outline',

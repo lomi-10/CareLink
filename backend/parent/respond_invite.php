@@ -19,6 +19,7 @@ require_once '../dbcon.php';
 require_once '../shared/create_notification.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
 require_once __DIR__ . '/../shared/job_invites_table.php';
+require_once __DIR__ . '/../shared/helper_safeguards.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -74,6 +75,7 @@ try {
     // guard on the thing being protected costs nothing and cannot be bypassed
     // by a crafted request or a future change to the delivery path.
     if ($action === 'accept') {
+        carelink_require_adult_helper($conn, $helper_id);
         $jobStmt = $conn->prepare("SELECT status FROM job_posts WHERE job_post_id = ? LIMIT 1");
         if ($jobStmt) {
             $jobStmt->bind_param('i', $job_post_id);

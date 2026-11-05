@@ -330,9 +330,8 @@ function JobPanel({ job, pp, currentlyEmployed, onViewHousehold, onApply, onTogg
     isTrue(job.provides_meals) && { icon: 'restaurant-outline', label: 'With free meals' },
     isTrue(job.provides_accommodation) && { icon: 'bed-outline', label: 'Accommodation' },
     isTrue(job.provides_sss) && { icon: 'checkmark-circle-outline', label: 'SSS' },
-  ].filter(Boolean) as { icon: any; label: string }[];
+  ].filter(Boolean  ) as { icon: any; label: string }[];
   const reqs = [
-    (job.min_age || job.max_age) && `${job.min_age ?? 18} – ${job.max_age ?? 55} years old`,
     job.min_experience_years && `At least ${job.min_experience_years} year(s) of experience`,
     isTrue(job.require_police_clearance) && 'Police clearance required',
     isTrue(job.prefer_tesda_nc2) && 'TESDA NC II preferred',

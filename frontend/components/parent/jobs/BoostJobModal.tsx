@@ -135,7 +135,7 @@ export function BoostJobModal({
             <Row icon="eye-outline" text="Helpers see a small “Boosted” tag, so it is clear the position was paid for." />
             <Row icon="shield-checkmark-outline" text="Your match score does not change — helpers still see how well they fit." />
             <Row icon="time-outline" text="PESO review is unaffected. Boosting never skips verification." />
-            <Row icon="star-outline" text="CareLink Plus includes 3 boosts every month, plus 20% off the placement fee." />
+            <Row icon="star-outline" text="CareLink Plus includes 3 boosts every month, plus 20% off the Digital Contract & Facilitation Fee." />
           </View>
 
           {!!error && <Text style={s.error}>{error}</Text>}

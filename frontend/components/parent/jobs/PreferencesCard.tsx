@@ -8,11 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { BROWN, CARAMEL, DARK, MUTED, DIVIDER } from '../home/parentWarmTheme';
 
 interface PreferencesCardProps {
-  religions: string[];
   languages: Language[];
-  selectedReligion: string;
   selectedLanguageId: string;
-  onReligionChange: (religion: string) => void;
   onLanguageChange: (languageId: string) => void;
   requirePoliceClearance: boolean;
   preferTesdaNc2: boolean;
@@ -22,11 +19,8 @@ interface PreferencesCardProps {
 }
 
 export function PreferencesCard({
-  religions,
   languages,
-  selectedReligion,
   selectedLanguageId,
-  onReligionChange,
   onLanguageChange,
   requirePoliceClearance,
   preferTesdaNc2,
@@ -42,23 +36,7 @@ export function PreferencesCard({
           <Text style={styles.title}>Preferred Qualifications (Optional)</Text>
         </View>
 
-        <Text style={styles.sectionLabel}>Preferred Religion</Text>
-        <View style={styles.pickerWrap}>
-          <Picker
-            enabled={!disabled}
-            selectedValue={selectedReligion}
-            onValueChange={(value) => onReligionChange(value)}
-            style={styles.picker}
-            itemStyle={Platform.OS === 'ios' ? styles.pickerItem : undefined}
-          >
-            <Picker.Item label="No preference" value="" />
-            {religions.map((religion) => (
-              <Picker.Item key={religion} label={religion} value={religion} />
-            ))}
-          </Picker>
-        </View>
-
-        <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>Preferred Language</Text>
+        <Text style={styles.sectionLabel}>Preferred Language</Text>
         <View style={styles.pickerWrap}>
           <Picker
             enabled={!disabled}

@@ -11,7 +11,6 @@ export interface JobApplication {
   helper_id: string;
   helper_name: string;
   helper_photo?: string;
-  helper_age?: number;
   helper_gender?: string;
   helper_experience_years?: number;
   helper_rating_average?: number;
@@ -21,8 +20,7 @@ export interface JobApplication {
   helper_skills?: string[];
   helper_bio?: string;
   helper_education_level?: string;
-  helper_religion?: string;
-  helper_civil_status?: string;
+  helper_preferred_rest_day?: string | null;
   helper_barangay?: string;
   helper_municipality?: string;
   helper_province?: string;

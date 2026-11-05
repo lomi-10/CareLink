@@ -22,6 +22,12 @@ function toYmd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+function adultBirthDateMax(): Date {
+  const max = new Date();
+  max.setFullYear(max.getFullYear() - 18);
+  return max;
+}
+
 /** Same styling idea as `WorkScheduleCard` / job post web date field */
 const webBirthInputStyle: Record<string, string | number> = {
   padding: '12px',
@@ -45,8 +51,7 @@ export function BasicInfoSection({
   email, setEmail,
   birthDate, setBirthDate,
   gender, setGender,
-  civilStatus, setCivilStatus,
-  religion, setReligion
+  civilStatus, setCivilStatus
 }: any) {
   const { t } = useT();
   const [showBirthPicker, setShowBirthPicker] = useState(false);
@@ -61,7 +66,7 @@ export function BasicInfoSection({
 
   const webBirthValue =
     birthDate && /^\d{4}-\d{2}-\d{2}$/.test(birthDate) ? birthDate : '';
-  const maxBirthWeb = toYmd(new Date());
+  const maxBirthWeb = toYmd(adultBirthDateMax());
   const minBirthWeb = '1940-01-01';
 
   return (
@@ -128,7 +133,7 @@ export function BasicInfoSection({
               value={parseBirthYmd(birthDate)}
               mode="date"
               display="default"
-              maximumDate={new Date()}
+              maximumDate={adultBirthDateMax()}
               minimumDate={new Date(1940, 0, 1)}
               onChange={(_, d) => {
                 setShowBirthPicker(false);
@@ -157,7 +162,6 @@ export function BasicInfoSection({
         ))}
       </View>
 
-      <LabeledInput label={t('helper.setup.religion')} required value={religion} onChangeText={setReligion} placeholder={t('helper.setup.religionPlaceholder')} />
     </View>
   );
 }

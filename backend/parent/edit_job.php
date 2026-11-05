@@ -116,8 +116,8 @@ try {
     $province = $data['province'] ?? '';
     $municipality = $data['municipality'] ?? '';
     $barangay = $data['barangay'] ?? '';
-    $min_age = isset($data['min_age']) ? intval($data['min_age']) : null;
-    $max_age = isset($data['max_age']) ? intval($data['max_age']) : null;
+    $min_age = null;
+    $max_age = null;
     $min_experience_years = isset($data['min_experience_years']) ? intval($data['min_experience_years']) : null;
     $start_date = $data['start_date'] ?? null;
     $work_hours = $data['work_hours'] ?? null;
@@ -141,7 +141,7 @@ try {
     $provides_pagibig = !empty($data['provides_pagibig']) ? 1 : 0;
     $vacation_days = isset($data['vacation_days']) ? intval($data['vacation_days']) : 0;
     $sick_days = isset($data['sick_days']) ? intval($data['sick_days']) : 0;
-    $preferred_religion = $data['preferred_religion'] ?? null;
+    $preferred_religion = null;
     $preferred_language_id = isset($data['preferred_language_id']) ? intval($data['preferred_language_id']) : null;
     $require_police_clearance = !empty($data['require_police_clearance']) ? 1 : 0;
     $prefer_tesda_nc2 = !empty($data['prefer_tesda_nc2']) ? 1 : 0;

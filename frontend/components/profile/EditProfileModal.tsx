@@ -48,7 +48,6 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female'>('Female');
   const [civilStatus, setCivilStatus] = useState<string>('Single');
-  const [religion, setReligion] = useState('');
 
   // Location
   const [province, setProvince] = useState('Leyte');
@@ -240,7 +239,6 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
         setBirthDate(p.birth_date || '');
         setGender(p.gender || 'Female');
         setCivilStatus(p.civil_status || 'Single');
-        setReligion(p.religion || '');
         setProvince(p.province || 'Leyte');
         setMunicipality(p.municipality || '');
         setBarangay(p.barangay || '');
@@ -428,7 +426,6 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
       formData.append('birth_date', birthDate);
       formData.append('gender', gender);
       formData.append('civil_status', civilStatus);
-      formData.append('religion', religion);
       formData.append('province', province);
       formData.append('municipality', municipality);
       formData.append('barangay', barangay);
@@ -681,7 +678,6 @@ export default function EditHelperProfileModal({ visible, onClose, onSaveSuccess
                       ))}
                     </View>
 
-                    <LabeledInput label="Religion" value={religion} onChangeText={setReligion} placeholder="Catholic, etc." />
                   </View>
 
                   {/* Address */}

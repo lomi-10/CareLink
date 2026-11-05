@@ -25,6 +25,7 @@ try {
     require_once __DIR__ . "/../shared/phone_identity.php";
     require_once __DIR__ . "/../shared/mailer.php";
     require_once __DIR__ . "/../shared/textbee.php";
+    require_once __DIR__ . "/../shared/helper_safeguards.php";
 
     if (!$conn) {
         throw new Exception("Database connection failed: " . $conn->connect_error);
@@ -71,6 +72,20 @@ try {
     if (!in_array($user_type, ['parent', 'helper'], true)) {
         echo json_encode(["success" => false, "message" => "Invalid account type for self-registration."]);
         exit();
+    }
+
+    $helperBirthDate = null;
+    if ($user_type === 'helper') {
+        try {
+            $helperBirthDate = carelink_validate_adult_birth_date($data['birth_date'] ?? null);
+        } catch (InvalidArgumentException $e) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => $e->getMessage(),
+            ]);
+            exit();
+        }
     }
 
     // Email validation: correct format + the domain must actually accept mail
@@ -192,11 +207,13 @@ try {
     } 
     else if ($user_type === 'helper') {
         // Setting a default verification status for helpers
-        $profSql = "INSERT INTO helper_profiles (user_id) VALUES (?)";
+        $profSql = "INSERT INTO helper_profiles (user_id, birth_date) VALUES (?, ?)";
         $profStmt = $conn->prepare($profSql);
         if ($profStmt) {
-            $profStmt->bind_param("i", $new_user_id);
-            $profStmt->execute();
+            $profStmt->bind_param("is", $new_user_id, $helperBirthDate);
+            if (!$profStmt->execute()) {
+                throw new Exception("Failed to create helper profile: " . $profStmt->error);
+            }
             $profStmt->close();
         } else {
             throw new Exception("SQL Prepare Error (Helper Profile): " . $conn->error);

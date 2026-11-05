@@ -608,8 +608,7 @@ function ApplicantPanel({ app, match, profileTab, onTab, sharedDocs, workHistory
 
       {/* Info tiles */}
       <View style={s.tiles}>
-        <Tile icon="person-outline" value={a.helper_age ? `${a.helper_age}` : '—'} label="Age" />
-        <View style={s.tileDiv} /><Tile icon="male-female-outline" value={a.helper_gender || '—'} label="Gender" />
+        <Tile icon="male-female-outline" value={a.helper_gender || '—'} label="Gender" />
         <View style={s.tileDiv} /><Tile icon="briefcase-outline" value={a.helper_experience_years ? `${a.helper_experience_years} yrs` : 'New'} label="Experience" />
         <View style={s.tileDiv} /><Tile icon="location-outline" value={a.helper_municipality || '—'} label="Location" />
       </View>
@@ -639,14 +638,13 @@ function ApplicantPanel({ app, match, profileTab, onTab, sharedDocs, workHistory
               <DetailRow label="Preferred Role" value={a.helper_jobs?.[0] || a.helper_categories?.[0] || 'Not specified'} />
               <DetailRow label="Preferred Job Type" value={a.helper_employment_type || 'Any'} />
               <DetailRow label="Expected Salary" value={salaryLabel} />
+              <DetailRow label="Preferred Weekly Rest Day" value={a.helper_preferred_rest_day || 'No preference'} />
               <DetailRow label="Availability" value={a.helper_work_schedule || 'Any'} last />
             </View>
           </View>
           <View style={s.twoColItem}>
             <Text style={s.secTitle}>Background</Text>
             <View style={s.detailsCard}>
-              <DetailRow label="Civil Status" value={a.helper_civil_status || 'Not specified'} />
-              <DetailRow label="Religion" value={a.helper_religion || 'Not specified'} />
               <DetailRow label="Location" value={location} last />
             </View>
             <View style={{ height: 14 }} />

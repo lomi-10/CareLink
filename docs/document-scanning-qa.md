@@ -2,9 +2,11 @@
 
 How the AI pre-check works, and its honest limits. Notion-ready.
 
-**In one line:** Gemini vision reads an uploaded document, scores legitimacy and
-clarity, extracts fields, and flags problems — then **a PESO officer manually
-approves every document.** That human step is the real gate.
+**In one line:** Gemini vision pre-screens an uploaded document, scores
+legitimacy and clarity, extracts fields, and flags problems. **AI never marks a
+document Verified; PESO approval is required for verification and credential
+seals.** However, a Failed result (legitimacy below 45) is automatically
+rejected, so not every outcome is decided by a person.
 
 ---
 
@@ -16,8 +18,12 @@ TESDA integration. It raises or lowers confidence; it can't *prove* authenticity
 
 **Q: What's its accuracy?**
 
-**There's no fixed percentage**, because it's a model reasoning over an image, not
-a lookup. Quoting "99% accurate" would be dishonest.
+**CareLink has no measured accuracy percentage**, because Gemini reasons over an
+image and is not checked against an authoritative document registry. Do not
+claim a CareLink accuracy rate. Das et al. (2026) report APCER above 25% in a
+zero-shot benchmark of unseen synthesized ID cards under security-oriented
+conditions; that result is a warning about generalization, not a universal
+claim that every detector misses more than 25% of fakes.
 
 **Q: What does it check?**
 
@@ -40,9 +46,10 @@ elseif ($legit >= 45) $sideMapped = 'Flagged';
 else                  $sideMapped = 'Failed';
 ```
 
-Only **Failed** auto-rejects, so garbage can't sit in PESO's queue. Everything
-else is stored for PESO. Valid IDs scan **front and back independently**, and the
-overall status is the worst of the sides.
+Only **Failed** auto-rejects, so low-scoring documents do not sit in PESO's
+queue. **Passed is only an AI pre-screen label, not PESO approval**; Passed and
+Flagged documents remain pending for PESO review. Valid IDs scan **front and
+back independently**, and the overall status is the worst of the sides.
 
 **Q: Will a forged document be noticed?**
 
@@ -125,11 +132,11 @@ official credentials and adviser sign-off — a scope decision, not just code.
 
 ## Say this in a review
 
-> "It's an AI assistant that reads the document, checks it against the known
-> layout of that ID, rates image quality, and flags anything fake, expired, not
-> the account holder, or reused — and clearly fake images are auto-rejected. It is
-> **not** a government-database check and **not** forgery-proof. **A PESO officer
-> manually verifies and approves every document** — that's the actual gate."
+> "Gemini pre-screens the document for its type, apparent legitimacy, image
+> quality, and possible issues such as expiry or mismatched details. It is **not**
+> a government-database check and **not** forgery-proof. A score below 45 is
+> automatically rejected; other results remain pending for PESO review. Only
+> PESO can approve a document for verification or grant a credential seal."
 
 ---
 
@@ -145,12 +152,13 @@ Upload → (user taps) Start AI Scan → Gemini vision
                                             │ name ≠ account?       → warning
                                             └ duplicate ID number?  → warning
                                             │
-       legitimacy ≥70 + no warnings → Passed
-       legitimacy ≥70 + warnings    → Flagged
-       legitimacy 45–69             → Flagged
-       legitimacy <45               → Failed → auto-reject (only case)
+       legitimacy ≥70 + no warnings → Passed pre-screen (still Pending)
+       legitimacy ≥70 + warnings    → Flagged (still Pending)
+       legitimacy 45–69             → Flagged (still Pending)
+       legitimacy <45               → Failed → auto-reject
                                             │
-                        PESO manual review = FINAL decision
+                  PESO reviews Pending documents and decides
+                  whether to approve them for verification/seals
 ```
 
 ---

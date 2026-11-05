@@ -22,10 +22,10 @@ const PAYMONGO_API = 'https://api.paymongo.com/v1';
 /** Prices in centavos, single source of truth. */
 const PRICE_FEATURED_BOOST = 9900;   // ₱99   one-off, 7-day boost
 const PRICE_PLUS_MONTHLY   = 14900;  // ₱149  per month
-const PRICE_PLACEMENT_FEE  = 19900;  // ₱199  one-off on a completed hire
+const PRICE_PLACEMENT_FEE  = 19900;  // ₱199 Digital Contract & Facilitation Fee
 
 /**
- * PESO's share of the placement fee: ZERO, and it must stay zero.
+ * PESO's share of the Digital Contract & Facilitation Fee: ZERO, and it must stay zero.
  *
  * PESO Ormoc City confirmed (Aug 2026) that they take no revenue share. Under
  * RA 8759 (the PESO Act of 1999) a Public Employment Service Office provides
@@ -40,7 +40,7 @@ const PRICE_PLACEMENT_FEE  = 19900;  // ₱199  one-off on a completed hire
  */
 const PESO_REVENUE_SHARE = 0.00;
 
-/** CareLink Plus loyalty discount applied to the placement fee. */
+/** CareLink Plus loyalty discount applied to the Digital Contract & Facilitation Fee. */
 const PLUS_PLACEMENT_DISCOUNT = 0.20;
 
 /** Days a boosted post stays on top. */

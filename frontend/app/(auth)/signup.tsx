@@ -26,6 +26,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { AnimatedLogo } from "@/components/branding/AnimatedLogo";
 import { CareLinkLogoMark } from "@/components/branding/CareLinkLogoMark";
 import { NotificationModal } from "@/components/shared/NotificationModal";
+import { DateField } from "@/components/shared/DateField";
 import { useSignupForm } from "@/hooks/auth/useSignupForm";
 import { PARENT_T, HELPER_T } from "@/constants/authThemes";
 import { FontFamily } from "@/constants/GlobalStyles";
@@ -33,6 +34,13 @@ import { s, d } from "./signup.styles";
 
 const WEB_BG = require("../../assets/images/login-bg-web.png");
 const TRANS = { transitionDuration: "160ms", transitionProperty: "all", transitionTimingFunction: "ease" } as any;
+
+function adultBirthDateMax(): Date {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setFullYear(date.getFullYear() - 18);
+  return date;
+}
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
@@ -162,6 +170,23 @@ export default function SignUpScreen() {
           />
         </View>
       </View>
+
+      {form.user_type === 'helper' && (
+        <View style={{ marginTop: 16 }}>
+          <Text style={[s.label, { color: t.label }]}>
+            Birth date <Text style={{ color: t.required }}>*</Text>
+          </Text>
+          <DateField
+            value={form.birth_date}
+            onChange={(value) => handleChange('birth_date', value)}
+            maximumDate={adultBirthDateMax()}
+            disabled={loading}
+          />
+          <Text style={[s.hint, { color: t.placeholder }]}>
+            CareLink currently accepts helper registrations for adults aged 18 and older.
+          </Text>
+        </View>
+      )}
 
       {/* ── Middle name ── */}
       <Text style={[s.label, { color: t.label }]}>

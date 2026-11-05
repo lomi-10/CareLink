@@ -101,9 +101,7 @@ export function ApplicationCard({
               </Text>
             ) : null}
             <View style={styles.metaRow}>
-              {application.helper_age && (
-                <Text style={styles.metaText}>{application.helper_age} yrs • {application.helper_gender || 'Any'}</Text>
-              )}
+              {application.helper_gender && <Text style={styles.metaText}>{application.helper_gender}</Text>}
             </View>
           </View>
         </View>

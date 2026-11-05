@@ -34,7 +34,7 @@ const ACCENT = "#E86019";
 
 /** Last substantive revision. Shown to the reader — a policy with no date
  *  gives no way to tell whether it describes the system in front of them. */
-const LAST_UPDATED = "6 September 2026";
+const LAST_UPDATED = "5 November 2026";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -104,8 +104,10 @@ export default function PrivacyPolicyScreen() {
           <Section title="What we collect">
             <Bullet>
               <Text style={s.strong}>Identity and contact details</Text> you enter at signup and in your
-              profile: name, email address, mobile number, birth date, sex, civil status, religion,
-              address, and profile photo.
+              profile: name, email address, mobile number, birth date, sex, civil status, address,
+              and profile photo. Religion may be present in an employer's private profile; that
+              optional value is not shared in helper-facing profiles or used in matching. Helpers do
+              not provide religion, and employers cannot request it as a job preference.
             </Bullet>
             <Bullet>
               <Text style={s.strong}>Government-issued documents</Text> you upload: Valid ID, Barangay
@@ -188,14 +190,20 @@ export default function PrivacyPolicyScreen() {
               servers outside the Philippines.
             </Bullet>
             <Bullet>
+              <Text style={s.strong}>Google (Gemini AI)</Text> — when you use CareBot, the messages
+              you submit and recent conversation context are sent to Google to generate a response.
+              Do not enter sensitive personal details into CareBot.
+            </Bullet>
+            <Bullet>
               <Text style={s.strong}>The video call provider</Text> — when you start a call, you and the
               other party connect through a third-party meeting service. Your camera and microphone
               stream through it for the duration of the call. CareLink does not record calls.
             </Bullet>
             <Bullet>
               <Text style={s.strong}>PayMongo</Text> — if a household employer subscribes or pays a
-              placement fee, payment details are handled by PayMongo. CareLink never sees or stores card
-              numbers. Helpers are never charged, so this never applies to a helper account.
+              Digital Contract & Facilitation Fee, payment details are handled by PayMongo. CareLink
+              never sees or stores card numbers. Helpers are never charged, so this never applies to a
+              helper account.
             </Bullet>
             <Bullet>
               <Text style={s.strong}>Our email provider</Text> — your email address, to send verification

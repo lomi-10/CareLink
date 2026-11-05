@@ -153,7 +153,7 @@ if (!function_exists('carelink_settle_plus')) {
                 // they have bought two things they have not is the one kind of
                 // copy that has to be exactly true.
                 'Your payment went through. You have 3 featured post credits this month, '
-                . 'and 20% off the placement fee on your next hire.',
+                . 'and 20% off the Digital Contract & Facilitation Fee.',
                 null, null
             );
         }

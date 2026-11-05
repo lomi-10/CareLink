@@ -57,8 +57,6 @@ try {
     $salary_max = (isset($data['salary_max']) && $data['salary_max'] !== null && $data['salary_max'] !== '')
         ? floatval($data['salary_max']) : null;
     $min_experience_years = isset($data['min_experience_years']) ? intval($data['min_experience_years']) : 0;
-    $min_age = isset($data['min_age']) ? intval($data['min_age']) : 18;
-    $max_age = isset($data['max_age']) ? intval($data['max_age']) : 65;
     $employment_type = $data['employment_type'] ?? 'Any';
     $work_schedule = $data['work_schedule'] ?? 'Any';
 
@@ -96,7 +94,6 @@ try {
                     hp.municipality = ?
                     AND hp.expected_salary <= ?
                     AND hp.experience_years >= ?
-                    AND (hp.birth_date IS NULL OR TIMESTAMPDIFF(YEAR, hp.birth_date, CURDATE()) BETWEEN ? AND ?)
                     AND $employmentMatch
                     AND $scheduleMatch
                 THEN hp.profile_id END) AS highly_compatible
@@ -106,12 +103,13 @@ try {
             JOIN ref_jobs rj ON rj.job_id = hj.job_id
             WHERE u.status = 'approved'
               AND hp.verification_status = 'Verified'
+              AND hp.birth_date <= DATE_SUB(CURDATE(), INTERVAL 18 YEAR)
               AND hp.province = ?
               AND ($job_filter)";
 
-    $types = 'sdiii' . 'sss' . 'ss' . 's' . $job_types;
+    $types = 'sdi' . 'sss' . 'ss' . 's' . $job_types;
     $params = array_merge(
-        [$municipality, $salary_ceiling, $min_experience_years, $min_age, $max_age,
+        [$municipality, $salary_ceiling, $min_experience_years,
          $employment_type, $employment_type, $employment_type,
          $work_schedule, $work_schedule,
          $province],

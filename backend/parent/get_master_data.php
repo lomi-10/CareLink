@@ -1,6 +1,6 @@
 <?php
 // carelink_api/parent/get_master_data.php
-// API to fetch reference data for job posting (Categories, Jobs, Skills, Languages, Religions)
+// API to fetch reference data for job posting (Categories, Jobs, Skills, Languages)
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -34,23 +34,12 @@ try {
     $res = $conn->query("SELECT language_id, language_name FROM ref_languages ORDER BY language_name");
     while($row = $res->fetch_assoc()) $languages[] = $row;
 
-    // 5. Religions
-    $religions = [
-        ['id' => 'Catholic', 'name' => 'Roman Catholic'],
-        ['id' => 'Christian', 'name' => 'Christian'],
-        ['id' => 'Iglesia', 'name' => 'Iglesia ni Cristo'],
-        ['id' => 'Muslim', 'name' => 'Islam'],
-        ['id' => 'Others', 'name' => 'Others'],
-        ['id' => 'None', 'name' => 'No Preference']
-    ];
-
     echo json_encode([
         'success' => true,
         'categories' => $categories,
         'jobs' => $jobs,
         'skills' => $skills,
-        'languages' => $languages,
-        'religions' => $religions
+        'languages' => $languages
     ]);
 
 } catch (Exception $e) {

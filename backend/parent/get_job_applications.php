@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
 require_once __DIR__ . '/../shared/job_match.php'; // carelink_haversine — same distance as Browse
+require_once __DIR__ . '/../shared/helper_safeguards.php';
 
 // Support two modes:
 //   ?job_post_id=X  — applications for a specific job
@@ -30,6 +31,7 @@ if (!$job_post_id && !$parent_id) {
 }
 
 try {
+    carelink_ensure_helper_safeguards_schema($conn);
     // This list contains applicant PII (contact number, salary, address) —
     // only the parent who owns the job post(s) may view it.
     if ($parent_id) {
@@ -79,9 +81,9 @@ try {
             jp.title AS job_title, jp.start_date AS job_start_date, jp.category_id, jp.skill_ids AS job_skill_ids, jp.custom_skills AS job_custom_skills,
             rc.category_name,
             u.first_name, u.last_name, u.email, u.phone AS contact_number,
-            hp.profile_id, hp.profile_image, hp.birth_date, hp.gender,
+            hp.profile_id, hp.profile_image, hp.gender, hp.preferred_rest_day,
             hp.experience_years, hp.barangay, hp.municipality, hp.province, hp.latitude, hp.longitude,
-            hp.education_level, hp.religion, hp.civil_status, hp.bio,
+            hp.education_level, hp.bio,
             hp.employment_type, hp.work_schedule, hp.expected_salary, hp.salary_period,
             hp.verification_status, hp.rating_average, hp.rating_count,
             li.interview_id, li.interview_date, li.interview_type, li.location_or_link,
@@ -109,6 +111,7 @@ try {
         JOIN users u ON a.helper_id = u.user_id
         JOIN helper_profiles hp ON u.user_id = hp.user_id
         WHERE $where
+          AND hp.birth_date <= DATE_SUB(CURDATE(), INTERVAL 18 YEAR)
         ORDER BY a.applied_at DESC
     ";
     
@@ -130,16 +133,6 @@ try {
             $helper_distance = 3.0;
         } elseif ($pProv && $row['province'] && strtolower($pProv) === strtolower($row['province'])) {
             $helper_distance = 25.0;
-        }
-
-        // Calculate Age
-        $age = null;
-        if (!empty($row['birth_date'])) {
-            try {
-                $dob = new DateTime($row['birth_date']);
-                $now = new DateTime();
-                $age = $now->diff($dob)->y;
-            } catch (Exception $e) {}
         }
 
         // NOTE: Documents are private by default and are never bundled into the generic applications
@@ -247,7 +240,6 @@ try {
                     ? $row['profile_image']
                     : carelink_url_scheme() . $_SERVER['HTTP_HOST'] . "/carelink_api/uploads/profiles/" . $row['profile_image'])
                 : null,
-            'helper_age' => $age,
             'helper_gender' => $row['gender'],
             'helper_email' => $row['email'],
             'helper_phone' => $row['contact_number'],
@@ -260,9 +252,8 @@ try {
             
             // Background
             'helper_education_level' => $row['education_level'],
-            'helper_religion' => $row['religion'],
-            'helper_civil_status' => $row['civil_status'],
             'helper_bio' => $row['bio'],
+            'helper_preferred_rest_day' => $row['preferred_rest_day'],
 
             // Work preferences
             'helper_employment_type' => $row['employment_type'],

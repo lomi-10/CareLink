@@ -352,6 +352,19 @@ export function JobDetailPanel({
                 stretching to the description's height. */}
             <View style={[s.twoCol, narrow && { flexDirection: 'column' }]}>
               <Block title="Job description" icon="document-text-outline" style={narrow ? undefined : { flex: 1.35 }}>
+                {Array.isArray(job.content_review_flags) && job.content_review_flags.length > 0 && (
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 11, marginBottom: 10, borderRadius: 10, backgroundColor: dark ? '#4A3518' : '#FFF4D6' }}>
+                    <Ionicons name="alert-circle-outline" size={18} color={dark ? '#F6C66A' : '#9A5A00'} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: dark ? '#FFE3A0' : '#704600', fontWeight: '700', fontSize: 13 }}>
+                        Review wording before approval
+                      </Text>
+                      <Text style={{ color: dark ? '#F4DDAE' : '#704600', fontSize: 12, lineHeight: 17, marginTop: 3 }}>
+                        {job.content_review_flags.join('. ')}. Confirm the post does not restrict applicants based on age or religion.
+                      </Text>
+                    </View>
+                  </View>
+                )}
                 <Text style={s.body} numberOfLines={descOpen ? undefined : 12}>
                   {job.description || 'No description provided.'}
                 </Text>
@@ -384,8 +397,6 @@ export function JobDetailPanel({
                 <Block title="Requirements" icon="options-outline">
                   <View style={s.reqGrid}>
                     <ReqItem icon="language-outline" label="Language" value={lang} />
-                    <ReqItem icon="person-outline" label="Age range" value={job.min_age && job.max_age ? `${job.min_age}–${job.max_age} yrs` : 'Any'} />
-                    <ReqItem icon="heart-outline" label="Religion" value={job.preferred_religion || 'Any'} />
                     <ReqItem icon="star-outline" label="Experience" value={job.min_experience_years ? `${job.min_experience_years}+ yr(s)` : 'Any'} />
                   </View>
                 </Block>

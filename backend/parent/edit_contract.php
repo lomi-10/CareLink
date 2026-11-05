@@ -25,6 +25,7 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 
 include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
+include_once __DIR__ . '/../shared/helper_safeguards.php';
 
 function sendResponse($success, $message, $data = null)
 {
@@ -62,6 +63,7 @@ try {
     if (!$conn) {
         throw new Exception('Database connection failed');
     }
+    carelink_ensure_helper_safeguards_schema($conn);
 
     $input = json_decode(file_get_contents('php://input'), true);
 
@@ -75,6 +77,7 @@ try {
         throw new Exception('Missing required fields');
     }
     carelink_require_self($requester_id, $parent_id, 'You are not allowed to edit this contract.');
+    carelink_require_adult_helper($conn, $helper_id);
 
     $verifyStmt = $conn->prepare('
         SELECT ja.job_post_id
@@ -102,6 +105,25 @@ try {
     $confirmed_salary    = isset($input['confirmed_salary'])     ? floatval($input['confirmed_salary'])          : null;
     $work_hours          = isset($input['work_hours'])           ? trim((string) $input['work_hours'])           : null;
     $rest_days_input     = isset($input['rest_days']) && is_array($input['rest_days']) ? $input['rest_days'] : [];
+    $valid_rest_days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    foreach ($rest_days_input as $day) {
+        if (!is_string($day) || !in_array($day, $valid_rest_days, true)) {
+            throw new Exception('Invalid contract rest day.');
+        }
+    }
+    $preferredRestDayStmt = $conn->prepare('SELECT preferred_rest_day FROM helper_profiles WHERE user_id = ? LIMIT 1');
+    if (!$preferredRestDayStmt) {
+        throw new Exception('Unable to verify the helper rest-day request: ' . $conn->error);
+    }
+    $preferredRestDayStmt->bind_param('i', $helper_id);
+    if (!$preferredRestDayStmt->execute()) {
+        throw new Exception('Unable to verify the helper rest-day request: ' . $preferredRestDayStmt->error);
+    }
+    $preferredRestDay = $preferredRestDayStmt->get_result()->fetch_assoc()['preferred_rest_day'] ?? null;
+    $preferredRestDayStmt->close();
+    if ($preferredRestDay && !in_array($preferredRestDay, $rest_days_input, true)) {
+        throw new Exception('The contract must include the helper requested weekly rest day (' . $preferredRestDay . ').');
+    }
     $rest_days           = !empty($rest_days_input) ? json_encode($rest_days_input) : null;
     $vacation_leave_days = isset($input['vacation_leave_days'])  ? intval($input['vacation_leave_days'])         : 5;
     $sick_leave_days     = isset($input['sick_leave_days'])      ? intval($input['sick_leave_days'])             : 5;

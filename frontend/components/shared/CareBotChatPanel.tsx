@@ -459,6 +459,12 @@ export function CareBotChatPanel({
           ))}
         </ScrollView>
       ) : null}
+      <View style={styles.privacyNoticeBox}>
+        <Ionicons name="shield-checkmark-outline" size={16} color="#704600" />
+        <Text style={styles.privacyNotice}>
+          Don’t enter sensitive details. Messages are processed by an external AI service.
+        </Text>
+      </View>
       <View style={styles.inputBar}>
         <TextInput
           style={styles.textInput}
@@ -580,6 +586,12 @@ const styles = StyleSheet.create({
 
   // Chat
   chatColumn: { flex: 1, minHeight: 0, backgroundColor: '#FFFDF9' },
+  privacyNoticeBox: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 7,
+    marginHorizontal: 12, marginTop: 8, padding: 9, borderRadius: 9,
+    backgroundColor: '#FFF4D6', borderWidth: 1, borderColor: '#F2D28C',
+  },
+  privacyNotice: { flex: 1, color: '#704600', fontSize: 12, lineHeight: 17 },
   list: { flex: 1 },
   listContent: { padding: 14, paddingBottom: 6, gap: 4 },
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 8, maxWidth: '100%' },

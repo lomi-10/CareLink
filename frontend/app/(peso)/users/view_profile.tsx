@@ -427,7 +427,6 @@ export default function ViewUserProfile() {
           <InfoRow label="Birth Date"   value={profile?.birth_date     || "—"} />
           <InfoRow label="Gender"       value={profile?.gender         || "—"} />
           <InfoRow label="Civil Status" value={profile?.civil_status   || "—"} />
-          <InfoRow label="Religion"     value={profile?.religion       || "—"} last />
         </SectionCard>
 
         {/* ── ADDRESS ── */}

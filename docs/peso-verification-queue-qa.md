@@ -73,7 +73,7 @@ disagree *absurdly*.
 |---|---|---|
 | Lives in | `helper/get_profile.php`, `parent/get_profile.php` | `shared/sync_profile_completed.php` |
 | Purpose | Nudge the user to finish their profile | Is this reviewable by PESO? |
-| Counts | ~14 fields incl. photo, birth date, gender, education, religion, landmark | Contact, address, bio, 1+ skill, **both** required docs |
+| Counts | ~13 fields incl. photo, birth date, gender, education, landmark | Contact, address, bio, 1+ skill, **both** required docs |
 
 ---
 
@@ -89,9 +89,9 @@ contact_number 7 + province 5 + municipality 5 + barangay 6
 + bio 4 + skills 6 + Valid ID 14 + Barangay Clearance 14   = 61
 ```
 
-The missing 39 is all stuff the gate doesn't require: photo (8), birth date (7),
-gender (6), job roles (8), languages (4), education (3), religion (2),
-landmark (1).
+The missing 37 is all stuff the gate doesn't require: photo (8), birth date (7),
+gender (6), job roles (8), languages (4), education (3), landmark (1). Religion
+is no longer collected as part of the helper profile.
 
 Parent is scored out of 115 and normalised, so the gate's items
 (40 + bio 10 + household_type 5 + docs 40 = 95) land at **95/115 ≈ 83%** —

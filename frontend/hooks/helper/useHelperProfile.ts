@@ -25,7 +25,7 @@ export interface HelperProfileData {
     date_of_birth?: string; // Mapped for UI
     age?: number;           // Calculated for UI
     civil_status?: string;
-    religion?: string;
+    preferred_rest_day?: string | null;
     education_level?: string;
     contact_number?: string;
     bio?: string;

@@ -46,10 +46,7 @@ export interface JobPost {
   // ------------------------------------------
 
   // Requirements
-  min_age?: number;
-  max_age?: number;
   min_experience_years?: number;
-  preferred_religion?: string;
   require_police_clearance?: boolean;
   prefer_tesda_nc2?: boolean;
   

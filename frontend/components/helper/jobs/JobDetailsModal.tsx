@@ -149,13 +149,9 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
   const jobNames: string[] = Array.isArray(job.job_names)
     ? job.job_names.filter((name: unknown) => typeof name === 'string' && name.trim())
     : [];
-  const minAge = Number(job.min_age);
-  const maxAge = Number(job.max_age);
-  const hasMinAge = Number.isFinite(minAge) && minAge > 0;
-  const hasMaxAge = Number.isFinite(maxAge) && maxAge > 0;
   const minExperience = Number(job.min_experience_years);
   const hasExperienceRequirement = Number.isFinite(minExperience) && minExperience > 0;
-  const hasRequirements = hasMinAge || hasMaxAge || hasExperienceRequirement
+  const hasRequirements = hasExperienceRequirement
     || isTrue(job.require_police_clearance) || isTrue(job.prefer_tesda_nc2);
 
   return (
@@ -334,7 +330,6 @@ export function JobDetailsModal({ visible, onClose, onApply, onToggleSave, onRep
                     <View style={s.section}>
                       <Text style={s.sectionTitle}>{tr('helper.jobDetails.requirements')}</Text>
                       <View style={s.detailGrid}>
-                        {(hasMinAge || hasMaxAge) && <DetailItem icon="person-outline" label={tr('helper.jobDetails.age')} value={hasMinAge && hasMaxAge ? `${minAge}–${maxAge} ${tr('helper.jobDetails.years')}` : hasMinAge ? `${minAge}+ ${tr('helper.jobDetails.years')}` : `≤ ${maxAge} ${tr('helper.jobDetails.years')}`} />}
                         {hasExperienceRequirement && <DetailItem icon="star-outline" label={tr('helper.jobDetails.experience')} value={tr('helper.jobDetails.atLeastYears', { count: minExperience })} />}
                       </View>
                       {isTrue(job.require_police_clearance) && (

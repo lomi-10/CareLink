@@ -43,8 +43,8 @@ interface ApplicantDetails {
   helper_id: string;
   helper_name: string;
   helper_photo?: string;
-  helper_age?: number;
   helper_gender?: string;
+  helper_preferred_rest_day?: string | null;
   helper_experience_years?: number;
   helper_rating_average?: number;
   helper_rating_count?: number;
@@ -234,7 +234,7 @@ export default function ApplicantProfile() {
       if (!userData) return;
       const user = JSON.parse(userData);
       const res = await fetch(
-        `${API_URL}/parent/get_helper_hire_options.php?parent_id=${user.user_id}&helper_id=${helperId}`,
+        `${API_URL}/parent/get_helper_hire_options.php?parent_id=${user.user_id}&helper_id=${helperId}&requester_id=${user.user_id}`,
       );
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Could not load hire options');
@@ -701,7 +701,7 @@ export default function ApplicantProfile() {
 
           <View style={styles.infoRow}>
             <Text style={styles.infoText}>
-              {applicant.helper_age} years old • {applicant.helper_gender}
+              {applicant.helper_gender || 'Helper'}
             </Text>
           </View>
 
@@ -765,6 +765,13 @@ export default function ApplicantProfile() {
             <Text style={styles.sectionText}>
               ₱{applicant.helper_expected_salary.toLocaleString()}/month
             </Text>
+          </View>
+        )}
+
+        {applicant.helper_preferred_rest_day && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Preferred Weekly Rest Day</Text>
+            <Text style={styles.sectionText}>{applicant.helper_preferred_rest_day}</Text>
           </View>
         )}
 

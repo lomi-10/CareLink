@@ -39,6 +39,7 @@ require_once __DIR__ . '/../shared/ownership_guard.php';
 require_once __DIR__ . '/../shared/create_notification.php';
 require_once __DIR__ . '/../shared/job_invites_table.php';
 require_once __DIR__ . '/../shared/direct_hire.php';
+require_once __DIR__ . '/../shared/helper_safeguards.php';
 
 /** The regional kasambahay minimum. Single source of truth: shared/wage_floor.php. */
 require_once __DIR__ . '/../shared/wage_floor.php';
@@ -94,6 +95,7 @@ try {
 
     if (($roles[$parent_id] ?? '') !== 'parent') dh_out(false, 'Only employer accounts can send hire offers.');
     if (($roles[$helper_id] ?? '') !== 'helper') dh_out(false, 'That account is not a helper.');
+    carelink_require_adult_helper($conn, $helper_id);
 
     // Hiring is the strongest action on the platform, so both sides must be
     // PESO-verified before an offer can even be created. Without this a pending

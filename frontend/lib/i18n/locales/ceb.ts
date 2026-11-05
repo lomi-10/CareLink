@@ -430,6 +430,8 @@ export default {
       age: 'Edad',
       yearsOld: '%{count} anyos',
       civilStatus: 'Kahimtang sa Kaminyoon',
+      preferredRestDay: 'Gipalabi nga Adlaw sa Pahulay Matag Semana',
+      noRestDayPreference: 'Walay pinili',
       religion: 'Relihiyon',
       education: 'Lebel sa Edukasyon',
       contactNumber: 'Numero sa Telepono',

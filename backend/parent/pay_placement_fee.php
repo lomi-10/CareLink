@@ -1,6 +1,6 @@
 <?php
 /**
- * parent/pay_placement_fee.php — Stream 3 payment + status.
+ * parent/pay_placement_fee.php — Digital Contract & Facilitation Fee payment + status.
  *
  * GET  ?parent_id=&requester_id=[&placement_id=]  -> outstanding fee(s)
  * POST { placement_id, parent_id, requester_id }  -> { checkout_url }
@@ -83,7 +83,7 @@ try {
     $fee = $st->get_result()->fetch_assoc();
     $st->close();
 
-    if (!$fee) fee_out(false, 'No placement fee was found for your account.');
+    if (!$fee) fee_out(false, 'No Digital Contract & Facilitation Fee was found for your account.');
     if ($fee['status'] === 'paid') fee_out(true, 'This fee is already paid.', ['already_paid' => true]);
 
     if (!carelink_paymongo_configured()) fee_out(false, 'Payments are not set up on this server yet.');
@@ -93,7 +93,7 @@ try {
     $cents  = (int) round(((float) $fee['gross_amount']) * 100);
 
     $checkout = carelink_paymongo_checkout(
-        'CareLink Placement Fee',
+        'CareLink Digital Contract & Facilitation Fee',
         $cents,
         ['kind' => 'placement_fee', 'placement_id' => $placement_id, 'parent_id' => $parent_id],
         $return,

@@ -29,7 +29,6 @@ import { wt, FEATURE_GRADIENT, ACCENT_GRADIENT } from './webTheme';
 const CAREBOT_ICON = require('../../../assets/images/chatbot_icon.png');
 const TRANS = { transitionDuration: '150ms', transitionProperty: 'all', transitionTimingFunction: 'ease' } as any;
 const REQUIRED_DOCS = ['Valid ID', 'Barangay Clearance'];
-const RELIGION_OPTIONS = ['Roman Catholic', 'Christian', 'Iglesia ni Cristo', 'Islam', 'Protestant', 'Seventh-day Adventist', 'Born Again', 'Buddhist', 'Aglipayan', 'Other', 'Prefer not to say'];
 const DOC_SLOTS: { type: string; field: string; icon: keyof typeof Ionicons.glyphMap; color: string; bg: string; desc: string; twoSided?: boolean }[] = [
   { type: 'Valid ID', field: 'valid_id', icon: 'card', color: wt.blue, bg: wt.blueSoft, desc: 'Government ID — front & back', twoSided: true },
   { type: 'Barangay Clearance', field: 'barangay_clearance', icon: 'document-text', color: wt.green, bg: wt.greenSoft, desc: 'Issued by your barangay' },
@@ -37,6 +36,12 @@ const DOC_SLOTS: { type: string; field: string; icon: keyof typeof Ionicons.glyp
   { type: 'TESDA NC2', field: 'tesda_nc2', icon: 'ribbon', color: wt.accent, bg: wt.accentSoft, desc: 'NC II certificate' },
 ];
 type SecKey = 'personal' | 'skills' | 'prefs' | 'documents' | 'experience';
+
+function adultBirthDateMax(): Date {
+  const max = new Date();
+  max.setFullYear(max.getFullYear() - 18);
+  return max;
+}
 
 // ── small ring with configurable center colour (fixes dark-on-dark %) ──
 function Ring({ pct, size = 84, stroke = 9, track = 'rgba(255,255,255,.14)', fill = wt.accent, center }: any) {
@@ -132,7 +137,8 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
         user_id: String(user.user_id ?? ''), requester_id: String(user.user_id ?? ''),
         first_name: U.first_name ?? '', middle_name: U.middle_name ?? '', last_name: U.last_name ?? '', username: U.username ?? '',
         contact_number: p.contact_number ?? '', birth_date: (p.birth_date ?? p.date_of_birth ?? '') || '',
-        gender: p.gender ?? '', civil_status: p.civil_status ?? 'Single', religion: p.religion ?? '',
+        gender: p.gender ?? '', civil_status: p.civil_status ?? 'Single',
+        preferred_rest_day: p.preferred_rest_day ?? '',
         province: p.province ?? '', municipality: (p.municipality ?? p.city) ?? '', barangay: p.barangay ?? '',
         address: p.address ?? '', landmark: p.landmark ?? '', bio: p.bio ?? '', education_level: p.education_level ?? '',
         experience_years: String(p.years_experience ?? p.experience_years ?? 0),
@@ -240,7 +246,8 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
     setForm({
       first_name: U.first_name ?? '', middle_name: U.middle_name ?? '', last_name: U.last_name ?? '',
       gender: p.gender ?? 'Female', birth_date: (p.birth_date ?? p.date_of_birth ?? '') || '',
-      civil_status: p.civil_status ?? 'Single', religion: p.religion ?? '', education_level: p.education_level ?? '',
+      civil_status: p.civil_status ?? 'Single', preferred_rest_day: p.preferred_rest_day ?? '',
+      education_level: p.education_level ?? '',
       contact_number: p.contact_number ?? '', address: p.address ?? '',
       province: p.province ?? '', municipality: (p.municipality ?? p.city) ?? '', barangay: p.barangay ?? '', landmark: p.landmark ?? '',
       employment_type: p.employment_type ?? 'Stay-in', work_schedule: p.work_schedule ?? 'Full-time',
@@ -325,7 +332,7 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
         user_id: userId, requester_id: userId,
         first_name: U.first_name ?? '', middle_name: U.middle_name ?? '', last_name: U.last_name ?? '', username: U.username ?? '',
         contact_number: p.contact_number ?? '', birth_date: (p.birth_date ?? p.date_of_birth ?? '') || '',
-        civil_status: p.civil_status ?? 'Single', religion: p.religion ?? '',
+        civil_status: p.civil_status ?? 'Single', preferred_rest_day: p.preferred_rest_day ?? '',
         province: p.province ?? '', municipality: (p.municipality ?? p.city) ?? '', barangay: p.barangay ?? '',
         address: p.address ?? '', landmark: p.landmark ?? '', bio: p.bio ?? '',
         experience_years: String(p.years_experience ?? p.experience_years ?? 0),
@@ -481,13 +488,14 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
   const readRows: Record<SecKey, { label: string; value: string }[]> = {
     personal: [
       { label: 'Gender', value: p.gender || '—' }, { label: 'Date of Birth', value: fmtDate(p.birth_date ?? p.date_of_birth) },
-      { label: 'Civil Status', value: p.civil_status || '—' }, { label: 'Religion', value: p.religion || '—' },
+      { label: 'Civil Status', value: p.civil_status || '—' },
       { label: 'Education Level', value: p.education_level || '—' }, { label: 'Contact Number', value: p.contact_number || '—' },
       { label: 'Email Address', value: U.email || '—' }, { label: 'Current Address', value: p.address || location },
     ],
     prefs: [
       { label: 'Employment Type', value: p.employment_type || '—' }, { label: 'Work Schedule', value: p.work_schedule || '—' },
       { label: 'Expected Salary', value: p.expected_salary ? `₱${Number(p.expected_salary).toLocaleString()}` : '—' },
+      { label: 'Preferred Weekly Rest Day', value: p.preferred_rest_day || 'No preference' },
       { label: 'Availability', value: p.employment_type ? 'Immediately' : '—' },
     ],
     experience: [
@@ -651,11 +659,9 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
                       <FLabel>Gender</FLabel>
                       <Toggle options={['Female', 'Male']} value={form.gender} onChange={(v) => setF('gender', v)} />
                       <FLabel>Date of Birth</FLabel>
-                      <DateField value={form.birth_date} onChange={(v) => setF('birth_date', v)} />
+                      <DateField value={form.birth_date} onChange={(v) => setF('birth_date', v)} maxDate={adultBirthDateMax()} />
                       <FLabel>Civil Status</FLabel>
                       <PillSelect options={['Single', 'Married', 'Widowed', 'Separated']} value={form.civil_status} onChange={(v) => setF('civil_status', v)} />
-                      <FLabel>Religion</FLabel>
-                      <SelectField value={form.religion} onChange={(v) => setF('religion', v)} options={RELIGION_OPTIONS} placeholder="Select religion" />
                       <FLabel>Education Level</FLabel>
                       <PillSelect options={['Elementary', 'High School Undergrad', 'High School Grad', 'College Undergrad', 'College Grad', 'Vocational']} value={form.education_level} onChange={(v) => setF('education_level', v)} />
                       <FLabel>Contact Number <Opt /></FLabel>
@@ -683,6 +689,8 @@ export function HelperProfileWeb({ userName, avatar, onLogout, workMode = false 
                       <Toggle options={['Stay-in', 'Stay-out', 'Any']} value={form.employment_type} onChange={(v) => setF('employment_type', v)} />
                       <FLabel>Work Schedule</FLabel>
                       <Toggle options={['Full-time', 'Part-time', 'Any']} value={form.work_schedule} onChange={(v) => setF('work_schedule', v)} />
+                      <FLabel>Preferred Weekly Rest Day <Opt /></FLabel>
+                      <SelectField value={form.preferred_rest_day} onChange={(v) => setF('preferred_rest_day', v)} options={['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']} placeholder="No preference" />
                       <FLabel>Expected Salary (₱ / month)</FLabel>
                       <FInput value={form.expected_salary} onChange={(v) => setF('expected_salary', v.replace(/[^0-9]/g, ''))} placeholder="8000" />
                     </>
@@ -946,9 +954,12 @@ function VerifiedField({ label, value, accent, onChange }: { label: string; valu
 }
 // Native browser date picker (real calendar UI) — matches the web branch the
 // mobile edit modal already uses for Platform.OS === 'web'.
-function DateField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function DateField({ value, onChange, maxDate }: { value: string; onChange: (v: string) => void; maxDate?: Date }) {
+  const max = maxDate
+    ? `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`
+    : new Date().toISOString().slice(0, 10);
   return React.createElement('input', {
-    type: 'date', value: value || '', min: '1940-01-01', max: new Date().toISOString().slice(0, 10),
+    type: 'date', value: value || '', min: '1940-01-01', max,
     onChange: (e: any) => onChange(e.target.value || ''),
     style: { border: `1px solid ${wt.line}`, borderRadius: 11, paddingTop: 11, paddingBottom: 11, paddingLeft: 12, paddingRight: 12, fontSize: 14, width: '100%', fontFamily: 'inherit', backgroundColor: wt.raise, color: wt.ink, boxSizing: 'border-box', marginBottom: 14 },
   });

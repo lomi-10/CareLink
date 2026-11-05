@@ -424,7 +424,6 @@ export default function UserDetailPanel({
                   { label: "Gender", value: profile?.gender || "—" },
                   { label: "Civil Status", value: profile?.civil_status || "—" },
                 ] : []),
-                { label: "Religion", value: profile?.religion || "—" },
               ]} />
               <View style={st.addressRow}>
                 <Ionicons name="location-outline" size={15} color={c.accent} />

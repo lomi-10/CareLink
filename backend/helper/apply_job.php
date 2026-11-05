@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
+require_once __DIR__ . '/../shared/helper_safeguards.php';
 
 // Get JSON input
 $input = json_decode(file_get_contents('php://input'), true);
@@ -25,6 +26,7 @@ $requester_id = isset($input['requester_id']) ? intval($input['requester_id']) :
 
 try {
     carelink_require_self($requester_id, $helper_id, 'You are not allowed to apply on behalf of this helper account.');
+    carelink_require_adult_helper($conn, $helper_id);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     exit;

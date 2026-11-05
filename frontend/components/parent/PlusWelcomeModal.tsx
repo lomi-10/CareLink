@@ -48,8 +48,8 @@ const PERKS: Perk[] = [
   },
   {
     icon: 'pricetag',
-    title: '20% off placement fees',
-    body: 'Applied automatically the next time you complete a hire.',
+    title: '20% off the Digital Contract & Facilitation Fee',
+    body: 'Applied automatically to the fee recorded after a fully signed contract activates.',
   },
 ];
 

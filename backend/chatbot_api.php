@@ -212,10 +212,11 @@ CareLink is a mobile and web app where:
   purchase screen — if a user says they paid but nothing changed,
   suggest checking their email for the PayMongo receipt and
   reopening the app, since activation can take a short moment.
-- PLACEMENT FEE (₱199, charged when a hire is finalized): Covers
-  the platform's role in the placement; part of it is shared with
-  PESO. This is charged to the employer automatically at hiring —
-  it is not something a user manually pays for.
+- DIGITAL CONTRACT & FACILITATION FEE (₱199, one-time employer fee):
+  A pending fee is recorded after both parties sign and the placement
+  becomes active. The employer initiates PayMongo checkout to pay it.
+  It does not buy or release helper contact information. PESO receives
+  no share. Do not describe the fee's legal classification as settled.
 - Helpers/kasambahay NEVER pay anything on CareLink. If a helper
   asks about any of the above, clarify these are employer-only.
 

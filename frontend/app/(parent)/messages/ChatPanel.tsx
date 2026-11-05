@@ -421,7 +421,7 @@ export default function ChatPanel({
     hireWorkHoursStart, setHireWorkHoursStart,
     hireWorkHoursEnd, setHireWorkHoursEnd,
     hireFlexibleHours, setHireFlexibleHours,
-    hireRestDays, setHireRestDays,
+    hireRestDays, setHireRestDays, hireHelperPreferredRestDay,
     hireVacationLeave, setHireVacationLeave,
     hireSickLeave, setHireSickLeave,
     hireSpecialConditions, setHireSpecialConditions,
@@ -629,7 +629,11 @@ export default function ChatPanel({
         flexibleHours={hireFlexibleHours}
         onChangeFlexibleHours={setHireFlexibleHours}
         restDays={hireRestDays}
-        onToggleRestDay={(day) => setHireRestDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day])}
+        helperPreferredRestDay={hireHelperPreferredRestDay}
+        onToggleRestDay={(day) => setHireRestDays((prev) => {
+          if (day === hireHelperPreferredRestDay && prev.includes(day)) return prev;
+          return prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day];
+        })}
         vacationLeaveDays={hireVacationLeave}
         sickLeaveDays={hireSickLeave}
         onChangeVacationLeave={setHireVacationLeave}

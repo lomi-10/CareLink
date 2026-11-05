@@ -11,6 +11,7 @@ export interface FormData {
   email: string;
   /** PH mobile — required only when SMS is selected. Normalised server-side. */
   phone: string;
+  birth_date: string;
   user_type: string;
   password: string;
   confirmpass: string;
@@ -22,7 +23,7 @@ export function useSignupForm() {
   
   const [form, setForm] = useState<FormData>({
     first_name: "", middle_name: "", last_name: "",
-    email: "", phone: "", user_type: role || "", password: "", confirmpass: "",
+    email: "", phone: "", birth_date: "", user_type: role || "", password: "", confirmpass: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -76,10 +77,15 @@ export function useSignupForm() {
     // function too — a fast double-tap can fire twice before React re-renders.
     if (loading) return;
 
-    const { first_name, last_name, email, phone, user_type, password, confirmpass } = form;
+    const { first_name, last_name, email, phone, birth_date, user_type, password, confirmpass } = form;
 
     if (!first_name.trim() || !last_name.trim() || !user_type || !password || !confirmpass) {
       setNotification({ visible: true, message: "Please fill in all required fields.", type: "warning" });
+      return;
+    }
+
+    if (user_type === "helper" && !birth_date) {
+      setNotification({ visible: true, message: "Enter your birth date to register as a helper.", type: "warning" });
       return;
     }
 

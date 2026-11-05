@@ -12,7 +12,6 @@ export interface HelperProfile {
   first_name: string;
   last_name: string;
   profile_image?: string;
-  age?: number;
   gender?: string;
   
   // Contact
@@ -32,8 +31,6 @@ export interface HelperProfile {
   
   // Background
   education_level?: string;
-  religion?: string;
-  civil_status?: string;
   
   // Documents
   police_clearance?: string;

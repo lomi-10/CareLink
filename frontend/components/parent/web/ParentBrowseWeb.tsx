@@ -432,8 +432,6 @@ function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onDirectHire
 
       {/* Quick stats */}
       <View style={s.tiles}>
-        <Tile icon="person-outline" value={h.age ? `${h.age} yrs` : '—'} label="Age" />
-        <View style={s.tileDiv} />
         <Tile icon="male-female-outline" value={h.gender || 'Any'} label="Gender" />
         <View style={s.tileDiv} />
         <Tile icon="briefcase-outline" value={expYears ? `${expYears} yrs` : 'New'} label="Experience" />
@@ -466,8 +464,6 @@ function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onDirectHire
             <Text style={s.fpSecTitle}>Background</Text>
             <View style={s.detailsCard}>
               <DetailRow label="Education" value={h.education_level || 'Not specified'} />
-              <DetailRow label="Religion" value={h.religion || 'Not specified'} />
-              <DetailRow label="Civil Status" value={h.civil_status || 'Not specified'} />
               <DetailRow label="Location" value={location || 'Not specified'} last />
             </View>
           </View>

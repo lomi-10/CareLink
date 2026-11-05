@@ -1,4 +1,4 @@
-# CareLink — Generated Cover Letters & Job Descriptions · Q&A
+# CareLink — Template-Based Cover Letters & Job Descriptions · Q&A
 
 The tester's concern: *"if everyone taps Generate, won't every letter and every
 job post look the same?"* Honest answer below. Notion-ready.

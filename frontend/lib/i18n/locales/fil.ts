@@ -417,6 +417,8 @@ export default {
       age: 'Edad',
       yearsOld: '%{count} taong gulang',
       civilStatus: 'Katayuang Sibil',
+      preferredRestDay: 'Pinipiling Araw ng Pahinga Lingguhan',
+      noRestDayPreference: 'Walang pinipili',
       religion: 'Relihiyon',
       education: 'Antas ng Edukasyon',
       contactNumber: 'Numero ng Telepono',

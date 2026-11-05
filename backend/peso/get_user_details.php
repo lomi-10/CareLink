@@ -21,6 +21,7 @@ include_once '../dbcon.php';
 include_once __DIR__ . '/peso_auth.php';
 include_once __DIR__ . '/../shared/file_security.php';
 include_once __DIR__ . '/../shared/experience_verification.php';
+include_once __DIR__ . '/../shared/helper_safeguards.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -47,6 +48,7 @@ try {
     // Only approved PESO staff may pull a user's full details (profile +
     // government ID documents + household composition).
     peso_require_staff($conn);
+    carelink_ensure_helper_safeguards_schema($conn);
 
     if (!isset($_GET['user_id'])) {
         throw new Exception("User ID is required");
@@ -113,6 +115,7 @@ try {
         
         if ($profileResult->num_rows > 0) {
             $profile = $profileResult->fetch_assoc();
+            unset($profile['religion'], $profile['preferred_rest_day']);
             $profile['profile_id'] = intval($profile['profile_id']);
             $profile['experience_years'] = intval($profile['experience_years']);
             $profile['expected_salary'] = floatval($profile['expected_salary']);

@@ -39,9 +39,6 @@ export interface JobPost {
   application_count: number;
   new_application_count: number;
   
-  // --- ADDED THESE NEW FIELDS TO FIX TYPESCRIPT ERRORS ---
-  min_age?: number;
-  max_age?: number;
   min_experience_years?: number;
   job_ids?: (string | number)[];
   skill_ids?: (string | number)[];
@@ -58,7 +55,6 @@ export interface JobPost {
   sick_days?: number;
   work_hours?: string;
   days_off?: string; // JSON string from DB
-  preferred_religion?: string;
   preferred_language_id?: string;
   preferred_language_name?: string;
   skill_names?: string; // Comma separated from DB join

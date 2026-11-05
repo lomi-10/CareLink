@@ -172,10 +172,7 @@ try {
             'skill_ids' => $skill_ids,
             'skills' => $skill_names,
             
-            'min_age' => $job['min_age'],
-            'max_age' => $job['max_age'],
             'min_experience_years' => $job['min_experience_years'],
-            'preferred_religion' => $job['preferred_religion'],
             'require_police_clearance' => (bool)$job['require_police_clearance'],
             'prefer_tesda_nc2' => (bool)$job['prefer_tesda_nc2'],
             

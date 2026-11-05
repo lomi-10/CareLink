@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { BROWN, CARAMEL, ICON_BG, DARK, MUTED, DIVIDER } from '../home/parentWarmTheme';
+import { getJobDescriptionReviewFlags } from '@/lib/jobDescriptionReview';
 
 const MAX_DESCRIPTION_LENGTH = 1000;
 
@@ -24,6 +25,7 @@ export function DescriptionInput({
   const [fullView, setFullView] = React.useState(false);
   const capped = typeof generationsLeft === 'number';
   const outOfGenerations = capped && generationsLeft <= 0;
+  const reviewFlags = getJobDescriptionReviewFlags(value);
 
   return (
     <View style={styles.container}>
@@ -35,6 +37,15 @@ export function DescriptionInput({
       <Text style={styles.hint}>
         Describe the job responsibilities, requirements, and expectations
       </Text>
+
+      {reviewFlags.length > 0 && (
+        <View style={styles.reviewWarning}>
+          <Ionicons name="alert-circle-outline" size={19} color="#9A5A00" />
+          <Text style={styles.reviewWarningText}>
+            This wording may suggest an age or religion restriction. Please revise it to describe job-related duties and skills. If submitted, the post will remain pending for PESO review.
+          </Text>
+        </View>
+      )}
 
       <View style={styles.actionRow}>
         <TouchableOpacity
@@ -141,6 +152,18 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 12,
   },
+  reviewWarning: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 10,
+    padding: 11,
+    borderRadius: 10,
+    backgroundColor: '#FFF4D6',
+    borderWidth: 1,
+    borderColor: '#F2D28C',
+  },
+  reviewWarningText: { flex: 1, color: '#704600', fontSize: 12.5, lineHeight: 18 },
   generateButton: {
     flexDirection: 'row',
     alignItems: 'center',

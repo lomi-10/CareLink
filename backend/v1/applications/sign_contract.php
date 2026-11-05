@@ -24,6 +24,7 @@ ini_set('error_log', sys_get_temp_dir() . '/carelink-error.log');
 require_once __DIR__ . '/../../dbcon.php';
 require_once __DIR__ . '/../../shared/finalize_hire_after_contract.inc.php';
 require_once __DIR__ . '/../../shared/contract_signatures_table.php';
+require_once __DIR__ . '/../../shared/helper_safeguards.php';
 
 function carelink_sign_send_json(bool $ok, string $message, array $extra = []): void
 {
@@ -107,6 +108,7 @@ try {
             $conn->rollback();
             throw new Exception('Not authorized to sign as employer for this application');
         }
+        carelink_require_adult_helper($conn, $helper_id);
         if (empty($row['employer_signed_at'])) {
             $up = $conn->prepare('UPDATE job_applications SET employer_signed_at = NOW(), updated_at = NOW() WHERE application_id = ?');
             $up->bind_param('i', $application_id);
@@ -118,6 +120,7 @@ try {
             $conn->rollback();
             throw new Exception('Not authorized to sign as helper for this application');
         }
+        carelink_require_adult_helper($conn, $helper_id);
 
         // RA 10364 (Anti-Trafficking) safeguard: if this contract has a debt or
         // deployment-cost amount attached, the helper must explicitly

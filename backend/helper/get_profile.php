@@ -23,6 +23,7 @@ include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
 include_once __DIR__ . '/../shared/file_security.php';
 include_once __DIR__ . '/../shared/experience_verification.php';
+include_once __DIR__ . '/../shared/helper_safeguards.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -47,6 +48,7 @@ try {
         throw new Exception("Database connection failed");
     }
     ensure_experience_verification_schema($conn);
+    carelink_ensure_helper_safeguards_schema($conn);
 
     if (!isset($_GET['user_id']) || empty($_GET['user_id'])) {
         throw new Exception("User ID is required");
@@ -100,7 +102,7 @@ try {
                     hp.birth_date,
                     hp.gender,
                     hp.civil_status,
-                    hp.religion,
+                    hp.preferred_rest_day,
                     hp.province,
                     hp.municipality,
                     hp.barangay,
@@ -421,7 +423,6 @@ try {
         if (count($selected_languages) > 0) $completed += 5;
         if (!empty($profile['bio'])) $completed += 2;
         if (!empty($profile['education_level'])) $completed += 1;
-        if (!empty($profile['religion'])) $completed += 1;
         if (!empty($profile['landmark'])) $completed += 1;
 
         $completeness = min(100, $completed);

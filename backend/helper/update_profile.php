@@ -26,6 +26,7 @@ include_once __DIR__ . '/../shared/ownership_guard.php';
 include_once __DIR__ . '/../shared/experience_verification_migration.php';
 include_once __DIR__ . '/../shared/phone.php';
 include_once __DIR__ . '/../shared/geocode.php';
+include_once __DIR__ . '/../shared/helper_safeguards.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -47,6 +48,7 @@ try {
     if (!$conn) {
         throw new Exception("Database connection failed");
     }
+    carelink_ensure_helper_safeguards_schema($conn);
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception("Invalid request method. POST required.");
@@ -75,6 +77,11 @@ try {
     // ========================================================================
     
     // Required fields
+    $birth_date = isset($_POST['birth_date']) && trim($_POST['birth_date']) !== '' ? trim($_POST['birth_date']) : null;
+    $age = carelink_helper_age_from_birth_date($birth_date);
+    if ($age === null || $age < 18) {
+        throw new Exception('CareLink currently allows helper accounts for adults aged 18 and older. Please enter a valid birth date.');
+    }
     $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
     // A contact number, when given, must be a real PH mobile — stored canonical
     // (09XXXXXXXXX). Empty is allowed so other sections can still save during setup.
@@ -94,7 +101,6 @@ try {
             throw new Exception($claim['message']);
         }
     }
-    $birth_date = isset($_POST['birth_date']) && trim($_POST['birth_date']) !== '' ? trim($_POST['birth_date']) : null;
     $gender = isset($_POST['gender']) ? $_POST['gender'] : 'Female';
     $province = isset($_POST['province']) ? trim($_POST['province']) : '';
     $municipality = isset($_POST['municipality']) ? trim($_POST['municipality']) : '';
@@ -105,7 +111,13 @@ try {
 
     // Optional fields
     $civil_status = isset($_POST['civil_status']) ? $_POST['civil_status'] : 'Single';
-    $religion = isset($_POST['religion']) ? trim($_POST['religion']) : NULL;
+    $preferred_rest_day_sent = array_key_exists('preferred_rest_day', $_POST);
+    $preferred_rest_day = isset($_POST['preferred_rest_day']) ? trim($_POST['preferred_rest_day']) : '';
+    $valid_rest_days = array('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat');
+    if ($preferred_rest_day !== '' && !in_array($preferred_rest_day, $valid_rest_days, true)) {
+        throw new Exception("Invalid preferred weekly rest day");
+    }
+    $preferred_rest_day = $preferred_rest_day !== '' ? $preferred_rest_day : null;
     $landmark = isset($_POST['landmark']) ? trim($_POST['landmark']) : NULL;
     $bio = isset($_POST['bio']) ? trim($_POST['bio']) : NULL;
     $education_level = isset($_POST['education_level']) ? $_POST['education_level'] : NULL;
@@ -293,7 +305,7 @@ try {
         // STEP 1: Check if profile exists
         // ====================================================================
         
-        $checkSql = "SELECT profile_id, latitude, longitude FROM helper_profiles WHERE user_id = ?";
+        $checkSql = "SELECT profile_id, latitude, longitude, birth_date FROM helper_profiles WHERE user_id = ?";
         $checkStmt = $conn->prepare($checkSql);
         $checkStmt->bind_param("i", $user_id);
         $checkStmt->execute();
@@ -302,12 +314,15 @@ try {
         $profile_id = null;
         $profileExists = false;
         $hadCoords = false;
+        $birthDateChanged = false;
 
         if ($checkResult->num_rows > 0) {
             $row = $checkResult->fetch_assoc();
             $profile_id = intval($row['profile_id']);
             $profileExists = true;
             $hadCoords = $row['latitude'] !== null && $row['longitude'] !== null;
+            $storedBirthDate = $row['birth_date'] ? date('Y-m-d', strtotime($row['birth_date'])) : null;
+            $birthDateChanged = $storedBirthDate !== $birth_date;
         }
         $checkStmt->close();
 
@@ -361,7 +376,7 @@ try {
                 "birth_date = ?",
                 "gender = ?",
                 "civil_status = ?",
-                "religion = ?",
+                "religion = NULL",
                 "province = ?",
                 "municipality = ?",
                 "barangay = ?",
@@ -378,12 +393,11 @@ try {
             );
             
             // Build params array
-            $types = "sssssssssssissds";
+            $types = "ssssssssssissds";
             $params = array(
                 $birth_date,          // s
                 $gender,              // s
                 $civil_status,        // s
-                $religion,            // s
                 $province,            // s
                 $municipality,        // s
                 $barangay,            // s
@@ -397,6 +411,17 @@ try {
                 $expected_salary,     // d (decimal)
                 $salary_period        // s
             );
+
+            if ($preferred_rest_day_sent) {
+                $updateFields[] = "preferred_rest_day = ?";
+                $types .= "s";
+                $params[] = $preferred_rest_day;
+            }
+            if ($birthDateChanged) {
+                $updateFields[] = "verification_status = 'Pending'";
+                $updateFields[] = "verified_by = NULL";
+                $updateFields[] = "verified_at = NULL";
+            }
 
             if ($availability_status_sent) {
                 $updateFields[] = "availability_status = ?";
@@ -452,11 +477,11 @@ try {
             // CREATE new profile
             // contact_number omitted on purpose — owned by users.phone.
             $insertSql = "INSERT INTO helper_profiles (
-                user_id, birth_date, gender, civil_status, religion,
+                user_id, birth_date, gender, civil_status, religion, preferred_rest_day,
                 province, municipality, barangay, address, landmark, bio,
                 education_level, experience_years, employment_type, work_schedule,
                 expected_salary, salary_period, availability_status, profile_image, latitude, longitude, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            ) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
             $insertStmt = $conn->prepare($insertSql);
             if (!$insertStmt) {
@@ -469,7 +494,7 @@ try {
             // profile_image(s), latitude(d), longitude(d).
             $insertStmt->bind_param(
                 "isssssssssssissdsssdd",
-                $user_id, $birth_date, $gender, $civil_status, $religion,
+                $user_id, $birth_date, $gender, $civil_status, $preferred_rest_day,
                 $province, $municipality, $barangay, $address, $landmark, $bio,
                 $education_level, $experience_years, $employment_type, $work_schedule,
                 $expected_salary, $salary_period, $availability_status, $profile_image_url, $latitude, $longitude

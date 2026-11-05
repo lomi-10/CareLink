@@ -26,7 +26,6 @@ import { useUserVerification } from '@/hooks/peso';
 // Components
 import { MobileMenu, Sidebar, ParentTabBar } from '@/components/parent/home'; // NEW: Added for consistent layout
 import {
-  AgeRangeSelector,
   ApplicationDeadlineCard,
   BenefitsCard,
   CategorySelector,
@@ -61,7 +60,7 @@ export default function PostJob() {
   // Custom hooks
   const { formData, errors, updateField, updateFields, validate, reset, getSubmissionData, populateForm, generateDescription, descGenerationsLeft, setDescGenCount } = useJobForm();
   const {
-    categories, jobs, skills, languages, religions,
+    categories, jobs, skills, languages,
     loading: referencesLoading, getJobsByCategories, getSkillsByJobs,
   } = useJobReferences();
   
@@ -304,13 +303,12 @@ export default function PostJob() {
         <LocationSelector province={formData.province} municipality={formData.municipality} barangay={formData.barangay} onProvinceChange={(value) => updateField('province', value)} onMunicipalityChange={(value) => updateField('municipality', value)} onBarangayChange={(value) => updateField('barangay', value)} disabled={isDisabled} />
         <WorkArrangementCard employmentType={formData.employment_type} workSchedule={formData.work_schedule} onEmploymentTypeChange={(type: string) => updateField('employment_type', type)} onWorkScheduleChange={(schedule: string) => updateField('work_schedule', schedule)} disabled={isDisabled} />
         <SalaryInputCard salaryMin={formData.salary_min} salaryMax={formData.salary_max} salaryPeriod={formData.salary_period} onSalaryMinChange={(value: string) => updateField('salary_min', value)} onSalaryMaxChange={(value: string) => updateField('salary_max', value)} onPeriodChange={(period) => updateField('salary_period', period)} categoryIds={formData.category_ids} error={errors.salary} errorMax={errors.salary_max} disabled={isDisabled} />
-        <AgeRangeSelector minAge={formData.min_age} maxAge={formData.max_age} onMinAgeChange={(value) => updateField('min_age', value)} onMaxAgeChange={(value) => updateField('max_age', value)} disabled={isDisabled} />
         <ExperienceSelector minExperience={formData.min_experience_years} onExperienceChange={(value) => updateField('min_experience_years', value)} disabled={isDisabled} />
         <WorkScheduleCard startDate={formData.start_date} workHours={formData.work_hours} daysOff={formData.days_off} onStartDateChange={(value) => updateField('start_date', value)} onWorkHoursChange={(value) => updateField('work_hours', value)} onDaysOffToggle={handleDaysOffToggle} disabled={isDisabled} />
         <ContractDetailsCard contractDuration={formData.contract_duration} onContractDurationChange={(value) => updateField('contract_duration', value)} disabled={isDisabled} />
         <ApplicationDeadlineCard expiresAt={formData.expires_at} onExpiresAtChange={(value) => updateField('expires_at', value)} error={errors.expires_at} disabled={isDisabled} />
         <BenefitsCard providesMeals={formData.provides_meals} providesAccommodation={formData.provides_accommodation} providesSSS={formData.provides_sss} providesPhilHealth={formData.provides_philhealth} providesPagIbig={formData.provides_pagibig} onMealsToggle={() => updateField('provides_meals', !formData.provides_meals)} onAccommodationToggle={() => updateField('provides_accommodation', !formData.provides_accommodation)} onSSSToggle={() => updateField('provides_sss', !formData.provides_sss)} onPhilHealthToggle={() => updateField('provides_philhealth', !formData.provides_philhealth)} onPagIbigToggle={() => updateField('provides_pagibig', !formData.provides_pagibig)} disabled={isDisabled} />
-        <PreferencesCard religions={religions} languages={languages} selectedReligion={formData.preferred_religion} selectedLanguageId={formData.preferred_language_id} requirePoliceClearance={formData.require_police_clearance} preferTesdaNc2={formData.prefer_tesda_nc2} onReligionChange={(religion: string) => updateField('preferred_religion', religion)} onLanguageChange={(langId: string) => updateField('preferred_language_id', langId)} onPoliceClearanceChange={(value: boolean) => updateField('require_police_clearance', value)} onTesdaNc2Change={(value: boolean) => updateField('prefer_tesda_nc2', value)} disabled={isDisabled} />
+        <PreferencesCard languages={languages} selectedLanguageId={formData.preferred_language_id} requirePoliceClearance={formData.require_police_clearance} preferTesdaNc2={formData.prefer_tesda_nc2} onLanguageChange={(langId: string) => updateField('preferred_language_id', langId)} onPoliceClearanceChange={(value: boolean) => updateField('require_police_clearance', value)} onTesdaNc2Change={(value: boolean) => updateField('prefer_tesda_nc2', value)} disabled={isDisabled} />
 
         <TouchableOpacity style={[styles.submitButton, (submitting || isDisabled) && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={submitting || isDisabled} activeOpacity={0.8}>
           {submitting ? ( <ActivityIndicator color="#fff" /> ) : (

@@ -34,8 +34,6 @@ export interface JobFormData {
   barangay: string;
   latitude: number | null;
   longitude: number | null;
-  min_age: number;
-  max_age: number;
   min_experience_years: number;
   start_date: string;
   work_hours: string;
@@ -50,7 +48,6 @@ export interface JobFormData {
   provides_pagibig: boolean;
   vacation_days: number;
   sick_days: number;
-  preferred_religion: string;
   preferred_language_id: string;
   require_police_clearance: boolean;
   prefer_tesda_nc2: boolean;
@@ -330,8 +327,6 @@ const initialFormData: JobFormData = {
   barangay: '',
   latitude: null,
   longitude: null,
-  min_age: 18,
-  max_age: 65,
   min_experience_years: 0,
   start_date: '',
   work_hours: '',
@@ -349,7 +344,6 @@ const initialFormData: JobFormData = {
   provides_pagibig: true,
   vacation_days: 0,
   sick_days: 0,
-  preferred_religion: '',
   preferred_language_id: '',
   require_police_clearance: false,
   prefer_tesda_nc2: false,
@@ -528,8 +522,6 @@ export function useJobForm() {
       province: data.province || 'Leyte',
       municipality: data.municipality || 'Ormoc City',
       barangay: data.barangay || '',
-      min_age: data.min_age || 18,
-      max_age: data.max_age || 65,
       min_experience_years: data.min_experience_years || 0,
       start_date: data.start_date || '',
       work_hours: data.work_hours || '',
@@ -544,7 +536,6 @@ export function useJobForm() {
       provides_pagibig: true,
       vacation_days: data.vacation_days || 0,
       sick_days: data.sick_days || 0,
-      preferred_religion: data.preferred_religion || '',
       preferred_language_id: data.preferred_language_id || '',
       require_police_clearance: !!data.require_police_clearance,
       prefer_tesda_nc2: !!data.prefer_tesda_nc2,
@@ -579,8 +570,6 @@ export function useJobForm() {
       province: formData.province,
       municipality: formData.municipality.trim(),
       barangay: formData.barangay.trim() || null,
-      min_age: formData.min_age,
-      max_age: formData.max_age,
       min_experience_years: formData.min_experience_years,
       start_date: formData.start_date || null,
       work_hours: formData.work_hours || null,
@@ -594,7 +583,6 @@ export function useJobForm() {
       provides_pagibig: formData.provides_pagibig ? 1 : 0,
       vacation_days: formData.vacation_days,
       sick_days: formData.sick_days,
-      preferred_religion: formData.preferred_religion || null,
       preferred_language_id: formData.preferred_language_id || null,
       require_police_clearance: formData.require_police_clearance ? 1 : 0,
       prefer_tesda_nc2: formData.prefer_tesda_nc2 ? 1 : 0,

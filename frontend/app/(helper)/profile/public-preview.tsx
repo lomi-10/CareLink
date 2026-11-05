@@ -90,10 +90,7 @@ export default function PublicProfilePreview() {
 
   const p: any = profile ?? {};
   const personalNode = detailGrid([
-    { label: 'Age', value: p.age ? `${p.age} yrs old` : 'Add birth date', missing: !p.age },
     { label: 'Gender', value: p.gender || 'Not set', missing: !p.gender },
-    { label: 'Civil Status', value: p.civil_status || 'Not set', missing: !p.civil_status },
-    { label: 'Religion', value: p.religion || 'Not set', missing: !p.religion },
     { label: 'Education', value: p.education_level || 'Not set', missing: !p.education_level },
   ]);
 

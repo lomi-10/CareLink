@@ -46,7 +46,7 @@ function sub_benefits(): array
         'Unlimited open job posts (free accounts can have 3)',
         'Placement history beyond 6 months',
         'Export payroll to PDF or CSV',
-        '20% off placement fees',
+        '20% off the Digital Contract & Facilitation Fee',
     ];
 }
 

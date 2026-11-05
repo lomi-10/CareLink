@@ -41,6 +41,7 @@ require_once __DIR__ . '/bk1_template.php';
 require_once __DIR__ . '/contract_generator.inc.php';
 
 include_once __DIR__ . '/../dbcon.php';
+include_once __DIR__ . '/../shared/helper_safeguards.php';
 
 try {
     if (!$conn) {
@@ -63,6 +64,7 @@ try {
     if ($application_id <= 0 || $employer_id <= 0 || $helper_id <= 0) {
         throw new Exception('application_id, employer_id, and helper_id are required');
     }
+    carelink_require_adult_helper($conn, $helper_id);
 
     $result = carelink_generate_employment_contract($conn, $application_id, $employer_id, $helper_id);
 

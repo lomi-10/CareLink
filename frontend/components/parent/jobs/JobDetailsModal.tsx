@@ -237,12 +237,6 @@ export function JobDetailsModal({ visible, onClose, job }: JobDetailsModalProps)
                   <Ionicons name="language-outline" size={13} color={t.parent} />
                   <Text style={s.prefChipText}>Language: {displayLanguage}</Text>
                 </View>
-                {job.preferred_religion && (
-                  <View style={s.prefChip}>
-                    <Ionicons name="heart-outline" size={13} color={t.parent} />
-                    <Text style={s.prefChipText}>{job.preferred_religion}</Text>
-                  </View>
-                )}
               </View>
               {skillList.length > 0 && (
                 <View style={{ marginTop: 10 }}>
@@ -264,17 +258,6 @@ export function JobDetailsModal({ visible, onClose, job }: JobDetailsModalProps)
               ) : null}
             </Section>
             <Section icon="person-outline" title="Candidate Requirements">
-              <View style={s.reqRow}>
-                <View style={s.reqIconBox}>
-                  <Ionicons name="person-outline" size={16} color={t.parent} />
-                </View>
-                <View>
-                  <Text style={s.reqLabel}>Age Bracket</Text>
-                  <Text style={s.reqValue}>
-                    {job.min_age && job.max_age ? `${job.min_age}–${job.max_age} years old` : 'Any age'}
-                  </Text>
-                </View>
-              </View>
               <View style={s.reqRow}>
                 <View style={s.reqIconBox}>
                   <Ionicons name="star-outline" size={16} color={t.parent} />

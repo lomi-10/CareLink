@@ -187,13 +187,13 @@ try {
     $barangay = $data['barangay'] ?? '';
     $latitude  = isset($data['latitude'])  && $data['latitude']  !== null ? floatval($data['latitude'])  : null;
     $longitude = isset($data['longitude']) && $data['longitude'] !== null ? floatval($data['longitude']) : null;
-    $preferred_religion = $data['preferred_religion'] ?? null;
+    $preferred_religion = null;
     $preferred_language_id = isset($data['preferred_language_id']) ? intval($data['preferred_language_id']) : null;
     $require_police_clearance = !empty($data['require_police_clearance']) ? 1 : 0;
     $prefer_tesda_nc2 = !empty($data['prefer_tesda_nc2']) ? 1 : 0;
     $custom_skills = $data['custom_skills'] ?? '';
-    $min_age = isset($data['min_age']) ? intval($data['min_age']) : null;
-    $max_age = isset($data['max_age']) ? intval($data['max_age']) : null;
+    $min_age = null;
+    $max_age = null;
     $min_experience_years = isset($data['min_experience_years']) ? intval($data['min_experience_years']) : null;
     $start_date = $data['start_date'] ?? null;
     $work_hours = $data['work_hours'] ?? null;

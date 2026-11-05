@@ -551,7 +551,6 @@ export default function WorkManagement() {
               <View style={w.applicantBody}>
                 <Text style={w.applicantName} numberOfLines={1}>{app.helper_name}</Text>
                 <Text style={w.applicantMeta} numberOfLines={1}>
-                  {app.helper_age ? `${app.helper_age} yrs` : 'Age N/A'}
                   {app.helper_experience_years ? ` · ${app.helper_experience_years} yr${app.helper_experience_years !== 1 ? 's' : ''} exp` : ''}
                 </Text>
                 {match.reasons[0] && (
@@ -799,11 +798,6 @@ export default function WorkManagement() {
         {/* Quick info tiles */}
         <View style={w.infoTilesRow}>
           <View style={w.infoTile}>
-            <Ionicons name="person-outline" size={16} color={MUTED} />
-            <Text style={w.infoTileValue}>{a.helper_age ? `${a.helper_age}` : '—'}</Text>
-            <Text style={w.infoTileLabel}>Age</Text>
-          </View>
-          <View style={w.infoTile}>
             <Ionicons name="male-female-outline" size={16} color={MUTED} />
             <Text style={w.infoTileValue}>{a.helper_gender || '—'}</Text>
             <Text style={w.infoTileLabel}>Gender</Text>
@@ -882,6 +876,10 @@ export default function WorkManagement() {
                   <Text style={w.detailLabel}>Expected Salary</Text>
                   <Text style={w.detailValue}>{salaryLabel}</Text>
                 </View>
+                <View style={w.detailItem}>
+                  <Text style={w.detailLabel}>Preferred Weekly Rest Day</Text>
+                  <Text style={w.detailValue}>{a.helper_preferred_rest_day || 'No preference'}</Text>
+                </View>
                 <View style={[w.detailItem, w.detailItemLast]}>
                   <Text style={w.detailLabel}>Availability</Text>
                   <Text style={w.detailValue}>{a.helper_work_schedule || 'Any'}</Text>
@@ -892,14 +890,6 @@ export default function WorkManagement() {
             <View style={w.profileSection}>
               <Text style={w.profileSectionTitle}>Background</Text>
               <View style={w.detailsList}>
-                <View style={w.detailItem}>
-                  <Text style={w.detailLabel}>Civil Status</Text>
-                  <Text style={w.detailValue}>{a.helper_civil_status || 'Not specified'}</Text>
-                </View>
-                <View style={w.detailItem}>
-                  <Text style={w.detailLabel}>Religion</Text>
-                  <Text style={w.detailValue}>{a.helper_religion || 'Not specified'}</Text>
-                </View>
                 <View style={[w.detailItem, w.detailItemLast]}>
                   <Text style={w.detailLabel}>Location</Text>
                   <Text style={[w.detailValue, w.detailValueRight]} numberOfLines={2}>{location}</Text>

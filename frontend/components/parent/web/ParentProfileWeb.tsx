@@ -561,11 +561,7 @@ export function ParentProfileWeb({ onLogout }: { onLogout: () => void }) {
                       </View>
                       <FLabel>Middle Name <Opt /></FLabel>
                       <FInput value={form.middle_name} onChange={(v) => setF('middle_name', v)} placeholder="(optional)" />
-                      {/* Employers can state a religion for the same reason
-                          helpers can — both sides judge household fit on it
-                          (practices, dietary rules, rest days around worship).
-                          The column has existed since the 2026-08-03 migration;
-                          there was simply never an input for it. */}
+                      {/* Optional employer profile detail; this is not used as a job preference. */}
                       <FLabel>Religion <Opt /></FLabel>
                       <SelectField
                         value={form.religion ?? ''}
