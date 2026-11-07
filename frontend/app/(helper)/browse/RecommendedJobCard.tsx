@@ -18,12 +18,12 @@ const TOP_INK = '#2A1608';
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const makeStyles = (t: BrowseTheme) => {
-  const { CARD_BG, DARK, GREEN, MUTED, ORANGE, TAG_BORDER } = t;
+  const { CARD_BG, DARK, GREEN, MUTED, ORANGE, DIVIDER, ICON_BG } = t;
   return StyleSheet.create({
   card: {
     width: 200,
     backgroundColor: CARD_BG,
-    borderRadius: 18,
+    borderRadius: 14,
     overflow: 'hidden',
     ...Platform.select({
       ios:     { shadowColor: '#8B5E3C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 14 },
@@ -54,7 +54,7 @@ const makeStyles = (t: BrowseTheme) => {
     backgroundColor: GREEN,
     paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: 5,
   },
   matchText: {
     fontFamily: FontFamily.fredokaSemiBold,
@@ -65,7 +65,7 @@ const makeStyles = (t: BrowseTheme) => {
     backgroundColor: '#1A5C40',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: 5,
   },
   newBadgeText: {
     fontFamily: FontFamily.fredokaSemiBold,
@@ -78,7 +78,7 @@ const makeStyles = (t: BrowseTheme) => {
     right: 8,
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.88)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -93,49 +93,43 @@ const makeStyles = (t: BrowseTheme) => {
   },
 
   // Info area
-  body: { padding: 12, gap: 4 },
+  body: { padding: 13, gap: 7 },
   title: {
     fontFamily: FontFamily.fredokaSemiBold,
     fontSize: 14,
     color: DARK,
     lineHeight: 20,
   },
-  familyRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  familyRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: DIVIDER },
   familyName: {
     fontFamily: FontFamily.fredokaRegular,
     fontSize: 12,
     color: MUTED,
     flex: 1,
   },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 1, backgroundColor: ICON_BG, paddingHorizontal: 8, paddingVertical: 7, borderLeftWidth: 3, borderLeftColor: ORANGE },
+  locationIcon: { width: 25, height: 25, borderRadius: 4, backgroundColor: CARD_BG, alignItems: 'center', justifyContent: 'center' },
+  locationInfo: { flex: 1, minWidth: 0 },
   locationText: {
     fontFamily: FontFamily.fredokaRegular,
-    fontSize: 12,
-    color: MUTED,
+    fontSize: 10,
+    color: DARK,
     flex: 1,
   },
+  locationDistance: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: DARK },
   salary: {
     fontFamily: FontFamily.fredokaSemiBold,
-    fontSize: 13,
-    color: ORANGE,
-    marginTop: 3,
+    fontSize: 17,
+    color: DARK,
+    marginTop: 2,
   },
-  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 3 },
-  tag: {
-    borderWidth: 1,
-    borderColor: TAG_BORDER,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  tagText: {
-    fontFamily: FontFamily.fredokaRegular,
-    fontSize: 10,
-    color: MUTED,
-  },
+  salaryPeriod: { fontFamily: FontFamily.fredokaRegular, fontSize: 10, color: MUTED },
+  jobMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 1 },
+  jobMetaText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10, color: MUTED },
+  metaDivider: { width: 3, height: 3, borderRadius: 2, backgroundColor: MUTED },
   viewBtn: {
     backgroundColor: ORANGE,
-    borderRadius: 12,
+    borderRadius: 7,
     paddingVertical: 10,
     alignItems: 'center',
     marginTop: 6,
@@ -164,9 +158,7 @@ export function RecommendedJobCard({ job, topColor, onPress, onSave }: Props) {
   const icon = getCategoryIcon(job) as any;
   const [showMatch, setShowMatch] = useState(false);
 
-  const tags: string[] = [];
-  if (job.employment_type) tags.push(fmtTag(job.employment_type));
-  if (job.categories?.[0]) tags.push(job.categories[0]);
+  const location = [job.municipality, job.province].filter(Boolean).join(', ');
 
   return (
     <TouchableOpacity style={s.card} activeOpacity={0.92} onPress={() => setShowMatch(true)}>
@@ -212,23 +204,29 @@ export function RecommendedJobCard({ job, topColor, onPress, onSave }: Props) {
         </View>
 
         <View style={s.locationRow}>
-          <Ionicons name="location-outline" size={12} color={t.MUTED} />
-          <Text style={s.locationText} numberOfLines={1}>{job.municipality}</Text>
+          <View style={s.locationIcon}>
+            <Ionicons name="location" size={13} color={t.ORANGE} />
+          </View>
+          <View style={s.locationInfo}>
+            <Text style={s.locationDistance}>Location</Text>
+            <Text style={s.locationText} numberOfLines={1}>{location || 'Location not listed'}</Text>
+          </View>
         </View>
 
-        <Text style={s.salary}>
-          ₱{Number(job.salary_offered).toLocaleString()} {fmtPeriod(job.salary_period)}
-        </Text>
+        <View>
+          <Text style={s.salary}>₱{Number(job.salary_offered).toLocaleString()}</Text>
+          <Text style={s.salaryPeriod}>{fmtPeriod(job.salary_period)}</Text>
+        </View>
 
-        {tags.length > 0 && (
-          <View style={s.tagsRow}>
-            {tags.slice(0, 2).map((tag, i) => (
-              <View key={i} style={s.tag}>
-                <Text style={s.tagText}>{tag}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+        <View style={s.jobMeta}>
+          <Text style={s.jobMetaText}>{fmtTag(job.employment_type || 'Any arrangement')}</Text>
+          {job.categories?.[0] ? (
+            <>
+              <View style={s.metaDivider} />
+              <Text style={s.jobMetaText} numberOfLines={1}>{job.categories[0]}</Text>
+            </>
+          ) : null}
+        </View>
 
         <TouchableOpacity style={s.viewBtn} onPress={onPress} activeOpacity={0.88}>
           <Text style={s.viewBtnText}>View Job</Text>

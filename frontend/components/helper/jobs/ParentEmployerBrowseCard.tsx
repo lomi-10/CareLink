@@ -70,31 +70,51 @@ function JobCell({ job, verified, s, t }: JobCellProps) {
   const matchPct = Math.round(Number(job.match_score ?? 0));
   return (
     <>
-      <View style={s.jobTitleRow}>
-        <Ionicons name={getCategoryIcon(job) as any} size={14} color={t.MUTED} />
-        <Text style={s.jobTitle} numberOfLines={1}>{job.title}</Text>
+      <View style={s.jobHeading}>
+        <View style={s.jobIcon}>
+          <Ionicons name={getCategoryIcon(job) as any} size={16} color={t.ORANGE} />
+        </View>
+        <View style={s.jobHeadingText}>
+          <Text style={s.jobEyebrow}>OPEN ROLE</Text>
+          <Text style={s.jobTitle} numberOfLines={2}>{job.title}</Text>
+        </View>
       </View>
 
-      {matchPct > 0 && (
-        <View style={s.matchChip}>
-          <Text style={s.matchChipText}>{matchPct}% match</Text>
-        </View>
-      )}
+      <View style={s.jobPayRow}>
+        <Text style={s.salary}>
+          ₱{Number(job.salary_offered).toLocaleString()}
+        </Text>
+        <Text style={s.salaryPeriod}>/ {fmtPeriod(job.salary_period)}</Text>
+        {matchPct > 0 && (
+          <View style={s.matchMark}>
+            <Text style={s.matchMarkText}>{matchPct}% MATCH</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={s.jobDetails}>
+        <Ionicons name="location" size={13} color={t.ORANGE} />
+        <Text style={s.location} numberOfLines={1}>
+          {[job.municipality, job.province].filter(Boolean).join(', ') || 'Location not listed'}
+        </Text>
+      </View>
+
+      <View style={s.jobMeta}>
+        <Text style={s.jobMetaText}>{job.employment_type || 'Any arrangement'}</Text>
+        {job.work_schedule ? (
+          <>
+            <View style={s.metaDivider} />
+            <Text style={s.jobMetaText}>{job.work_schedule}</Text>
+          </>
+        ) : null}
+      </View>
 
       {verified && (
         <View style={s.pesoRow}>
-          <Ionicons name="shield-checkmark" size={10} color={t.GREEN} />
-          <Text style={s.pesoText}>PESO Verified</Text>
+          <Ionicons name="shield-checkmark" size={11} color={t.GREEN} />
+          <Text style={s.pesoText}>PESO verified employer</Text>
         </View>
       )}
-
-      <Text style={s.salary}>
-        ₱{Number(job.salary_offered).toLocaleString()} / {fmtPeriod(job.salary_period)}
-      </Text>
-
-      <Text style={s.location} numberOfLines={1}>
-        {[job.municipality, job.province].filter(Boolean).join(', ')}
-      </Text>
     </>
   );
 }
@@ -103,12 +123,11 @@ function JobCell({ job, verified, s, t }: JobCellProps) {
 
 const makeStyles = (t: BrowseTheme) => {
   const { DARK, MUTED, ORANGE, GREEN, CARD_BG, DIVIDER, ICON_BG } = t;
-  const TAG_BG = ICON_BG;
   return StyleSheet.create({
   wrap: { marginBottom: 12 },
   card: {
     backgroundColor: CARD_BG,
-    borderRadius: 18,
+    borderRadius: 14,
     overflow: 'hidden',
     ...Platform.select({
       ios:     { shadowColor: '#8B5E3C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 14 },
@@ -146,9 +165,7 @@ const makeStyles = (t: BrowseTheme) => {
     backgroundColor: '#ECFDF5',
     paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: GREEN + '44',
+    borderRadius: 5,
   },
   pesoPillText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: GREEN },
   ratingRow:    { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -164,8 +181,7 @@ const makeStyles = (t: BrowseTheme) => {
 
   // ── Full-width cell (1 job) ────────────────────────────────────────────────
   singleCell: {
-    padding: 12,
-    gap: 5,
+    padding: 11,
   },
 
   // ── Side-by-side row (2 jobs) ──────────────────────────────────────────────
@@ -174,8 +190,7 @@ const makeStyles = (t: BrowseTheme) => {
   },
   dualCell: {
     flex: 1,
-    padding: 12,
-    gap: 5,
+    padding: 10,
   },
   dualDivider: {
     width: StyleSheet.hairlineWidth,
@@ -188,9 +203,8 @@ const makeStyles = (t: BrowseTheme) => {
     // no paddingHorizontal — cells carry their own padding
   },
   scrollCell: {
-    width: 155,
-    padding: 12,
-    gap: 5,
+    width: 175,
+    padding: 10,
     borderRightWidth: StyleSheet.hairlineWidth,
     borderRightColor: DIVIDER,
   },
@@ -199,22 +213,23 @@ const makeStyles = (t: BrowseTheme) => {
   },
 
   // ── Shared job cell internals ──────────────────────────────────────────────
-  jobTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  jobTitle:    { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, flex: 1 },
-  matchChip: {
-    alignSelf: 'flex-start',
-    backgroundColor: TAG_BG,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: ORANGE + '44',
-  },
-  matchChipText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: ORANGE },
-  pesoRow:       { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  pesoText:      { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: GREEN },
-  salary:        { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: ORANGE },
-  location:      { fontFamily: FontFamily.fredokaRegular, fontSize: 11, color: MUTED },
+  jobHeading: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 40 },
+  jobIcon: { width: 34, height: 34, borderRadius: 6, backgroundColor: ICON_BG, alignItems: 'center', justifyContent: 'center' },
+  jobHeadingText: { flex: 1, minWidth: 0 },
+  jobEyebrow: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 8, color: MUTED, letterSpacing: 0.8 },
+  jobTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13, color: DARK, lineHeight: 17 },
+  jobPayRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4, paddingTop: 8, paddingBottom: 7 },
+  salary: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 19, color: ORANGE },
+  salaryPeriod: { fontFamily: FontFamily.fredokaRegular, fontSize: 10, color: MUTED },
+  matchMark: { marginLeft: 'auto', borderLeftWidth: 2, borderLeftColor: GREEN, backgroundColor: '#ECFDF5', paddingHorizontal: 5, paddingVertical: 4 },
+  matchMarkText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 9, color: GREEN },
+  jobDetails: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FFF8EF', borderLeftWidth: 2, borderLeftColor: ORANGE, paddingHorizontal: 6, paddingVertical: 6 },
+  location: { flex: 1, fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5, color: DARK },
+  jobMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 7 },
+  jobMetaText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 9.5, color: MUTED },
+  metaDivider: { width: 3, height: 3, borderRadius: 2, backgroundColor: MUTED },
+  pesoRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 7 },
+  pesoText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 9, color: GREEN },
 
   // ── More hint ────────────────────────────────────────────────────────────────
   moreHint: {

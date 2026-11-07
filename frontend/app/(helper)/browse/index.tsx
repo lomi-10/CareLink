@@ -196,39 +196,38 @@ export default function BrowseJobs() {
     </>
   );
 
-  // ── Keep the employer feed at the top; recommendations follow the listings on mobile.
+  // ── Put personalized job recommendations before the employer feed.
   const listHeader = (
     <View>
+      {topRecommended.length > 0 && (
+        <View style={s.recommendedSection}>
+          <View style={s.recommendedHeader}>
+            <Ionicons name="sparkles" size={17} color={ORANGE} />
+            <Text style={s.recommendedTitle}>Recommended Jobs For You</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.recommendedScroll}
+          >
+            {topRecommended.map((job, idx) => (
+              <RecommendedJobCard
+                key={job.job_post_id}
+                job={job}
+                topColor={REC_TOPS[idx % REC_TOPS.length]}
+                onPress={() => handleViewJob(job)}
+                onSave={() => toggleSaveJob(job.job_post_id)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+      )}
       <View style={s.familiesHeader}>
         <Ionicons name="people" size={17} color={MUTED} />
         <Text style={s.familiesHeaderText}>Families Hiring Near You</Text>
       </View>
     </View>
   );
-
-  const listFooter = topRecommended.length > 0 ? (
-    <View style={s.recommendedSection}>
-      <View style={s.recommendedHeader}>
-        <Ionicons name="sparkles" size={17} color={ORANGE} />
-        <Text style={s.recommendedTitle}>Recommended Jobs For You</Text>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.recommendedScroll}
-      >
-        {topRecommended.map((job, idx) => (
-          <RecommendedJobCard
-            key={job.job_post_id}
-            job={job}
-            topColor={REC_TOPS[idx % REC_TOPS.length]}
-            onPress={() => handleViewJob(job)}
-            onSave={() => toggleSaveJob(job.job_post_id)}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  ) : null;
 
   // ── Feed (search + filter + results) ────────────────────────────────────────
   const browseContent = (
@@ -289,7 +288,6 @@ export default function BrowseJobs() {
           data={parentGroups}
           keyExtractor={(item) => item.parent_id}
           ListHeaderComponent={listHeader}
-          ListFooterComponent={listFooter}
           renderItem={({ item }) => (
             <View style={isDesktop ? s.desktopParentWrap : s.mobileCardWrap}>
               <ParentEmployerBrowseCard
