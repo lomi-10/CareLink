@@ -38,8 +38,8 @@ const PERKS: Perk[] = [
   },
   {
     icon: 'flash',
-    title: 'Priority in the PESO review queue',
-    body: 'Your job posts and documents move to the front of the officer’s list.',
+    title: 'Priority AI document pre-screening for faster submission',
+    body: 'AI pre-screening can help catch document issues before submission. It does not change PESO’s review order.',
   },
   {
     icon: 'download',

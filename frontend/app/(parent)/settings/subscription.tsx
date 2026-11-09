@@ -270,7 +270,7 @@ export default function SubscriptionScreen() {
             <View style={s.card}>
               {(benefits.length ? benefits : [
                 '3 featured job post boosts every month',
-                'Priority position in the PESO review queue',
+                'Priority AI document pre-screening for faster submission',
                 'Unlimited open job posts',
                 'Placement history beyond 6 months',
                 'Export payroll to PDF or CSV',

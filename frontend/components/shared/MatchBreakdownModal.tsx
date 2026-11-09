@@ -96,12 +96,17 @@ export default function MatchBreakdownModal({
               Out of 100 points, weighted across what matters most to a good placement:
             </Text>
             <View style={m.factorGrid}>
-              {FACTORS.map((f) => (
-                <View key={f.label} style={m.factorRow}>
-                  <Text style={m.factorLabel}>{f.label}</Text>
-                  <Text style={[m.factorMax, { color: th.accent }]}>{f.max} pts</Text>
-                </View>
-              ))}
+              {FACTORS.map((f) => {
+                const label = f.label === 'Employer rating' && themeKey === 'parent'
+                  ? 'Helper rating'
+                  : f.label;
+                return (
+                  <View key={label} style={m.factorRow}>
+                    <Text style={m.factorLabel}>{label}</Text>
+                    <Text style={[m.factorMax, { color: th.accent }]}>{f.max} pts</Text>
+                  </View>
+                );
+              })}
             </View>
           </ScrollView>
 

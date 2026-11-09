@@ -42,7 +42,7 @@ function sub_benefits(): array
 {
     return [
         '3 featured job post boosts every month',
-        'Priority position in the PESO review queue',
+        'Priority AI document pre-screening for faster submission',
         'Unlimited open job posts (free accounts can have 3)',
         'Placement history beyond 6 months',
         'Export payroll to PDF or CSV',

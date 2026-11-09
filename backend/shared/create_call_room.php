@@ -104,8 +104,7 @@ try {
         $host = rtrim((string) $host, '/');
         if ($host === '') $host = 'meet.guifi.net';
 
-        // Jitsi reads overrides from the URL fragment, as JSON values — which
-        // is why the language is quoted and the quotes are percent-encoded.
+        // Jitsi reads config overrides from the URL fragment.
         //
         //  defaultLanguage     meet.guifi.net is a Catalan community server and
         //                      renders its UI in Catalan by default. Filipino
@@ -115,8 +114,13 @@ try {
         //                      push the Jitsi app from the store. UAT runs in the
         //                      phone browser, so that prompt would land in front
         //                      of every helper at the worst moment.
-        $fragment = '#config.defaultLanguage=' . rawurlencode('"en"')
-                  . '&config.disableDeepLinking=true';
+        $fragment = '#config.defaultLanguage=en'
+                  . '&config.disableDeepLinking=true'
+                  . '&config.resolution=720'
+                  . '&config.disableSimulcast=true'
+                  . '&config.constraints.video.height.ideal=720'
+                  . '&config.constraints.video.height.max=720'
+                  . '&config.constraints.video.height.min=480';
 
         room_out(true, 'ok', [
             'url'        => 'https://' . $host . '/' . rawurlencode($name) . $fragment,
