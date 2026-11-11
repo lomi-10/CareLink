@@ -73,12 +73,13 @@ export default function ChatPanel({
     visible: boolean;
     message: string;
     type: 'success' | 'error' | 'warning' | 'info';
+    title?: string;
   }>({ visible: false, message: '', type: 'info' });
   const flatRef = useRef<FlatList>(null);
 
-  const showChatNotif = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
-    setChatNotif({ visible: true, message, type });
-  };
+  const showChatNotif = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info', title?: string) => {
+    setChatNotif({ visible: true, message, type, title });
+  }, []);
 
   const loadResolvedApp = useCallback(async () => {
     try {
@@ -138,6 +139,28 @@ export default function ChatPanel({
   useEffect(() => {
     void loadResolvedApp();
   }, [loadResolvedApp]);
+
+  useEffect(() => {
+    if (isSupportContact || activeTab !== 'contract' || resolvedApp?.status !== 'auto_rejected') return;
+    let cancelled = false;
+    const key = `application_closed_notice_${resolvedApp.application_id}`;
+    const message = resolvedApp.parent_notes
+      || 'This application was closed because the employer proceeded with another position for you.';
+
+    void (async () => {
+      try {
+        if (await AsyncStorage.getItem(key)) return;
+        if (cancelled) return;
+        showChatNotif(message, 'warning', 'Application closed');
+        await AsyncStorage.setItem(key, '1');
+      } catch (error) {
+        console.error('Could not show the application-closure notice:', error);
+        if (!cancelled) showChatNotif(message, 'warning', 'Application closed');
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [activeTab, isSupportContact, resolvedApp?.application_id, resolvedApp?.parent_notes, resolvedApp?.status, showChatNotif]);
 
   useEffect(() => {
     if (messages.length > 0) flatRef.current?.scrollToEnd({ animated: false });
@@ -619,6 +642,7 @@ export default function ChatPanel({
       </Modal>
       <NotificationModal
         visible={chatNotif.visible}
+        title={chatNotif.title}
         message={chatNotif.message}
         type={chatNotif.type === 'warning' ? 'warning' : chatNotif.type === 'error' ? 'error' : chatNotif.type === 'success' ? 'success' : 'info'}
         onClose={() => setChatNotif(n => ({ ...n, visible: false }))}

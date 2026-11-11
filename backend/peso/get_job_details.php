@@ -15,6 +15,7 @@ require_once '../dbcon.php';
 require_once __DIR__ . '/peso_auth.php';
 require_once __DIR__ . '/../shared/account_credentials.php';
 require_once __DIR__ . '/../shared/job_description_review.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 function sendJson($ok, $msg, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -62,9 +63,13 @@ try {
     $result = $stmt->get_result();
 
     if ($row = $result->fetch_assoc()) {
+        $row = carelink_attach_job_post_relations(
+            $row,
+            carelink_load_job_post_relations($conn, [(int) $row['job_post_id']])
+        );
         $row['content_review_flags'] = carelink_job_description_review_flags((string) ($row['description'] ?? ''));
         $row['salary_offered'] = (float)$row['salary_offered'];
-        $row['category_ids'] = json_decode($row['category_ids'] ?? '[]', true) ?: [(int) $row['category_id']];
+        if (!$row['category_ids'] && !empty($row['category_id'])) $row['category_ids'] = [(int) $row['category_id']];
         $categoryNames = [];
         $categoryResult = $conn->query('SELECT category_id, category_name FROM ref_categories');
         if ($categoryResult) {

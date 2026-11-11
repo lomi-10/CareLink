@@ -119,15 +119,60 @@ function carelink_finalize_hire_after_contract(
     // A helper can be shortlisted or interviewing for several employers at
     // once. Once this placement is final, none of those other opportunities
     // remain available.
-    $sql4 = "UPDATE job_applications SET status = 'Rejected',
-                     parent_notes = 'Helper is already employed by another employer.',
-                     updated_at = NOW()
-             WHERE helper_id = ? AND application_id != ? AND job_post_id != ?
-               AND status NOT IN ('hired', 'termination_pending', 'terminated', 'Rejected', 'Withdrawn', 'auto_rejected')";
+    $closedApplications = [];
+    $closedAppsQuery = $conn->prepare(
+        "SELECT ja.application_id, jp.parent_id, jp.title
+         FROM job_applications ja
+         INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+         WHERE ja.helper_id = ? AND ja.application_id != ? AND ja.job_post_id != ?
+           AND ja.status NOT IN ('hired', 'termination_pending', 'terminated', 'Rejected', 'Withdrawn', 'auto_rejected')
+         FOR UPDATE"
+    );
+    $closedAppsQuery->bind_param('iii', $helper_id, $application_id, $job_post_id);
+    $closedAppsQuery->execute();
+    $closedAppsResult = $closedAppsQuery->get_result();
+    while ($closedApp = $closedAppsResult->fetch_assoc()) {
+        $closedApplications[] = $closedApp;
+    }
+    $closedAppsQuery->close();
+
+    $sql4 = "UPDATE job_applications ja
+             INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+             SET ja.status = CASE WHEN jp.parent_id = ? THEN 'auto_rejected' ELSE 'Rejected' END,
+                 ja.parent_notes = CASE
+                     WHEN jp.parent_id = ? THEN 'Closed automatically: employer hired you for another position.'
+                     ELSE 'Application closed because helper is now employed by another employer.'
+                 END,
+                 ja.reviewed_at = NOW(),
+                 ja.updated_at = NOW()
+             WHERE ja.helper_id = ? AND ja.application_id != ? AND ja.job_post_id != ?
+               AND ja.status NOT IN ('hired', 'termination_pending', 'terminated', 'Rejected', 'Withdrawn', 'auto_rejected')";
     $stmt4 = $conn->prepare($sql4);
-    $stmt4->bind_param('iii', $helper_id, $application_id, $job_post_id);
+    $stmt4->bind_param('iiiii', $parent_id, $parent_id, $helper_id, $application_id, $job_post_id);
     $stmt4->execute();
     $stmt4->close();
+
+    if ($closedApplications) {
+        require_once __DIR__ . '/create_notification.php';
+        foreach ($closedApplications as $closedApp) {
+            $sameEmployer = (int) $closedApp['parent_id'] === $parent_id;
+            $jobTitle = trim((string) $closedApp['title']) ?: 'another position';
+            $message = $sameEmployer
+                ? "Your application for {$jobTitle} was closed because this employer finalized your hire for another position."
+                : "Your application for {$jobTitle} was closed because your employment with another household was finalized.";
+            if (carelink_create_notification(
+                $conn,
+                $helper_id,
+                'status_changed',
+                'Application closed',
+                $message,
+                'application',
+                (int) $closedApp['application_id']
+            ) === false) {
+                error_log('Could not notify helper about closed application ' . (int) $closedApp['application_id']);
+            }
+        }
+    }
 
     // A scheduled interview is no longer actionable once its application is
     // closed by the helper's confirmed employment.

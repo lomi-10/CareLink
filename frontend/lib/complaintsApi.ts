@@ -18,6 +18,34 @@ export type ComplaintCategory =
   | 'technical'
   | 'other';
 
+export type ComplaintTimelineItem = {
+  action_id: number;
+  action_type: string;
+  title: string;
+  detail: string | null;
+  due_date: string | null;
+  created_at: string;
+  actor_role: string;
+  actor_name: string;
+  internal: boolean;
+};
+
+export type ComplaintCase = {
+  complaint_id: number;
+  reference: string;
+  your_role: 'complainant' | 'respondent';
+  subject: string;
+  category: string;
+  status: string;
+  stage: string | null;
+  description: string | null;
+  incident_at: string | null;
+  incident_address: string | null;
+  created_at: string;
+  resolved_at: string | null;
+  timeline: ComplaintTimelineItem[];
+};
+
 export async function submitComplaint(body: {
   // Pass application_id for a complaint tied to a hire/placement, OR respondent_id
   // for a general complaint (while browsing or before a hire). One is required.
@@ -51,6 +79,13 @@ export async function submitComplaint(body: {
     }),
   });
   return res.json() as Promise<{ success: boolean; message?: string; complaint_id?: number }>;
+}
+
+export async function fetchComplaintTracking(userId: number) {
+  const res = await fetch(
+    `${API_URL}/shared/get_complaint_tracking.php?user_id=${encodeURIComponent(String(userId))}`,
+  );
+  return res.json() as Promise<{ success: boolean; cases?: ComplaintCase[]; message?: string }>;
 }
 
 export type AdminComplaintRow = {

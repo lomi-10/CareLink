@@ -1,7 +1,7 @@
 // components/parent/home/GreetingCard.tsx
 // Hero banner for the parent dashboard — warm caramel gradient (family-focused,
 // the opposite of the helper portal's dark-brown hero), with a rounded family
-// photo frame and dual "Post a Job" / "Browse Helpers" CTAs (per reference mockup).
+// photo frame and quick links to browse and manage helpers.
 
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -45,16 +45,16 @@ export function GreetingCard({ userName, profileImage }: GreetingCardProps) {
 
         <Text style={s.greeting}>{greeting}</Text>
         <Text style={s.name} numberOfLines={1}>{userName} 👋</Text>
-        <Text style={s.tagline}>Let's find trusted and verified{'\n'}helpers for your family.</Text>
+        <Text style={s.tagline}>Find trusted and verified{'\n'}helpers for your family.</Text>
 
         <View style={s.ctaRow}>
-          <TouchableOpacity style={s.ctaPrimary} onPress={() => router.push('/(parent)/jobs')} activeOpacity={0.88}>
-            <Ionicons name="add-circle" size={15} color="#FFFFFF" />
-            <Text style={s.ctaPrimaryText}>Post a Job</Text>
+          <TouchableOpacity style={s.ctaPrimary} onPress={() => router.push('/(parent)/browse')} activeOpacity={0.88}>
+            <Ionicons name="search" size={15} color="#FFFFFF" />
+            <Text style={s.ctaPrimaryText}>Find Helpers</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.ctaSecondary} onPress={() => router.push('/(parent)/browse')} activeOpacity={0.88}>
-            <Ionicons name="search" size={15} color={BROWN} />
-            <Text style={s.ctaSecondaryText}>Browse Helpers</Text>
+          <TouchableOpacity style={s.ctaSecondary} onPress={() => router.push('/(parent)/hire')} activeOpacity={0.88}>
+            <Ionicons name="people" size={15} color={BROWN} />
+            <Text style={s.ctaSecondaryText}>My Helpers</Text>
           </TouchableOpacity>
         </View>
       </View>

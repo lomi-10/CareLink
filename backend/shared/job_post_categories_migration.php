@@ -8,28 +8,16 @@ if (!function_exists('ensure_job_post_categories_and_slots')) {
         }
         $tableResult->free();
 
-        $columns = [
-            'category_ids' => "ALTER TABLE `job_posts` ADD COLUMN `category_ids` json DEFAULT NULL COMMENT 'All selected ref_categories.category_id values'",
-            'slots' => "ALTER TABLE `job_posts` ADD COLUMN `slots` int unsigned NOT NULL DEFAULT '1' COMMENT 'Number of helpers hired through this post'",
-        ];
-        foreach ($columns as $column => $alterSql) {
-            $columnResult = $conn->query("SHOW COLUMNS FROM `job_posts` LIKE '$column'");
-            if (!$columnResult) {
-                throw new RuntimeException("Could not inspect job_posts.$column: " . $conn->error);
-            }
-            $exists = $columnResult->num_rows > 0;
-            $columnResult->free();
-            if (!$exists && !$conn->query($alterSql)) {
-                throw new RuntimeException("Could not add job_posts.$column: " . $conn->error);
-            }
+        $columnResult = $conn->query("SHOW COLUMNS FROM `job_posts` LIKE 'slots'");
+        if (!$columnResult) {
+            throw new RuntimeException("Could not inspect job_posts.slots: " . $conn->error);
         }
-
-        if (!$conn->query(
-            "UPDATE `job_posts`
-             SET `category_ids` = JSON_ARRAY(`category_id`)
-             WHERE `category_ids` IS NULL OR JSON_LENGTH(`category_ids`) = 0"
+        $slotsExists = $columnResult->num_rows > 0;
+        $columnResult->free();
+        if (!$slotsExists && !$conn->query(
+            "ALTER TABLE `job_posts` ADD COLUMN `slots` int unsigned NOT NULL DEFAULT '1' COMMENT 'Number of helpers hired through this post'"
         )) {
-            throw new RuntimeException('Could not backfill job post categories: ' . $conn->error);
+            throw new RuntimeException("Could not add job_posts.slots: " . $conn->error);
         }
     }
 }

@@ -13,10 +13,6 @@ interface ApplicationCardProps {
   onReject: () => void;
   onScheduleInterview?: () => void;
   onMessage?: () => void;
-  /** Hired placement: open shared task list */
-  onManageTasks?: () => void;
-  /** Hired placement: weekly attendance */
-  onViewAttendance?: () => void;
   /** Hired placement: leave requests */
   onViewLeaveRequests?: () => void;
 }
@@ -29,8 +25,6 @@ export function ApplicationCard({
   onReject,
   onScheduleInterview,
   onMessage,
-  onManageTasks,
-  onViewAttendance,
   onViewLeaveRequests,
 }: ApplicationCardProps) {
   const hiredElsewhere = isHiredElsewhere(application.status, application.parent_notes);
@@ -62,8 +56,6 @@ export function ApplicationCard({
   const statusConfig = getStatusConfig();
   const canTakeAction = !hiredElsewhere && ['Pending', 'Reviewed'].includes(application.status);
   const canSchedule   = !hiredElsewhere && ['Shortlisted', 'Interview Scheduled'].includes(application.status);
-  const canManageTasks = ['hired', 'Accepted'].includes(application.status) && !!onManageTasks;
-  const canViewAttendance = ['hired', 'Accepted'].includes(application.status) && !!onViewAttendance;
   const canViewLeaveRequests = ['hired', 'Accepted'].includes(application.status) && !!onViewLeaveRequests;
 
   // Format the applied date cleanly
@@ -173,18 +165,6 @@ export function ApplicationCard({
           <TouchableOpacity style={styles.msgBtn} onPress={(e) => { e.stopPropagation(); onMessage(); }}>
             <Ionicons name="chatbubble-outline" size={15} color="#2563EB" />
             <Text style={styles.msgBtnText}>Message</Text>
-          </TouchableOpacity>
-        )}
-        {canManageTasks && (
-          <TouchableOpacity style={styles.tasksBtn} onPress={(e) => { e.stopPropagation(); onManageTasks?.(); }}>
-            <Ionicons name="checkbox-outline" size={15} color="#059669" />
-            <Text style={styles.tasksBtnText}>Tasks</Text>
-          </TouchableOpacity>
-        )}
-        {canViewAttendance && (
-          <TouchableOpacity style={styles.attendanceBtn} onPress={(e) => { e.stopPropagation(); onViewAttendance?.(); }}>
-            <Ionicons name="calendar-outline" size={15} color="#2563EB" />
-            <Text style={styles.attendanceBtnText}>Attendance</Text>
           </TouchableOpacity>
         )}
         {canViewLeaveRequests && (
@@ -407,30 +387,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#DBEAFE',
   },
   msgBtnText: { color: '#2563EB', fontSize: 13, fontWeight: '700' },
-  tasksBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-  },
-  tasksBtnText: { color: '#059669', fontSize: 13, fontWeight: '700' },
-  attendanceBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-  },
-  attendanceBtnText: { color: '#2563EB', fontSize: 13, fontWeight: '700' },
   leaveBtn: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -40,6 +40,7 @@ require_once __DIR__ . '/../shared/create_notification.php';
 require_once __DIR__ . '/../shared/job_invites_table.php';
 require_once __DIR__ . '/../shared/direct_hire.php';
 require_once __DIR__ . '/../shared/helper_safeguards.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 /** The regional kasambahay minimum. Single source of truth: shared/wage_floor.php. */
 require_once __DIR__ . '/../shared/wage_floor.php';
@@ -140,13 +141,8 @@ try {
     try {
         // Status 'Pending' — a direct hire offer goes through PESO review just
         // like a public post. That is the non-negotiable part.
-        // Roles and skills are JSON columns on job_posts (job_ids / skill_ids),
-        // matching how parent/post_job.php stores a public post — same shape, so
-        // everything downstream reads a direct-hire post identically.
-        $job_ids_json   = json_encode(array_values(array_filter(
-            array_map('intval', (array) ($in['job_ids'] ?? [])), fn($v) => $v > 0)));
-        $skill_ids_json = json_encode(array_values(array_filter(
-            array_map('intval', (array) ($in['skill_ids'] ?? [])), fn($v) => $v > 0)));
+        $job_ids = carelink_parse_id_list($in['job_ids'] ?? []);
+        $skill_ids = carelink_parse_id_list($in['skill_ids'] ?? []);
 
         // description is NOT NULL on job_posts — fall back to the terms rather
         // than failing the insert on an employer who left it blank.
@@ -157,21 +153,27 @@ try {
 
         $ins = $conn->prepare(
             "INSERT INTO job_posts
-                (parent_id, category_id, job_ids, title, description,
+                (parent_id, category_id, title, description,
                  employment_type, work_schedule, salary_offered, salary_period,
-                 skill_ids, start_date, status, visibility, posted_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 'direct_hire', NOW())"
+                 start_date, status, visibility, posted_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 'direct_hire', NOW())"
         );
         if (!$ins) throw new Exception('Prepare failed: ' . $conn->error);
         $ins->bind_param(
-            'iisssssdsss',
-            $parent_id, $category_id, $job_ids_json, $title, $description,
-            $employment_type, $work_schedule, $salary, $salary_period,
-            $skill_ids_json, $start_date
+            'iissssdss',
+            $parent_id, $category_id, $title, $description,
+            $employment_type, $work_schedule, $salary, $salary_period, $start_date
         );
         if (!$ins->execute()) throw new Exception('Could not create the offer: ' . $ins->error);
         $job_post_id = $conn->insert_id;
         $ins->close();
+        carelink_replace_job_post_relations(
+            $conn,
+            $job_post_id,
+            [$category_id],
+            $job_ids,
+            $skill_ids
+        );
 
         // The invite is recorded but NOT delivered. The helper is told nothing
         // until PESO approves the terms — see shared/direct_hire.php for why.

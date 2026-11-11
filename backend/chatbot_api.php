@@ -49,7 +49,7 @@ CareLink is a mobile and web app where:
 
 == USER ROLES ==
 - Parent/Employer: posts jobs, hires helpers, manages work
-- Helper/Kasambahay: applies to jobs, does daily work tasks
+- Helper/Kasambahay: applies to jobs and manages their employment
 - PESO: verifies accounts and oversees contracts
 - Admin: manages the platform
 
@@ -71,28 +71,17 @@ CareLink is a mobile and web app where:
    generated automatically → both you and the helper must 
    sign it → once both sign, the helper is officially hired.
 
-4. POST TASKS (after hiring): Go to "My Helpers" → select 
-   the active hire → tap "Tasks" → tap "Add Task" → enter 
-   task title, description (optional), due date (optional), 
-   and toggle "Require photo proof" if needed. Tasks appear 
-   on your helper's work dashboard immediately.
+4. APPROVE LEAVE REQUESTS: Open the active placement's
+   Contract & Leave area or Notifications → review the request
+   and approve or decline it. Approved leave is reflected in the
+   leave record and payroll summary.
 
-5. VIEW ATTENDANCE: Go to "My Helpers" → select hire → 
-   tap "Attendance" → see weekly or monthly view → green 
-   dot means present, gray means absent, yellow means 
-   approved leave, purple means rest day. Tap any day for 
-   check-in and check-out times.
+5. REVIEW PAY AND PAYSLIPS: Open Payroll to see a contract-based
+   estimate and leave totals. Review issued payslips separately;
+   the estimate is informational and does not move money or set
+   final pay.
 
-6. APPROVE LEAVE REQUESTS: Go to Notifications or 
-   "My Helpers" → Attendance → Leave Requests → tap 
-   Approve or Decline. If approved, the day is automatically 
-   marked as leave in the attendance grid.
-
-7. MARK SALARY PAID: Go to "My Helpers" → Salary → 
-   review computed amount based on days worked → tap 
-   "Mark as Paid." The helper will be notified.
-
-8. END EMPLOYMENT: Go to "My Helpers" → Contract → scroll 
+6. END EMPLOYMENT: Go to "My Helpers" → Contract → scroll
    to bottom → tap "End Employment" → select reason → 
    confirm. A 5-day notice period applies unless both 
    parties agree to immediate termination. PESO is 
@@ -133,32 +122,16 @@ CareLink is a mobile and web app where:
    are officially hired and your dashboard switches to 
    Work Mode.
 
-7. CHECK IN: After being hired, your home screen shows a
-   large green "Check In" button → tap it when you arrive 
-   at work. It records your arrival time. It changes to a 
-   red "Check Out" button. Tap Check Out when your day ends.
-
-8. VIEW AND COMPLETE TASKS: From your Work dashboard, tap
-   "Tasks" → see all tasks your employer added for today → 
-   tap the checkbox to mark a task done → if the task 
-   requires a photo, the camera will open so you can take 
-   a proof photo before it is marked complete.
-
-9. VIEW YOUR SCHEDULE: Tap "Schedule" → see a monthly
-   calendar with your work days, rest days, approved 
-   leaves, and absences. Tap any day to see details.
-
-10. REQUEST DAY OFF: From the Schedule screen, tap
-   "Request Day Off" → pick the date → select reason 
+7. REQUEST LEAVE: From Work Mode's Contract & Leave area,
+   choose the request-leave option → pick the date → select reason
    (sick, personal, family emergency, other) → add an 
    optional note → submit. Your employer will be notified 
    and can approve or decline. Check your contract and current
    law for the leave terms that apply to you.
 
-11. VIEW SALARY: Tap "Salary" from your Work dashboard →
-   see expected pay for this period based on your contract 
-   salary and days worked → see if your employer has 
-   marked it as paid.
+8. VIEW PAY AND PAYSLIPS: Open Payroll for a contract-based
+   estimate and leave totals, and Payslips for issued records.
+   The estimate is informational; final pay is set by the employer.
 
 == PROFILE, JOBS, AND APP-WIDE HELP ==
 - EMPLOYER PROFILE: Open Profile to add contact information,
@@ -177,9 +150,9 @@ CareLink is a mobile and web app where:
   and PESO status rather than relying on a match score alone.
 - WORK MANAGEMENT: After both sides sign a contract, open My
   Helpers/Work Management and choose the active placement. Use
-  Tasks, Attendance, Leave Requests, Salary and Contract to
-  manage the work and keep records. Exact available tabs depend
-  on account role and placement status.
+  Contract & Leave, Payroll/Payslips, Complaints and Messages
+  to manage employment and keep records. Exact available tabs
+  depend on account role and placement status.
 - SAVED ITEMS AND APPLICATIONS: Helpers can find bookmarked
   jobs in Saved Jobs and check progress in My Applications.
   Employers can find applicants from their job post or
@@ -307,7 +280,7 @@ function carelink_chatbot_context_block(array $ctx): string
         $lines[] = '- If they have no active job post, suggest posting a job (My Job Posts → +) to start hiring.';
         $lines[] = '- If they ask about CareLink Plus and are already subscribed, tell them to check the menu — it now shows their receipt, not a purchase button. Never tell an existing subscriber to "subscribe."';
     }
-    $lines[] = '- If they are in an active placement, focus on day-to-day work features (tasks, attendance, schedule, leave, salary).';
+    $lines[] = '- If they are in an active placement, focus on the contract, leave, payroll/payslips, complaints, and messages.';
     $lines[] = 'Weave this naturally into answers. Never list these values like a database dump, never reveal another user\'s data, and never invent details beyond this context.';
 
     return implode("\n", $lines);

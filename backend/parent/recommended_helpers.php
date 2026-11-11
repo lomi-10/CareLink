@@ -14,6 +14,7 @@ error_reporting(0);
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
 require_once __DIR__ . '/../shared/complaint_tracking_tables.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Haversine distance (km) between two lat/lng pairs
@@ -60,9 +61,10 @@ try {
     $parentJobIds   = [];
     $salarySamples  = [];
     $expSamples     = [];
+    $parentPostRows = [];
     if ($job_post_id > 0) {
         $stmt = $conn->prepare("
-            SELECT category_id, job_ids, salary_offered, salary_period, min_experience_years
+            SELECT job_post_id, category_id, salary_offered, salary_period, min_experience_years
             FROM job_posts
             WHERE job_post_id = ? AND parent_id = ?
             LIMIT 1
@@ -71,31 +73,33 @@ try {
         $stmt->execute();
         $focus = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        if ($focus) {
-            $parentCatIds[] = (int)$focus['category_id'];
-            foreach (json_decode($focus['job_ids'] ?? '[]', true) ?: [] as $jid) $parentJobIds[] = (int)$jid;
-            $monthly = ($focus['salary_period'] === 'Daily') ? floatval($focus['salary_offered']) * 26 : floatval($focus['salary_offered']);
-            $salarySamples[] = $monthly;
-            if ($focus['min_experience_years'] !== null) $expSamples[] = (int)$focus['min_experience_years'];
-        }
+        if ($focus) $parentPostRows[] = $focus;
     }
-    if (empty($parentCatIds)) {
+    if (!$parentPostRows) {
         $stmt = $conn->prepare("
-            SELECT category_id, job_ids, salary_offered, salary_period, min_experience_years
+            SELECT job_post_id, category_id, salary_offered, salary_period, min_experience_years
             FROM job_posts
             WHERE parent_id = ?
         ");
         $stmt->bind_param("i", $parent_id);
         $stmt->execute();
         $res = $stmt->get_result();
-        while ($r = $res->fetch_assoc()) {
-            $parentCatIds[] = (int)$r['category_id'];
-            foreach (json_decode($r['job_ids'] ?? '[]', true) ?: [] as $jid) $parentJobIds[] = (int)$jid;
-            $monthly = ($r['salary_period'] === 'Daily') ? floatval($r['salary_offered']) * 26 : floatval($r['salary_offered']);
-            $salarySamples[] = $monthly;
-            if ($r['min_experience_years'] !== null) $expSamples[] = (int)$r['min_experience_years'];
-        }
+        while ($r = $res->fetch_assoc()) $parentPostRows[] = $r;
         $stmt->close();
+    }
+    $parentRelations = carelink_load_job_post_relations(
+        $conn,
+        array_map(fn($row) => (int) $row['job_post_id'], $parentPostRows)
+    );
+    foreach ($parentPostRows as $post) {
+        $values = $parentRelations[(int) $post['job_post_id']] ?? [];
+        $parentCategories = $values['category_ids'] ?? [];
+        if (!$parentCategories && (int) $post['category_id'] > 0) $parentCategories = [(int) $post['category_id']];
+        $parentCatIds = array_merge($parentCatIds, $parentCategories);
+        $parentJobIds = array_merge($parentJobIds, $values['job_ids'] ?? []);
+        $monthly = ($post['salary_period'] === 'Daily') ? floatval($post['salary_offered']) * 26 : floatval($post['salary_offered']);
+        $salarySamples[] = $monthly;
+        if ($post['min_experience_years'] !== null) $expSamples[] = (int) $post['min_experience_years'];
     }
     $parentCatIds = array_values(array_unique($parentCatIds));
     $parentJobIds = array_values(array_unique($parentJobIds));

@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit; }
 
 include __DIR__ . "/../dbcon.php";
 include __DIR__ . "/peso_auth.php";
-require_once __DIR__ . "/../shared/job_title.php"; // carelink_normalize_job_ids
+require_once __DIR__ . "/../shared/multivalue_relations.php";
 
 $staffId = peso_require_staff($conn); // exits with 401 JSON if not PESO staff
 
@@ -39,16 +39,16 @@ function ref_count(mysqli $conn, string $sql, int $id): int {
     return (int) $n;
 }
 
-/** How many active/pending job posts reference this job_id or skill_id inside their JSON arrays. */
-function ref_in_job_posts(mysqli $conn, string $column, int $id): int {
-    $res = $conn->query("SELECT `$column` FROM job_posts");
-    $count = 0;
-    if ($res) {
-        while ($row = $res->fetch_assoc()) {
-            if (in_array($id, carelink_normalize_job_ids($row[$column]), true)) $count++;
-        }
-    }
-    return $count;
+/** Count job posts that use a reference value through normalized relationships. */
+function ref_in_job_posts(mysqli $conn, string $type, int $id): int {
+    $relations = [
+        'category' => ['job_post_categories', 'category_id'],
+        'job' => ['job_post_roles', 'job_id'],
+        'skill' => ['job_post_skills', 'skill_id'],
+    ];
+    if (!isset($relations[$type])) throw new InvalidArgumentException('Unsupported reference type.');
+    [$table, $column] = $relations[$type];
+    return ref_count($conn, "SELECT COUNT(DISTINCT job_post_id) FROM `$table` WHERE `$column` = ?", $id);
 }
 
 function respond(bool $ok, string $msg, array $extra = []): void {
@@ -172,19 +172,19 @@ if ($action === 'delete') {
     if ($type === 'category') {
         $jobs = ref_count($conn, "SELECT COUNT(*) FROM ref_jobs WHERE category_id = ?", $id);
         if ($jobs > 0) respond(false, "This category has $jobs job role(s). Remove or move them first.");
-        $posts = ref_count($conn, "SELECT COUNT(*) FROM job_posts WHERE category_id = ?", $id);
+        $posts = ref_in_job_posts($conn, 'category', $id);
         if ($posts > 0) respond(false, "This category is used by $posts job post(s), so it can't be deleted.");
     } elseif ($type === 'job') {
         $skills = ref_count($conn, "SELECT COUNT(*) FROM ref_skills WHERE job_id = ?", $id);
         if ($skills > 0) respond(false, "This role has $skills skill(s). Remove them first.");
         $helpers = ref_count($conn, "SELECT COUNT(*) FROM helper_jobs WHERE job_id = ?", $id);
         if ($helpers > 0) respond(false, "This role is on $helpers helper profile(s), so it can't be deleted.");
-        $posts = ref_in_job_posts($conn, 'job_ids', $id);
+        $posts = ref_in_job_posts($conn, 'job', $id);
         if ($posts > 0) respond(false, "This role is used by $posts job post(s), so it can't be deleted.");
     } else {
         $helpers = ref_count($conn, "SELECT COUNT(*) FROM helper_skills WHERE skill_id = ?", $id);
         if ($helpers > 0) respond(false, "This skill is on $helpers helper profile(s), so it can't be deleted.");
-        $posts = ref_in_job_posts($conn, 'skill_ids', $id);
+        $posts = ref_in_job_posts($conn, 'skill', $id);
         if ($posts > 0) respond(false, "This skill is used by $posts job post(s), so it can't be deleted.");
     }
 

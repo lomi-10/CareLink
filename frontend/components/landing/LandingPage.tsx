@@ -236,7 +236,7 @@ function MenuAction({ icon, label, onPress, color }: {
 function HowItWorks() {
   const { c } = useLandingTheme();
   const steps = [
-    { icon: "people-outline" as const, title: "Choose your role", text: "Households post a job; helpers create a profile and apply for work." },
+    { icon: "people-outline" as const, title: "Choose your role", text: "Households browse helper profiles and hire; helpers build a profile and explore work opportunities." },
     { icon: "chatbubbles-outline" as const, title: "Connect and interview", text: "Review applications, message each other, and arrange an interview in CareLink." },
     { icon: "document-text-outline" as const, title: "Agree and get started", text: "When both sides agree, review and sign an employment contract for the placement." },
   ];

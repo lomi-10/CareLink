@@ -26,6 +26,7 @@ header('Cache-Control: no-store');
 
 require_once __DIR__ . '/../dbcon.php';
 require_once __DIR__ . '/nsrp_template.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 function nsrp_fail(string $msg, int $code = 400): void
 {
@@ -64,7 +65,7 @@ try {
         "SELECT u.first_name, u.middle_name, u.last_name, u.email, u.phone,
                 hp.profile_id, hp.birth_date, hp.gender, hp.civil_status,
                 hp.province, hp.municipality, hp.barangay, hp.address,
-                hp.education_level, hp.expected_salary, hp.salary_period, hp.custom_skills
+                hp.education_level, hp.expected_salary, hp.salary_period
            FROM users u
            LEFT JOIN helper_profiles hp ON hp.user_id = u.user_id
           WHERE u.user_id = ? AND u.user_type = 'helper'
@@ -136,12 +137,10 @@ try {
         while ($x = $r->fetch_assoc()) $skills[] = $x['skill_name'];
         $q->close();
     }
-    if (!empty($row['custom_skills'])) {
-        $decoded = json_decode((string) $row['custom_skills'], true);
-        if (is_array($decoded)) {
-            foreach ($decoded as $cs) if (is_string($cs)) $skills[] = $cs;
-        }
-    }
+    $customValues = $profileId > 0
+        ? (carelink_load_helper_custom_values($conn, [$profileId])[$profileId]['custom_skills'] ?? [])
+        : [];
+    $skills = array_merge($skills, $customValues);
 
     // ── Work history, most recent first, as the form asks ──────────────────
     $work = [];

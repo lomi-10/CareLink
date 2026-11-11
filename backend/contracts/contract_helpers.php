@@ -134,17 +134,17 @@ if (!function_exists('carelink_contract_validate_work_hours')) {
             throw new Exception('Agreed work hours are required before creating or editing a contract.');
         }
         if (preg_match('/^Flexible(?:\s|$)/i', $value)) {
-            return;
+            throw new Exception('A fixed daily work schedule is required; flexible hours are not allowed.');
         }
         if (!preg_match(
             '/^(\d{1,2}):([0-5]\d)\s*(AM|PM)\s*–\s*(\d{1,2}):([0-5]\d)\s*(AM|PM)$/iu',
             $value,
             $match
         )) {
-            throw new Exception('Choose valid start and end times, or use the Flexible hours option.');
+            throw new Exception('Choose valid fixed start and end times.');
         }
         if ((int) $match[1] < 1 || (int) $match[1] > 12 || (int) $match[4] < 1 || (int) $match[4] > 12) {
-            throw new Exception('Choose valid start and end times, or use the Flexible hours option.');
+            throw new Exception('Choose valid fixed start and end times.');
         }
 
         $toMinutes = static function (int $hour, int $minute, string $period): int {

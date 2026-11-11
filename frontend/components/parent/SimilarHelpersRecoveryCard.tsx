@@ -129,7 +129,7 @@ export function SimilarHelpersRecoveryCard({
         tone="info"
         icon="sparkles"
         title={`View ${count} Similar Verified Helper${count === 1 ? '' : 's'} Available in Your Area`}
-        message="Based on your job post criteria — continue hiring without starting over."
+        message="Based on the role details — continue hiring without starting over."
         action={{
           label: 'See all matches',
           onPress: () => router.push('/(parent)/browse'),

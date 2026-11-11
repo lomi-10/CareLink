@@ -5,6 +5,9 @@ framework your adviser and panel require — confirm that first, since some
 programs mandate ISO/IEC 25010, others TAM/UTAUT, others a department rubric.
 This uses **ISO/IEC 25010**, the most common choice for PH capstones.
 
+**Administration:** Collect responses using Google Forms. The questionnaire is
+not an in-app CareLink feature, and its responses are not stored in CareLink.
+
 ---
 
 ## First: two different things called "feedback"

@@ -184,7 +184,7 @@ export function MobileMenu({
 
           <Text style={styles.hint}>
             Here: Active Helpers, notifications, and settings — not duplicated from the bar. The bottom bar has Home,
-            Find, Jobs, Applicants, Messages, and Profile.
+            Find Helpers, Work, Messages, and Profile.
           </Text>
 
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -260,21 +260,6 @@ export function MobileMenu({
               </View>
               <Ionicons name="chevron-forward" size={18} color={c.subtle} />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.drawerItem}
-              onPress={() => {
-                onClose();
-                router.push('/(parent)/feedback' as never);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={styles.drawerItemLeft}>
-                <Ionicons name="chatbox-ellipses-outline" size={22} color={c.muted} />
-                <Text style={styles.drawerItemText} numberOfLines={1}>System Evaluation Form</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={c.subtle} />
-            </TouchableOpacity>
-
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
               <Ionicons name="log-out-outline" size={22} color={c.danger} />
               <Text style={styles.logoutText}>Log out</Text>

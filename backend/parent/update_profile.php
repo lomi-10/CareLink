@@ -72,9 +72,6 @@ try {
             throw new Exception($claim['message']);
         }
     }
-    // Optional — employers state this so both sides can judge household fit
-    // (practices, dietary rules, rest days around worship) before committing.
-    $religion = isset($_POST['religion']) ? trim($_POST['religion']) : '';
     $province = isset($_POST['province']) ? trim($_POST['province']) : '';
     $municipality = isset($_POST['municipality']) ? trim($_POST['municipality']) : '';
     $barangay = isset($_POST['barangay']) ? trim($_POST['barangay']) : '';
@@ -206,9 +203,9 @@ try {
             // number is owned by users.phone and was already saved above by
             // carelink_claim_phone(). Writing it in two places is what let the
             // copies diverge. See migration_2026_08_06_phone_normalization.sql.
-            $updateFields = array("province = ?", "municipality = ?", "barangay = ?", "bio = ?", "address = ?", "landmark = ?", "religion = ?", "updated_at = NOW()");
-            $types = "sssssss";
-            $params = array($province, $municipality, $barangay, $bio, $address, $landmark, $religion);
+            $updateFields = array("province = ?", "municipality = ?", "barangay = ?", "bio = ?", "address = ?", "landmark = ?", "updated_at = NOW()");
+            $types = "ssssss";
+            $params = array($province, $municipality, $barangay, $bio, $address, $landmark);
 
             if ($latitude !== null) {
                 $updateFields[] = "latitude = ?";
@@ -242,9 +239,9 @@ try {
             $updateStmt->close();
         } else {
             // contact_number omitted on purpose — owned by users.phone.
-            $insertSql = "INSERT INTO parent_profiles (user_id, province, municipality, barangay, address, bio, landmark, religion, profile_image, latitude, longitude, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $insertSql = "INSERT INTO parent_profiles (user_id, province, municipality, barangay, address, bio, landmark, profile_image, latitude, longitude, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $insertStmt = $conn->prepare($insertSql);
-            $insertStmt->bind_param("issssssssdd", $user_id, $province, $municipality, $barangay, $address, $bio, $landmark, $religion, $profile_image_url, $latitude, $longitude);
+            $insertStmt->bind_param("isssssssdd", $user_id, $province, $municipality, $barangay, $address, $bio, $landmark, $profile_image_url, $latitude, $longitude);
             $insertStmt->execute();
             $profile_id = $conn->insert_id;
             $insertStmt->close();

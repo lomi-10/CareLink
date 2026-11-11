@@ -22,6 +22,7 @@ include_once __DIR__ . '/peso_auth.php';
 include_once __DIR__ . '/../shared/file_security.php';
 include_once __DIR__ . '/../shared/experience_verification.php';
 include_once __DIR__ . '/../shared/helper_safeguards.php';
+include_once __DIR__ . '/../shared/multivalue_relations.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -115,10 +116,16 @@ try {
         
         if ($profileResult->num_rows > 0) {
             $profile = $profileResult->fetch_assoc();
-            unset($profile['religion'], $profile['preferred_rest_day']);
+            unset($profile['preferred_rest_day']);
             $profile['profile_id'] = intval($profile['profile_id']);
             $profile['experience_years'] = intval($profile['experience_years']);
             $profile['expected_salary'] = floatval($profile['expected_salary']);
+            $customValues = carelink_load_helper_custom_values($conn, [(int) $profile['profile_id']])[(int) $profile['profile_id']] ?? [
+                'custom_jobs' => [],
+                'custom_skills' => [],
+            ];
+            $profile['custom_jobs'] = json_encode($customValues['custom_jobs'], JSON_UNESCAPED_UNICODE);
+            $profile['custom_skills'] = json_encode($customValues['custom_skills'], JSON_UNESCAPED_UNICODE);
             
             // Build profile image URL (avoid double-prefix if already absolute URL)
             if ($profile['profile_image']) {

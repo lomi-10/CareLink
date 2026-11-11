@@ -180,7 +180,7 @@ const HELPER_NEXT: GuideChapter = {
     {
       icon: 'briefcase',
       title: 'Then Work Mode opens',
-      body: 'Once the contract is signed your app changes: daily tasks, check-in and check-out, your schedule, leave requests, and your salary summary. Your old job-hunting tabs step aside.',
+      body: 'Once the contract is signed, Work Mode helps you review your contract and leave, see payslips, message your employer, or report a concern. Your job-hunting tabs step aside.',
     },
     {
       icon: 'refresh-outline',
@@ -193,43 +193,28 @@ const HELPER_NEXT: GuideChapter = {
 const HELPER_WORK: GuideChapter = {
   stage: 'work',
   label: 'Working with Work Mode',
-  blurb: 'Tasks, check-in, leave, and your salary.',
+  blurb: 'Your contract, leave, payslips, and messages.',
   icon: 'briefcase-outline',
   pages: [
     {
       icon: 'briefcase',
       title: 'Work Mode is on',
-      body: 'Your contract is signed, so the app has switched to helping you WORK instead of helping you job-hunt. Your tabs are now Home, My Work, Schedule and Messages.',
+      body: 'Your contract is signed, so the app has switched from job-hunting to Work Mode. Use the tabs for your agreed pay, contract and leave, complaints, messages, and profile.',
     },
     {
-      icon: 'checkbox-outline',
-      title: 'Your daily tasks',
-      body: 'My Work shows what your employer has asked for. Tick each one off as you finish it. If something isn’t clear, message them — it’s better to ask than to guess.',
+      icon: 'document-text-outline',
+      title: 'Your contract and leave',
+      body: 'Review your agreed work terms and rest days in Contract & Leave. Send a leave request there and check your employer’s response.',
     },
     {
-      icon: 'camera-outline',
-      title: 'Photo proof (only sometimes)',
-      body: 'Some tasks ask for a photo when you finish. It’s only on tasks where your employer turned it on — it’s not spying, it just saves you having to explain what was done.',
+      icon: 'receipt-outline',
+      title: 'Your payslips',
+      body: 'Check the pay records your employer has shared. A payslip records a payment; it does not move money through CareLink.',
     },
     {
-      icon: 'time-outline',
-      title: 'Check in and check out',
-      body: 'Tap to check in when you start and out when you finish. Forgetting once is not a problem and won’t get you in trouble — it’s a record for both of you, not a punch clock.',
-    },
-    {
-      icon: 'calendar-outline',
-      title: 'Your schedule',
-      body: 'Schedule shows your working days and your rest days as agreed in the contract. Your rest day is yours — you don’t need to check in on it.',
-    },
-    {
-      icon: 'airplane-outline',
-      title: 'Asking for leave',
-      body: 'Need a day off? Send a leave request instead of just messaging, so there’s a clear record. Your employer sees it on their home screen and approves or declines it there.',
-    },
-    {
-      icon: 'wallet-outline',
-      title: 'Your salary summary',
-      body: 'Home shows what you’ve earned based on your agreed salary. Important: this is a RECORD, not a wallet. CareLink never holds or sends money — your employer pays you directly, the same as always.',
+      icon: 'chatbubbles-outline',
+      title: 'Messages and complaints',
+      body: 'Use Messages to discuss your work. If you need help with wages, contract terms, or safety, use Assistance to report a concern.',
     },
     {
       icon: 'exit-outline',
@@ -250,7 +235,7 @@ const PARENT_SETUP: GuideChapter = {
     {
       icon: 'hand-left',
       title: 'Welcome to CareLink!',
-      body: 'Before you can post a job, PESO verifies your household — the same way it verifies every helper. That’s what makes both sides safe to trust. Here’s what to fill in.',
+      body: 'Before you can browse and hire helpers, PESO verifies your household — the same way it verifies every helper. That’s what makes both sides safe to trust. Here’s what to fill in.',
     },
     {
       icon: 'navigate-outline',
@@ -265,7 +250,7 @@ const PARENT_SETUP: GuideChapter = {
     {
       icon: 'location-outline',
       title: 'Step 2 — Where you live',
-      body: 'Province, then city or municipality, then barangay. Helpers nearby score higher for your jobs, so this directly affects who you’ll see.',
+      body: 'Province, then city or municipality, then barangay. Location helps you find helpers who can reasonably travel to your household.',
     },
     {
       icon: 'home-outline',
@@ -275,7 +260,7 @@ const PARENT_SETUP: GuideChapter = {
     {
       icon: 'chatbox-ellipses-outline',
       title: 'Step 4 — Introduce your family',
-      body: 'A few sentences about your home and what kind of help you’re looking for. Helpers read this before applying, and a warm, honest intro gets better applicants.',
+      body: 'A few sentences about your home and what kind of help you’re looking for. Clear, honest details help helpers understand whether the role is a good fit.',
     },
     {
       icon: 'card-outline',
@@ -298,48 +283,28 @@ const PARENT_SETUP: GuideChapter = {
 const PARENT_STARTED: GuideChapter = {
   stage: 'started',
   label: 'Finding the right helper',
-  blurb: 'Posting a job, browsing helpers, and the match score.',
+  blurb: 'Browsing profiles, contacting helpers, and the match score.',
   icon: 'search-outline',
   pages: [
     {
       icon: 'shield-checkmark',
       title: 'You’re PESO-verified!',
-      body: 'You can now post jobs and browse helpers. Every helper you see has had their ID and Barangay Clearance checked by a PESO officer.',
+      body: 'You can now browse helper profiles, review their PESO verification status, and contact them through Messages.',
     },
     {
       icon: 'git-branch-outline',
-      title: 'Two ways to find someone',
-      body: 'Post a job and let verified helpers apply to you — or browse helpers yourself and invite the ones you like to apply. Most families do both.',
-    },
-    {
-      icon: 'add-circle-outline',
-      title: 'How to post a job',
-      body: 'Pick the category and the specific roles, then salary, schedule and rest days, stay-in or stay-out, and what you provide. Leave the description blank and CareLink writes one from your details.',
-    },
-    {
-      icon: 'cash-outline',
-      title: 'About the salary',
-      body: 'CareLink requires at least ₱7,000/month — set deliberately above the regional kasambahay minimum to keep pay fair. SSS, PhilHealth and Pag-IBIG are required by law (RA 10361) and are always on.',
-    },
-    {
-      icon: 'hourglass-outline',
-      title: 'Optional: an application deadline',
-      body: 'You can set a “valid until” date. After it passes the post stops showing to helpers automatically — useful when you need someone by a certain week. Leave it blank to keep it open.',
-    },
-    {
-      icon: 'shield-outline',
-      title: 'PESO approves your post first',
-      body: 'New and edited posts go to PESO before helpers see them. This is why there are no scam listings on CareLink — expect a short wait after posting.',
+      title: 'Browse and contact',
+      body: 'Review profiles, experience, skills, and ratings. Message a helper to discuss the role, or use Hire Directly on their profile to start an offer.',
     },
     {
       icon: 'speedometer-outline',
       title: 'What the match % means',
-      body: 'Every applicant shows how well they fit THAT job, out of 100 — added up from real profile data, never from who paid or who applied first.',
+      body: 'A match score summarizes how closely a helper’s profile fits your household needs. It uses profile information, never payment or application order.',
     },
     {
       icon: 'calculator-outline',
       title: 'How the match is calculated',
-      body: 'For a specific job: Category 25 · Skills 15 · Roles 15 · Salary fit 15 · Experience 10 · Distance 10 · Rating 10. Browsing helpers generally instead scores overall quality: Verified 30 · Rating 25 · Experience 20 · Skills 15 · Versatility 10.',
+      body: 'Browsing helpers generally scores overall quality: Verified 30 · Rating 25 · Experience 20 · Skills 15 · Versatility 10.',
     },
     {
       icon: 'eye-outline',
@@ -351,34 +316,24 @@ const PARENT_STARTED: GuideChapter = {
 
 const PARENT_NEXT: GuideChapter = {
   stage: 'next',
-  label: 'After you post a job',
-  blurb: 'Reviewing applicants, hiring, and how contracts work.',
+  label: 'Hiring and managing a placement',
+  blurb: 'Direct hire offers, contracts, leave, and Work Mode.',
   icon: 'time-outline',
   pages: [
     {
       icon: 'people-outline',
-      title: 'Where your applicants appear',
-      body: 'Applicants show up under your job post and on your Home screen. Each one shows their match %, whether they’re PESO-verified, and their experience.',
-    },
-    {
-      icon: 'funnel-outline',
-      title: 'Review and shortlist',
-      body: 'Open an applicant to see their profile, cover letter, and the documents they chose to share. Shortlist the ones worth talking to — it tells them they’re being seriously considered.',
+      title: 'Start a hire offer',
+      body: 'Open a helper profile from Find Helpers and choose Hire Directly. Confirm the role and agreed terms before sending the offer for review.',
     },
     {
       icon: 'videocam-outline',
       title: 'Message and interview',
-      body: 'Message a shortlisted helper and schedule a video interview inside CareLink. There’s a built-in question guide if you’re not sure what to ask.',
-    },
-    {
-      icon: 'close-circle-outline',
-      title: 'Turning someone down',
-      body: 'You can reject with a reason, which the helper sees. It only affects that one application — it doesn’t block them from your other job posts.',
+      body: 'Use Messages to discuss the offer and schedule a video interview inside CareLink. There’s a built-in question guide if you’re not sure what to ask.',
     },
     {
       icon: 'document-lock-outline',
-      title: 'How the contract works',
-      body: 'When you hire, CareLink generates a DOLE-compliant contract from your job terms — salary, schedule, rest days, benefits. No drafting from scratch.',
+      title: 'Review the written contract',
+      body: 'The contract records the terms you agree on, including salary, duties, schedule, rest days, and benefits. Review it carefully before signing.',
     },
     {
       icon: 'create-outline',
@@ -388,17 +343,17 @@ const PARENT_NEXT: GuideChapter = {
     {
       icon: 'people-circle-outline',
       title: 'What signing settles',
-      body: 'The contract is the agreement on the main duties and pay. Day-to-day requests are handled as tasks in Work Mode instead — you don’t renegotiate the contract to ask for something extra this week.',
+      body: 'The contract records the agreed duties, pay, schedule, and rest days. Use Messages to discuss changes or questions, and report concerns through Complaints.',
     },
     {
       icon: 'briefcase',
       title: 'Then Work Mode opens',
-      body: 'Assign daily tasks, track attendance (off by default — you choose), approve leave requests, and see a payroll summary. Payroll is a clear read-only view of what’s owed; CareLink never moves money.',
+      body: 'Review contracts, approve or decline leave requests, record payslips, message helpers, and submit complaints. CareLink does not move money.',
     },
     {
       icon: 'star-outline',
       title: 'Optional: CareLink Plus',
-      body: 'A ₱149/month plan for employers who hire often. It adds 3 job post boosts a month, unlimited open job posts, priority PESO review, payroll export and 20% off the Digital Contract & Facilitation Fee. Find it under CareLink Plus in the menu.',
+      body: 'A ₱149/month plan for employers who hire often. It adds priority PESO review, payroll export, and 20% off the Digital Contract & Facilitation Fee. Find it under CareLink Plus in the menu.',
     },
     {
       icon: 'lock-open-outline',
@@ -411,7 +366,7 @@ const PARENT_NEXT: GuideChapter = {
 const PARENT_WORK: GuideChapter = {
   stage: 'work',
   label: 'Managing with Work Mode',
-  blurb: 'Tasks, attendance, leave, and payroll.',
+  blurb: 'Contracts, leave, payslips, complaints, and messages.',
   icon: 'briefcase-outline',
   pages: [
     {
@@ -422,22 +377,7 @@ const PARENT_WORK: GuideChapter = {
     {
       icon: 'grid-outline',
       title: 'Your Work Home',
-      body: 'One screen with what matters: your total monthly payroll, anything waiting on you (leave requests, helper requests), and a card per helper. If nothing needs you, nothing shouts.',
-    },
-    {
-      icon: 'add-circle-outline',
-      title: 'Asking for something: tasks',
-      body: 'Use Tasks for day-to-day requests. Type it in plain words, or tap Suggest for ready-made ones. Don’t reopen the contract just to ask for something extra this week — that’s what tasks are for.',
-    },
-    {
-      icon: 'document-lock-outline',
-      title: 'Contract vs tasks',
-      body: 'The contract holds the main duties and the pay — the things you both agreed to and shouldn’t change casually. Tasks are the everyday layer on top. Keeping them separate protects you both.',
-    },
-    {
-      icon: 'toggle-outline',
-      title: 'Attendance is your choice',
-      body: 'Attendance tracking is OFF by default and you decide whether to switch it on per helper. Plenty of households never turn it on — a trusted long-term helper usually doesn’t need it.',
+      body: 'Work Home summarizes monthly payroll, pending leave requests, helper requests, and active placements.',
     },
     {
       icon: 'airplane-outline',
@@ -446,8 +386,8 @@ const PARENT_WORK: GuideChapter = {
     },
     {
       icon: 'wallet-outline',
-      title: 'Payroll is a summary, not a payment',
-      body: 'Payroll shows what’s owed from the agreed salary, days worked and leave taken — so nobody has to argue from memory. CareLink NEVER moves money; you still pay your helper directly.',
+      title: 'Payslips record payments',
+      body: 'Record pay periods, wages, deductions, and amounts paid in payslips. CareLink does not move money; you still pay your helper directly.',
     },
     {
       icon: 'star-outline',

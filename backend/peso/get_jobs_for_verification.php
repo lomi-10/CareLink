@@ -17,6 +17,7 @@ ini_set('display_errors', 0);
 error_reporting(0);
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/job_description_review.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 function sendJson($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -48,7 +49,6 @@ try {
             j.description,
             j.custom_category,
             j.category_id,
-            j.category_ids,
             j.slots,
             j.salary_offered,
             j.salary_period,
@@ -81,11 +81,18 @@ try {
         if (!$result) throw new Exception('Query failed: ' . $conn->error);
     }
 
+    $jobRows = [];
+    while ($row = $result->fetch_assoc()) $jobRows[] = $row;
+    $relationMap = carelink_load_job_post_relations(
+        $conn,
+        array_map(fn($row) => (int) $row['job_post_id'], $jobRows)
+    );
     $jobs = [];
-    while ($row = $result->fetch_assoc()) {
+    foreach ($jobRows as $row) {
+        $row = carelink_attach_job_post_relations($row, $relationMap);
         $row['content_review_flags'] = carelink_job_description_review_flags((string) ($row['description'] ?? ''));
         $row['salary_offered'] = (float)$row['salary_offered'];
-        $row['category_ids'] = json_decode($row['category_ids'] ?? '[]', true) ?: [(int) $row['category_id']];
+        if (!$row['category_ids'] && !empty($row['category_id'])) $row['category_ids'] = [(int) $row['category_id']];
         $row['category_ids'] = array_values(array_unique(array_map('intval', $row['category_ids'])));
         $row['categories'] = array_values(array_filter(array_map(
             fn($categoryId) => $categoryNames[$categoryId] ?? null,

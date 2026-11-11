@@ -57,7 +57,6 @@ export function useHireFlow({
   const [hireWorkSchedule, setHireWorkSchedule] = useState<'Full-time' | 'Part-time' | 'Any'>('Full-time');
   const [hireWorkHoursStart, setHireWorkHoursStart] = useState(DEFAULT_WORK_START);
   const [hireWorkHoursEnd, setHireWorkHoursEnd] = useState(DEFAULT_WORK_END);
-  const [hireFlexibleHours, setHireFlexibleHours] = useState(false);
   const [hireRestDays, setHireRestDays] = useState<string[]>(['Sun']);
   const [hireHelperPreferredRestDay, setHireHelperPreferredRestDay] = useState<string | null>(null);
   const [hireVacationLeave, setHireVacationLeave] = useState(5);
@@ -85,7 +84,6 @@ export function useHireFlow({
     setHireDurationUnit('Years');
     setHireWorkHoursStart(DEFAULT_WORK_START);
     setHireWorkHoursEnd(DEFAULT_WORK_END);
-    setHireFlexibleHours(false);
     setHireRestDays(['Sun']);
     setHireVacationLeave(5);
     setHireSickLeave(5);
@@ -112,7 +110,6 @@ export function useHireFlow({
     setHireWorkSchedule(prefill.workSchedule);
     setHireWorkHoursStart(prefill.workHoursStart);
     setHireWorkHoursEnd(prefill.workHoursEnd);
-    setHireFlexibleHours(prefill.flexibleHours);
     setHireRestDays(preferredRestDay && !prefill.restDays.includes(preferredRestDay)
       ? [...prefill.restDays, preferredRestDay]
       : prefill.restDays);
@@ -181,8 +178,23 @@ export function useHireFlow({
         helper_name?: string;
         helper_preferred_rest_day?: string | null;
         applications?: HireJobOptionRow[];
+        active_contract?: {
+          application_id: number;
+          job_title: string;
+          status: string;
+        } | null;
       };
       if (!data.success) throw new Error(data.message || 'Could not load hire options');
+      if (data.active_contract) {
+        const contractMessage = data.active_contract.status === 'contract_pending'
+          ? `A contract for ${data.active_contract.job_title} is pending. Delete it before hiring this helper for another position.`
+          : `This helper already has an active contract for ${data.active_contract.job_title}.`;
+        showChatNotif(
+          contractMessage,
+          'warning',
+        );
+        return;
+      }
       const preferredRestDay = data.helper_preferred_rest_day ?? null;
       setHireHelperPreferredRestDay(preferredRestDay);
       const apps = (data.applications ?? []).map(a => ({
@@ -205,7 +217,7 @@ export function useHireFlow({
         benefits: a.benefits ?? null,
       }));
       if (!data.needs_selection) {
-        const row = apps.find(a => a.application_id === resolvedApp.application_id) ?? apps[0] ?? null;
+        const row = apps.find(a => a.application_id === resolvedApp.application_id) ?? null;
         const applicationId = row?.application_id ?? resolvedApp.application_id;
         const jobPostId = row?.job_post_id ?? resolvedApp.job_post_id;
         const jobTitle = row?.job_title ?? resolvedApp.job_title;
@@ -230,9 +242,13 @@ export function useHireFlow({
         return;
       }
       setHirePickHelperName(String(data.helper_name ?? partnerName));
-      setHirePickApps(apps);
+      const shortlistedApps = apps.filter(a => a.status === 'Shortlisted');
+      if (shortlistedApps.length < 2) {
+        throw new Error('The shortlisted applications changed. Reload the contract tab and try again.');
+      }
+      setHirePickApps(shortlistedApps);
       const pre =
-        apps.find(a => a.application_id === resolvedApp.application_id) ?? apps[0] ?? null;
+        shortlistedApps.find(a => a.application_id === resolvedApp.application_id) ?? shortlistedApps[0] ?? null;
       setHirePickSelectedId(pre?.application_id ?? null);
       setHirePickVisible(true);
     } catch (e: any) {
@@ -331,7 +347,6 @@ export function useHireFlow({
       const hours = parseWorkHoursString(c.work_hours ?? '');
       setHireWorkHoursStart(hours.start);
       setHireWorkHoursEnd(hours.end);
-      setHireFlexibleHours(hours.flexible);
 
       const existingRestDays = c.rest_days && c.rest_days.length > 0 ? c.rest_days : ['Sun'];
       setHireRestDays(preferredRestDay && !existingRestDays.includes(preferredRestDay)
@@ -393,16 +408,14 @@ export function useHireFlow({
       showChatNotif('Select or enter a salary payment schedule.', 'warning');
       return;
     }
-    if (!hireFlexibleHours) {
-      const scheduledHours = computeScheduledWorkHours(hireWorkHoursStart, hireWorkHoursEnd);
-      if (scheduledHours === null || scheduledHours <= 0) {
-        showChatNotif('Set valid work hours, or turn on Flexible hours.', 'warning');
-        return;
-      }
-      if (scheduledHours > 12) {
-        showChatNotif('Scheduled work cannot exceed 12 hours per day.', 'warning');
-        return;
-      }
+    const scheduledHours = computeScheduledWorkHours(hireWorkHoursStart, hireWorkHoursEnd);
+    if (scheduledHours === null || scheduledHours <= 0) {
+      showChatNotif('Set valid fixed start and end times.', 'warning');
+      return;
+    }
+    if (scheduledHours > 12) {
+      showChatNotif('Scheduled work cannot exceed 12 hours per day.', 'warning');
+      return;
     }
     if (hireRestDays.length === 0) {
       showChatNotif('Select at least one rest day for the contract.', 'warning');
@@ -436,7 +449,7 @@ export function useHireFlow({
           contract_terms_notes:   hireContractNotes.trim() || undefined,
           contract_duration:      hireContractType === 'Indefinite' ? 'Indefinite' : formatDurationString(hireDurationAmount, hireDurationUnit),
           confirmed_salary:       parseFloat(hireConfirmedSalary.trim()) || undefined,
-          work_hours:             workHoursToString(hireWorkHoursStart, hireWorkHoursEnd, hireFlexibleHours),
+          work_hours:             workHoursToString(hireWorkHoursStart, hireWorkHoursEnd),
           rest_days:              hireRestDays.length > 0 ? hireRestDays : undefined,
           vacation_leave_days:    hireVacationLeave,
           sick_leave_days:        hireSickLeave,
@@ -511,7 +524,7 @@ export function useHireFlow({
           contract_terms_notes:   hireContractNotes.trim() || undefined,
           contract_duration:      hireContractType === 'Indefinite' ? 'Indefinite' : formatDurationString(hireDurationAmount, hireDurationUnit),
           confirmed_salary:       parseFloat(hireConfirmedSalary.trim()) || undefined,
-          work_hours:             workHoursToString(hireWorkHoursStart, hireWorkHoursEnd, hireFlexibleHours),
+          work_hours:             workHoursToString(hireWorkHoursStart, hireWorkHoursEnd),
           rest_days:              hireRestDays.length > 0 ? hireRestDays : undefined,
           vacation_leave_days:    hireVacationLeave,
           sick_leave_days:        hireSickLeave,
@@ -618,7 +631,6 @@ export function useHireFlow({
     hireWorkSchedule, setHireWorkSchedule,
     hireWorkHoursStart, setHireWorkHoursStart,
     hireWorkHoursEnd, setHireWorkHoursEnd,
-    hireFlexibleHours, setHireFlexibleHours,
     hireRestDays, setHireRestDays, hireHelperPreferredRestDay,
     hireVacationLeave, setHireVacationLeave,
     hireSickLeave, setHireSickLeave,

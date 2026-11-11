@@ -7,9 +7,9 @@
 // WHY A SELECT AND NOT CHIPS:
 // chips are right for a small set of short, scannable options where seeing them
 // all at once IS the value — housing type (5 short words) is a good example.
-// They are wrong for a long list: religion has 11 options, several of them long
-// ("Seventh-day Adventist", "Prefer not to say"), which wraps to four rows and
-// gives an OPTIONAL field more visual weight than the required fields above it.
+// They are wrong for a long list with several lengthy options, which wraps to
+// multiple rows and gives an OPTIONAL field more visual weight than required
+// fields above it.
 // That inverts the form's hierarchy. A select collapses it to a single row and
 // correctly signals "pick one of many".
 //

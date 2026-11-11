@@ -33,25 +33,6 @@ function carelink_leave_format_date_display(string $ymd): string
     return $t ? date('M j, Y', $t) : $ymd;
 }
 
-/** Ensure attendance_logs reflects approved leave for that calendar day. */
-function carelink_leave_sync_attendance(mysqli $conn, int $application_id, int $helper_id, string $date_ymd, string $status_val): void
-{
-    $st = $conn->prepare("
-        INSERT INTO attendance_logs (application_id, helper_id, `date`, checked_in_at, checked_out_at, status, note)
-        VALUES (?, ?, ?, NULL, NULL, ?, NULL)
-        ON DUPLICATE KEY UPDATE
-            status = IF(
-                status IN ('present', 'holiday', 'rest', 'no_work') OR checked_in_at IS NOT NULL,
-                status,
-                VALUES(status)
-            ),
-            updated_at = CURRENT_TIMESTAMP
-    ");
-    $st->bind_param('iiss', $application_id, $helper_id, $date_ymd, $status_val);
-    $st->execute();
-    $st->close();
-}
-
 function carelink_leave_sync_application_paid_count(mysqli $conn, int $application_id): void
 {
     $year = (int) date('Y');
@@ -170,33 +151,6 @@ try {
             json_out(['success' => false, 'message' => 'Another leave request for that date has already been approved.'], 409);
         }
 
-        $attendance = $conn->prepare("
-            SELECT status, checked_in_at
-            FROM attendance_logs
-            WHERE application_id = ? AND `date` = ?
-            LIMIT 1
-        ");
-        $attendance->bind_param('is', $application_id, $date_ymd);
-        $attendance->execute();
-        $attendanceRow = $attendance->get_result()->fetch_assoc();
-        $attendance->close();
-        if ($attendanceRow && (
-            ($attendanceRow['status'] ?? '') === 'present'
-            || !empty($attendanceRow['checked_in_at'])
-        )) {
-            $conn->rollback();
-            $transactionStarted = false;
-            json_out([
-                'success' => false,
-                'message' => 'Attendance is already recorded for that date. Resolve the attendance record before approving leave.',
-            ], 409);
-        }
-        if ($attendanceRow && in_array((string) ($attendanceRow['status'] ?? ''), ['holiday', 'rest', 'no_work'], true)) {
-            $conn->rollback();
-            $transactionStarted = false;
-            json_out(['success' => false, 'message' => 'That date is already recorded as a non-work day.'], 409);
-        }
-
         $bal = carelink_leave_balance($conn, $application_id, $date_ymd);
         $paidSource = carelink_leave_paid_source($bal, (string) $req['reason_code']);
     }
@@ -230,8 +184,6 @@ try {
     $upd->close();
 
     if ($status_new === 'approved') {
-        $att_status = $is_paid ? 'leave' : 'unpaid_leave';
-        carelink_leave_sync_attendance($conn, $application_id, $helper_id, $date_ymd, $att_status);
         carelink_leave_sync_application_paid_count($conn, $application_id);
     }
 

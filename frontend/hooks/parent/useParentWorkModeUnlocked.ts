@@ -3,7 +3,7 @@
 // (useParentPortalMode, just a persisted UI preference) and whether the
 // account actually HAS an active hire. Screens outside Home were checking
 // only the toggle, so switching into Work Mode with no active placement still
-// rendered the full Work Mode tab bar (Tasks, Helper Management) — reachable
+// rendered the full Work Mode tab bar — reachable
 // even though Home itself correctly showed the locked state. This combines
 // both checks the way Home already does, so every screen agrees on what
 // "unlocked" means.

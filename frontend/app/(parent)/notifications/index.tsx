@@ -42,8 +42,6 @@ const NOTIF_PALETTE: Record<string, IconCfg> = {
   peso_queue_user:         { icon: 'people-outline',           color: '#065F46', bg: '#D1FAE5' },
   peso_queue_job:          { icon: 'briefcase-outline',        color: '#065F46', bg: '#D1FAE5' },
   message_received:        { icon: 'chatbubble-outline',       color: '#3B82F6', bg: '#DBEAFE' },
-  task_completed:          { icon: 'checkmark-done-outline',   color: '#059669', bg: '#ECFDF5' },
-  attendance_checkin:      { icon: 'log-in-outline',           color: '#059669', bg: '#ECFDF5' },
   leave_request_submitted: { icon: 'umbrella-outline',         color: '#D97706', bg: '#FEF3C7' },
   leave_request_responded: { icon: 'checkmark-circle-outline', color: '#3B82F6', bg: '#DBEAFE' },
   contract_terminated:     { icon: 'document-text-outline',   color: '#DC2626', bg: '#FEE2E2' },

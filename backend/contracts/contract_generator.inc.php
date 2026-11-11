@@ -8,6 +8,8 @@
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
+require_once __DIR__ . '/../shared/multivalue_relations.php';
+
 /**
  * @throws Exception
  */
@@ -156,9 +158,7 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
             jp.parent_id,
             jp.title AS job_title,
             jp.category_id,
-            jp.skill_ids AS job_skill_ids,
             jp.description,
-            jp.custom_skills,
             rc.category_name,
             jp.days_off,
             jp.salary_offered,
@@ -212,6 +212,9 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     if (!$row) {
         throw new Exception('Application not found or does not match employer/helper');
     }
+    $jobValues = carelink_load_job_post_relations($conn, [(int) $row['job_post_id']])[(int) $row['job_post_id']] ?? [];
+    $jobSkillIds = $jobValues['skill_ids'] ?? [];
+    $jobCustomSkillValues = $jobValues['custom_skill_values'] ?? [];
 
     $status = isset($row['application_status']) ? trim((string) $row['application_status']) : '';
     if ($statusMode === 'hireable') {
@@ -319,9 +322,8 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
     // Position shows the CATEGORY (e.g. "Cook") — the specific job roles are long
     // and clutter the summary; the category is the clean, standard job title.
     $categoryName = carelink_contract_escape(trim((string) ($row['category_name'] ?? '')) ?: 'Kasambahay');
-    // Job's required skills (jp.skill_ids + any custom free-text) resolved to names.
+    // Job's required reference and custom skills are resolved to names.
     $skillNamesList = [];
-    $jobSkillIds = json_decode($row['job_skill_ids'] ?? '[]', true) ?: [];
     if (!empty($jobSkillIds)) {
         $safeSk = implode(',', array_filter(array_map('intval', $jobSkillIds), fn($n) => $n > 0));
         if ($safeSk !== '') {
@@ -329,13 +331,12 @@ function carelink_generate_employment_contract(mysqli $conn, int $application_id
             if ($skRes) { while ($sr = $skRes->fetch_assoc()) $skillNamesList[] = $sr['skill_name']; }
         }
     }
-    $jobCustomSkArr = json_decode($row['custom_skills'] ?? '[]', true);
-    if (is_array($jobCustomSkArr)) {
-        foreach ($jobCustomSkArr as $cs) { $cs = trim((string) $cs); if ($cs !== '') $skillNamesList[] = $cs; }
+    if ($jobCustomSkillValues) {
+        foreach ($jobCustomSkillValues as $cs) { $cs = trim((string) $cs); if ($cs !== '') $skillNamesList[] = $cs; }
     }
     $skillsEsc = $skillNamesList ? carelink_contract_escape(implode(', ', $skillNamesList)) : 'N/A';
     $desc = isset($row['description']) ? trim((string) $row['description']) : '';
-    $custSk = isset($row['custom_skills']) ? trim((string) $row['custom_skills']) : '';
+    $custSk = implode(', ', $jobCustomSkillValues);
     $jobDutiesRaw = trim($desc . ($custSk !== '' ? "\nMga kasanayan / tungkulin: " . $custSk : ''));
     $jobDutiesItems = array_map('carelink_contract_escape', carelink_contract_split_duties($jobDutiesRaw));
 

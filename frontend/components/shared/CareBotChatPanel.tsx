@@ -34,7 +34,9 @@ const HELPER_INTENTS: { keywords: string[]; label: string; route: string }[] = [
   { keywords: ['document', 'verify', 'verification', 'upload', 'clearance', 'valid id', 'tesda', 'rejected'], label: 'My Documents', route: '/(helper)/profile/documents' },
   { keywords: ['message', 'chat', 'inbox', 'conversation'], label: 'Messages', route: '/(helper)/messages' },
   { keywords: ['notification'], label: 'Notifications', route: '/(helper)/notifications' },
-  { keywords: ['schedule', 'task', 'attendance', 'work hour'], label: 'Work Schedule', route: '/(helper)/work' },
+  { keywords: ['leave', 'contract', 'rest day'], label: 'Contract & Leave', route: '/(helper)/work/contract' },
+  { keywords: ['payslip', 'payday', 'salary', 'payment record'], label: 'My Payslips', route: '/(helper)/work/payslips' },
+  { keywords: ['work mode', 'work home'], label: 'Work Home', route: '/(helper)/work' },
   { keywords: ['saved job', 'bookmark'], label: 'Saved Jobs', route: '/(helper)/browse/saved_jobs' },
   { keywords: ['profile', 'account', 'bio'], label: 'My Profile', route: '/(helper)/profile' },
   { keywords: ['setting'], label: 'Settings', route: '/(helper)/settings' },
@@ -42,9 +44,10 @@ const HELPER_INTENTS: { keywords: string[]; label: string; route: string }[] = [
 
 const PARENT_INTENTS: { keywords: string[]; label: string; route: string }[] = [
   { keywords: ['hire', 'find helper', 'browse helper', 'look for helper'], label: 'Find Helpers', route: '/(parent)/browse' },
-  { keywords: ['post a job', 'create job', 'job post', 'job listing', 'how to post'], label: 'My Job Posts', route: '/(parent)/jobs' },
-  { keywords: ['applicant', 'application', 'review'], label: 'Applications', route: '/(parent)/jobs' },
-  { keywords: ['active helper', 'hired helper', 'my helper', 'work management', 'attendance', 'task'], label: 'Work Management', route: '/(parent)/hire' },
+  { keywords: ['active helper', 'hired helper', 'my helper', 'work management'], label: 'My Helpers', route: '/(parent)/hire' },
+  { keywords: ['leave', 'contract', 'rest day'], label: 'Contract & Leave', route: '/(parent)/work/contract' },
+  { keywords: ['complaint', 'report', 'safety'], label: 'Complaints', route: '/(parent)/work/assistance' },
+  { keywords: ['payslip', 'payday', 'salary', 'payment record'], label: 'Payment Records', route: '/(parent)/work/payslips' },
   { keywords: ['message', 'chat', 'inbox', 'conversation'], label: 'Messages', route: '/(parent)/messages' },
   { keywords: ['notification'], label: 'Notifications', route: '/(parent)/notifications' },
   { keywords: ['document', 'verify', 'verification', 'account'], label: 'My Profile', route: '/(parent)/profile' },
@@ -72,18 +75,6 @@ type KbEntry = { keys: string[]; roles?: CareBotAccent[]; answer: string };
 
 const KB: KbEntry[] = [
   {
-    keys: ['post a job', 'post job', 'create a job', 'job post', 'how to post', 'hiring'],
-    roles: ['parent'],
-    answer:
-      'To post a job, open My Job Posts and tap +. Choose the category and roles, describe duties, set the salary/pay range and pay period, schedule/rest days, stay-in or stay-out arrangement, location and benefits, then review and submit. CareLink checks the current regional wage floor. PESO reviews a new or edited post before it is visible to helpers.',
-  },
-  {
-    keys: ['edit job', 'manage job', 'close job', 'pause job', 'job post status', 'my job posts'],
-    roles: ['parent'],
-    answer:
-      'Open My Job Posts and select the post to review its status, edit its details, or manage whether it is still open. PESO reviews new and edited posts before they appear to helpers. Open the post’s Applicants area to review applicants, shortlist, message, interview, reject, or hire.',
-  },
-  {
     keys: ['set up my profile', 'complete my profile', 'profile setup', 'helper profile', 'my profile'],
     roles: ['helper'],
     answer:
@@ -99,13 +90,13 @@ const KB: KbEntry[] = [
     keys: ['review applicant', 'applicants', 'who applied', 'shortlist', 'review'],
     roles: ['parent'],
     answer:
-      'When helpers apply, open Jobs → your job → Applicants. Each applicant shows a match %, skills, experience, and PESO status. Tap a profile to view their documents, message them, or shortlist. When you’re ready, hire — CareLink generates a DOLE-compliant contract for both of you to sign.',
+      'Browse Find Helpers to review verified profiles, experience, skills, and availability. Open a profile to learn more, message the helper, or start the hiring process. CareLink creates a written contract for both of you to review and sign.',
   },
   {
     keys: ['hire a helper', 'how do i hire', 'hire someone', 'hire'],
     roles: ['parent'],
     answer:
-      'You can hire from a job’s applicant list, or invite a helper you found in Find Helpers. After you choose someone, CareLink creates a contract (duties, salary, rest day, benefits). Both parties sign it, and Work Mode unlocks task management, attendance, and salary tracking.',
+      'Browse Find Helpers and open a profile to start hiring. CareLink creates a contract with the agreed duties, salary, rest day, and benefits. After both parties sign, Work Mode provides payroll and payslips, leave requests, complaints, and messages.',
   },
   {
     keys: ['contract', 'compliance', 'dole', 'sign'],
@@ -115,13 +106,13 @@ const KB: KbEntry[] = [
   {
     keys: ['payment', 'benefit', 'salary', 'wage', '13th', 'sss', 'philhealth', 'pag-ibig', 'rest day', 'pay'],
     answer:
-      'Under the Kasambahay Law, a household worker is entitled to: their agreed monthly salary, a 13th-month pay, at least one rest day each week, and SSS/PhilHealth/Pag-IBIG contributions once the wage threshold applies. CareLink records salary and attendance, but always pay on time and keep receipts.',
+      'Under the Kasambahay Law, a household worker is entitled to their agreed monthly salary, 13th-month pay, at least one rest day each week, and SSS/PhilHealth/Pag-IBIG contributions once the wage threshold applies. CareLink keeps payroll and payslip records; always pay on time and keep receipts.',
   },
   {
     keys: ['report', 'analytics', 'work management', 'track'],
     roles: ['parent'],
     answer:
-      'From your dashboard, switch to Work Management to track active placements, task completion, and check-in/out logs for each hired helper. Placement History keeps a record of past hires, contracts, and reviews.',
+      'From My Helpers, open a placement to review its contract and leave requests. Work Mode also provides payroll and payslips, complaints, and messages. Placement History keeps a record of past hires and reviews.',
   },
   {
     keys: ['account', 'verification', 'get verified', 'peso verif', 'verify my'],
@@ -148,12 +139,12 @@ const KB: KbEntry[] = [
   {
     keys: ['match', 'percentage', 'matching', 'why this'],
     answer:
-      'The match % compares skills, work categories, location, salary expectation, and availability between a helper and a job. The more complete and accurate the profile, the better the matches — so fill in skills, experience, and preferred work setup.',
+      'The match % highlights a helper’s fit based on work categories, skills, location, salary expectations, and availability. Complete and accurate profile details help make recommendations more useful.',
   },
   {
-    keys: ['attendance', 'task', 'schedule', 'check in', 'check out', 'work mode', 'leave'],
+    keys: ['work mode', 'leave'],
     answer:
-      'Once a hire is signed, Work Mode unlocks. Use Tasks for daily to-dos, check in/out for attendance, and Schedule to see work days and request leave. Salary and leave balances update from these records.',
+      'Once a hire is signed, Work Mode unlocks. Use Contract & Leave to review agreements and request or manage leave. Work Home provides payroll and payslips.',
   },
   {
     keys: ['message super admin', 'super admin', 'contact support', 'support', 'help'],
@@ -196,8 +187,8 @@ function carebotLocalAnswer(userLine: string, accent: CareBotAccent): string {
     if (e.keys.some((k) => t.includes(k))) return e.answer;
   }
   return accent === 'parent'
-    ? 'CareLink lets you complete a household profile, post jobs for PESO review, find helpers, review applications, message candidates, hire with a written contract, and manage an active placement. Profile, Messages, Notifications, job posts, Work Management, Settings, feedback, and support are available from the role navigation. Ask me which screen or step you need.'
-    : 'CareLink lets you complete a helper profile and documents for PESO review, browse and save jobs, apply, track applications, message employers, and use Work Mode after both parties sign a contract. Profile, Find Jobs, Saved Jobs, Messages, Notifications, Schedule, Tasks, Salary, Settings, feedback, and support are available from the role navigation. Ask me which screen or step you need.';
+    ? 'CareLink lets you complete a household profile, browse helper profiles, message helpers, hire with a written contract, and manage active placements. Work Mode includes payroll and payslips, contract and leave, complaints, and messages. Ask me which screen or step you need.'
+    : 'CareLink lets you complete a helper profile and documents for PESO review, browse and save jobs, apply, track applications, message employers, and use Work Mode after both parties sign a contract. Work Mode includes payroll and payslips, contract and leave, complaints, and messages. Ask me which screen or step you need.';
 }
 
 /** Server default CHATBOT_MAX_TURNS / CARELINK_CHATBOT_MAX_TURNS_DEFAULT (last N rows). */
@@ -231,7 +222,7 @@ const HELPER_TOPICS: Topic[] = [
   { icon: 'shield-checkmark-outline', label: 'Get PESO-verified', question: 'How do I get PESO-verified?' },
   { icon: 'document-text-outline', label: 'Upload my documents', question: 'How do I upload my documents?' },
   { icon: 'sparkles-outline', label: 'How does matching work?', question: 'How is my match percentage computed?' },
-  { icon: 'calendar-outline', label: 'Tasks & attendance', question: 'How do tasks and attendance work?' },
+  { icon: 'document-text-outline', label: 'Contract & Leave', question: 'How do contracts and leave requests work?' },
   { icon: 'wallet-outline', label: 'Payments & rights', question: 'What are my payments and rights?' },
   { icon: 'headset-outline', label: 'Contact Super Admin', question: 'How can I message the Super Admin for app support?' },
 ];

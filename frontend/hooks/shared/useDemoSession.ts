@@ -25,7 +25,8 @@ export function useDemoSession() {
       );
       const data = await res.json();
       setIsDemoParticipant(Boolean(data?.is_demo_participant));
-    } catch {
+    } catch (error) {
+      console.error('Could not check demo participant status:', error);
       setIsDemoParticipant(false);
     }
   }, []);

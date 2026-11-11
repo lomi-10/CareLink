@@ -48,7 +48,7 @@ const OFFERS: Offer[] = [
   {
     icon: 'time-outline',
     title: 'Work Mode',
-    body: 'After hiring, the placement keeps its own record: attendance with hours and overtime, task lists, leave requests against a real balance, and payroll.',
+    body: 'After hiring, both parties can review the contract, manage leave requests, access payroll and payslips, and stay in touch through messages.',
     pills: ['Check in and out', 'Overtime from 8 hours', '5-day leave balance'],
   },
   {

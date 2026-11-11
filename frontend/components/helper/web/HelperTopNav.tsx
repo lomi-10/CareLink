@@ -30,7 +30,7 @@ const WORK_ITEMS: { key: NavKey; label: string; icon: keyof typeof Ionicons.glyp
 
 export function HelperTopNav({
   active, userName, avatar, verified, onLogout, workMode = false,
-  onOpenFeedback, onFinishDemo,
+  onFinishDemo,
 }: {
   active: NavKey;
   userName: string;
@@ -38,7 +38,6 @@ export function HelperTopNav({
   verified: boolean;
   onLogout: () => void;
   workMode?: boolean;
-  onOpenFeedback?: () => void;
   /** Only passed while the user has activity with the seeded demo employers. */
   onFinishDemo?: () => void;
 }) {
@@ -109,7 +108,6 @@ export function HelperTopNav({
                 <MenuRow icon="person-outline" label="My Profile" onPress={() => { setMenuOpen(false); go('/(helper)/profile'); }} />
                 <MenuRow icon="settings-outline" label="Settings" onPress={() => { setMenuOpen(false); go('/(helper)/settings'); }} />
                 <MenuRow icon="help-buoy-outline" label="How CareLink works" onPress={() => { setMenuOpen(false); openGuide('helper'); }} />
-                <MenuRow icon="chatbox-ellipses-outline" label="System Evaluation Form" onPress={() => { setMenuOpen(false); go('/(helper)/feedback'); }} />
                 {!!onFinishDemo && (
                   <MenuRow icon="flag-outline" label="Finish demo session" onPress={() => { setMenuOpen(false); onFinishDemo(); }} />
                 )}

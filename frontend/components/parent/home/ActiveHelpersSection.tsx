@@ -80,9 +80,8 @@ export function ActiveHelpersSection({ compactCards }: Props) {
       </View>
 
       <Text style={styles.hint}>
-        Manage each helper you have hired. You can still post jobs and hire more helpers anytime — use{' '}
-        <Text style={styles.hintBold}>My Job Posts</Text> or{' '}
-        <Text style={styles.hintBold}>Applications</Text> below.
+        Manage the helpers you have hired. To connect with another helper, open{' '}
+        <Text style={styles.hintBold}>Find Helpers</Text>.
       </Text>
 
       {loading ? (

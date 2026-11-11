@@ -73,16 +73,10 @@ Password re-entry, rate limiting on failed attempts, and email verification at a
 ### Shared Placement Record
 
 **Q: What is the Shared Placement Record?**
-A post-hire module that becomes available after a contract is signed. Provides tools for payroll tracking, leave request management, day-to-day task coordination, and optional attendance tracking. It's designed as a shared record, not a monitoring system — either party can update most fields, attendance tracking is off by default and configurable, and no feature requires either party to check in constantly.
+A post-hire area for viewing contract details, requesting or reviewing leave, and accessing payroll estimates and payslips. Payroll estimates use the agreed contract pay schedule and approved paid/unpaid leave; CareLink does not record attendance or process payments.
 
-**Q: Why is attendance tracking optional?**
-Because mandatory attendance felt like surveillance to users during preliminary testing. The redesign — grounded in tester feedback — made attendance opt-in, with clear disclosure that it exists for payroll accuracy, not employer monitoring. Attendance can be recorded by either the helper (check-in), the parent (marking helper present), or retroactively if connectivity is limited.
-
-**Q: What if the helper checks in late every day?**
-The system shows attendance data. The parent decides how to respond — that's an employment relationship matter, not a platform enforcement matter. CareLink is a record-keeping tool for both parties, not an automated disciplinary system.
-
-**Q: Does the platform track GPS?**
-No. Check-in is a button tap that records timestamp only. GPS tracking would be a serious privacy violation and is not implemented.
+**Q: Does the platform track attendance or location?**
+No. CareLink has no check-in/check-out or attendance-recording feature and does not track GPS location.
 
 ### CareBot AI Assistant
 
@@ -215,8 +209,8 @@ No. KazamPH's premium is for verification — pay to be verified, or appear un-v
 **Q: What if a helper is being pressured by an employer to sign a contract they don't understand?**
 Three safeguards. First, the contract requires both parties to independently review and accept before signing — if the helper is with the employer, the employer cannot sign for them. Second, the platform explicitly recommends that helpers review contracts privately before signing, and CareBot can walk them through the terms in plain language. Third, if a helper feels coerced, they can decline the contract, which sends it back to the parent with a request for changes. Nothing forces a helper to sign.
 
-**Q: Your platform enables digital surveillance of domestic workers through attendance tracking. How is that ethical?**
-Attendance tracking is off by default and completely optional. The parent chooses whether to enable it, and the disclosure is explicit: "Attendance tracking: Off — turn on for payroll accuracy." When enabled, it exists to support payroll computation and to protect the helper in case of a wage dispute. The reframe was based on preliminary user testing that surfaced this exact concern, and the resolution is grounded in Wood et al. (2019)'s human-in-the-loop principle — no automated monitoring, no GPS, no mandatory check-in.
+**Q: Does CareLink monitor workers through attendance or location tracking?**
+No. CareLink has no attendance/check-in feature and no GPS tracking. Payroll estimates are based on contract terms and approved leave, not attendance records.
 
 ### Scope and Rigor Loopholes
 
@@ -240,7 +234,7 @@ Compliance was verified against the actual text of each cited law, cross-referen
 
 2. **Speak the ₱267/day salary story once, early, and let it anchor emotionally.** Real interview data makes CareLink feel like a solution to a real problem, not a technical demo.
 
-3. **Never say "AI" for the cover letter or task engine.** Say "template" and "rule-based." Every time.
+3. **Never say "AI" for the cover letter.** It uses a template and rules.
 
 4. **If you don't know a number, say "I'd need to verify that exact figure."** Panelists respect precision over confidence.
 

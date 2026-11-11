@@ -30,9 +30,9 @@ cluster you can point at.
 | 7 | **Matching & Search** | Weighted compatibility both directions, browse, filters, saved jobs, recommendations | `shared/job_match.php`, `browse_jobs.php`, `parentHelperMatch.ts` |
 | 8 | **Applications & Hiring** | Apply, cover letters, shortlist, interviews, invitations, status lifecycle | `helper/apply_job.php`, `parent/`, `interviews/`, `job_applications` |
 | 9 | **Contracts** | DOLE-compliant generation, dual digital signature, PDF, amendments, termination | `backend/contracts/`, `v1/applications/sign_contract.php` |
-| 10 | **Work Mode** | Tasks + photo proof, check-in/out, attendance (opt-in), leave requests, payroll view | `backend/v1/` (32 endpoints), `placements` |
+| 10 | **Work Mode** | Contract and leave management, payroll estimates, payslips | `backend/v1/`, `placements`, `leave_requests` |
 | 11 | **Communication** | Helper⇄employer chat, staff messaging, notifications, CareBot, video interviews | `backend/messages/`, `shared/staff_contacts.php` |
-| 12 | **Administration & Revenue** | Super admin, audit trail, complaints, feedback, boosts, subscriptions, Digital Contract & Facilitation Fee | `backend/admin/`, `webhooks/paymongo.php` |
+| 12 | **Administration & Revenue** | Super admin, audit trail, complaints, boosts, subscriptions, Digital Contract & Facilitation Fee | `backend/admin/`, `webhooks/paymongo.php` |
 
 **Four portals:** Helper · Employer · PESO Officer · Super Admin — each with its
 own navigation, theme and permissions.
@@ -82,9 +82,7 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
 - Household composition: size, housing type, children (ages, special needs),
   elderly (ages, condition, care level), pets
 - Address with the same geocoding treatment as helpers
-- Optional employer-only religion field and household bio; the religion value
-  is omitted from helper-facing profiles and is not a job-post preference or
-  matching factor
+- Household bio; religion is not collected from helpers or employers
 - Profile completion tracking with a 90% gate before PESO review
 - Employer average and individual star ratings visible to helpers before they
   apply; written comments are visible only to PESO/admin
@@ -155,8 +153,8 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
 ### 7. Matching & Search
 - **Weighted compatibility, both directions**: Category 25 · Roles 15 ·
   Skills 15 · Salary 15 · Distance 10 · Experience 10 · Rating 10
-- Age and religion are not score factors; helper rest-day requests are an
-  employment-term accommodation, not a ranking input
+- Age is not disclosed or used as a score factor, and religion is not collected;
+  helper rest-day requests are an employment-term accommodation, not a ranking input
 - One shared scorer, so the same pair scores identically on dashboard and browse
 - **Match breakdown shown to the user** — the reasons, not just the number
 - Browse with filters (category, salary, employment type, schedule, distance)
@@ -192,13 +190,8 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
 - PESO can review contracts across the platform
 
 ### 10. Work Mode
-- Unlocks on the placement start date, not at signing
-- **Tasks** with checklist items and optional photo proof per task
-- **Check-in / check-out**, deliberately forgiving rather than punitive
-- **Attendance tracking is opt-in per placement and OFF by default**
-- **Leave requests** — helper submits, employer approves or declines
-- **Payroll view** — a computed summary of agreed salary, days worked and leave
-  used. It moves no money and says so
+- **Contract and leave** — helpers submit leave requests; employers approve or decline
+- **Payroll and payslips** — estimates use the agreed contract pay schedule and approved paid/unpaid leave; attendance is not recorded and CareLink moves no money
 - Placement reviews from both sides once the placement ends
 
 ### 11. Communication
@@ -215,11 +208,11 @@ Chapter 4 unit-test table can cite a module and pick features from its list.
   a pending user can still ask why a document was rejected
 
 ### 12. Administration & Revenue
-- Super admin portal: user management, complaint forwarding, audit log, feedback
+- Super admin portal: user management, complaint forwarding, audit log
 - Super admin creates both PESO officer and fellow super-admin accounts
 - **Audit trail** (`log_trail`) on every verification, approval and staff action
 - **Complaint case management** — see the dedicated breakdown below
-- **17-question feedback instrument** with incremental save, exportable
+- UAT responses are collected through Google Forms, outside CareLink; they are not stored in the app
 - Revenue: employer subscriptions (CareLink Plus), post boosts, and the
   Digital Contract & Facilitation Fee
 - **PayMongo hosted checkout with webhook signature verification**, idempotent
@@ -346,11 +339,11 @@ locked until `start_date`.
 ### Cycle 5 — Work Mode Operations
 `Contracts → Work Mode → Communication`
 
-Assign tasks → helper completes with optional photo → check-in/out → leave
-request → employer approves → payroll reflects days and leave.
+Helper requests leave → employer approves or declines → payroll estimate reflects
+the agreed pay schedule and approved paid/unpaid leave; payslips remain available.
 
-**Verify:** attendance is OFF by default and opt-in per placement; payroll is a
-computed view that moves no money.
+**Verify:** no attendance or task tracking is present; payroll is an estimate based
+on contract terms and leave records, and CareLink does not process payments.
 
 ### Cycle 6 — Termination → Review
 `Work Mode → Contracts → Matching`
@@ -374,10 +367,10 @@ carries a visible "Boosted" tag; **no helper-facing path can charge anyone.**
 ### Cycle 8 — Oversight
 `All modules → Admin`
 
-Complaint filed → PESO or admin resolves → audit trail records it; feedback
-submitted → visible to super admin and exportable.
+Complaint filed → PESO or admin resolves → audit trail records it; UAT responses
+are collected and exported separately in Google Forms.
 
-**Verify:** `log_trail` captures the action; feedback exports to CSV correctly.
+**Verify:** `log_trail` captures the action; no in-app feedback or evaluation data is stored.
 
 ---
 
@@ -399,7 +392,7 @@ Pick items with a *computable* expected result — those defend best.
 | Auth | Helper signup with an under-18 or invalid birth date | Rejected by the server before account creation |
 | Auth | Wrong code 5× | Code dead, must request a new one |
 | Privacy | Employer helper-directory, application-list, applicant-profile, and hire-option APIs | No helper birth date, age, civil status, or religion fields |
-| Privacy | Helper views employer profile | Employer religion is not returned |
+| Privacy | Helper views employer profile | Religion is not collected or returned |
 | Job posting | Description contains age/religion-only wording | Employer warning; post stays Pending and PESO sees a review flag |
 | Ratings | Helper views employer profile | Star ratings visible; written review text absent |
 | Contracts | PDF generated | All BK-1 fields present and correct |
@@ -461,9 +454,9 @@ Volunteering these reads as rigour. Being caught omitting them does not.
 - [ ] PESO approves an account; helper appears in employer search
 - [ ] Job post → PESO approval → visible with a match score
 - [ ] Apply → shortlist → interview → contract → **both** sign → Work Mode
-- [ ] Task, check-in, leave request, payroll view
+- [ ] Contract and leave request → employer decision → payroll/payslip view
 - [ ] Boost or subscription completes and the benefit appears
-- [ ] Admin feedback export downloads and opens in Excel
+- [ ] UAT questionnaire is available through Google Forms, outside the app
 
 **Have ready to show**
 - [ ] Match breakdown for a real pair (proves the algorithm is not a black box)

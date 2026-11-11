@@ -40,8 +40,6 @@ export type ActiveHire = {
   debt_amount?: number | null;
   deployment_agreement?: string | null;
   job_description?: string | null;
-  /** Whether the employer keeps attendance tracking on for this placement (default true). */
-  attendance_tracking?: boolean;
 };
 
 export type HelperPortalMode = 'recruitment' | 'work';

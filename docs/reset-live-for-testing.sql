@@ -170,12 +170,12 @@ VALUES
 -- dropped and the number lives on users.phone alone, set in Step 2.
 
 INSERT INTO helper_profiles
-  (user_id, birth_date, gender, civil_status, religion,
+  (user_id, birth_date, gender, civil_status,
    province, municipality, barangay, latitude, longitude, address,
    bio, education_level, experience_years, employment_type, work_schedule,
    expected_salary, salary_period, verification_status)
 VALUES
-  (3, '1996-04-12', 'Female', 'Single', 'Roman Catholic',
+  (3, '1996-04-12', 'Female', 'Single',
    'Leyte', 'Ormoc', 'Cogon', 11.0064000, 124.6075000, 'Cogon, Ormoc, Leyte',
    'Test helper account for API testing.', 'High School Grad', 3,
    'Stay-out', 'Full-time', 6400.00, 'Monthly', 'Verified');
@@ -186,11 +186,11 @@ VALUES
 
 INSERT INTO parent_profiles
   (user_id, province, municipality, barangay,
-   latitude, longitude, address, bio, religion, verification_status)
+   latitude, longitude, address, bio, verification_status)
 VALUES
   (4, 'Leyte', 'Ormoc', 'Punta',
    11.0092018, 124.6003072, 'Punta, Ormoc, Leyte',
-   'Test household employer account for API testing.', 'Roman Catholic', 'Verified');
+   'Test household employer account for API testing.', 'Verified');
 
 
 

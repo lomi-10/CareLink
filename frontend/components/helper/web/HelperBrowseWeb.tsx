@@ -58,7 +58,14 @@ export function HelperBrowseWeb({ userName, avatar, verified, currentlyEmployed,
   );
 
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [notif, setNotif] = useState({ visible: false, msg: '', type: 'success' as 'success' | 'error' });
+  const [notif, setNotif] = useState<{
+    visible: boolean;
+    msg: string;
+    type: 'success' | 'error' | 'warning';
+    title?: string;
+    autoClose?: boolean;
+    duration?: number;
+  }>({ visible: false, msg: '', type: 'success' });
   // Single panel — selecting a card simply replaces what's shown (no history stack).
   const [panel, setPanel] = useState<Panel | null>(null);
   const close = () => setPanel(null);
@@ -232,7 +239,14 @@ export function HelperBrowseWeb({ userName, avatar, verified, currentlyEmployed,
               )}
               {panel.mode === 'apply' && (
                 <ApplyPanel job={panel.job} onCancel={() => setPanel({ mode: 'job', job: panel.job })}
-                  onSubmitted={() => { const j = panel.job; setNotif({ visible: true, msg: 'Application submitted successfully!', type: 'success' }); refresh(); setPanel({ mode: 'job', job: j }); }} />
+                  onSubmitted={() => { const j = panel.job; setNotif({ visible: true, msg: 'Application submitted successfully!', type: 'success' }); refresh(); setPanel({ mode: 'job', job: j }); }}
+                  onFailure={(message, tone) => setNotif({
+                    visible: true,
+                    msg: message,
+                    type: tone === 'warning' ? 'warning' : 'error',
+                    title: tone === 'warning' ? 'Application unavailable' : 'Could not submit application',
+                    autoClose: false,
+                  })} />
               )}
             </ScrollView>
           </View>
@@ -248,7 +262,9 @@ export function HelperBrowseWeb({ userName, avatar, verified, currentlyEmployed,
       <AdvancedSearchModal visible={filtersOpen} filters={filters} categories={categories}
         onApply={(nf: any) => Object.entries(nf).forEach(([k, v]) => updateFilter(k as any, v as any))}
         onClose={() => setFiltersOpen(false)} />
-      <NotificationModal visible={notif.visible} message={notif.msg} type={notif.type} autoClose duration={1600} onClose={() => setNotif((n) => ({ ...n, visible: false }))} />
+      <NotificationModal visible={notif.visible} title={notif.title} message={notif.msg} type={notif.type}
+        autoClose={notif.autoClose ?? true} duration={notif.duration ?? 1600}
+        onClose={() => setNotif((n) => ({ ...n, visible: false }))} />
     </View>
   );
 }
@@ -596,7 +612,12 @@ function HhCell({ icon, label, value }: { icon: any; label: string; value: strin
 }
 
 // ─── Inline application panel ───
-function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: () => void; onSubmitted: () => void }) {
+function ApplyPanel({ job, onCancel, onSubmitted, onFailure }: {
+  job: JobPost;
+  onCancel: () => void;
+  onSubmitted: () => void;
+  onFailure: (message: string, tone: 'warning' | 'danger') => void;
+}) {
   const [letter, setLetter] = useState('');
   const [genCount, setGenCount] = useState(0); // cover-letter generations used
   const [confirming, setConfirming] = useState(false); // review-before-submit step
@@ -667,10 +688,20 @@ function ApplyPanel({ job, onCancel, onSubmitted }: { job: JobPost; onCancel: ()
       });
       const data = await res.json();
       if (!data.success) {
-        setErrorTone(data.code === 'not_verified' || data.code === 'currently_employed' ? 'warning' : 'danger');
-        setError(data.message || 'Failed to submit application');
+        const tone = data.code === 'not_verified' || data.code === 'currently_employed' ? 'warning' : 'danger';
+        const message = data.message || 'Failed to submit application';
+        setErrorTone(tone);
+        setError(message);
+        setConfirming(false);
+        onFailure(message, tone);
       } else onSubmitted();
-    } catch (e: any) { setErrorTone('danger'); setError(e.message || 'Failed to submit application'); } finally { setSubmitting(false); }
+    } catch (e: any) {
+      const message = e.message || 'Failed to submit application';
+      setErrorTone('danger');
+      setError(message);
+      setConfirming(false);
+      onFailure(message, 'danger');
+    } finally { setSubmitting(false); }
   };
 
   // ── Review-before-submit step (mirrors the mobile ApplicationModal) ──

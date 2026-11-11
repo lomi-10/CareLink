@@ -8,7 +8,7 @@
 //
 // Usage — the call signature matches Alert.alert(title, message) so swapping is 1:1:
 //   const { notify, noticeHost } = useNotice();
-//   notify('Check in', res.message || 'Failed to check in.', 'error');
+//   notify('Saved', 'Your changes were saved.', 'success');
 //   return (<View>…{noticeHost}</View>);
 
 import React, { useCallback, useState } from 'react';

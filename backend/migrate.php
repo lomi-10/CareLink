@@ -23,10 +23,11 @@
  *
  * SAFETY
  *
- * It creates missing tables/columns, backfills category data, and updates
- * known reference labels without changing IDs or user-authored job titles.
- * It never drops or truncates data, and the registered steps are safe to
- * repeat on every deploy.
+ * It creates missing tables/columns, backfills category data, updates known
+ * reference labels, removes deprecated religion columns, and removes retired
+ * feedback, attendance, and task tables. Those specified values/records are
+ * intentionally deleted; unrelated tables and data are preserved.
+ * The registered steps are safe to repeat on every deploy.
  *
  * It still runs DDL, so it is NOT public — see the token check below.
  *
@@ -106,6 +107,9 @@ $migrations = [
     'shared/account_verification_migration.php' => ['ensure_account_verified_at_column'],
     'shared/helper_document_multiples_migration.php' => ['ensure_helper_tesda_multiple_documents'],
     'shared/helper_availability_migration.php' => ['ensure_helper_availability_column'],
+    'shared/helper_safeguards.php' => ['carelink_ensure_helper_safeguards_schema'],
+    'shared/retired_features_migration.php' => ['carelink_remove_retired_feature_tables'],
+    'shared/payslip_records_table.php' => ['ensure_payslip_records_table'],
     'shared/leave_entitlement_migration.php' => ['ensure_leave_entitlement_source_column'],
     'shared/auth_tokens.php'              => ['ensure_auth_tokens_table'],
     'shared/peso_user_moderation_table.php' => ['ensure_peso_user_moderation_table'],
@@ -113,17 +117,14 @@ $migrations = [
     'shared/contract_signatures_table.php' => ['ensure_contract_signatures_table'],
     'shared/experience_verification_migration.php' => ['ensure_experience_verification_schema'],
     'shared/credential_flags_table.php'   => ['ensure_credential_flags_table'],
-    'shared/feedback_questions_table.php' => ['ensure_feedback_questions_table'],
     'shared/interview_feedback_table.php' => ['ensure_interview_feedback_table'],
     'shared/interview_reviews_table.php'  => ['ensure_interview_reviews_table'],
     'shared/job_invites_table.php'        => ['ensure_job_invites_table'],
     'shared/job_post_categories_migration.php' => ['ensure_job_post_categories_and_slots'],
+    'shared/multivalue_relations_migration.php' => ['ensure_multivalue_relations'],
     'shared/plain_language_job_titles_migration.php' => ['ensure_plain_language_job_titles'],
-    'shared/placement_settings_table.php' => ['ensure_placement_settings_table'],
     'shared/revenue_tables.php'           => ['ensure_revenue_tables'],
     'shared/subscriptions_table.php'      => ['ensure_subscriptions_table'],
-    'shared/system_feedback_table.php'    => ['ensure_system_feedback_table'],
-    'shared/task_checklist_table.php'     => ['ensure_task_checklist_items_table'],
     'shared/clearance_checks_table.php'   => ['ensure_clearance_checks_table'],
     'peso/application_flags_table.php'    => ['carelink_ensure_application_flags_table'],
 ];
@@ -166,20 +167,21 @@ $created = array_values(array_diff($after, $before));
 // Full inventory check. Update this list when you add a table, so a missing
 // one is reported here instead of discovered as a blank screen in the app.
 $known = [
-    'application_document_shares', 'application_flags', 'application_tasks', 'attendance_logs',
+    'application_document_shares', 'application_flags',
     'auth_codes', 'auth_tokens', 'complaint_actions', 'complaints',
-    'clearance_checks', 'contract_signatures', 'contracts', 'credential_flags', 'feedback_answers',
-    'feedback_questions', 'helper_jobs', 'helper_languages', 'helper_profiles',
+    'clearance_checks', 'contract_signatures', 'contracts', 'credential_flags',
+    'helper_custom_jobs', 'helper_custom_skills', 'helper_jobs', 'helper_languages', 'helper_profiles',
     'helper_skills', 'helper_work_history', 'interview_feedback', 'interview_notes',
     'interview_reviews', 'interview_schedules', 'job_applications', 'job_invites',
+    'job_post_categories', 'job_post_custom_skills', 'job_post_roles', 'job_post_skills',
     'job_posts', 'job_views', 'leave_requests', 'log_trail',
     'messages', 'notifications', 'parent_children', 'parent_elderly',
     'parent_household', 'parent_profiles', 'password_verify_attempts', 'payment_checkouts',
-    'payment_events', 'peso_reports', 'peso_user_moderation', 'placement_fees', 'placement_renewal_intent',
-    'placement_experience_confirmations', 'placement_reviews', 'placement_settings', 'placement_tasks', 'placements',
+    'payment_events', 'payslip_records', 'peso_reports', 'peso_user_moderation', 'placement_fees', 'placement_renewal_intent',
+    'placement_experience_confirmations', 'placement_reviews', 'placements',
     'ref_categories', 'ref_jobs', 'ref_languages', 'ref_skills',
     'saved_jobs', 'saved_profiles', 'saved_searches', 'subscriptions',
-    'system_feedback', 'task_checklist_items', 'user_documents', 'user_safety_flags',
+    'user_documents', 'user_safety_flags',
     'users',
 ];
 

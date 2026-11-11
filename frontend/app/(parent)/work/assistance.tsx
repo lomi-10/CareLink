@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SubmitComplaintModal } from '@/components/shared';
+import { ComplaintTrackingModal, SubmitComplaintModal } from '@/components/shared';
 import { ParentWorkModeShell } from '@/components/parent/work/ParentWorkModeShell';
 import { useParentActivePlacements } from '@/hooks/parent/useParentActivePlacements';
 import { BROWN, DARK, DIVIDER, ICON_BG, MUTED, SUBTLE, SURFACE } from '@/components/parent/home/parentWarmTheme';
@@ -16,6 +16,7 @@ const TOPICS = [
 export default function ParentAssistanceScreen() {
   const { placements, loading, error } = useParentActivePlacements();
   const [selected, setSelected] = useState<ActivePlacement | null>(null);
+  const [trackingOpen, setTrackingOpen] = useState(false);
 
   return (
     <ParentWorkModeShell active="assistance" title="Assistance" subtitle="Report a concern or request support">
@@ -24,6 +25,12 @@ export default function ParentAssistanceScreen() {
           <Ionicons name="information-circle-outline" size={19} color={BROWN} />
           <Text style={styles.noticeText}>Reports are reviewed by the CareLink system administrator first. Serious cases may be referred to PESO, but mediation or a particular outcome is not guaranteed.</Text>
         </View>
+
+        <TouchableOpacity style={styles.trackButton} onPress={() => setTrackingOpen(true)} activeOpacity={0.8}>
+          <Ionicons name="time-outline" size={18} color={BROWN} />
+          <Text style={styles.trackButtonText}>Track my complaints</Text>
+          <Ionicons name="chevron-forward" size={16} color={SUBTLE} />
+        </TouchableOpacity>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Topics you can raise</Text>
@@ -78,6 +85,7 @@ export default function ParentAssistanceScreen() {
           counterpartyLabel={selected.helper_name}
         />
       ) : null}
+      <ComplaintTrackingModal visible={trackingOpen} onClose={() => setTrackingOpen(false)} userType="parent" />
     </ParentWorkModeShell>
   );
 }
@@ -86,6 +94,8 @@ const styles = StyleSheet.create({
   page: { padding: 16, paddingBottom: 36, gap: 12 },
   notice: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: ICON_BG, borderRadius: 13, padding: 12 },
   noticeText: { flex: 1, color: DARK, fontSize: 12, lineHeight: 17 },
+  trackButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: SURFACE, borderWidth: 1, borderColor: DIVIDER, borderRadius: 13, paddingHorizontal: 13 },
+  trackButtonText: { flex: 1, color: BROWN, fontSize: 13, fontWeight: '700' },
   card: { backgroundColor: SURFACE, borderWidth: 1, borderColor: DIVIDER, borderRadius: 16, padding: 14 },
   sectionTitle: { color: DARK, fontSize: 15, fontWeight: '700', marginTop: 4, marginBottom: 2 },
   topic: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 11, borderTopWidth: 1, borderTopColor: DIVIDER },

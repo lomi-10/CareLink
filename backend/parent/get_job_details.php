@@ -12,6 +12,7 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization');
 ini_set('display_errors', 0);
 error_reporting(0);
 require_once '../dbcon.php'; 
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 try {
     $job_post_id = isset($_GET['job_post_id']) ? intval($_GET['job_post_id']) : null;
@@ -43,25 +44,21 @@ try {
     $job = $result->fetch_assoc();
     
     if (!$job) throw new Exception('Job not found');
+    $job = carelink_attach_job_post_relations(
+        $job,
+        carelink_load_job_post_relations($conn, [$job_post_id])
+    );
     
     // Data cleanup
     $job['job_post_id'] = intval($job['job_post_id']);
     $job['salary_offered'] = floatval($job['salary_offered']);
     
-    // Decode JSON fields
-    $json_fields = ['category_ids', 'job_ids', 'skill_ids', 'days_off'];
-    foreach ($json_fields as $field) {
-        if (isset($job[$field]) && !empty($job[$field])) {
-            $decoded = json_decode($job[$field], true);
-            $job[$field] = is_array($decoded) ? $decoded : [];
-        } else {
-            $job[$field] = [];
-        }
-        if (empty($job['category_ids']) && !empty($job['category_id'])) {
-            $job['category_ids'] = [(int) $job['category_id']];
-        }
-        $job['slots'] = max(1, (int) ($job['slots'] ?? 1));
+    $daysOff = json_decode($job['days_off'] ?? '[]', true);
+    $job['days_off'] = is_array($daysOff) ? $daysOff : [];
+    if (empty($job['category_ids']) && !empty($job['category_id'])) {
+        $job['category_ids'] = [(int) $job['category_id']];
     }
+    $job['slots'] = max(1, (int) ($job['slots'] ?? 1));
     
     // Convert DB integers to booleans
     $bool_fields = [

@@ -35,7 +35,7 @@ export default function PersonalInfoScreen() {
   const fullName = [user?.first_name, user?.middle_name, user?.last_name]
     .filter(Boolean).join(' ').trim();
 
-  // Name, religion and bio were missing entirely — the screen showed only the
+  // Name and bio were missing entirely — the screen showed only the
   // three account fields, so an employer had no way to see (or notice they
   // hadn't filled in) the details helpers actually judge a household on.
   const rows = [
@@ -43,7 +43,6 @@ export default function PersonalInfoScreen() {
     { label: 'Username',       value: user?.username              || 'Not specified' },
     { label: 'Email',          value: user?.email                 || 'Not specified' },
     { label: 'Contact Number', value: (profile as any)?.contact_number || 'Not specified' },
-    { label: 'Religion',       value: (profile as any)?.religion  || 'Not specified' },
     { label: 'About Household', value: (profile as any)?.bio      || 'Not specified' },
   ];
 

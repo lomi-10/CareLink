@@ -7,8 +7,8 @@ import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontFamily } from '@/constants/GlobalStyles';
-import { useParentRecommendations, useParentJobs } from '@/hooks/parent';
-import { computeHelperJobMatch, pickPrimaryOpenJob, bestJobForHelper } from '@/lib/parentHelperMatch';
+import { useParentJobs, useParentRecommendations } from '@/hooks/parent';
+import { bestJobForHelper, computeHelperJobMatch } from '@/lib/parentHelperMatch';
 import { RecommendedHelperCard } from './RecommendedHelperCard';
 import { BROWN, DARK } from './parentWarmTheme';
 
@@ -18,11 +18,8 @@ export function RecommendedHelpersSection() {
   const router = useRouter();
   const { recommendations, loading } = useParentRecommendations();
   const { jobs } = useParentJobs();
-  const referenceJob = useMemo(() => pickPrimaryOpenJob(jobs), [jobs]);
 
-  // Rank by the SAME score we display (client matcher), so the Top Match badge
-  // always sits on the genuinely highest-scoring helper — not the backend's
-  // history-based order. Keeps dashboard and Browse in the same order too.
+  // Score each helper against their best open job, as on Browse Helpers.
   const ranked = useMemo(
     () => recommendations
       .map((helper) => ({ helper, match: computeHelperJobMatch(helper, bestJobForHelper(helper, jobs)) }))
@@ -38,7 +35,7 @@ export function RecommendedHelpersSection() {
     );
   }
 
-  const sectionTitle = referenceJob ? 'Best Match for Your Job' : 'Top Helpers in Ormoc';
+  const sectionTitle = 'Recommended Helpers';
 
   if (recommendations.length === 0) {
     return (
@@ -48,7 +45,7 @@ export function RecommendedHelpersSection() {
         </View>
         <View style={s.emptyWrap}>
           <Text style={s.emptyText}>
-            No strong matches found yet. Try posting a job or broadening your required skills and salary range.
+            No strong matches found yet. Check back later or broaden your search filters.
           </Text>
         </View>
       </View>

@@ -97,6 +97,10 @@ export default function ChatPanel({
         ) ??
         apps.find((a: { helper_id: string }) => Number(a.helper_id) === Number(partnerId));
       if (match) {
+        const pendingContract = apps.find(
+          (a: { helper_id: string; status: string }) =>
+            Number(a.helper_id) === Number(partnerId) && a.status === 'contract_pending',
+        );
         setResolvedApp({
           application_id: Number(match.application_id),
           job_title:        String(match.job_title ?? ''),
@@ -129,6 +133,12 @@ export default function ChatPanel({
           interview_status: match.interview_status ?? null,
           parent_confirmed: !!match.parent_confirmed,
           helper_confirmed: !!match.helper_confirmed,
+          pending_contract_application_id: pendingContract
+            ? Number(pendingContract.application_id)
+            : null,
+          pending_contract_job_title: pendingContract
+            ? String(pendingContract.job_title ?? '')
+            : null,
         });
       } else {
         setResolvedApp(null);
@@ -258,7 +268,7 @@ export default function ChatPanel({
       );
       if (!match) {
         showChatNotif(
-          'This helper has not applied to any of your job posts yet. They can apply from the job listing, or you can start an instant video call from the menu.',
+          'You and this helper have not started a placement together yet. Review their profile in Find Helpers or use the menu to start an instant video call.',
           'info',
         );
         return;
@@ -420,7 +430,6 @@ export default function ChatPanel({
     hireWorkSchedule, setHireWorkSchedule,
     hireWorkHoursStart, setHireWorkHoursStart,
     hireWorkHoursEnd, setHireWorkHoursEnd,
-    hireFlexibleHours, setHireFlexibleHours,
     hireRestDays, setHireRestDays, hireHelperPreferredRestDay,
     hireVacationLeave, setHireVacationLeave,
     hireSickLeave, setHireSickLeave,
@@ -626,8 +635,6 @@ export default function ChatPanel({
         workHoursEnd={hireWorkHoursEnd}
         onChangeWorkHoursStart={setHireWorkHoursStart}
         onChangeWorkHoursEnd={setHireWorkHoursEnd}
-        flexibleHours={hireFlexibleHours}
-        onChangeFlexibleHours={setHireFlexibleHours}
         restDays={hireRestDays}
         helperPreferredRestDay={hireHelperPreferredRestDay}
         onToggleRestDay={(day) => setHireRestDays((prev) => {

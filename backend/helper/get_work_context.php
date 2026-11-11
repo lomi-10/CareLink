@@ -33,7 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 
 require_once __DIR__ . '/../dbcon.php';
-require_once __DIR__ . '/../shared/placement_settings_table.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
 
 
@@ -364,8 +363,6 @@ try {
             'debt_amount' => $row['debt_amount'] !== null ? (float) $row['debt_amount'] : null,
 
             'deployment_agreement' => $row['deployment_agreement'] !== null ? (string) $row['deployment_agreement'] : null,
-
-            'attendance_tracking' => get_attendance_tracking($conn, (int) $row['application_id']),
 
         ],
 

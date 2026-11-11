@@ -13,6 +13,7 @@ error_reporting(0);
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
 require_once __DIR__ . '/../shared/job_match.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Haversine distance (km) between two lat/lng pairs
@@ -101,7 +102,6 @@ try {
     if ($res) while ($r = $res->fetch_assoc()) $refSkills[$r['skill_id']] = $r['skill_name'];
 
     // ── 6. Open jobs the helper has NOT applied to yet ────────────────────
-    // job_posts uses a single category_id (int), not a JSON array
     $stmt = $conn->prepare("
         SELECT jp.*,
                jp.latitude  AS job_lat,
@@ -138,18 +138,24 @@ try {
     $jobsResult = $stmt->get_result();
 
     // ── 7. Score each job ─────────────────────────────────────────────────
+    $jobRows = [];
+    while ($row = $jobsResult->fetch_assoc()) $jobRows[] = $row;
+    $relationMap = carelink_load_job_post_relations(
+        $conn,
+        array_map(fn($row) => (int) $row['job_post_id'], $jobRows)
+    );
     $scored = [];
-    while ($job = $jobsResult->fetch_assoc()) {
-        // Parse JSON arrays from job_posts
-        $jobJobIds   = json_decode($job['job_ids']   ?? '[]', true) ?: [];
-        $jobSkillIds = json_decode($job['skill_ids'] ?? '[]', true) ?: [];
+    foreach ($jobRows as $job) {
+        $job = carelink_attach_job_post_relations($job, $relationMap);
+        $jobJobIds   = $job['job_ids'];
+        $jobSkillIds = $job['skill_ids'];
         $daysOff     = json_decode($job['days_off']  ?? '[]', true) ?: [];
 
         $jobJobIds   = array_map('intval', $jobJobIds);
         $jobSkillIds = array_map('intval', $jobSkillIds);
 
         $jobCatId = (int)$job['category_id'];
-        $jobCatIds = json_decode($job['category_ids'] ?? '[]', true) ?: [$jobCatId];
+        $jobCatIds = $job['category_ids'] ?: [$jobCatId];
         $jobCatIds = array_values(array_unique(array_map('intval', $jobCatIds)));
         $jobCatNames = array_values(array_filter(array_map(
             fn($id) => $refCats[$id] ?? null,

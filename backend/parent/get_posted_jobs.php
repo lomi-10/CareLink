@@ -19,6 +19,7 @@ error_reporting(0);
 include_once '../dbcon.php';
 include_once __DIR__ . '/../shared/ownership_guard.php';
 require_once __DIR__ . '/../shared/job_match.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -53,18 +54,12 @@ try {
             jp.*,
             rc.category_name,
             rl.language_name as preferred_language_name,
-            (SELECT GROUP_CONCAT(skill_name SEPARATOR ', ')
-             FROM ref_skills
-             WHERE skill_id IN (SELECT JSON_UNQUOTE(JSON_EXTRACT(skill_ids, CONCAT('$[', seq, ']')))
-                                FROM (SELECT 0 AS seq UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
-                                      UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) seqs
-                                WHERE seq < JSON_LENGTH(jp.skill_ids))) as skill_names,
-            (SELECT GROUP_CONCAT(job_title SEPARATOR ', ')
-             FROM ref_jobs
-             WHERE job_id IN (SELECT JSON_UNQUOTE(JSON_EXTRACT(job_ids, CONCAT('$[', seq, ']')))
-                                FROM (SELECT 0 AS seq UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
-                                      UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) seqs
-                                WHERE seq < JSON_LENGTH(jp.job_ids))) as role_names,
+            (SELECT GROUP_CONCAT(rs.skill_name ORDER BY jps.sort_order SEPARATOR ', ')
+             FROM job_post_skills jps JOIN ref_skills rs ON rs.skill_id = jps.skill_id
+             WHERE jps.job_post_id = jp.job_post_id) as skill_names,
+            (SELECT GROUP_CONCAT(rj.job_title ORDER BY jpr.sort_order SEPARATOR ', ')
+             FROM job_post_roles jpr JOIN ref_jobs rj ON rj.job_id = jpr.job_id
+             WHERE jpr.job_post_id = jp.job_post_id) as role_names,
             (SELECT COUNT(*) FROM job_applications WHERE job_post_id = jp.job_post_id) as application_count,
             (SELECT COUNT(*) FROM job_applications WHERE job_post_id = jp.job_post_id AND status = 'Pending') as new_application_count
         FROM job_posts jp
@@ -87,28 +82,22 @@ try {
     $stmt->execute();
     $result = $stmt->get_result();
 
+    $jobRows = [];
+    while ($row = $result->fetch_assoc()) $jobRows[] = $row;
+    $relationMap = carelink_load_job_post_relations(
+        $conn,
+        array_map(fn($row) => (int) $row['job_post_id'], $jobRows)
+    );
     $jobs = array();
-    while ($row = $result->fetch_assoc()) {
+    foreach ($jobRows as $row) {
+        $row = carelink_attach_job_post_relations($row, $relationMap);
         $row['job_post_id'] = intval($row['job_post_id']);
         $row['salary_offered'] = floatval($row['salary_offered']);
         $row['application_count'] = intval($row['application_count']);
         $row['new_application_count'] = intval($row['new_application_count']);
         
-        // Parse JSON fields
-        $json_fields = ['category_ids', 'job_ids', 'skill_ids', 'days_off'];
-        foreach ($json_fields as $field) {
-            if (isset($row[$field]) && !empty($row[$field])) {
-                // Keep as JSON string for frontend if needed, but here we decode for consistency
-                // However, JobDetailsModal expects a JSON string for JSON.parse()
-                // Let's keep days_off as string for the frontend JSON.parse call
-                if ($field !== 'days_off') {
-                    $decoded = json_decode($row[$field], true);
-                    $row[$field] = is_array($decoded) ? $decoded : [];
-                }
-            } else {
-                $row[$field] = ($field === 'days_off') ? '[]' : [];
-            }
-        }
+        $daysOff = json_decode($row['days_off'] ?? '[]', true);
+        $row['days_off'] = is_array($daysOff) ? json_encode($daysOff) : '[]';
         if (!$row['category_ids'] && !empty($row['category_id'])) {
             $row['category_ids'] = [(int) $row['category_id']];
         }

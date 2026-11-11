@@ -7,46 +7,30 @@ function carelink_ensure_helper_safeguards_schema(mysqli $conn): void
         throw new Exception('Unable to inspect helper profile schema: ' . $conn->error);
     }
     if ($column->num_rows === 0 && !$conn->query(
-        "ALTER TABLE helper_profiles ADD COLUMN preferred_rest_day VARCHAR(3) NULL DEFAULT NULL AFTER religion"
+        "ALTER TABLE helper_profiles ADD COLUMN preferred_rest_day VARCHAR(3) NULL DEFAULT NULL AFTER civil_status"
     )) {
         throw new Exception('Unable to add helper rest-day preference: ' . $conn->error);
     }
 
-    if (!$conn->query("
-        CREATE TABLE IF NOT EXISTS carelink_safeguard_migrations (
-            migration_key VARCHAR(120) NOT NULL PRIMARY KEY,
-            applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )
-    ")) {
-        throw new Exception('Unable to prepare safeguard migration tracking: ' . $conn->error);
+    $columnsToRemove = [
+        'helper_profiles' => 'religion',
+        'parent_profiles' => 'religion',
+        'job_posts' => 'preferred_religion',
+    ];
+    foreach ($columnsToRemove as $table => $columnName) {
+        $result = $conn->query("SHOW COLUMNS FROM `$table` LIKE '$columnName'");
+        if (!$result) {
+            throw new Exception("Unable to inspect $table.$columnName: " . $conn->error);
+        }
+        $exists = $result->num_rows > 0;
+        $result->free();
+        if ($exists && !$conn->query("ALTER TABLE `$table` DROP COLUMN `$columnName`")) {
+            throw new Exception("Unable to remove $table.$columnName: " . $conn->error);
+        }
     }
 
-    $conn->begin_transaction();
-    try {
-        $migrationKey = 'remove_religion_preferences_20261105';
-        $mark = $conn->prepare('INSERT IGNORE INTO carelink_safeguard_migrations (migration_key) VALUES (?)');
-        if (!$mark) {
-            throw new Exception('Unable to prepare safeguard migration: ' . $conn->error);
-        }
-        $mark->bind_param('s', $migrationKey);
-        if (!$mark->execute()) {
-            throw new Exception('Unable to record safeguard migration: ' . $mark->error);
-        }
-        $isFirstRun = $mark->affected_rows === 1;
-        $mark->close();
-
-        if ($isFirstRun) {
-            if (!$conn->query('UPDATE helper_profiles SET religion = NULL WHERE religion IS NOT NULL')) {
-                throw new Exception('Unable to clear existing helper religion values: ' . $conn->error);
-            }
-            if (!$conn->query('UPDATE job_posts SET preferred_religion = NULL WHERE preferred_religion IS NOT NULL')) {
-                throw new Exception('Unable to clear existing job religion preferences: ' . $conn->error);
-            }
-        }
-        $conn->commit();
-    } catch (Throwable $e) {
-        $conn->rollback();
-        throw $e;
+    if (!$conn->query('DROP TABLE IF EXISTS carelink_safeguard_migrations')) {
+        throw new Exception('Unable to remove obsolete safeguard migration table: ' . $conn->error);
     }
 }
 

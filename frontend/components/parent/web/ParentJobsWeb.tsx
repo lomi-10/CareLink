@@ -446,7 +446,15 @@ export function ParentJobsWeb({ userName, avatar, verified, onLogout }: { userNa
                 onReject={(a) => setStatusConfirm({ visible: true, appId: a.application_id, action: 'Rejected' })}
                 onShortlist={(a) => setStatusConfirm({ visible: true, appId: a.application_id, action: 'Shortlisted' })}
                 onSchedule={(a) => { const job = jobs.find((j) => String(j.job_post_id) === String(a.job_post_id)); setInterviewTarget({ appId: Number(a.application_id), helperName: a.helper_name, jobTitle: job?.title ?? 'this position' }); }}
-                onManage={(a) => router.push({ pathname: '/(parent)/hire/placement_tasks', params: { application_id: String(a.application_id), helper_name: encodeURIComponent(a.helper_name ?? 'Helper') } } as any)} />
+                onManage={(a) => router.push({
+                  pathname: '/(parent)/hire/helper_profile',
+                  params: {
+                    application_id: String(a.application_id),
+                    helper_id: String(a.helper_id),
+                    helper_name: encodeURIComponent(a.helper_name ?? 'Helper'),
+                    job_title: encodeURIComponent(jobs.find((j) => String(j.job_post_id) === String(a.job_post_id))?.title ?? 'Domestic support'),
+                  },
+                } as any)} />
             </View>
           </View>
           <View style={{ height: 30 }} />

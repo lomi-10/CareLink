@@ -108,8 +108,7 @@ try {
         [$user_id, $d]
     );
 
-    // 3. Applications to demo job posts. Cascades to interview_schedules,
-    //    application_tasks, attendance_logs, placement_tasks and shared documents.
+    // 3. Applications to demo job posts, plus related rows and shared documents.
     $removed['applications'] = dr_exec(
         $conn,
         "DELETE FROM job_applications

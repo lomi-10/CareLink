@@ -29,6 +29,7 @@ error_reporting(E_ALL);
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/job_match.php';
 require_once __DIR__ . '/../shared/complaint_tracking_tables.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 try {
     $helper_id = isset($_GET['helper_id']) ? intval($_GET['helper_id']) : 0;
@@ -152,18 +153,25 @@ try {
     $stmt->execute();
     $jobsResult = $stmt->get_result();
     
+    $jobRows = [];
+    while ($row = $jobsResult->fetch_assoc()) $jobRows[] = $row;
+    $relationMap = carelink_load_job_post_relations(
+        $conn,
+        array_map(fn($row) => (int) $row['job_post_id'], $jobRows)
+    );
     $processedJobs = [];
-    while ($job = $jobsResult->fetch_assoc()) {
+    foreach ($jobRows as $job) {
+        $job = carelink_attach_job_post_relations($job, $relationMap);
         
-        $category_ids = json_decode($job['category_ids'] ?? '[]', true) ?: [];
+        $category_ids = $job['category_ids'];
         if (!$category_ids && !empty($job['category_id'])) $category_ids = [(int) $job['category_id']];
         $category_ids = array_values(array_unique(array_map('intval', $category_ids)));
         $category_names = array_values(array_filter(array_map(
             fn($id) => $allRefCategories[(int) $id] ?? null,
             $category_ids
         )));
-        $job_ids = json_decode($job['job_ids'], true) ?: [];
-        $skill_ids = json_decode($job['skill_ids'], true) ?: [];
+        $job_ids = $job['job_ids'];
+        $skill_ids = $job['skill_ids'];
         $daysOff = json_decode($job['days_off'], true) ?: [];
 
         // NEW: Map those raw IDs to actual readable skill strings!

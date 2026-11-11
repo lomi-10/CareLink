@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
 require_once __DIR__ . '/../shared/job_match.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 try {
     $helper_id = isset($_GET['helper_id']) ? intval($_GET['helper_id']) : 0;
@@ -123,15 +124,22 @@ try {
     $jobsResult = $stmt->get_result();
     
     // 5. Process each job
+    $jobRows = [];
+    while ($row = $jobsResult->fetch_assoc()) $jobRows[] = $row;
+    $relationMap = carelink_load_job_post_relations(
+        $conn,
+        array_map(fn($row) => (int) $row['job_post_id'], $jobRows)
+    );
     $processedJobs = [];
-    while ($job = $jobsResult->fetch_assoc()) {
+    foreach ($jobRows as $job) {
+        $job = carelink_attach_job_post_relations($job, $relationMap);
         
         // Decode JSON arrays safely
-        $category_ids = json_decode($job['category_ids'] ?? '[]', true) ?: [];
+        $category_ids = $job['category_ids'];
         if (!$category_ids && !empty($job['category_id'])) $category_ids = [(int) $job['category_id']];
         $category_ids = array_values(array_unique(array_map('intval', $category_ids)));
-        $job_ids = json_decode($job['job_ids'], true) ?: [];
-        $skill_ids = json_decode($job['skill_ids'], true) ?: [];
+        $job_ids = $job['job_ids'];
+        $skill_ids = $job['skill_ids'];
         $daysOff = json_decode($job['days_off'], true) ?: [];
 
         // Map IDs to Names
@@ -139,8 +147,6 @@ try {
         $job_names = array_values(array_filter(array_map(function($id) use ($jobs_ref) { return $jobs_ref[$id] ?? null; }, $job_ids)));
         $skill_names = array_values(array_filter(array_map(function($id) use ($skills_ref) { return $skills_ref[$id] ?? null; }, $skill_ids)));
 
-        $job['job_ids'] = json_encode($job_ids);
-        $job['skill_ids'] = json_encode($skill_ids);
         $job = carelink_add_househelp_match_context($job, $categories_ref);
         $match = carelink_score_job_for_helper($helper, $helperCats, $helperJobs, $helperSkills, $job);
         $matchScore = $match['score'];

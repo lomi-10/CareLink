@@ -2,10 +2,9 @@
 // Left: search + category chips + Recommended carousel + Helpers grid.
 // Right: a slide-in panel (no modals) that switches between the helper Profile
 // (4 tabs) and the inline Invite-to-Apply flow. Mirrors HelperBrowseWeb.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, Pressable, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_URL from '@/constants/api';
@@ -15,7 +14,7 @@ import type { JobPost } from '@/hooks/parent/useParentJobs';
 import { useParentActivePlacements } from '@/hooks/parent/useParentActivePlacements';
 import { useParentPortalMode } from '@/hooks/parent';
 import { useJobReferences } from '@/hooks/shared';
-import { computeHelperJobMatch, activeJobPosts, bestHelpersForJob, bestJobForHelper } from '@/lib/parentHelperMatch';
+import { bestJobForHelper, computeHelperJobMatch } from '@/lib/parentHelperMatch';
 import { MatchBreakdown } from './MatchBreakdown';
 import { useCareBot } from '@/contexts/CareBotContext';
 import { NotificationModal, SubmitComplaintModal } from '@/components/shared';
@@ -24,7 +23,7 @@ import { ExperienceVerificationNotice } from '@/components/shared/ExperienceVeri
 import { FilterModal } from '@/components/parent/browse';
 import { DirectHirePanel } from './DirectHirePanel';
 import { ParentTopNav } from './ParentTopNav';
-import { pt, ACCENT_GRADIENT } from './parentWebTheme';
+import { pt } from './parentWebTheme';
 
 const CAREBOT_ICON = require('../../../assets/images/chatbot_icon.png');
 const TRANS = { transitionDuration: '150ms', transitionProperty: 'all', transitionTimingFunction: 'ease' } as any;
@@ -33,36 +32,20 @@ const fmtPeriod = (p?: string) => { const l = (p ?? '').toLowerCase(); return l.
 
 type Tab = 'overview' | 'experience' | 'skills' | 'documents';
 type Panel =
-  | { mode: 'profile'; helper: HelperProfile; tab: Tab; job: JobPost | null }
-  | { mode: 'invite'; helper: HelperProfile }
+  | { mode: 'profile'; helper: HelperProfile; tab: Tab }
   | { mode: 'directhire'; helper: HelperProfile };
-
-const CAT_ICON = (name: string): keyof typeof Ionicons.glyphMap => {
-  const c = (name || '').toLowerCase();
-  if (c.includes('cook')) return 'restaurant-outline';
-  if (c.includes('yaya') || c.includes('nanny') || c.includes('child')) return 'happy-outline';
-  if (c.includes('laundry')) return 'shirt-outline';
-  if (c.includes('elder') || c.includes('care')) return 'medkit-outline';
-  if (c.includes('house') || c.includes('clean')) return 'home-outline';
-  return 'construct-outline';
-};
 
 export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { userName: string; avatar: string | null; verified: boolean; onLogout: () => void }) {
   const router = useRouter();
   const isWorkMode = useParentPortalMode();
   const { open: openCareBot } = useCareBot();
   const { helpers, filters, loading, updateFilter, resetFilters, refresh } = useBrowseHelpers();
-  const { categories } = useJobReferences();
   const { jobs } = useParentJobs();
+  const { categories } = useJobReferences();
   const { placements } = useParentActivePlacements();
 
   const [searchText, setSearchText] = useState('');
   const hiredHelperIds = useMemo(() => new Set(placements.map((p) => String(p.helper_id))), [placements]);
-
-  // Every open job the parent is hiring for. When there are several, we show a
-  // "best match" group PER post instead of collapsing onto one primary job.
-  const openJobs = useMemo(() => activeJobPosts(jobs), [jobs]);
-  const referenceJob = openJobs[0] ?? null; // still used for the flat grid ranking
 
   const availableHelpers = useMemo(() => {
     const q = searchText.trim().toLowerCase();
@@ -75,26 +58,26 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
     });
   }, [helpers, hiredHelperIds, searchText]);
 
-  // Flat list under "Verified Helpers", ranked against the primary open job (or
-  // the general Top-Helpers score when there's no post).
-  const rankedHelpers = useMemo(
-    () => [...availableHelpers].sort((a, b) =>
-      computeHelperJobMatch(b, bestJobForHelper(b, openJobs)).score - computeHelperJobMatch(a, bestJobForHelper(a, openJobs)).score),
-    [availableHelpers, referenceJob],
+  const matchForHelper = useCallback(
+    (helper: HelperProfile) => computeHelperJobMatch(helper, bestJobForHelper(helper, jobs)),
+    [jobs],
   );
 
-  // Recommendations: one group per open job when hiring; a single general group
-  // ("Top Helpers Near You") when there are no active posts.
-  const recommendationGroups = useMemo(() => {
-    if (openJobs.length === 0) {
-      return [{ job: null as JobPost | null, helpers: bestHelpersForJob(availableHelpers, null, 4) }];
-    }
-    // Show the job with the strongest available match FIRST (not just most-applied),
-    // so the best recommendation leads instead of a weak 42% group.
-    return openJobs
-      .map((job) => ({ job, helpers: bestHelpersForJob(availableHelpers, job, 4) }))
-      .sort((a, b) => (b.helpers[0]?.match.score ?? 0) - (a.helpers[0]?.match.score ?? 0));
-  }, [openJobs, availableHelpers]);
+  // Score helpers against the same best open job used on mobile Browse and Home.
+  const rankedHelpers = useMemo(
+    () => [...availableHelpers].sort((a, b) =>
+      matchForHelper(b).score - matchForHelper(a).score),
+    [availableHelpers, matchForHelper],
+  );
+
+  const recommendedHelpers = useMemo(
+    () => availableHelpers
+      .map((helper) => ({ helper, match: matchForHelper(helper) }))
+      .filter(({ match }) => match.score > 0)
+      .sort((a, b) => b.match.score - a.match.score)
+      .slice(0, 4),
+    [availableHelpers, matchForHelper],
+  );
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [notif, setNotif] = useState({ visible: false, msg: '', type: 'success' as 'success' | 'error' });
@@ -102,10 +85,8 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
   const [panel, setPanel] = useState<Panel | null>(null);
   const close = () => setPanel(null);
 
-  // Carry the clicked card's job context so the panel scores against THAT post.
-  // From the flat grid (no group) we fall back to the helper's best-matching job.
-  const openProfile = (helper: HelperProfile, job: JobPost | null = null) =>
-    setPanel({ mode: 'profile', helper, tab: 'overview', job: job ?? bestJobForHelper(helper, openJobs) });
+  const openProfile = (helper: HelperProfile) =>
+    setPanel({ mode: 'profile', helper, tab: 'overview' });
 
   // Log a profile view when the parent opens a helper (fire-and-forget).
   const openedId = panel?.mode === 'profile' ? panel.helper.user_id : null;
@@ -178,37 +159,22 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
             <ActivityIndicator color={pt.accent} style={{ marginTop: 40 }} />
           ) : (
             <>
-              {/* Recommended — one group per open job, or a single general group */}
-              {recommendationGroups.map((group, gi) => (
-                group.helpers.length === 0 ? null : (
-                  <View key={group.job?.job_post_id ?? 'general'} style={{ marginTop: gi === 0 ? 22 : 26 }}>
-                    <View style={s.secHead}>
-                      <View style={s.secHeadLeft}>
-                        <Ionicons name={group.job ? 'briefcase' : 'sparkles'} size={17} color={pt.accent} />
-                        <Text style={s.secTitle}>
-                          {group.job ? 'Best matches for' : 'Top Helpers Near You'}
-                        </Text>
-                        {group.job && (
-                          <Text style={s.secJob} numberOfLines={1}>
-                            {group.job.title || (group.job as any).custom_job_title || 'your open role'}
-                          </Text>
-                        )}
-                      </View>
-                      {group.job && (
-                        <Pressable onPress={() => router.push({ pathname: '/(parent)/jobs', params: { tab: 'applicants', job_id: String(group.job!.job_post_id) } } as any)}>
-                          <Text style={s.secLink}>View applicants →</Text>
-                        </Pressable>
-                      )}
-                    </View>
-                    <View style={s.recRow}>
-                      {group.helpers.map(({ helper, match }, i) => (
-                        <RecCard key={helper.profile_id} helper={helper} match={match.score} topReason={match.reasons?.[0]} isTop={i === 0}
-                          active={panel?.helper?.profile_id === helper.profile_id} onView={() => openProfile(helper, group.job)} />
-                      ))}
+              {recommendedHelpers.length > 0 && (
+                <View style={{ marginTop: 22 }}>
+                  <View style={s.secHead}>
+                    <View style={s.secHeadLeft}>
+                      <Ionicons name="sparkles" size={17} color={pt.accent} />
+                      <Text style={s.secTitle}>Top Helpers Near You</Text>
                     </View>
                   </View>
-                )
-              ))}
+                  <View style={s.recRow}>
+                    {recommendedHelpers.map(({ helper, match }, i) => (
+                      <RecCard key={helper.profile_id} helper={helper} match={match.score} topReason={match.reasons?.[0]} isTop={i === 0}
+                        active={panel?.helper?.profile_id === helper.profile_id} onView={() => openProfile(helper)} />
+                    ))}
+                  </View>
+                </View>
+              )}
 
               {/* All helpers */}
               <View style={{ marginTop: 26 }}>
@@ -231,11 +197,11 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
                 ) : (
                   <View style={s.grid}>
                     {rankedHelpers.map((helper) => {
-                      const match = computeHelperJobMatch(helper, bestJobForHelper(helper, openJobs));
+                      const match = matchForHelper(helper);
                       return (
                         <HelperGridCard key={helper.profile_id} helper={helper} match={match.score}
                           active={panel?.helper?.profile_id === helper.profile_id}
-                          onView={() => openProfile(helper)} onInvite={() => setPanel({ mode: 'invite', helper })} />
+                          onView={() => openProfile(helper)} />
                       );
                     })}
                   </View>
@@ -250,8 +216,8 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
         {panel ? (
           <View style={s.panel}>
             <View style={s.panelHead}>
-              {panel.mode === 'invite' || panel.mode === 'directhire' ? (
-                <Pressable onPress={() => setPanel({ mode: 'profile', helper: panel.helper, tab: 'overview', job: bestJobForHelper(panel.helper, openJobs) })} style={({ hovered }: any) => [s.panelBack, TRANS, hovered && { opacity: 0.7 }]}>
+              {panel.mode === 'directhire' ? (
+                <Pressable onPress={() => setPanel({ mode: 'profile', helper: panel.helper, tab: 'overview' })} style={({ hovered }: any) => [s.panelBack, TRANS, hovered && { opacity: 0.7 }]}>
                   <Ionicons name="arrow-back" size={17} color={pt.accent} /><Text style={s.panelBackText}>Back to Profile</Text>
                 </Pressable>
               ) : <View />}
@@ -261,29 +227,20 @@ export function ParentBrowseWeb({ userName, avatar, verified, onLogout }: { user
               {panel.mode === 'profile' && (
                 <ProfilePanel
                   helper={panel.helper}
-                  referenceJob={panel.job}
+                  jobPosts={jobs}
                   tab={panel.tab}
                   onTab={(t) => setPanel((cur) => (cur && cur.mode === 'profile' ? { ...cur, tab: t } : cur))}
-                  onInvite={() => setPanel({ mode: 'invite', helper: panel.helper })}
                   onDirectHire={() => setPanel({ mode: 'directhire', helper: panel.helper })}
                   onMessage={() => messageHelper(panel.helper)}
                   onReport={() => setComplaint(panel.helper)}
                 />
               )}
-              {/* Inline, in the same pane — no pop-up, matching InvitePanel. */}
+              {/* Inline in the same pane, without a pop-up. */}
               {panel.mode === 'directhire' && (
                 <DirectHirePanel
                   helper={panel.helper}
-                  onBack={() => setPanel({ mode: 'profile', helper: panel.helper, tab: 'overview', job: bestJobForHelper(panel.helper, openJobs) })}
+                  onBack={() => setPanel({ mode: 'profile', helper: panel.helper, tab: 'overview' })}
                   onSent={(name) => { setNotif({ visible: true, msg: `Offer for ${name} sent to PESO for review.`, type: 'success' }); refresh(); }}
-                />
-              )}
-              {panel.mode === 'invite' && (
-                <InvitePanel
-                  helper={panel.helper}
-                  jobs={jobs}
-                  onMessage={() => messageHelper(panel.helper)}
-                  onSent={(name) => { setNotif({ visible: true, msg: `Invitation sent to ${name}!`, type: 'success' }); refresh(); }}
                 />
               )}
             </ScrollView>
@@ -354,7 +311,7 @@ function RecCard({ helper, match, topReason, isTop, active, onView }: { helper: 
 }
 
 // ─── Helper grid card ───
-function HelperGridCard({ helper, match, active, onView, onInvite }: { helper: HelperProfile; match: number; active: boolean; onView: () => void; onInvite: () => void }) {
+function HelperGridCard({ helper, match, active, onView }: { helper: HelperProfile; match: number; active: boolean; onView: () => void }) {
   const roles = (helper.jobs && helper.jobs.length ? helper.jobs : helper.categories) ?? [];
   const rating = Number(helper.rating_average ?? 0);
   return (
@@ -378,20 +335,17 @@ function HelperGridCard({ helper, match, active, onView, onInvite }: { helper: H
       <View style={s.gCats}>{roles.slice(0, 3).map((c, i) => <Text key={i} style={s.gCat} numberOfLines={1}>{c}</Text>)}</View>
       <View style={s.gActions}>
         <View style={s.gViewBtn}><Text style={s.gViewText}>View Profile</Text></View>
-        <Pressable onPress={(e: any) => { e.stopPropagation?.(); onInvite(); }} style={({ hovered }: any) => [s.gInviteBtn, TRANS, hovered && { backgroundColor: pt.accentSoft }]}>
-          <Ionicons name="paper-plane-outline" size={16} color={pt.accent} />
-        </Pressable>
       </View>
     </Pressable>
   );
 }
 
 // ─── Helper profile panel (4 tabs) ───
-function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onDirectHire, onMessage, onReport }: {
-  helper: HelperProfile; referenceJob: any; tab: Tab; onTab: (t: Tab) => void; onInvite: () => void; onDirectHire: () => void; onMessage: () => void; onReport: () => void;
+function ProfilePanel({ helper, jobPosts, tab, onTab, onDirectHire, onMessage, onReport }: {
+  helper: HelperProfile; jobPosts: JobPost[]; tab: Tab; onTab: (t: Tab) => void; onDirectHire: () => void; onMessage: () => void; onReport: () => void;
 }) {
   const h = helper as any;
-  const match = computeHelperJobMatch(helper, referenceJob);
+  const match = computeHelperJobMatch(helper, bestJobForHelper(helper, jobPosts));
   const bio = h.bio || '';
   const categories: string[] = h.categories ?? [];
   const jobs: string[] = h.jobs ?? [];
@@ -456,7 +410,6 @@ function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onDirectHire
             <MatchBreakdown
               match={match}
               firstName={(h.full_name || '').split(' ')[0]}
-              jobTitle={referenceJob ? (referenceJob.title || referenceJob.custom_job_title) : undefined}
             />
           </View>
           {!!bio && <View><Text style={s.fpSecTitle}>About Me</Text><Text style={s.jpBody}>{bio}</Text></View>}
@@ -552,7 +505,7 @@ function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onDirectHire
           <View style={s.docsLocked}>
             <Ionicons name="lock-closed-outline" size={28} color={pt.muted} />
             <Text style={s.docsLockedTitle}>Documents are private</Text>
-            <Text style={s.docsLockedText}>{h.full_name}'s documents are only shared once they apply to one of your jobs and choose to share them with you.</Text>
+            <Text style={s.docsLockedText}>{h.full_name}'s documents are private and are shared only with permission during the hiring process.</Text>
           </View>
         </View>
       )}
@@ -564,11 +517,6 @@ function ProfilePanel({ helper, referenceJob, tab, onTab, onInvite, onDirectHire
         </Pressable>
         <Pressable onPress={onDirectHire} style={({ hovered }: any) => [s.msgBtn, TRANS, hovered && { borderColor: pt.accent, backgroundColor: pt.lineSoft }]}>
           <Ionicons name="briefcase-outline" size={17} color={pt.ink} /><Text style={s.msgBtnText}>Hire Directly</Text>
-        </Pressable>
-        <Pressable onPress={onInvite} style={({ hovered, pressed }: any) => [{ flex: 1.4 }, TRANS, hovered && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
-          <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.inviteBtn}>
-            <Ionicons name="paper-plane" size={16} color="#fff" /><Text style={s.inviteBtnText}>Invite to Apply</Text>
-          </LinearGradient>
         </Pressable>
       </View>
       <Pressable onPress={onReport} style={({ hovered }: any) => [s.reportBtn, TRANS, hovered && { opacity: 0.7 }]}>
@@ -599,159 +547,6 @@ function DetailRow({ label, value, last = false }: { label: string; value: strin
   );
 }
 
-// ─── Inline invite panel ───
-function InvitePanel({ helper, onSent, onMessage }: { helper: HelperProfile; jobs?: any[]; onSent: (name: string) => void; onMessage: () => void }) {
-  // Smart matching: fetch THIS parent's open jobs annotated with whether this
-  // helper already applied / was invited, so we only offer jobs worth inviting to.
-  const [allJobs, setAllJobs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState('');
-  const [sent, setSent] = useState(false);
-
-  const invitable = useMemo(() => allJobs.filter((j) => j.can_invite), [allJobs]);
-  const covered   = useMemo(() => allJobs.filter((j) => !j.can_invite), [allJobs]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true); setSelectedJobId(null);
-      try {
-        const raw = await AsyncStorage.getItem('user_data');
-        if (!raw) throw new Error('Not logged in');
-        const user = JSON.parse(raw);
-        const res = await fetch(`${API_URL}/parent/get_invitable_jobs.php?parent_id=${user.user_id}&helper_id=${helper.user_id}&requester_id=${user.user_id}`);
-        const data = await res.json();
-        if (cancelled) return;
-        if (data.success) {
-          const list: any[] = data.jobs ?? [];
-          setAllJobs(list);
-          const firstInvitable = list.find((j) => j.can_invite);
-          if (firstInvitable) setSelectedJobId(String(firstInvitable.job_post_id));
-        } else throw new Error(data.message || 'Failed to load jobs');
-      } catch (e: any) {
-        if (!cancelled) setError(e.message || 'Failed to load your jobs.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [helper.user_id]);
-
-  const send = async () => {
-    if (!selectedJobId) return;
-    setSending(true); setError('');
-    try {
-      const raw = await AsyncStorage.getItem('user_data');
-      if (!raw) throw new Error('Not logged in');
-      const user = JSON.parse(raw);
-      const res = await fetch(`${API_URL}/parent/invite_helper.php`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parent_id: user.user_id, helper_id: helper.user_id, job_post_id: selectedJobId, requester_id: user.user_id }),
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.message || 'Failed to send invitation');
-      setSent(true);
-      onSent(helper.full_name);
-    } catch (e: any) { setError(e.message || 'Something went wrong. Please try again.'); } finally { setSending(false); }
-  };
-
-  if (sent) {
-    return (
-      <View style={{ alignItems: 'center', paddingTop: 12 }}>
-        <View style={s.successIc}><Ionicons name="checkmark-circle" size={52} color={pt.green} /></View>
-        <Text style={s.successTitle}>Invitation Sent!</Text>
-        <Text style={s.successSub}>{helper.full_name} will get a notification and can view your job in their messages.</Text>
-        <Pressable onPress={onMessage} style={({ hovered }: any) => [s.msgNowBtn, TRANS, hovered && { transform: [{ translateY: -2 }] }]}>
-          <Ionicons name="chatbubble-ellipses" size={16} color="#fff" /><Text style={s.msgNowText}>Send a Message Now</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
-  return (
-    <View>
-      <Text style={s.jpTitle}>Invite to Apply</Text>
-      <View style={[s.jpCard, { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 }]}>
-        {helper.profile_image
-          ? <Image source={{ uri: helper.profile_image }} style={s.inviteAva} />
-          : <View style={[s.inviteAva, s.avaFb]}><Text style={s.avaText}>{initials(helper.full_name)}</Text></View>}
-        <View style={{ flex: 1 }}>
-          <Text style={s.jobRowTitle} numberOfLines={1}>{helper.full_name}</Text>
-          <Text style={s.jobRowSub}>Select one of your open jobs to invite this helper.</Text>
-        </View>
-      </View>
-
-      <View style={{ marginTop: 18 }}>
-        <Text style={s.fpSecTitle}>Your Open Jobs</Text>
-
-        {loading ? (
-          <View style={s.empty}><ActivityIndicator color={pt.accent} /><Text style={s.emptyText}>Loading your jobs…</Text></View>
-        ) : allJobs.length === 0 ? (
-          <View style={s.empty}>
-            <Ionicons name="briefcase-outline" size={30} color={pt.subtle} />
-            <Text style={s.emptyText}>No open jobs. Post a job first to invite helpers.</Text>
-          </View>
-        ) : (
-          <View style={{ gap: 10, marginTop: 8 }}>
-            {invitable.map((j) => {
-              const on = selectedJobId === String(j.job_post_id);
-              return (
-                <Pressable key={j.job_post_id} onPress={() => setSelectedJobId(String(j.job_post_id))} style={[s.jobPick, on && { borderColor: pt.accent, backgroundColor: '#FFFCF6' }]}>
-                  <View style={s.recIc}><Ionicons name={CAT_ICON(j.category_name || j.title)} size={18} color={pt.accent} /></View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    {!!j.category_name && <Text style={s.jobPickCat}>{j.category_name}</Text>}
-                    <Text style={s.jobRowTitle} numberOfLines={1}>{j.title}</Text>
-                    {Number(j.salary_offered) > 0 && <Text style={s.jobRowSub}>₱{Number(j.salary_offered).toLocaleString()} / {fmtPeriod(j.salary_period)}</Text>}
-                  </View>
-                  <Ionicons name={on ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={on ? pt.accent : pt.subtle} />
-                </Pressable>
-              );
-            })}
-
-            {invitable.length === 0 && (
-              <View style={[s.empty, { paddingVertical: 20 }]}>
-                <Ionicons name="checkmark-done-circle-outline" size={34} color={pt.green} />
-                <Text style={[s.emptyText, { fontFamily: FontFamily.fredokaSemiBold, color: pt.ink, marginTop: 6 }]}>Already covered</Text>
-                <Text style={[s.emptyText, { marginTop: 2 }]}>{helper.full_name} has already applied to or been invited to all your open jobs. Post a new job to invite them to something new.</Text>
-              </View>
-            )}
-
-            {covered.length > 0 && (
-              <>
-                <Text style={[s.jobPickCat, { marginTop: 8, color: pt.subtle }]}>ALREADY APPLIED OR INVITED</Text>
-                {covered.map((j) => (
-                  <View key={j.job_post_id} style={[s.jobPick, { opacity: 0.6 }]}>
-                    <View style={s.recIc}><Ionicons name={CAT_ICON(j.category_name || j.title)} size={18} color={pt.subtle} /></View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      {!!j.category_name && <Text style={s.jobPickCat}>{j.category_name}</Text>}
-                      <Text style={[s.jobRowTitle, { color: pt.muted }]} numberOfLines={1}>{j.title}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: pt.lineSoft ?? '#F0E9DF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
-                      <Ionicons name={j.already_applied ? 'document-text-outline' : 'paper-plane-outline'} size={12} color={pt.muted} />
-                      <Text style={{ fontSize: 11, fontFamily: FontFamily.fredokaSemiBold, color: pt.muted }}>{j.already_applied ? 'Applied' : 'Invited'}</Text>
-                    </View>
-                  </View>
-                ))}
-              </>
-            )}
-          </View>
-        )}
-        {!!error && <View style={s.errRow}><Ionicons name="alert-circle" size={14} color={pt.red} /><Text style={s.errText}>{error}</Text></View>}
-      </View>
-
-      {invitable.length > 0 && (
-        <Pressable disabled={!selectedJobId || sending} onPress={send} style={({ hovered, pressed }: any) => [{ marginTop: 18 }, TRANS, (!selectedJobId || sending) && { opacity: 0.5 }, hovered && selectedJobId && { transform: [{ translateY: -2 }] }, pressed && { opacity: 0.9 }]}>
-          <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.inviteBtn}>
-            {sending ? <ActivityIndicator color="#fff" size="small" /> : <><Ionicons name="paper-plane" size={16} color="#fff" /><Text style={s.inviteBtnText}>Send Invite</Text></>}
-          </LinearGradient>
-        </Pressable>
-      )}
-    </View>
-  );
-}
-
 const shadowSm = { boxShadow: '0 3px 12px rgba(120,80,45,.07)' } as any;
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: 'transparent' },
@@ -777,7 +572,6 @@ const s = StyleSheet.create({
   secHeadLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 },
   secTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 16, color: pt.ink },
   secHint: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: pt.muted, flexShrink: 1 },
-  secJob: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5, color: pt.accent, flexShrink: 1 },
   secLink: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 12.5, color: pt.accent },
   resultsText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: pt.muted },
 
@@ -816,7 +610,6 @@ const s = StyleSheet.create({
   gActions: { flexDirection: 'row', gap: 8, marginTop: 14 },
   gViewBtn: { flex: 1, backgroundColor: pt.accent, borderRadius: 11, paddingVertical: 10, alignItems: 'center' },
   gViewText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 13.5, color: '#fff' },
-  gInviteBtn: { width: 46, alignItems: 'center', justifyContent: 'center', borderWidth: 1.4, borderColor: pt.accent, borderRadius: 11 },
 
   verPill: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: pt.greenSoft, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, marginVertical: 3 },
   verPillText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 11, color: pt.green },
@@ -899,25 +692,6 @@ const s = StyleSheet.create({
   ppActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
   msgBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 14, borderRadius: 13, borderWidth: 1, borderColor: pt.line },
   msgBtnText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: pt.ink },
-  inviteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 13 },
-  inviteBtnText: { color: '#fff', fontFamily: FontFamily.fredokaSemiBold, fontSize: 14.5 },
   reportBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12, paddingVertical: 8 },
   reportText: { fontFamily: FontFamily.fredokaRegular, fontSize: 12.5, color: pt.subtle },
-
-  // Invite panel
-  jpTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 24, color: pt.ink, letterSpacing: -0.4 },
-  jpCard: { backgroundColor: pt.raise, borderWidth: 1, borderColor: pt.line, borderRadius: 14, padding: 14 },
-  inviteAva: { width: 46, height: 46, borderRadius: 23 },
-  recIc: { width: 42, height: 42, borderRadius: 12, backgroundColor: pt.accentSoft, alignItems: 'center', justifyContent: 'center' },
-  jobRowTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: pt.ink },
-  jobRowSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 12, color: pt.muted, marginTop: 2 },
-  jobPick: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: pt.surface, borderWidth: 1.4, borderColor: pt.line, borderRadius: 13, padding: 12 },
-  jobPickCat: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 10.5, color: pt.accent, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 1 },
-  errRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, backgroundColor: pt.redSoft, borderRadius: 10, padding: 10 },
-  errText: { fontFamily: FontFamily.fredokaRegular, fontSize: 13, color: pt.red, flex: 1 },
-  successIc: { marginBottom: 12, marginTop: 8 },
-  successTitle: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 20, color: pt.ink, marginBottom: 8 },
-  successSub: { fontFamily: FontFamily.fredokaRegular, fontSize: 14, color: pt.muted, textAlign: 'center', lineHeight: 20, marginBottom: 22 },
-  msgNowBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: pt.accent, paddingVertical: 13, paddingHorizontal: 26, borderRadius: 12 },
-  msgNowText: { fontFamily: FontFamily.fredokaSemiBold, fontSize: 14, color: '#fff' },
 });

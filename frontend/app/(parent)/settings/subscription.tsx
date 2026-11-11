@@ -35,7 +35,6 @@ type PlusStatus = {
   status: string | null;
   started_at: string | null;
   current_period_end: string | null;
-  featured_credits: number;
 };
 
 export default function SubscriptionScreen() {
@@ -205,10 +204,6 @@ export default function SubscriptionScreen() {
                       {plus?.status === 'cancelled' ? `Access ends ${renews}` : `Renews ${renews}`}
                     </Text>
                   )}
-                  <View style={s.creditPill}>
-                    <Ionicons name="megaphone" size={13} color="#fff" />
-                    <Text style={s.creditText}>{plus?.featured_credits ?? 0} boost credits left this month</Text>
-                  </View>
                 </>
               ) : (
                 <>
@@ -253,29 +248,17 @@ export default function SubscriptionScreen() {
                 </Text>
                 <Text style={s.rowValue}>{renews ?? '—'}</Text>
               </View>
-              <View style={[s.row, s.rowLine]}>
-                <Ionicons name="megaphone-outline" size={18} color={MUTED} />
-                <Text style={s.rowText}>Boost credits left</Text>
-                <Text style={s.rowValue}>{isPlus ? `${plus?.featured_credits ?? 0} of 3` : '0'}</Text>
-              </View>
-              <View style={s.row}>
-                <Ionicons name="briefcase-outline" size={18} color={MUTED} />
-                <Text style={s.rowText}>Open job posts</Text>
-                <Text style={s.rowValue}>{isPlus ? 'Unlimited' : 'Up to 3'}</Text>
-              </View>
             </View>
 
             {/* What you get */}
             <Text style={s.sectionLabel}>What Plus adds</Text>
             <View style={s.card}>
               {(benefits.length ? benefits : [
-                '3 featured job post boosts every month',
                 'Priority AI document pre-screening for faster submission',
-                'Unlimited open job posts',
                 'Placement history beyond 6 months',
                 'Export payroll to PDF or CSV',
                 '20% off the Digital Contract & Facilitation Fee',
-              ]).map((b, i, arr) => (
+              ]).filter((b) => !/job post|boost/i.test(b)).map((b, i, arr) => (
                 <View key={b} style={[s.row, i < arr.length - 1 && s.rowLine]}>
                   <Ionicons name="checkmark-circle" size={19} color={GREEN} />
                   <Text style={s.rowText}>{b}</Text>
@@ -293,7 +276,7 @@ export default function SubscriptionScreen() {
                 'PESO verification and document review',
                 'Matching and compatibility scores',
                 'Contracts, digital signing and messaging',
-                'Work Mode: tasks, attendance, leave and payroll',
+                'Work Mode: contracts, leave, payroll and payslips',
                 'CareBot and document pre-screening',
               ].map((f) => (
                 <View key={f} style={s.freeRow}>
@@ -361,7 +344,6 @@ export default function SubscriptionScreen() {
         price={price}
         started={started}
         renews={renews}
-        credits={plus?.featured_credits ?? 3}
       />
     </View>
   );
@@ -400,12 +382,6 @@ const s = StyleSheet.create({
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 10 },
   price: { fontSize: 34, fontWeight: '800', color: DARK },
   priceNote: { fontSize: 14, color: MUTED },
-  creditPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14,
-    backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999,
-  },
-  creditText: { fontSize: 12.5, fontWeight: '700', color: '#fff' },
-
   sectionLabel: {
     fontSize: 12, fontWeight: '800', color: MUTED, textTransform: 'uppercase',
     letterSpacing: 0.5, marginBottom: 10, marginLeft: 4,

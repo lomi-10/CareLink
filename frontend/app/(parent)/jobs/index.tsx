@@ -1032,7 +1032,15 @@ export default function WorkManagement() {
           {isHired && (
             <TouchableOpacity
               style={w.profileActionPrimary}
-              onPress={() => router.push({ pathname: '/(parent)/hire/placement_tasks', params: { application_id: String(selectedApplicant.application_id), helper_name: encodeURIComponent(selectedApplicant.helper_name ?? 'Helper') } } as any)}
+              onPress={() => router.push({
+                pathname: '/(parent)/hire/helper_profile',
+                params: {
+                  application_id: String(selectedApplicant.application_id),
+                  helper_id: String(selectedApplicant.helper_id),
+                  helper_name: encodeURIComponent(selectedApplicant.helper_name ?? 'Helper'),
+                  job_title: encodeURIComponent(jobs.find((j) => String(j.job_post_id) === String(selectedApplicant.job_post_id))?.title ?? 'Domestic support'),
+                },
+              } as any)}
               activeOpacity={0.85}
             >
               <Ionicons name="checkbox-outline" size={16} color="#FFFFFF" />

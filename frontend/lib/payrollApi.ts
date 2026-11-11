@@ -1,6 +1,6 @@
 // lib/payrollApi.ts
 // Read-only payroll CLARITY summary for a placement. No cash-out / money movement —
-// just what's been earned, days worked, and leave used, so the helper (or parent)
+// just the salary-based estimate and leave used, so the helper (or parent)
 // can keep track. Final pay is always set by the employer.
 import API_URL from '@/constants/api';
 
@@ -13,12 +13,11 @@ export type PayrollSummary = {
   period_label: string;         // e.g. "July 2026"
   period_start: string;
   period_end: string;
-  days_worked: number;
+  days_worked: number | null;
   days_scheduled: number;
   leave_used: number;
   estimated_earned: number;
   is_estimate: boolean;
-  attendance_tracking: boolean;
   next_payout: string;
 };
 

@@ -35,7 +35,7 @@ export function HireJobPickerModal({
           <View style={s.bodyPad}>
             <Text style={s.title}>Select position</Text>
             <Text style={s.sub}>
-              {helperName} has applied to multiple of your job posts. Select the position you are hiring them for:
+              {helperName} has multiple shortlisted applications. Select the position you are hiring them for:
             </Text>
           </View>
           <ScrollView style={[s.list, { paddingHorizontal: 18 }]} keyboardShouldPersistTaps="handled">

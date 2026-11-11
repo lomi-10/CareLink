@@ -452,20 +452,6 @@ export const hireContractTermsStyles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // ── Flexible hours toggle ──
-  flexibleToggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  flexibleToggleLabel: {
-    fontFamily: FontFamily.fredokaSemiBold,
-    fontSize: 13,
-    color: DARK,
-  },
-
   // ── Additional Terms collapsible header ──
   collapsibleHeader: {
     flexDirection: 'row',

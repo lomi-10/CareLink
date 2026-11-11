@@ -197,14 +197,28 @@ export default function ContractTab({
           </View>
           <Text style={s.contractEmptyTitle}>No contract yet</Text>
           <Text style={s.contractEmptySub}>Application status: {resolvedApp.status}</Text>
+          {resolvedApp.pending_contract_application_id != null &&
+            resolvedApp.pending_contract_application_id !== resolvedApp.application_id && (
+              <NotificationCard
+                tone="warning"
+                badge="Contract pending"
+                title="Another position is locked"
+                message={`A contract is already pending for ${resolvedApp.pending_contract_job_title || 'another position'}. Delete that unsigned contract before choosing a different job.`}
+                style={{ marginHorizontal: 0, marginTop: 12, marginBottom: 0, alignSelf: 'stretch' }}
+              />
+            )}
           <View style={s.contractEmptyBtns}>
             <TouchableOpacity style={s.contractOutlineBtn} onPress={onReject}>
               <Text style={s.appActionRejectTxt}>Reject Application</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[s.contractPrimaryBtn, hiringAction && s.contractPrimaryBtnDisabled]}
+              style={[
+                s.contractPrimaryBtn,
+                (hiringAction || resolvedApp.pending_contract_application_id != null) &&
+                  s.contractPrimaryBtnDisabled,
+              ]}
               onPress={() => { void onHire(); }}
-              disabled={hiringAction}
+              disabled={hiringAction || resolvedApp.pending_contract_application_id != null}
             >
               {hiringAction
                 ? <ActivityIndicator size="small" color="#fff" />

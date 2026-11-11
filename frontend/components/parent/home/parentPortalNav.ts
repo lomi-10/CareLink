@@ -24,7 +24,7 @@ function routeSegments(path: string) {
 
 /**
  * True when the current URL is under the same parent section as `href`.
- * Handles jobs/post_job, hire + placement_*, applications + applicant_profile, etc.
+ * Handles helper browsing, hire + placement history, messages, and profile routes.
  */
 export function isParentNavActive(pathname: string | null | undefined, href: string): boolean {
   const p = (pathname || '').trim();
@@ -49,13 +49,6 @@ export function isParentNavActive(pathname: string | null | undefined, href: str
   if (href.includes('hire')) {
     return pl.includes('hire') || pl.includes('placement_');
   }
-  if (href.includes('applications')) {
-    return pl.includes('applications') || pl.includes('applicant_profile');
-  }
-  if (href.includes('/jobs') && !href.includes('browse')) {
-    if (pl.includes('post_job')) return true;
-    if (pl.includes('jobs') && !pl.includes('browse')) return true;
-  }
   if (href.includes('notifications')) {
     return pl.includes('notifications') && !pl.includes('messages');
   }
@@ -69,8 +62,8 @@ export function isParentNavActive(pathname: string | null | undefined, href: str
     if (pl.includes('hire') || pl.includes('placement_')) return false;
     return true;
   }
-  if (href.includes('profile') && !href.includes('applicant')) {
-    return pl.includes('profile') && !pl.includes('applicant_profile');
+  if (href.includes('profile')) {
+    return pl.includes('profile');
   }
   if (href.includes('settings')) {
     return pl.includes('settings');
@@ -89,7 +82,7 @@ export function parentNavIconName(
 export const PARENT_PORTAL_NAV: ParentNavItem[] = [
   { baseIcon: 'home', label: 'Home', path: '/(parent)/home' },
   { baseIcon: 'search', label: 'Find Helpers', path: '/(parent)/browse' },
-  { baseIcon: 'briefcase', label: 'Work Management', path: '/(parent)/jobs' },
+  { baseIcon: 'people', label: 'My Helpers', path: '/(parent)/hire' },
   { baseIcon: 'time', label: 'Placement History', path: '/(parent)/hire/history' },
   { baseIcon: 'notifications', label: 'Notifications', path: '/(parent)/notifications', useNotificationBadge: true },
   { baseIcon: 'chatbubbles', label: 'Messages', path: '/(parent)/messages' },
@@ -115,7 +108,7 @@ export function getParentNavRowsForShell(): ParentNavRow[] {
 export const PARENT_TAB_BAR_PATHS = new Set<string>([
   '/(parent)/home',
   '/(parent)/browse',
-  '/(parent)/jobs',
+  '/(parent)/hire',
   '/(parent)/messages',
   '/(parent)/profile',
 ]);

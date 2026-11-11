@@ -34,7 +34,7 @@ export function ParentSetupGuide({ profileData, firstName }: { profileData: any;
   const steps: Step[] = [
     {
       key: 'personal', title: 'Add your contact number', icon: 'person', done: done.personal,
-      instruction: 'So helpers and PESO can reach you about your job posts.',
+      instruction: 'So helpers and PESO can reach you about hiring and placement updates.',
       route: '/(parent)/profile/personal',
     },
     {

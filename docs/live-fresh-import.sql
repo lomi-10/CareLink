@@ -12,11 +12,11 @@
 --   task_checklist_items.
 --
 -- This file is generated from the working local database, so it is the
--- schema the code actually expects: all 57 tables.
+-- schema the code actually expects: all 63 tables.
 --
 -- WHAT IT DOES
 --   1. DROPS every CareLink table and everything in them.
---   2. Recreates all 57 with the current structure.
+--   2. Recreates all 63 with the current structure.
 --   3. Loads the job/skill reference data and the evaluation instrument.
 --   4. Creates the four test accounts (password: CareLink!2026).
 --
@@ -51,6 +51,8 @@ DROP TABLE IF EXISTS `contracts`;
 DROP TABLE IF EXISTS `credential_flags`;
 DROP TABLE IF EXISTS `feedback_answers`;
 DROP TABLE IF EXISTS `feedback_questions`;
+DROP TABLE IF EXISTS `helper_custom_jobs`;
+DROP TABLE IF EXISTS `helper_custom_skills`;
 DROP TABLE IF EXISTS `helper_jobs`;
 DROP TABLE IF EXISTS `helper_languages`;
 DROP TABLE IF EXISTS `helper_profiles`;
@@ -62,6 +64,10 @@ DROP TABLE IF EXISTS `interview_reviews`;
 DROP TABLE IF EXISTS `interview_schedules`;
 DROP TABLE IF EXISTS `job_applications`;
 DROP TABLE IF EXISTS `job_invites`;
+DROP TABLE IF EXISTS `job_post_categories`;
+DROP TABLE IF EXISTS `job_post_custom_skills`;
+DROP TABLE IF EXISTS `job_post_roles`;
+DROP TABLE IF EXISTS `job_post_skills`;
 DROP TABLE IF EXISTS `job_posts`;
 DROP TABLE IF EXISTS `job_views`;
 DROP TABLE IF EXISTS `leave_requests`;
@@ -97,7 +103,7 @@ DROP TABLE IF EXISTS `user_safety_flags`;
 DROP TABLE IF EXISTS `users`;
 
 -- ---------------------------------------------------------------------------
--- 2. Structure (57 tables)
+-- 2. Structure (63 tables)
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE `application_document_shares` (
@@ -387,7 +393,6 @@ CREATE TABLE `helper_profiles` (
   `birth_date` date DEFAULT NULL,
   `gender` enum('Male','Female') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `civil_status` enum('Single','Married','Widowed','Separated') COLLATE utf8mb4_general_ci DEFAULT 'Single',
-  `religion` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Filter: important per PESO interview',
   `province` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `municipality` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `barangay` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -402,8 +407,6 @@ CREATE TABLE `helper_profiles` (
   `work_schedule` enum('Full-time','Part-time','Any') COLLATE utf8mb4_general_ci DEFAULT 'Any' COMMENT 'Hours commitment (college students = Part-time)',
   `expected_salary` decimal(10,2) DEFAULT '6400.00' COMMENT 'Minimum per PESO: ₱6,400',
   `salary_period` enum('Daily','Monthly') COLLATE utf8mb4_general_ci DEFAULT 'Monthly',
-  `custom_jobs` text COLLATE utf8mb4_general_ci DEFAULT (_utf8mb4'[]'),
-  `custom_skills` text COLLATE utf8mb4_general_ci DEFAULT (_utf8mb4'[]'),
   `verification_status` enum('Unverified','Pending','Verified','Rejected') COLLATE utf8mb4_general_ci DEFAULT 'Unverified',
   `rating_average` decimal(3,2) DEFAULT '0.00',
   `rating_count` int DEFAULT '0',
@@ -420,6 +423,22 @@ CREATE TABLE `helper_profiles` (
   KEY `idx_search` (`municipality`,`employment_type`,`work_schedule`),
   KEY `idx_verification` (`verification_status`),
   CONSTRAINT `fk_hprofile_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `helper_custom_jobs` (
+  `profile_id` int NOT NULL,
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  `custom_value` text COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`profile_id`,`sort_order`),
+  CONSTRAINT `fk_helper_custom_jobs_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `helper_custom_skills` (
+  `profile_id` int NOT NULL,
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  `custom_value` text COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`profile_id`,`sort_order`),
+  CONSTRAINT `fk_helper_custom_skills_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `helper_skills` (
@@ -557,7 +576,6 @@ CREATE TABLE `job_posts` (
   `parent_id` int NOT NULL COMMENT 'users.user_id of parent',
   `category_id` int NOT NULL COMMENT 'ref_categories.category_id',
   `custom_category` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `job_ids` json DEFAULT NULL COMMENT 'Array of selected job IDs',
   `title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `custom_job_title` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `description` text COLLATE utf8mb4_general_ci NOT NULL,
@@ -571,7 +589,6 @@ CREATE TABLE `job_posts` (
   `barangay` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `latitude` decimal(10,7) DEFAULT NULL,
   `longitude` decimal(10,7) DEFAULT NULL,
-  `preferred_religion` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `preferred_language_id` int DEFAULT NULL COMMENT 'ref_languages.language_id',
   `require_police_clearance` tinyint(1) DEFAULT '0' COMMENT 'Parent can require this',
   `prefer_tesda_nc2` tinyint(1) DEFAULT '0',
@@ -583,8 +600,6 @@ CREATE TABLE `job_posts` (
   `featured_boost_paid_at` datetime DEFAULT NULL COMMENT 'When the boost payment settled',
   `filled_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `skill_ids` json DEFAULT NULL COMMENT 'Array of selected skill IDs',
-  `custom_skills` text COLLATE utf8mb4_general_ci,
   `min_age` int DEFAULT NULL COMMENT 'Minimum age requirement',
   `max_age` int DEFAULT NULL COMMENT 'Maximum age requirement',
   `min_experience_years` int DEFAULT NULL COMMENT 'Minimum years of experience',
@@ -618,6 +633,41 @@ CREATE TABLE `job_posts` (
   CONSTRAINT `fk_jposts_language` FOREIGN KEY (`preferred_language_id`) REFERENCES `ref_languages` (`language_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_jposts_parent` FOREIGN KEY (`parent_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_jposts_verified_by` FOREIGN KEY (`verified_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `job_post_categories` (
+  `job_post_id` int NOT NULL,
+  `category_id` int NOT NULL,
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`job_post_id`,`category_id`),
+  KEY `idx_job_post_categories_category` (`category_id`),
+  CONSTRAINT `fk_job_post_categories_post` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `job_post_custom_skills` (
+  `job_post_id` int NOT NULL,
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  `custom_skill` text COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`job_post_id`,`sort_order`),
+  CONSTRAINT `fk_job_post_custom_skills_post` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `job_post_roles` (
+  `job_post_id` int NOT NULL,
+  `job_id` int NOT NULL,
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`job_post_id`,`job_id`),
+  KEY `idx_job_post_roles_job` (`job_id`),
+  CONSTRAINT `fk_job_post_roles_post` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `job_post_skills` (
+  `job_post_id` int NOT NULL,
+  `skill_id` int NOT NULL,
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`job_post_id`,`skill_id`),
+  KEY `idx_job_post_skills_skill` (`skill_id`),
+  CONSTRAINT `fk_job_post_skills_post` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `job_views` (
@@ -764,7 +814,6 @@ CREATE TABLE `parent_profiles` (
   `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT 'Auto-generated: barangay, municipality, province',
   `landmark` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `bio` text COLLATE utf8mb4_general_ci COMMENT 'Short intro about the family',
-  `religion` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Optional; helps judge household fit',
   `verification_status` enum('Unverified','Pending','Verified','Rejected') COLLATE utf8mb4_general_ci DEFAULT 'Unverified',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -1312,23 +1361,23 @@ VALUES
    'Juan', NULL, 'Dela Cruz', 'parent', 'approved', 1, NOW(), NOW());
 
 INSERT INTO helper_profiles
-  (user_id, birth_date, gender, civil_status, religion,
+  (user_id, birth_date, gender, civil_status,
    province, municipality, barangay, latitude, longitude, address,
    bio, education_level, experience_years, employment_type, work_schedule,
    expected_salary, salary_period, verification_status)
 VALUES
-  (3, '1996-04-12', 'Female', 'Single', 'Roman Catholic',
+  (3, '1996-04-12', 'Female', 'Single',
    'Leyte', 'Ormoc', 'Cogon', 11.0064000, 124.6075000, 'Cogon, Ormoc, Leyte',
    'Test helper account for API testing.', 'High School Grad', 3,
    'Stay-out', 'Full-time', 6400.00, 'Monthly', 'Verified');
 
 INSERT INTO parent_profiles
   (user_id, province, municipality, barangay,
-   latitude, longitude, address, bio, religion, verification_status)
+   latitude, longitude, address, bio, verification_status)
 VALUES
   (4, 'Leyte', 'Ormoc', 'Punta',
    11.0092018, 124.6003072, 'Punta, Ormoc, Leyte',
-   'Test household employer account for API testing.', 'Roman Catholic', 'Verified');
+   'Test household employer account for API testing.', 'Verified');
 
 
 -- ---------------------------------------------------------------------------
@@ -1370,6 +1419,15 @@ VALUES
    'Open', 'public', NOW(), 1, NOW(),
    '8 hours', '1 year', 1, 1,
    1, 1, 5);
+
+INSERT INTO job_post_categories (job_post_id, category_id, sort_order)
+VALUES (1, 1, 0);
+
+INSERT INTO job_post_roles (job_post_id, job_id, sort_order)
+VALUES (1, 1, 0), (1, 17, 1);
+
+INSERT INTO job_post_skills (job_post_id, skill_id, sort_order)
+VALUES (1, 1, 0), (1, 2, 1), (1, 3, 2);
 
 -- The helper (user 3) applied to it, and has been moved to interview stage.
 INSERT INTO job_applications

@@ -82,4 +82,6 @@ export type ResolvedApplication = {
   interview_status?: string | null;
   parent_confirmed?: boolean;
   helper_confirmed?: boolean;
+  pending_contract_application_id?: number | null;
+  pending_contract_job_title?: string | null;
 };

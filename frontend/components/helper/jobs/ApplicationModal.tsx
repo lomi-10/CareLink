@@ -5,7 +5,7 @@ import { FontFamily } from '@/constants/GlobalStyles';
 import { isShareableWithEmployer } from '@/constants/documents';
 import { pickCoverLetter, MAX_GENERATIONS, type HelperInfo } from '@/lib/coverLetterTemplates';
 import type { JobPost } from '@/hooks/helper';
-import { NotificationCard } from '@/components/shared';
+import { NotificationCard, NotificationModal } from '@/components/shared';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
@@ -74,6 +74,12 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
   const [submitting,    setSubmitting]    = useState(false);
   const [error,         setError]         = useState<string | null>(null);
   const [errorTone,     setErrorTone]     = useState<'warning' | 'danger'>('danger');
+  const [failureNotice, setFailureNotice] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: 'warning' | 'error';
+  }>({ visible: false, title: '', message: '', type: 'error' });
   const [expanded,      setExpanded]      = useState(false); // full-screen cover-letter editor
   const [confirming,    setConfirming]    = useState(false); // read-first review before submit
 
@@ -122,6 +128,7 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
     setError(null);
     setErrorTone('danger');
     setConfirming(false);
+    setFailureNotice((notice) => ({ ...notice, visible: false }));
 
     let cancelled = false;
     (async () => {
@@ -190,6 +197,18 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
     setConfirming(true); // show the review dialog
   };
 
+  const showSubmissionFailure = (message: string, tone: 'warning' | 'danger') => {
+    setErrorTone(tone);
+    setError(message);
+    setConfirming(false);
+    setFailureNotice({
+      visible: true,
+      title: tone === 'warning' ? 'Application unavailable' : 'Could not submit application',
+      message,
+      type: tone === 'warning' ? 'warning' : 'error',
+    });
+  };
+
   const doSubmit = async () => {
     if (!job) return;
 
@@ -231,12 +250,11 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
         onSubmit();
         onClose();
       } else {
-        setErrorTone(data.code === 'not_verified' || data.code === 'currently_employed' ? 'warning' : 'danger');
-        setError(data.message || 'Failed to submit application');
+        const tone = data.code === 'not_verified' || data.code === 'currently_employed' ? 'warning' : 'danger';
+        showSubmissionFailure(data.message || 'Failed to submit application', tone);
       }
     } catch (err: any) {
-      setErrorTone('danger');
-      setError(err.message || 'Failed to submit application');
+      showSubmissionFailure(err.message || 'Failed to submit application', 'danger');
     } finally {
       setSubmitting(false);
     }
@@ -504,6 +522,14 @@ export function ApplicationModal({ visible, job, onSubmit, onClose }: Applicatio
           </View>
         </View>
       </Modal>
+      <NotificationModal
+        visible={failureNotice.visible}
+        title={failureNotice.title}
+        message={failureNotice.message}
+        type={failureNotice.type}
+        autoClose={false}
+        onClose={() => setFailureNotice((notice) => ({ ...notice, visible: false }))}
+      />
     </Modal>
   );
 }

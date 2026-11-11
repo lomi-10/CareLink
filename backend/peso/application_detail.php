@@ -20,6 +20,7 @@ require_once __DIR__ . "/../shared/job_title.php";
 require_once __DIR__ . "/application_flags_table.php";
 require_once __DIR__ . "/../shared/file_security.php";
 require_once __DIR__ . "/../shared/account_credentials.php";
+require_once __DIR__ . "/../shared/multivalue_relations.php";
 
 peso_require_staff($conn);
 $appId = (int) ($_GET['application_id'] ?? 0);
@@ -28,8 +29,8 @@ if ($appId <= 0) { echo json_encode(["success" => false, "message" => "Missing a
 // ── Core row: application + job + helper + employer ──────────────────────────
 $sql = "
   SELECT
-    ja.application_id, ja.status, ja.applied_at, ja.reviewed_at, ja.cover_letter,
-    jp.job_post_id, jp.title AS job_title, jp.category_id, jp.job_ids, jp.skill_ids,
+    ja.application_id, ja.status, ja.applied_at, ja.reviewed_at, ja.cover_letter, ja.parent_notes,
+    jp.job_post_id, jp.title AS job_title, jp.category_id,
     jp.salary_offered, jp.salary_period, jp.employment_type, jp.work_schedule,
     jp.min_experience_years, jp.municipality AS job_municipality, jp.province AS job_province,
     rc.category_name,
@@ -57,11 +58,16 @@ $st->close();
 if (!$r) { echo json_encode(["success" => false, "message" => "Application not found."]); exit; }
 
 // Roles + skills (names) for this job.
-$roles = carelink_role_names_for_job_ids($conn, $r['job_ids']);
+$jobValues = carelink_load_job_post_relations($conn, [(int) $r['job_post_id']])[(int) $r['job_post_id']] ?? [];
+$roles = carelink_role_names_for_job_ids($conn, $jobValues['job_ids'] ?? []);
 $skillNames = [];
-$skillIds = json_decode($r['skill_ids'] ?? '[]', true) ?: [];
+$skillIds = $jobValues['skill_ids'] ?? [];
 $safe = implode(',', array_filter(array_map('intval', $skillIds), fn($n) => $n > 0));
 if ($safe !== '') { $sr = $conn->query("SELECT skill_name FROM ref_skills WHERE skill_id IN ($safe)"); while ($sr && $x = $sr->fetch_assoc()) $skillNames[] = $x['skill_name']; }
+foreach ($jobValues['custom_skill_values'] ?? [] as $customSkill) {
+    $customSkill = trim((string) $customSkill);
+    if ($customSkill !== '') $skillNames[] = $customSkill;
+}
 
 // Helper age from birth date.
 $age = null;
@@ -127,6 +133,9 @@ if ($age !== null && $age >= 15 && $age <= 17) $sig('high', 'Applicant is 15–1
 if (($r['verification_status'] ?? '') !== 'Verified') $sig('warn', 'Helper is not PESO-verified yet.');
 if (strtolower((string) $r['parent_account_status']) !== 'approved') $sig('warn', 'Employer account is not approved.');
 if ($complaintsAgainst > 0) $sig('warn', "This employer has {$complaintsAgainst} complaint(s) on record.");
+if (($r['status'] ?? '') === 'auto_rejected') {
+    $sig('warn', trim((string) ($r['parent_notes'] ?? '')) ?: 'This application was automatically closed because the employer proceeded with another position for this helper.');
+}
 if ($flag) $sig('info', 'This application is already flagged.');
 if (empty($signals)) $sig('ok', 'No automatic risk signals detected on this application.');
 
@@ -138,6 +147,7 @@ echo json_encode([
         "applied_at" => $r['applied_at'],
         "reviewed_at" => $r['reviewed_at'],
         "cover_letter" => $r['cover_letter'],
+        "parent_notes" => $r['parent_notes'],
     ],
     "job" => [
         "title" => $r['job_title'],

@@ -260,6 +260,65 @@ try {
 
     $conn->begin_transaction();
 
+    $helperLockStmt = $conn->prepare('SELECT user_id FROM users WHERE user_id = ? FOR UPDATE');
+    if (!$helperLockStmt) {
+        throw new Exception('Unable to lock the helper hiring record: ' . $conn->error);
+    }
+    $helperLockStmt->bind_param('i', $helper_id);
+    if (!$helperLockStmt->execute() || !$helperLockStmt->get_result()->fetch_assoc()) {
+        $helperLockStmt->close();
+        throw new Exception('Unable to verify the helper hiring record.');
+    }
+    $helperLockStmt->close();
+
+    $applicationsLockStmt = $conn->prepare("
+        SELECT ja.application_id, ja.status, jp.title AS job_title
+        FROM job_applications ja
+        INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+        WHERE jp.parent_id = ?
+          AND ja.helper_id = ?
+          AND ja.status IN ('Pending', 'Reviewed', 'Shortlisted', 'Interview Scheduled', 'contract_pending', 'hired', 'Accepted')
+        FOR UPDATE
+    ");
+    if (!$applicationsLockStmt) {
+        throw new Exception('Unable to check the helper applications: ' . $conn->error);
+    }
+    $applicationsLockStmt->bind_param('ii', $parent_id, $helper_id);
+    if (!$applicationsLockStmt->execute()) {
+        throw new Exception('Unable to check the helper applications: ' . $applicationsLockStmt->error);
+    }
+    $applicationsResult = $applicationsLockStmt->get_result();
+    $selectedStatus = null;
+    $shortlistedCount = 0;
+    $existingContract = null;
+    while ($applicationRow = $applicationsResult->fetch_assoc()) {
+        $listedApplicationId = (int) $applicationRow['application_id'];
+        $status = (string) $applicationRow['status'];
+        if ($status === 'Shortlisted') {
+            $shortlistedCount++;
+        }
+        if ($listedApplicationId === $application_id) {
+            $selectedStatus = $status;
+        }
+        if (in_array($status, ['contract_pending', 'hired', 'Accepted'], true)) {
+            $existingContract = $applicationRow;
+        }
+    }
+    $applicationsLockStmt->close();
+
+    if ($existingContract) {
+        throw new Exception(
+            'A contract already exists for this helper on ' . $existingContract['job_title']
+            . '. Delete the pending contract before starting another contract.'
+        );
+    }
+    if ($selectedStatus === null) {
+        throw new Exception('This application is no longer available for hiring.');
+    }
+    if ($shortlistedCount >= 2 && $selectedStatus !== 'Shortlisted') {
+        throw new Exception('Choose one of the helper’s shortlisted applications before creating a contract.');
+    }
+
     $sql1 = "UPDATE job_applications SET
         status = 'contract_pending',
         contract_generated_at = NOW(),
@@ -267,7 +326,8 @@ try {
         helper_signed_at = NULL,
         reviewed_at = NOW(),
         updated_at = NOW()
-        WHERE application_id = ? AND job_post_id = ? AND helper_id = ?";
+        WHERE application_id = ? AND job_post_id = ? AND helper_id = ?
+          AND status IN ('Pending', 'Reviewed', 'Shortlisted', 'Interview Scheduled')";
     $stmt1 = $conn->prepare($sql1);
     $stmt1->bind_param('iii', $application_id, $job_post_id, $helper_id);
     $stmt1->execute();
@@ -276,27 +336,6 @@ try {
         throw new Exception('Application could not be moved to contract pending (check status)');
     }
     $stmt1->close();
-
-    $sqlSib = "
-        UPDATE job_applications ja
-        INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
-        SET ja.status = 'auto_rejected',
-            ja.parent_notes = 'Closed automatically: employer is proceeding with another of your applications with them.',
-            ja.reviewed_at = NOW(),
-            ja.updated_at = NOW()
-        WHERE jp.parent_id = ?
-          AND ja.helper_id = ?
-          AND ja.application_id <> ?
-          AND ja.status IN ('Pending', 'Reviewed', 'Shortlisted', 'Interview Scheduled')
-    ";
-    $stmtSib = $conn->prepare($sqlSib);
-    if (!$stmtSib) {
-        throw new Exception('Database error (sibling applications)');
-    }
-    $stmtSib->bind_param('iii', $parent_id, $helper_id, $application_id);
-    $stmtSib->execute();
-    $othersClosed = (int) $stmtSib->affected_rows;
-    $stmtSib->close();
 
     $templateVer = isset($pre['template_version']) ? (string) $pre['template_version'] : 'BK-1-v1';
     $relativePath = isset($pre['pdf_file_path']) ? (string) $pre['pdf_file_path'] : '';
@@ -346,14 +385,7 @@ try {
     $jobTitle = $jobRow ? $jobRow['title'] : 'a position';
     $reviewTitle = 'Review employment contract';
     $reviewMsgParent = 'Please review and confirm the contract for: ' . $jobTitle;
-    if ($othersClosed > 0) {
-        $reviewMsgParent .= ' Other open applications from this helper for your posts were closed automatically.';
-    }
-
     $reviewMsgHelper = 'Please review and confirm the contract for: ' . $jobTitle;
-    if ($othersClosed > 0) {
-        $reviewMsgHelper .= ' Your other applications with this employer were automatically closed because they selected you for this position.';
-    }
 
     createNotification($conn, $parent_id, 'status_changed', $reviewTitle, $reviewMsgParent, 'application', $application_id);
     createNotification($conn, $helper_id, 'status_changed', $reviewTitle, $reviewMsgHelper, 'application', $application_id);

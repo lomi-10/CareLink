@@ -8,6 +8,7 @@ header('Access-Control-Allow-Methods: GET');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 require_once '../dbcon.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
 
 // Get helper_id from query params
@@ -61,9 +62,6 @@ try {
             jp.municipality,
             jp.province,
             jp.status as job_status,
-            jp.job_ids,
-            jp.skill_ids,
-            jp.custom_skills,
             rc.category_name,
             u.user_id as parent_id,
             u.first_name,
@@ -99,9 +97,15 @@ try {
     $stmt->bind_param("i", $helper_id);
     $stmt->execute();
     $result = $stmt->get_result();
-
     $applications = [];
-    while ($app = $result->fetch_assoc()) {
+    $applicationRows = [];
+    while ($applicationRow = $result->fetch_assoc()) $applicationRows[] = $applicationRow;
+    $jobRelations = carelink_load_job_post_relations(
+        $conn,
+        array_map(fn($row) => (int) $row['job_post_id'], $applicationRows)
+    );
+
+    foreach ($applicationRows as $app) {
         // Format timestamps
         $applied_timestamp = strtotime($app['applied_at']);
         $now = time();
@@ -140,15 +144,15 @@ try {
             }
         }
 
-        // Resolve job_ids to names
-        $jobIds   = json_decode($app['job_ids'] ?? '[]', true) ?: [];
+        $jobValues = $jobRelations[(int) $app['job_post_id']] ?? [];
+        $jobIds = $jobValues['job_ids'] ?? [];
         $jobNames = array_values(array_filter(array_map(fn($id) => $allRefJobs[(int)$id] ?? null, $jobIds)));
         // Resolve skill_ids (+ any custom free-text skills) to names for the contract
-        $skillIds   = json_decode($app['skill_ids'] ?? '[]', true) ?: [];
+        $skillIds = $jobValues['skill_ids'] ?? [];
         $skillNames = array_values(array_filter(array_map(fn($id) => $allRefSkills[(int)$id] ?? null, $skillIds)));
-        $customSk   = json_decode($app['custom_skills'] ?? '[]', true);
-        if (is_array($customSk)) {
-            foreach ($customSk as $cs) { $cs = trim((string) $cs); if ($cs !== '') $skillNames[] = $cs; }
+        foreach ($jobValues['custom_skill_values'] ?? [] as $cs) {
+            $cs = trim((string) $cs);
+            if ($cs !== '') $skillNames[] = $cs;
         }
 
         $applications[] = [

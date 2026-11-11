@@ -112,9 +112,9 @@ function ManageRow({ icon, label, onPress, danger, last }: {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-type Props = { userName: string; profileImage: string | null; onSwitchToRecruitment: () => void; announcement?: React.ReactNode };
+type Props = { userName: string; profileImage: string | null; onSwitchToRecruitment: () => void };
 
-export default function ParentWorkDashboard({ userName, profileImage, onSwitchToRecruitment, announcement }: Props) {
+export default function ParentWorkDashboard({ userName, profileImage, onSwitchToRecruitment }: Props) {
   const router = useRouter();
   const { perPlacement, loading, refresh } = useParentWorkDashboard();
 
@@ -183,8 +183,6 @@ export default function ParentWorkDashboard({ userName, profileImage, onSwitchTo
           </Text>
         </View>
       </LinearGradient>
-      {announcement}
-
       <Text style={s.explainer}>
         Review agreed terms, record payments already made, and request assistance when a placement needs support.
       </Text>

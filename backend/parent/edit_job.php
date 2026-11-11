@@ -16,6 +16,7 @@ error_reporting(0);
 ob_start();
 require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/job_title.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -43,7 +44,6 @@ try {
         $job_ids
     );
     $category_id = $categorySelection['category_id'];
-    $category_ids_json = json_encode($categorySelection['category_ids']);
     $slots = filter_var($data['slots'] ?? 1, FILTER_VALIDATE_INT);
     if ($slots === false || $slots < 1 || $slots > 2147483647) {
         throw new Exception('Number of helper openings must be a positive whole number.');
@@ -57,8 +57,8 @@ try {
     require_once __DIR__ . '/../shared/wage_floor.php';
     if ($salary < CARELINK_WAGE_FLOOR) throw new Exception(carelink_wage_floor_message());
 
-    $job_ids_json = json_encode($job_ids);
-    $skill_ids_json = json_encode(is_array($data['skill_ids'] ?? null) ? $data['skill_ids'] : []);
+    $job_ids = carelink_parse_id_list($job_ids);
+    $skill_ids = carelink_parse_id_list($data['skill_ids'] ?? []);
     $days_off_json = json_encode(is_array($data['days_off'] ?? null) ? $data['days_off'] : []);
 
     $raw_title = trim($data['title'] ?? '');
@@ -72,32 +72,39 @@ try {
     } else {
         $cat_name = implode(' & ', $categorySelection['category_names']);
 
-        $role_names = carelink_role_names_for_job_ids($conn, $job_ids_json);
+        $role_names = carelink_role_names_for_job_ids($conn, $job_ids);
         $final_title = carelink_build_job_title($cat_name, $role_names, null);
     }
 
     // Duplicate Check — compare the actual ROLE SET, not the title (titles now
     // collapse to the category for 3+ roles, so title-matching would false-positive).
-    // Sets are compared in PHP because stored job_ids JSON varies in order and type.
-    $new_role_set = carelink_normalize_job_ids($job_ids_json);
+    $new_role_set = carelink_normalize_job_ids($job_ids);
     if (!empty($new_role_set)) {
-        $dup_check = mysqli_prepare($conn, "SELECT category_ids, category_id, job_ids FROM job_posts WHERE parent_id = ? AND status IN ('Open', 'Pending') AND job_post_id != ?");
+        $dup_check = mysqli_prepare($conn, "SELECT job_post_id, category_id FROM job_posts WHERE parent_id = ? AND status IN ('Open', 'Pending') AND job_post_id != ?");
         mysqli_stmt_bind_param($dup_check, "ii", $parent_id, $job_post_id);
         mysqli_stmt_execute($dup_check);
         $dup_res = mysqli_stmt_get_result($dup_check);
+        $existingPosts = [];
         while ($dup_res && ($dup_row = mysqli_fetch_assoc($dup_res))) {
+            $existingPosts[] = $dup_row;
+        }
+        mysqli_stmt_close($dup_check);
+        $existingRelations = carelink_load_job_post_relations(
+            $conn,
+            array_map(fn($row) => (int) $row['job_post_id'], $existingPosts)
+        );
+        foreach ($existingPosts as $dup_row) {
+            $existingRelationsForPost = $existingRelations[(int) $dup_row['job_post_id']] ?? [];
             $existingCategories = carelink_normalize_category_ids(
-                json_decode($dup_row['category_ids'] ?? '[]', true) ?: [(int) $dup_row['category_id']]
+                $existingRelationsForPost['category_ids'] ?? [(int) $dup_row['category_id']]
             );
             if (
                 $existingCategories === carelink_normalize_category_ids($categorySelection['category_ids'])
-                && carelink_normalize_job_ids($dup_row['job_ids']) === $new_role_set
+                && carelink_normalize_job_ids($existingRelationsForPost['job_ids'] ?? []) === $new_role_set
             ) {
-                mysqli_stmt_close($dup_check);
                 throw new Exception("You already have an active or pending job post with exactly these roles.");
             }
         }
-        mysqli_stmt_close($dup_check);
     }
 
     $custom_category = trim($data['custom_category'] ?? '');
@@ -133,7 +140,7 @@ try {
         $expires_at = date('Y-m-d', $expires_ts) . ' 23:59:59';
     }
     $benefits = strval($data['benefits'] ?? '');
-    $custom_skills = trim($data['custom_skills'] ?? '');
+    $custom_skills = $data['custom_skills'] ?? [];
     $provides_meals = !empty($data['provides_meals']) ? 1 : 0;
     $provides_accommodation = !empty($data['provides_accommodation']) ? 1 : 0;
     $provides_sss = !empty($data['provides_sss']) ? 1 : 0;
@@ -141,21 +148,22 @@ try {
     $provides_pagibig = !empty($data['provides_pagibig']) ? 1 : 0;
     $vacation_days = isset($data['vacation_days']) ? intval($data['vacation_days']) : 0;
     $sick_days = isset($data['sick_days']) ? intval($data['sick_days']) : 0;
-    $preferred_religion = null;
     $preferred_language_id = isset($data['preferred_language_id']) ? intval($data['preferred_language_id']) : null;
     $require_police_clearance = !empty($data['require_police_clearance']) ? 1 : 0;
     $prefer_tesda_nc2 = !empty($data['prefer_tesda_nc2']) ? 1 : 0;
 
+    $conn->begin_transaction();
+    $transactionStarted = true;
     $stmt = mysqli_prepare($conn, "
         UPDATE job_posts SET
-            category_id = ?, category_ids = ?, custom_category = ?, job_ids = ?, skill_ids = ?,
+            category_id = ?, custom_category = ?,
             title = ?, description = ?, employment_type = ?,
             work_schedule = ?, salary_offered = ?, salary_min = ?, salary_max = ?, salary_period = ?, province = ?,
             municipality = ?, barangay = ?, min_age = ?, max_age = ?,
             min_experience_years = ?, start_date = ?, work_hours = ?, days_off = ?,
-            contract_duration = ?, benefits = ?, custom_skills = ?,
+            contract_duration = ?, benefits = ?,
             provides_meals = ?, provides_accommodation = ?, provides_sss = ?, provides_philhealth = ?,
-            provides_pagibig = ?, vacation_days = ?, sick_days = ?, preferred_religion = ?,
+            provides_pagibig = ?, vacation_days = ?, sick_days = ?,
             preferred_language_id = ?, require_police_clearance = ?, prefer_tesda_nc2 = ?,
             expires_at = ?, slots = ?,
             status = 'Pending', updated_at = NOW()
@@ -164,28 +172,41 @@ try {
 
     if (!$stmt) throw new Exception('Database Error: ' . mysqli_error($conn));
 
-    $types = "issssssssdddssssiiissssssiiiiiiisiiisiii";
+    $types = 'i' . str_repeat('s', 5) . 'ddd' . str_repeat('s', 4) . 'iii'
+        . str_repeat('s', 5) . str_repeat('i', 10) . 's' . 'iii';
 
     mysqli_stmt_bind_param(
         $stmt, $types,
-        $category_id, $category_ids_json, $custom_category, $job_ids_json, $skill_ids_json,
+        $category_id, $custom_category,
         $final_title, $description, $employment_type,
         $work_schedule, $salary, $salary_min, $salary_max, $salary_period, $province,
         $municipality, $barangay, $min_age, $max_age,
         $min_experience_years, $start_date, $work_hours, $days_off_json,
-        $contract_duration, $benefits, $custom_skills,
+        $contract_duration, $benefits,
         $provides_meals, $provides_accommodation, $provides_sss, $provides_philhealth,
-        $provides_pagibig, $vacation_days, $sick_days, $preferred_religion,
+        $provides_pagibig, $vacation_days, $sick_days,
         $preferred_language_id, $require_police_clearance, $prefer_tesda_nc2,
         $expires_at, $slots,
         $job_post_id, $parent_id
     );
 
     if (!mysqli_stmt_execute($stmt)) throw new Exception('Failed to update job: ' . mysqli_error($conn));
+    mysqli_stmt_close($stmt);
+    carelink_replace_job_post_relations(
+        $conn,
+        $job_post_id,
+        $categorySelection['category_ids'],
+        $job_ids,
+        $skill_ids,
+        $custom_skills
+    );
+    $conn->commit();
+    $transactionStarted = false;
     
     sendResponse(true, 'Job updated and submitted for PESO verification!');
     
 } catch (Throwable $e) { 
+    if (!empty($transactionStarted)) $conn->rollback();
     sendResponse(false, $e->getMessage());
 }
 ?>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, TextInput, Switch, Platform, KeyboardAvoidingView, useWindowDimensions } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView, TextInput, Platform, KeyboardAvoidingView, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DateField, TimeField } from '@/components/shared';
 import { hireContractTermsStyles as s } from '@/components/parent/hire/HireContractTermsModal.styles';
@@ -13,7 +13,7 @@ import {
 import { computeScheduledWorkHours, computeWorkHoursLabel } from '@/components/parent/hire/hireFlowWorkHours';
 import { CARELINK_MINIMUM_MONTHLY_SALARY } from '@/components/parent/hire/hireJobOption';
 import { payoutBreakdown, peso, type SalaryPeriod } from '@/lib/salary';
-import { BROWN, CARAMEL, SUBTLE, DIVIDER, SURFACE, GREEN } from '@/components/parent/home/parentWarmTheme';
+import { BROWN, SUBTLE, GREEN } from '@/components/parent/home/parentWarmTheme';
 
 const REST_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const LEAVE_OPTIONS = [5, 10, 15, 20, 30];
@@ -66,8 +66,6 @@ type Props = {
   workHoursEnd: string;
   onChangeWorkHoursStart: (v: string) => void;
   onChangeWorkHoursEnd: (v: string) => void;
-  flexibleHours: boolean;
-  onChangeFlexibleHours: (v: boolean) => void;
   restDays: string[];
   helperPreferredRestDay?: string | null;
   onToggleRestDay: (day: string) => void;
@@ -124,8 +122,6 @@ export function HireContractTermsModal({
   workHoursEnd,
   onChangeWorkHoursStart,
   onChangeWorkHoursEnd,
-  flexibleHours,
-  onChangeFlexibleHours,
   restDays,
   helperPreferredRestDay,
   onToggleRestDay,
@@ -188,12 +184,10 @@ export function HireContractTermsModal({
     contractType === 'Indefinite' ||
     (fixedTermDays !== null && fixedTermDays >= 30 && fixedTermWithinMaximum);
   const employmentStartDateValid = countInclusiveCalendarDays(contractStartDate, contractStartDate) !== null;
-  const scheduledWorkHours = flexibleHours
-    ? null
-    : computeScheduledWorkHours(workHoursStart, workHoursEnd);
-  const scheduledWorkHoursValid = flexibleHours ||
-    (scheduledWorkHours !== null && scheduledWorkHours > 0 && scheduledWorkHours <= 12);
-  const workHoursLabel = flexibleHours ? null : computeWorkHoursLabel(workHoursStart, workHoursEnd);
+  const scheduledWorkHours = computeScheduledWorkHours(workHoursStart, workHoursEnd);
+  const scheduledWorkHoursValid =
+    scheduledWorkHours !== null && scheduledWorkHours > 0 && scheduledWorkHours <= 12;
+  const workHoursLabel = computeWorkHoursLabel(workHoursStart, workHoursEnd);
 
   const salaryNum = Number(confirmedSalary.trim());
   const salaryValid = Number.isFinite(salaryNum) && salaryNum >= minimumMonthlySalary;
@@ -569,56 +563,38 @@ export function HireContractTermsModal({
               {/* ── Schedule ── */}
               <Text style={s.sectionTitle}>Work schedule and rest</Text>
 
-              <View style={s.flexibleToggleRow}>
-                <Text style={s.flexibleToggleLabel}>Flexible hours</Text>
-                <Switch
-                  value={flexibleHours}
-                  onValueChange={onChangeFlexibleHours}
-                  trackColor={{ false: DIVIDER, true: CARAMEL }}
-                  thumbColor={SURFACE}
-                />
+              <View style={s.timeRow}>
+                <View style={s.timeFieldWrap}>
+                  <Text style={s.timeFieldLabel}>Start time</Text>
+                  <TimeField value={workHoursStart} onChange={onChangeWorkHoursStart} placeholder="Select start time" />
+                </View>
+                <View style={s.timeFieldWrap}>
+                  <Text style={s.timeFieldLabel}>End time</Text>
+                  <TimeField value={workHoursEnd} onChange={onChangeWorkHoursEnd} placeholder="Select end time" />
+                </View>
               </View>
-
-              {flexibleHours ? (
-                <Text style={s.hoursCaptionText}>
-                  Agree on each day&apos;s hours in advance. Work, including overtime, must not exceed 12 hours in a day.
+              {workHoursLabel && <Text style={s.hoursComputedText}>{workHoursLabel}</Text>}
+              {!scheduledWorkHoursValid && (
+                <Text style={s.salaryErrorText}>
+                  {scheduledWorkHours === null
+                    ? 'Choose valid start and end times.'
+                    : scheduledWorkHours <= 0
+                      ? 'The schedule must include working time.'
+                      : 'Scheduled work cannot exceed 12 hours per day.'}
                 </Text>
-              ) : (
-                <>
-                  <View style={s.timeRow}>
-                    <View style={s.timeFieldWrap}>
-                      <Text style={s.timeFieldLabel}>Start time</Text>
-                      <TimeField value={workHoursStart} onChange={onChangeWorkHoursStart} placeholder="Select start time" />
-                    </View>
-                    <View style={s.timeFieldWrap}>
-                      <Text style={s.timeFieldLabel}>End time</Text>
-                      <TimeField value={workHoursEnd} onChange={onChangeWorkHoursEnd} placeholder="Select end time" />
-                    </View>
-                  </View>
-                  {workHoursLabel && <Text style={s.hoursComputedText}>{workHoursLabel}</Text>}
-                  {!scheduledWorkHoursValid && (
-                    <Text style={s.salaryErrorText}>
-                      {scheduledWorkHours === null
-                        ? 'Choose valid start and end times.'
-                        : scheduledWorkHours <= 0
-                          ? 'The schedule must include working time.'
-                          : 'Scheduled work cannot exceed 12 hours per day.'}
-                    </Text>
-                  )}
-                  {scheduledWorkHours !== null && scheduledWorkHours > 8 && scheduledWorkHours <= 12 && (
-                    <View style={s.warningBanner}>
-                      <Ionicons name="warning-outline" size={16} color={BROWN} />
-                      <Text style={s.warningBannerText}>
-                        This schedule includes more than 8 work hours a day. Agree in writing on any overtime pay;
-                        overtime must not be required without the helper&apos;s consent.
-                      </Text>
-                    </View>
-                  )}
-                  <Text style={s.hoursCaptionText}>
-                    The estimate subtracts a 1-hour lunch break. Agree on the actual break and note any different arrangement under Other terms.
-                  </Text>
-                </>
               )}
+              {scheduledWorkHours !== null && scheduledWorkHours > 8 && scheduledWorkHours <= 12 && (
+                <View style={s.warningBanner}>
+                  <Ionicons name="warning-outline" size={16} color={BROWN} />
+                  <Text style={s.warningBannerText}>
+                    This schedule includes more than 8 work hours a day. Agree in writing on any overtime pay;
+                    overtime must not be required without the helper&apos;s consent.
+                  </Text>
+                </View>
+              )}
+              <Text style={s.hoursCaptionText}>
+                The estimate subtracts a 1-hour lunch break. Agree on the actual break and note any different arrangement under Other terms.
+              </Text>
 
               <Text style={[s.label, { marginTop: 10 }]}>Rest day(s) (required, at least 1)</Text>
               <Text style={s.hint}>

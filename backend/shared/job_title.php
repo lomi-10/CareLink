@@ -149,18 +149,18 @@ if (!function_exists('carelink_validate_job_categories')) {
 
 if (!function_exists('carelink_role_names_for_job_ids')) {
     /**
-     * Resolve a job_posts.job_ids JSON array to ref_jobs.job_title names.
+     * Resolve an ordered job-post role ID list to ref_jobs.job_title names.
      * @return string[]
      */
     function carelink_role_names_for_job_ids(mysqli $conn, $jobIdsJson): array
     {
         $ids = is_array($jobIdsJson) ? $jobIdsJson : (json_decode((string) $jobIdsJson, true) ?: []);
-        $ids = array_values(array_filter(array_map('intval', $ids), fn($n) => $n > 0));
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn($n) => $n > 0)));
         if (!$ids) return [];
 
-        $names = [];
-        $res = $conn->query('SELECT job_title FROM ref_jobs WHERE job_id IN (' . implode(',', $ids) . ')');
-        if ($res) { while ($r = $res->fetch_assoc()) $names[] = $r['job_title']; }
-        return $names;
+        $namesById = [];
+        $res = $conn->query('SELECT job_id, job_title FROM ref_jobs WHERE job_id IN (' . implode(',', $ids) . ')');
+        if ($res) { while ($r = $res->fetch_assoc()) $namesById[(int) $r['job_id']] = $r['job_title']; }
+        return array_values(array_filter(array_map(fn($id) => $namesById[$id] ?? null, $ids)));
     }
 }

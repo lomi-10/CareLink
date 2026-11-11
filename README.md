@@ -9,7 +9,7 @@ Service Office) — so every match comes with verified IDs, signed digital contr
 and a real paper trail instead of guesswork.
 
 The whole employment journey lives in one app: browse and apply, interview, sign
-contracts, track attendance and leave, and resolve disputes — all under PESO
+contracts, manage leave and payroll/payslips, and resolve disputes — all under PESO
 oversight and compliant with the Kasambahay Law (RA 10361).
 
 **Industry:** HR Tech / Recruitment & Staffing — a **GovTech-enabled employment

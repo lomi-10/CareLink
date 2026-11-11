@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
+import { useRouter } from 'expo-router';
 import { ParentWorkModeShell } from '@/components/parent/work/ParentWorkModeShell';
 import { useAuth } from '@/hooks/shared';
 import { useParentActivePlacements } from '@/hooks/parent/useParentActivePlacements';
@@ -25,6 +26,7 @@ function displayDate(value?: string | null) {
 function ContractCard({ placement, parentId, onPdfError }: {
   placement: ActivePlacement; parentId: number; onPdfError: (message: string) => void;
 }) {
+  const router = useRouter();
   const signed = !!placement.employer_signed_at && !!placement.helper_signed_at;
   const details: [string, string][] = [
     ['Helper', placement.helper_name],
@@ -93,6 +95,21 @@ function ContractCard({ placement, parentId, onPdfError }: {
           <Text style={styles.noteText}>This is a reference to the recorded terms. The signed PDF becomes available after both parties sign.</Text>
         </View>
       )}
+      <TouchableOpacity
+        style={styles.leaveButton}
+        onPress={() => router.push({
+          pathname: '/(parent)/hire/placement_leave_requests',
+          params: {
+            application_id: String(placement.application_id),
+            helper_name: placement.helper_name,
+          },
+        } as never)}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="calendar-outline" size={17} color={BROWN} />
+        <Text style={styles.leaveButtonText}>Review leave requests</Text>
+        <Ionicons name="chevron-forward" size={16} color={BROWN} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -104,7 +121,7 @@ export default function ParentContractScreen() {
   const [pdfError, setPdfError] = useState('');
 
   return (
-    <ParentWorkModeShell active="contract" title="Contract reference" subtitle="Read the terms recorded for each active placement">
+    <ParentWorkModeShell active="contract" title="Contract & Leave" subtitle="Review agreed terms and leave requests for each active placement">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
         <View style={styles.intro}>
           <Ionicons name="lock-closed-outline" size={18} color={BROWN} />
@@ -147,6 +164,8 @@ const styles = StyleSheet.create({
   value: { flex: 1.25, color: DARK, fontSize: 12, fontWeight: '600', textAlign: 'right' },
   pdfButton: { minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: BROWN, borderRadius: 12, paddingHorizontal: 12 },
   pdfText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  leaveButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: DIVIDER, backgroundColor: '#FFFDF9', borderRadius: 12, paddingHorizontal: 12 },
+  leaveButtonText: { color: BROWN, fontSize: 13, fontWeight: '700', flex: 1 },
   note: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: ICON_BG, borderRadius: 11, padding: 10 },
   noteText: { flex: 1, color: MUTED, fontSize: 11, lineHeight: 16 },
   empty: { alignItems: 'center', gap: 8, backgroundColor: SURFACE, borderWidth: 1, borderColor: DIVIDER, borderRadius: 16, padding: 24 },

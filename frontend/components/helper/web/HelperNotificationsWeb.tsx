@@ -36,8 +36,6 @@ const CONFIG: Record<string, Cfg> = {
   interview_request: { icon: 'calendar-outline', color: wt.blue, bg: wt.blueSoft },
   peso_queue_user: { icon: 'people-outline', color: wt.accent, bg: wt.accentSoft },
   peso_queue_job: { icon: 'briefcase-outline', color: wt.accent, bg: wt.accentSoft },
-  task_completed: { icon: 'checkmark-done-outline', color: wt.green, bg: wt.greenSoft },
-  attendance_checkin: { icon: 'log-in-outline', color: wt.green, bg: wt.greenSoft },
   leave_request_submitted: { icon: 'umbrella-outline', color: wt.amber, bg: wt.amberSoft },
   leave_request_responded: { icon: 'checkmark-circle-outline', color: wt.blue, bg: wt.blueSoft },
   contract_terminated: { icon: 'document-text-outline', color: wt.red, bg: wt.redSoft },

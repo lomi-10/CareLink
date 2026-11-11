@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
-  ActivityIndicator,
   Platform,
   Linking,
 } from 'react-native';
@@ -17,18 +16,10 @@ import type { ThemeColor } from '@/constants/theme';
 import { theme } from '@/constants/theme';
 import { useParentTheme } from '@/contexts/ParentThemeContext';
 import type { ActivePlacement } from '@/hooks/parent/useParentActivePlacements';
-import {
-  fetchAttendanceToday,
-  fetchAttendanceWeek,
-  formatAttendanceTime,
-  type AttendanceDay,
-  type AttendanceToday,
-} from '@/lib/attendanceApi';
-import { attendanceDotBackground } from '@/lib/attendanceUi';
 import { applicationContractPdfUrl, applicationTerminationRecordUrl } from '@/constants/applications';
 import { EndEmploymentModal, SubmitComplaintModal, ConfirmationModal } from '@/components/shared';
 import { useNotice } from '@/hooks/shared/useNotice';
-import { mondayOfWeekContaining, ymdLocal } from '@/lib/helperWorkApi';
+import { ymdLocal } from '@/lib/helperWorkApi';
 import {
   isTerminationPendingStatus,
   noticePeriodStillActive,
@@ -163,9 +154,6 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
   const appId = Number(placement.application_id);
   const helperId = Number(placement.helper_id);
 
-  const [today, setToday] = useState<AttendanceToday | null>(null);
-  const [weekDays, setWeekDays] = useState<AttendanceDay[]>([]);
-  const [loading, setLoading] = useState(true);
   const [salaryMarked, setSalaryMarked] = useState(false);
   const [endModal, setEndModal] = useState(false);
   const [complaintOpen, setComplaintOpen] = useState(false);
@@ -180,20 +168,11 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
 
   const load = useCallback(async () => {
     if (!appId || !parentId || !helperId) return;
-    setLoading(true);
     try {
-      const [tRes, wRes, marked] = await Promise.all([
-        fetchAttendanceToday(appId, helperId),
-        fetchAttendanceWeek(appId, parentId, 'parent', mondayOfWeekContaining(ymdLocal())),
-        isSalaryMarkedForPeriod(placement.application_id, period),
-      ]);
-      if (tRes.success && tRes.data) setToday(tRes.data);
-      if (wRes.success && wRes.days) setWeekDays(wRes.days);
+      const marked = await isSalaryMarkedForPeriod(placement.application_id, period);
       setSalaryMarked(marked);
     } catch (e) {
       console.error(e);
-    } finally {
-      setLoading(false);
     }
   }, [appId, parentId, helperId, placement.application_id, period]);
 
@@ -201,23 +180,6 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
     void load();
   }, [load]);
 
-  const todayLine = () => {
-    if (loading && !today) {
-      return <Text style={styles.statusMuted}>Loading status…</Text>;
-    }
-    if (!today) return <Text style={styles.statusMuted}>No attendance data yet.</Text>;
-    if (today.is_rest_day) {
-      return <Text style={styles.statusInfo}>Rest day</Text>;
-    }
-    if (today.checked_in && today.checked_in_at) {
-      return (
-        <Text style={styles.statusOk}>
-          Checked in at {formatAttendanceTime(today.checked_in_at)}
-        </Text>
-      );
-    }
-    return <Text style={styles.statusWarn}>Not yet checked in</Text>;
-  };
 
   const openContract = async () => {
     const url = applicationContractPdfUrl(appId, parentId, 'parent');
@@ -304,10 +266,6 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
         </View>
       </View>
 
-      <View style={styles.statusBox}>
-        <Text style={styles.statusLabel}>Today</Text>
-        {todayLine()}
-      </View>
 
       {terminationPending ? (
         <View style={styles.termBanner}>
@@ -318,38 +276,8 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
         </View>
       ) : null}
 
-      {!compact && (
-        <View style={styles.weekRow}>
-          {loading && weekDays.length === 0 ? (
-            <ActivityIndicator size="small" color={t.parent} />
-          ) : (
-            weekDays.map((d) => (
-              <View key={d.date} style={styles.dayCol}>
-                <Text style={styles.dayLbl}>{d.weekday.slice(0, 1)}</Text>
-                <View
-                  style={[
-                    styles.dayDot,
-                    { backgroundColor: attendanceDotBackground(d.status, d.checked_in) },
-                  ]}
-                />
-              </View>
-            ))
-          )}
-        </View>
-      )}
 
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.chip} onPress={() => go('/(parent)/hire/placement_tasks')}>
-          <Ionicons name="list-outline" size={16} color={t.parent} />
-          <Text style={styles.chipText}>Tasks</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.chip}
-          onPress={() => go('/(parent)/hire/placement_attendance')}
-        >
-          <Ionicons name="calendar-outline" size={16} color={t.parent} />
-          <Text style={styles.chipText}>Attendance</Text>
-        </TouchableOpacity>
         <TouchableOpacity
           style={styles.chip}
           onPress={() => go('/(parent)/hire/placement_leave_requests')}
@@ -390,6 +318,15 @@ export function ActiveHelperCard({ placement, parentId, compact, onPlacementChan
           void load();
           onPlacementChanged?.();
         }}
+      />
+
+      <SubmitComplaintModal
+        visible={complaintOpen}
+        onClose={() => setComplaintOpen(false)}
+        applicationId={appId}
+        userType="parent"
+        counterpartyLabel={placement.helper_name}
+        onSubmitted={onPlacementChanged}
       />
 
       <View style={styles.payRow}>

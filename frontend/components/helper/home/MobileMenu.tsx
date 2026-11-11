@@ -127,7 +127,6 @@ export function MobileMenu({
   stats,
   handleLogout,
   notificationUnread = 0,
-  onOpenFeedback,
   onFinishDemo,
 }: {
   isOpen: boolean;
@@ -135,8 +134,6 @@ export function MobileMenu({
   stats?: { applications?: number };
   handleLogout: () => void;
   notificationUnread?: number;
-  /** Opens the feedback sheet on the host screen (the modal lives there). */
-  onOpenFeedback?: () => void;
   /** Only passed while the user has activity with the seeded demo employers. */
   onFinishDemo?: () => void;
 }) {
@@ -245,21 +242,6 @@ export function MobileMenu({
               <View style={styles.drawerItemLeft}>
                 <Ionicons name="help-buoy-outline" size={22} color={w.MUTED} />
                 <Text style={styles.drawerItemText}>{t('helper.menu.howWorks')}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={w.SUBTLE} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.drawerItem}
-              onPress={() => {
-                onClose();
-                router.push('/(helper)/feedback' as never);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={styles.drawerItemLeft}>
-                <Ionicons name="chatbox-ellipses-outline" size={22} color={w.MUTED} />
-                <Text style={styles.drawerItemText}>{t('helper.menu.evaluationForm')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={w.SUBTLE} />
             </TouchableOpacity>

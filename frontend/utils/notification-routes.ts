@@ -308,8 +308,6 @@ export function getAdminNotificationRoute(n: Notification): string | null {
     case 'peso_account_created':
       return '/admin/create_admin_user';
 
-    case 'system_feedback':
-      return '/admin/feedback';
 
     default:
       return null;

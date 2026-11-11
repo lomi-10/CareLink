@@ -23,9 +23,9 @@ type TabDef = {
 };
 
 const TABS: TabDef[] = [
-  { path: '/(parent)/home',                  label: 'Home',       icon: 'wallet-outline',       iconActive: 'wallet' },
-  { path: '/(parent)/work/contract',         label: 'Contract',   icon: 'document-text-outline', iconActive: 'document-text' },
-  { path: '/(parent)/work/assistance',       label: 'Assistance', icon: 'help-buoy-outline',    iconActive: 'help-buoy' },
+  { path: '/(parent)/home', label: 'Home', icon: 'wallet-outline', iconActive: 'wallet' },
+  { path: '/(parent)/work/contract', label: 'Contract & Leave', icon: 'document-text-outline', iconActive: 'document-text' },
+  { path: '/(parent)/work/assistance', label: 'Complaints', icon: 'alert-circle-outline', iconActive: 'alert-circle' },
   { path: '/(parent)/messages',              label: 'Messages',   icon: 'chatbubbles-outline',  iconActive: 'chatbubbles' },
   { path: '/(parent)/profile',               label: 'Profile',    icon: 'person-outline',       iconActive: 'person' },
 ];

@@ -16,6 +16,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '@/constants/theme';
 import { submitComplaint, type ComplaintCategory } from '@/lib/complaintsApi';
 import { NotificationModal } from './NotificationModal';
+import { DateField } from './DateField';
+import { TimeField } from './TimeField';
 
 // theme.color.parent/helper are a legacy blue/green that match neither portal's
 // branding — a blue CTA in the warm brown parent app reads like someone else's form.
@@ -71,13 +73,14 @@ export function SubmitComplaintModal({
   const [subject, setSubject] = useState('');
   // When and where. PESO asks for both on any case they may act on, and the
   // columns have existed since the case-file work — nothing ever filled them.
-  const [incidentAt, setIncidentAt] = useState('');
+  const [incidentDate, setIncidentDate] = useState('');
+  const [incidentTime, setIncidentTime] = useState('');
   const [incidentLocation, setIncidentLocation] = useState('');
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   // Inline, per-field errors — these used to be Alert.alert() calls, which are a
   // no-op on react-native-web, so every failed submit looked like a dead button.
-  const [errors, setErrors] = useState<{ subject?: string; body?: string }>({});
+  const [errors, setErrors] = useState<{ subject?: string; body?: string; incidentAt?: string }>({});
   const [notice, setNotice] = useState<{ visible: boolean; title?: string; message: string; type: 'success' | 'error' | 'info' }>(
     { visible: false, message: '', type: 'info' },
   );
@@ -86,6 +89,9 @@ export function SubmitComplaintModal({
   const reset = () => {
     setCategory('other');
     setSubject('');
+    setIncidentDate('');
+    setIncidentTime('');
+    setIncidentLocation('');
     setBody('');
     setErrors({});
   };
@@ -94,11 +100,12 @@ export function SubmitComplaintModal({
     // Only checks that something was actually written — no arbitrary length
     // floor. A short, true complaint ("He slapped me") is still a complaint;
     // a minimum character count just taught people to pad it with filler.
-    const next: { subject?: string; body?: string } = {};
+    const next: { subject?: string; body?: string; incidentAt?: string } = {};
     const sub = subject.trim();
     const desc = body.trim();
     if (!sub) next.subject = 'Please add a short title.';
     if (!desc) next.body = 'Please describe what happened.';
+    if (incidentTime && !incidentDate) next.incidentAt = 'Choose a date before adding a time.';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -128,7 +135,7 @@ export function SubmitComplaintModal({
         subject: subject.trim(),
         description: body.trim(),
         category,
-        incident_at: incidentAt.trim(),
+        incident_at: incidentDate ? `${incidentDate} ${incidentTime || '00:00'}:00` : '',
         incident_location: incidentLocation.trim(),
       });
       if (!res.success) {
@@ -138,10 +145,13 @@ export function SubmitComplaintModal({
       // Show the confirmation first, then close — closing straight away would unmount
       // this notification before the reporter ever sees it.
       setSent(true);
+      const reference = res.complaint_id
+        ? ` as GRV-${String(res.complaint_id).padStart(4, '0')}`
+        : '';
       setNotice({
         visible: true,
         title: 'Report submitted',
-        message: 'Your report was sent to the CareLink system administrator. If it needs government follow-up, it will be forwarded to PESO and you will be notified.',
+        message: `Your report was filed${reference}. You can track its status and updates from Assistance > Track my complaints.`,
         type: 'success',
       });
     } catch (e: any) {
@@ -176,8 +186,8 @@ export function SubmitComplaintModal({
             </TouchableOpacity>
           </View>
           <Text style={styles.hint}>
-            This goes to <Text style={styles.hintBold}>the system administrator</Text> first. Serious cases can be forwarded to{' '}
-            <Text style={styles.hintBold}>PESO</Text> with notice to you and the other party.
+            This goes to <Text style={styles.hintBold}>the system administrator</Text> first. Both parties can track the case status and updates; your full description and reporter identity are not shown to the other party. Serious cases can be forwarded to{' '}
+            <Text style={styles.hintBold}>PESO</Text>.
             {counterpartyLabel ? ` Regarding: ${counterpartyLabel}.` : ''}
           </Text>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
@@ -218,15 +228,32 @@ export function SubmitComplaintModal({
                 asking for one implies this is a dispute with a person. */}
             {category !== 'technical' && (
               <>
-                <Text style={styles.label}>When did it happen?</Text>
-                <TextInput
-                  style={styles.input}
-                  value={incidentAt}
-                  onChangeText={setIncidentAt}
-                  placeholder="e.g. 15 March 2026, around 3pm"
-                  placeholderTextColor={theme.color.subtle}
-                  maxLength={120}
-                />
+                <Text style={styles.label}>When did it happen? <Text style={styles.optional}>(optional)</Text></Text>
+                <Text style={styles.fieldHint}>Choose the date and, if you know it, the approximate time.</Text>
+                <View style={styles.dateTimeRow}>
+                  <View style={styles.dateTimeField}>
+                    <Text style={styles.fieldLabel}>Date</Text>
+                    <DateField
+                      value={incidentDate}
+                      onChange={(value) => {
+                        setIncidentDate(value);
+                        if (errors.incidentAt) setErrors((current) => ({ ...current, incidentAt: undefined }));
+                      }}
+                      placeholder="Select date"
+                      maximumDate={new Date()}
+                    />
+                  </View>
+                  <View style={styles.dateTimeField}>
+                    <Text style={styles.fieldLabel}>Time</Text>
+                    <TimeField value={incidentTime} onChange={setIncidentTime} placeholder="Select time" />
+                  </View>
+                </View>
+                {!!errors.incidentAt && (
+                  <View style={styles.errRow}>
+                    <Ionicons name="alert-circle" size={14} color={theme.color.danger} />
+                    <Text style={styles.errText}>{errors.incidentAt}</Text>
+                  </View>
+                )}
 
                 <Text style={styles.label}>Where did it happen?</Text>
                 <TextInput
@@ -263,7 +290,7 @@ export function SubmitComplaintModal({
             <View style={styles.privacyRow}>
               <Ionicons name="lock-closed-outline" size={14} color={theme.color.muted} />
               <Text style={styles.privacyText}>
-                Only the CareLink system administrator can read this. The other party is not notified unless the case is escalated.
+                The other party can see the case status and timeline, but not your full description or reporter identity. Notifications are sent if the case is referred to PESO.
               </Text>
             </View>
 
@@ -329,6 +356,11 @@ const styles = StyleSheet.create({
   hintBold: { fontWeight: '800', color: theme.color.ink },
   scroll: { paddingHorizontal: 20, paddingTop: 8 },
   label: { fontSize: 13, fontWeight: '700', color: theme.color.inkMuted, marginBottom: 8, marginTop: 12 },
+  optional: { color: theme.color.subtle, fontWeight: '500' },
+  fieldHint: { fontSize: 12, color: theme.color.muted, marginTop: -4, marginBottom: 8 },
+  dateTimeRow: { flexDirection: 'row', gap: 10 },
+  dateTimeField: { flex: 1, minWidth: 0 },
+  fieldLabel: { fontSize: 11, fontWeight: '700', color: theme.color.muted, marginBottom: 5 },
   catRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   catChip: {
     paddingHorizontal: 12,

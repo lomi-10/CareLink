@@ -8,8 +8,8 @@
  * staff_contacts.php answers "who may a staff member message" and requires
  * the caller to already BE staff — an ordinary user has no way to discover
  * an admin's user_id at all otherwise. This is the one-directional counterpart:
- * a fixed, deterministic contact (not a directory), used by entry points like
- * "No questions available — any concerns?" on the feedback screen.
+ * a fixed, deterministic contact (not a directory), used for ordinary
+ * CareLink account and app support.
  * Sending itself reuses the ordinary messages/send_message.php — no
  * restriction there blocks a helper/parent from writing to an admin.
  */

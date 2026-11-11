@@ -28,7 +28,6 @@ const NAV: { key: AdminNavKey; icon: keyof typeof Ionicons.glyphMap; label: stri
   // profiles; the written text is readable only by PESO and system administrator.
   { key: 'reviews', icon: 'chatbox-ellipses', label: 'Peer Reviews', route: '/admin/reviews', group: 'COMMUNICATION' },
   // The Chapter 4 instrument, grouped by ISO/IEC 25010 characteristic.
-  { key: 'evaluation', icon: 'bar-chart', label: 'System Evaluation', route: '/admin/evaluation', group: 'SYSTEM' },
   { key: 'logs', icon: 'list', label: 'Audit Trail', route: '/admin/logs', group: 'SYSTEM' },
   { key: 'complaints', icon: 'warning', label: 'Complaints', route: '/admin/complaints', group: 'SYSTEM' },
 ];

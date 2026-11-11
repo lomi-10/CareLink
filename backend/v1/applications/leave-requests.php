@@ -43,7 +43,10 @@ try {
         json_out(['success' => false, 'message' => 'application_id, user_id, user_type required'], 400);
     }
 
-    if (!carelink_v1_assert_can_view_attendance($conn, $application_id, $user_id, $user_type)) {
+    $authorizedHire = $user_type === 'parent'
+        ? carelink_v1_assert_parent_hire($conn, $application_id, $user_id)
+        : carelink_v1_assert_helper_hire($conn, $application_id, $user_id);
+    if (!$authorizedHire) {
         json_out(['success' => false, 'message' => 'Forbidden'], 403);
     }
 

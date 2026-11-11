@@ -133,14 +133,13 @@ function RecruitmentHelpersScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={BROWN} />}
     >
       <Text style={s.lead}>
-        Each card is one active placement. Use <Text style={s.bold}>My Job Posts</Text> to add more roles
-        and hire additional helpers (for example a cook and a yaya).
+        Each card is one active placement. Use <Text style={s.bold}>Find Helpers</Text> to discover profiles and start another hire.
       </Text>
 
       {loading && placements.length === 0 ? (
         <ActivityIndicator color={BROWN} style={{ marginTop: 40 }} />
       ) : placements.length === 0 ? (
-        <Text style={s.empty}>No active helpers yet. Hire from Applications, then return here.</Text>
+        <Text style={s.empty}>No active helpers yet. Find a helper and complete the hiring process to manage a placement here.</Text>
       ) : (
         placements.map((p) => (
           <ActiveHelperCard

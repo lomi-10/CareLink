@@ -40,7 +40,6 @@ export type HireJobPrefill = {
   workSchedule: 'Full-time' | 'Part-time' | 'Any';
   workHoursStart: string;
   workHoursEnd: string;
-  flexibleHours: boolean;
   restDays: string[];
   otherBenefits: string;
 };
@@ -106,7 +105,6 @@ export function getHireJobPrefill(row: HireJobOptionRow): HireJobPrefill {
     workSchedule,
     workHoursStart: workHours.start,
     workHoursEnd: workHours.end,
-    flexibleHours: workHours.flexible,
     restDays: parseRestDays(row.days_off),
     otherBenefits: row.benefits ?? '',
   };

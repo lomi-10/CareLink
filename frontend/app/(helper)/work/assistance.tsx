@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SubmitComplaintModal } from '@/components/shared';
+import { ComplaintTrackingModal, SubmitComplaintModal } from '@/components/shared';
 import { WorkModeShell } from '@/components/helper/work';
 import { useHelperWorkMode } from '@/contexts/HelperWorkModeContext';
 import {
@@ -33,6 +33,7 @@ const CONCERNS: {
 export default function HelperAssistanceScreen() {
   const { ready, isWorkMode, activeHire } = useHelperWorkMode();
   const [reportOpen, setReportOpen] = useState(false);
+  const [trackingOpen, setTrackingOpen] = useState(false);
   const isActive = ready && isWorkMode && !!activeHire;
 
   return (
@@ -57,6 +58,12 @@ export default function HelperAssistanceScreen() {
             Reports go to the CareLink system administrator first. Serious cases may be forwarded to PESO with notice to the people involved. PESO referral or mediation is not guaranteed.
           </Text>
         </View>
+
+        <TouchableOpacity style={styles.trackButton} onPress={() => setTrackingOpen(true)} activeOpacity={0.8}>
+          <Ionicons name="time-outline" size={18} color={ORANGE} />
+          <Text style={styles.trackButtonText}>Track my complaints</Text>
+          <Ionicons name="chevron-forward" size={16} color={SUBTLE} />
+        </TouchableOpacity>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Topics you can raise</Text>
@@ -100,6 +107,7 @@ export default function HelperAssistanceScreen() {
           counterpartyLabel={activeHire.employer_name}
         />
       ) : null}
+      <ComplaintTrackingModal visible={trackingOpen} onClose={() => setTrackingOpen(false)} userType="helper" />
     </WorkModeShell>
   );
 }
@@ -124,6 +132,8 @@ const styles = StyleSheet.create({
   previewPillText: { color: ORANGE, fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   notice: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, borderRadius: 13, backgroundColor: ICON_BG },
   noticeText: { flex: 1, color: DARK, fontSize: 12, lineHeight: 17 },
+  trackButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: SURFACE, borderWidth: 1, borderColor: DIVIDER, borderRadius: 13, paddingHorizontal: 13 },
+  trackButtonText: { flex: 1, color: ORANGE, fontSize: 13, fontWeight: '700' },
   section: { backgroundColor: SURFACE, borderWidth: 1, borderColor: DIVIDER, borderRadius: 17, padding: 15 },
   sectionTitle: { color: DARK, fontSize: 15, fontWeight: '700', marginBottom: 4 },
   concernRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 11, borderTopWidth: 1, borderTopColor: DIVIDER },

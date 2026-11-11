@@ -1,26 +1,32 @@
--- --------------------------------------------------------
--- Host:                         127.0.0.1
--- Server version:               8.4.3 - MySQL Community Server - GPL
--- Server OS:                    Win64
--- HeidiSQL Version:             12.8.0.6908
--- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET NAMES utf8 */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!50503 SET NAMES utf8mb4 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-
-
--- Dumping database structure for carelink
-CREATE DATABASE IF NOT EXISTS `carelink` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
-USE `carelink`;
-
--- Dumping structure for table carelink.application_document_shares
-CREATE TABLE IF NOT EXISTS `application_document_shares` (
+DROP TABLE IF EXISTS `announcements`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `announcements` (
+  `announcement_id` int unsigned NOT NULL AUTO_INCREMENT,
+  `title` varchar(160) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `body` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `image_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `published_by` int NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`announcement_id`),
+  KEY `idx_announcements_created_at` (`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `application_document_shares`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `application_document_shares` (
   `share_id` int NOT NULL AUTO_INCREMENT,
   `application_id` int NOT NULL COMMENT 'job_applications.application_id this share belongs to',
   `document_id` int NOT NULL COMMENT 'user_documents.document_id the helper chose to share',
@@ -31,59 +37,101 @@ CREATE TABLE IF NOT EXISTS `application_document_shares` (
   KEY `idx_ads_document` (`document_id`),
   CONSTRAINT `fk_ads_application` FOREIGN KEY (`application_id`) REFERENCES `job_applications` (`application_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_ads_document` FOREIGN KEY (`document_id`) REFERENCES `user_documents` (`document_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Per-application helper consent: which verified documents are visible to that specific employer';
-
--- Dumping data for table carelink.application_document_shares: ~0 rows (approximately)
-
--- Dumping structure for table carelink.application_tasks
-CREATE TABLE IF NOT EXISTS `application_tasks` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Per-application helper consent: which verified documents are visible to that specific employer';
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `application_flags`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `application_flags` (
+  `flag_id` int NOT NULL AUTO_INCREMENT,
   `application_id` int NOT NULL,
-  `created_by` int NOT NULL,
-  `title` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
+  `flagged_by` int NOT NULL,
+  `reason` varchar(500) NOT NULL,
+  `status` enum('active','cleared') NOT NULL DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `cleared_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`flag_id`),
+  KEY `application_id` (`application_id`),
+  KEY `status` (`status`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `auth_codes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `auth_codes` (
+  `code_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `purpose` enum('verify_email','password_reset','email_change','contact_change') NOT NULL,
+  `code_hash` varchar(255) NOT NULL,
+  `pending_value` varchar(255) DEFAULT NULL,
+  `expires_at` datetime NOT NULL,
+  `consumed_at` datetime DEFAULT NULL,
+  `attempts` tinyint unsigned NOT NULL DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`code_id`),
+  KEY `idx_user_purpose` (`user_id`,`purpose`),
+  KEY `idx_expires` (`expires_at`),
+  CONSTRAINT `fk_auth_codes_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `auth_tokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `auth_tokens` (
+  `token_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `token_hash` char(64) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'SHA-256 of the token; the token itself is never stored',
+  `issued_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` datetime NOT NULL,
+  `last_used_at` datetime DEFAULT NULL,
+  `device_info` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  PRIMARY KEY (`token_id`),
+  UNIQUE KEY `uniq_token` (`token_hash`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_expiry` (`expires_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=105 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `clearance_checks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `clearance_checks` (
+  `check_id` int NOT NULL AUTO_INCREMENT,
+  `document_id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `reference_number` varchar(120) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `reference_source` enum('extracted','manual') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'manual',
+  `outcome` enum('verified_valid','no_record','could_not_verify') COLLATE utf8mb4_general_ci NOT NULL,
+  `note` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `checked_by` int NOT NULL,
+  `checked_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`check_id`),
+  KEY `idx_doc` (`document_id`,`checked_at`),
+  KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `complaint_actions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `complaint_actions` (
+  `action_id` int NOT NULL AUTO_INCREMENT,
+  `complaint_id` int NOT NULL,
+  `actor_id` int DEFAULT NULL,
+  `actor_role` varchar(16) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'peso',
+  `action_type` varchar(32) COLLATE utf8mb4_general_ci NOT NULL,
+  `title` varchar(180) COLLATE utf8mb4_general_ci NOT NULL,
+  `detail` text COLLATE utf8mb4_general_ci,
   `due_date` date DEFAULT NULL,
-  `requires_photo` tinyint(1) NOT NULL DEFAULT '0',
-  `is_recurring` tinyint(1) NOT NULL DEFAULT '0',
-  `recur_days` json DEFAULT NULL COMMENT 'Weekday names e.g. ["Monday","Friday"]',
-  `status` enum('pending','done','skipped') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `completed_at` datetime DEFAULT NULL,
-  `photo_url` varchar(1024) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `visible_to_parties` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_application_tasks_app_status` (`application_id`,`status`),
-  KEY `fk_application_tasks_creator` (`created_by`),
-  CONSTRAINT `fk_application_tasks_application` FOREIGN KEY (`application_id`) REFERENCES `job_applications` (`application_id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_application_tasks_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table carelink.application_tasks: ~1 rows (approximately)
-
--- Dumping structure for table carelink.attendance_logs
-CREATE TABLE IF NOT EXISTS `attendance_logs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `application_id` int NOT NULL,
-  `helper_id` int NOT NULL,
-  `date` date NOT NULL,
-  `checked_in_at` datetime DEFAULT NULL,
-  `checked_out_at` datetime DEFAULT NULL,
-  `status` enum('present','absent','leave','unpaid_leave','holiday') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `note` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_attendance_app_date` (`application_id`,`date`),
-  KEY `idx_attendance_app` (`application_id`),
-  KEY `fk_attendance_logs_helper` (`helper_id`),
-  CONSTRAINT `fk_attendance_logs_application` FOREIGN KEY (`application_id`) REFERENCES `job_applications` (`application_id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_attendance_logs_helper` FOREIGN KEY (`helper_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table carelink.attendance_logs: ~2 rows (approximately)
-
--- Dumping structure for table carelink.complaints
-CREATE TABLE IF NOT EXISTS `complaints` (
+  PRIMARY KEY (`action_id`),
+  KEY `idx_complaint` (`complaint_id`),
+  KEY `idx_visible` (`complaint_id`,`visible_to_parties`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `complaints`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `complaints` (
   `complaint_id` int NOT NULL AUTO_INCREMENT,
   `complainant_id` int NOT NULL COMMENT 'Who is filing the complaint',
   `complainant_role` enum('parent','helper') COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Complainant role in CareLink',
@@ -92,9 +140,15 @@ CREATE TABLE IF NOT EXISTS `complaints` (
   `application_id` int DEFAULT NULL COMMENT 'Job application when filed from the mobile/web app',
   `subject` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `description` text COLLATE utf8mb4_general_ci NOT NULL,
-  `category` enum('Misconduct','Fraud / Fake Profile','Non-Payment','Abandonment of Work','Harassment','Property Damage','Unsafe Working Conditions','Abuse or Mistreatment','Contract Dispute','Other') COLLATE utf8mb4_general_ci DEFAULT 'Other',
+  `incident_at` datetime DEFAULT NULL,
+  `incident_location` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `incident_barangay` varchar(120) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `incident_municipality` varchar(120) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `incident_province` varchar(120) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `category` enum('Misconduct','Fraud / Fake Profile','Non-Payment','Abandonment of Work','Harassment','Property Damage','Theft or Missing Property','Unsafe Working Conditions','Abuse or Mistreatment','Contract Dispute','Technical Issue','Other') COLLATE utf8mb4_general_ci DEFAULT 'Other',
   `evidence_file` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Optional uploaded evidence',
   `status` enum('Pending','Under Review','Escalated_PESO','Resolved','Dismissed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Pending',
+  `escalation_stage` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'peso',
   `resolution_notes` text COLLATE utf8mb4_general_ci,
   `forwarded_by_admin_id` int DEFAULT NULL COMMENT 'Super admin who escalated to PESO',
   `forwarded_at` datetime DEFAULT NULL,
@@ -117,12 +171,32 @@ CREATE TABLE IF NOT EXISTS `complaints` (
   CONSTRAINT `fk_comp_respondent` FOREIGN KEY (`respondent_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_complaints_application` FOREIGN KEY (`application_id`) REFERENCES `job_applications` (`application_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_complaints_forwarded_by` FOREIGN KEY (`forwarded_by_admin_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.complaints: ~0 rows (approximately)
-
--- Dumping structure for table carelink.contracts
-CREATE TABLE IF NOT EXISTS `contracts` (
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `contract_signatures`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `contract_signatures` (
+  `signature_id` int NOT NULL AUTO_INCREMENT,
+  `application_id` int NOT NULL,
+  `signer_id` int NOT NULL,
+  `signer_role` varchar(16) COLLATE utf8mb4_general_ci NOT NULL,
+  `document_hash` char(64) COLLATE utf8mb4_general_ci NOT NULL,
+  `signature_seal` char(64) COLLATE utf8mb4_general_ci NOT NULL,
+  `auth_method` varchar(32) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'password',
+  `consent_text` text COLLATE utf8mb4_general_ci,
+  `ip_address` varchar(45) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `user_agent` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `signed_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`signature_id`),
+  UNIQUE KEY `uniq_signer` (`application_id`,`signer_role`),
+  KEY `idx_app` (`application_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `contracts`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `contracts` (
   `contract_id` int unsigned NOT NULL AUTO_INCREMENT,
   `application_id` int unsigned NOT NULL,
   `job_post_id` int unsigned NOT NULL,
@@ -136,17 +210,77 @@ CREATE TABLE IF NOT EXISTS `contracts` (
   `terms_notes` varchar(2000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `rest_day` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Comma-separated weekday names',
   `special_days` json DEFAULT NULL COMMENT 'Array of {date, type: holiday|no_work, note}',
+  `contract_duration` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `confirmed_salary` decimal(10,2) DEFAULT NULL,
+  `work_hours` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `rest_days` json DEFAULT NULL,
+  `vacation_leave_days` int DEFAULT '5',
+  `sick_leave_days` int DEFAULT '5',
+  `special_conditions` text COLLATE utf8mb4_unicode_ci,
+  `overtime_rate` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Item 7b: overtime rate per hour, e.g. 50',
+  `payment_schedule` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Item 7c: salary payment schedule',
+  `other_benefits` text COLLATE utf8mb4_unicode_ci COMMENT 'Item 10: other benefits, if any',
+  `debt_agreement` text COLLATE utf8mb4_unicode_ci COMMENT 'Item 11: debt agreement, if any',
+  `deployment_agreement` text COLLATE utf8mb4_unicode_ci COMMENT 'Item 12: deployment cost agreement, if any',
+  `termination_conditions` text COLLATE utf8mb4_unicode_ci COMMENT 'Item 13: termination conditions, if any',
+  `helper_decline_reason` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `helper_decline_at` datetime DEFAULT NULL,
+  `debt_amount` decimal(10,2) DEFAULT NULL,
+  `debt_acknowledged_at` datetime DEFAULT NULL,
   PRIMARY KEY (`contract_id`),
   UNIQUE KEY `uq_contracts_application` (`application_id`),
   KEY `idx_contracts_job` (`job_post_id`),
   KEY `idx_contracts_employer` (`employer_id`),
   KEY `idx_contracts_helper` (`helper_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table carelink.contracts: ~1 rows (approximately)
-
--- Dumping structure for table carelink.helper_jobs
-CREATE TABLE IF NOT EXISTS `helper_jobs` (
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `credential_flags`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `credential_flags` (
+  `flag_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `document_id` int DEFAULT NULL,
+  `document_type` varchar(64) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `flagged_by` int NOT NULL,
+  `reason` text COLLATE utf8mb4_general_ci NOT NULL,
+  `revoked_verification` tinyint(1) NOT NULL DEFAULT '0',
+  `prior_verification` varchar(16) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `resolved_at` datetime DEFAULT NULL,
+  `resolved_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`flag_id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_doc` (`document_id`),
+  KEY `idx_open` (`user_id`,`resolved_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `helper_custom_jobs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `helper_custom_jobs` (
+  `profile_id` int NOT NULL,
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  `custom_value` text COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`profile_id`,`sort_order`),
+  CONSTRAINT `fk_helper_custom_jobs_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `helper_custom_skills`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `helper_custom_skills` (
+  `profile_id` int NOT NULL,
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  `custom_value` text COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`profile_id`,`sort_order`),
+  CONSTRAINT `fk_helper_custom_skills_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `helper_jobs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `helper_jobs` (
   `hj_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `job_id` int NOT NULL COMMENT 'ref_jobs.job_id - specific role',
@@ -155,12 +289,12 @@ CREATE TABLE IF NOT EXISTS `helper_jobs` (
   KEY `idx_job` (`job_id`),
   CONSTRAINT `fk_hjobs_job` FOREIGN KEY (`job_id`) REFERENCES `ref_jobs` (`job_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_hjobs_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=89 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.helper_jobs: ~23 rows (approximately)
-
--- Dumping structure for table carelink.helper_languages
-CREATE TABLE IF NOT EXISTS `helper_languages` (
+) ENGINE=InnoDB AUTO_INCREMENT=292 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `helper_languages`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `helper_languages` (
   `hl_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `language_id` int NOT NULL,
@@ -169,20 +303,19 @@ CREATE TABLE IF NOT EXISTS `helper_languages` (
   KEY `idx_language` (`language_id`),
   CONSTRAINT `fk_hlang_language` FOREIGN KEY (`language_id`) REFERENCES `ref_languages` (`language_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_hlang_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=106 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.helper_languages: ~18 rows (approximately)
-
--- Dumping structure for table carelink.helper_profiles
-CREATE TABLE IF NOT EXISTS `helper_profiles` (
+) ENGINE=InnoDB AUTO_INCREMENT=122 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `helper_profiles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `helper_profiles` (
   `profile_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
-  `contact_number` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `profile_image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `birth_date` date DEFAULT NULL,
   `gender` enum('Male','Female') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `civil_status` enum('Single','Married','Widowed','Separated') COLLATE utf8mb4_general_ci DEFAULT 'Single',
-  `religion` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Filter: important per PESO interview',
+  `preferred_rest_day` varchar(3) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `province` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `municipality` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `barangay` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -193,13 +326,10 @@ CREATE TABLE IF NOT EXISTS `helper_profiles` (
   `bio` text COLLATE utf8mb4_general_ci,
   `education_level` enum('Elementary','High School Undergrad','High School Grad','College Undergrad','College Grad','Vocational') COLLATE utf8mb4_general_ci DEFAULT NULL,
   `experience_years` int DEFAULT '0',
-  `employment_type` enum('Live-in','Live-out','Any') COLLATE utf8mb4_general_ci DEFAULT 'Any' COMMENT 'Accommodation arrangement',
+  `employment_type` enum('Stay-in','Stay-out','Any') COLLATE utf8mb4_general_ci DEFAULT 'Any',
   `work_schedule` enum('Full-time','Part-time','Any') COLLATE utf8mb4_general_ci DEFAULT 'Any' COMMENT 'Hours commitment (college students = Part-time)',
-  `expected_salary` decimal(10,2) DEFAULT '6400.00' COMMENT 'Minimum per PESO: ₱6,400',
+  `expected_salary` decimal(10,2) DEFAULT '6000.00' COMMENT 'Minimum per PESO: ₱6,000',
   `salary_period` enum('Daily','Monthly') COLLATE utf8mb4_general_ci DEFAULT 'Monthly',
-  `availability_status` enum('Available','Currently Employed') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Available',
-  `custom_jobs` text COLLATE utf8mb4_general_ci DEFAULT (_utf8mb4'[]'),
-  `custom_skills` text COLLATE utf8mb4_general_ci DEFAULT (_utf8mb4'[]'),
   `verification_status` enum('Unverified','Pending','Verified','Rejected') COLLATE utf8mb4_general_ci DEFAULT 'Unverified',
   `rating_average` decimal(3,2) DEFAULT '0.00',
   `rating_count` int DEFAULT '0',
@@ -211,17 +341,18 @@ CREATE TABLE IF NOT EXISTS `helper_profiles` (
   `rejected_by` int DEFAULT NULL,
   `rejected_at` timestamp NULL DEFAULT NULL,
   `rejection_reason` text COLLATE utf8mb4_general_ci,
+  `availability_status` enum('Available','Currently Employed') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Available',
   PRIMARY KEY (`profile_id`),
   UNIQUE KEY `uk_user_id` (`user_id`),
   KEY `idx_search` (`municipality`,`employment_type`,`work_schedule`),
   KEY `idx_verification` (`verification_status`),
   CONSTRAINT `fk_hprofile_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.helper_profiles: ~9 rows (approximately)
-
--- Dumping structure for table carelink.helper_skills
-CREATE TABLE IF NOT EXISTS `helper_skills` (
+) ENGINE=InnoDB AUTO_INCREMENT=65 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `helper_skills`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `helper_skills` (
   `hs_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `skill_id` int NOT NULL,
@@ -232,12 +363,12 @@ CREATE TABLE IF NOT EXISTS `helper_skills` (
   KEY `idx_skill` (`skill_id`),
   CONSTRAINT `fk_hskills_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_hskills_skill` FOREIGN KEY (`skill_id`) REFERENCES `ref_skills` (`skill_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=61 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.helper_skills: ~19 rows (approximately)
-
--- Dumping structure for table carelink.helper_work_history
-CREATE TABLE IF NOT EXISTS `helper_work_history` (
+) ENGINE=InnoDB AUTO_INCREMENT=148 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `helper_work_history`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `helper_work_history` (
   `history_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `employer_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
@@ -248,21 +379,66 @@ CREATE TABLE IF NOT EXISTS `helper_work_history` (
   `duties` text COLLATE utf8mb4_general_ci,
   `reason_for_leaving` text COLLATE utf8mb4_general_ci,
   `can_contact` tinyint(1) DEFAULT '1' COMMENT '1 = allow employer to be contacted',
-  `experience_review_status` enum('self_reported','peso_reviewed') NOT NULL DEFAULT 'self_reported',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `experience_review_status` enum('self_reported','peso_reviewed') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'self_reported',
   `experience_reviewed_by` int DEFAULT NULL,
   `experience_reviewed_at` datetime DEFAULT NULL,
-  `experience_review_method` enum('reference_call','document_review','in_person') DEFAULT NULL,
-  `experience_review_note` varchar(500) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `experience_review_method` enum('reference_call','document_review','in_person') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `experience_review_note` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
   PRIMARY KEY (`history_id`),
   KEY `idx_profile` (`profile_id`),
   CONSTRAINT `fk_whistory_profile` FOREIGN KEY (`profile_id`) REFERENCES `helper_profiles` (`profile_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `interview_feedback`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `interview_feedback` (
+  `feedback_id` int NOT NULL AUTO_INCREMENT,
+  `interview_id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `role` varchar(16) COLLATE utf8mb4_general_ci NOT NULL,
+  `rating` tinyint NOT NULL,
+  `comment` text COLLATE utf8mb4_general_ci,
+  `other_attended` tinyint(1) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`feedback_id`),
+  UNIQUE KEY `uniq_party` (`interview_id`,`user_id`),
+  KEY `idx_interview` (`interview_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `interview_notes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `interview_notes` (
+  `application_id` int NOT NULL,
+  `parent_id` int NOT NULL,
+  `answers` text NOT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`application_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `interview_reviews`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `interview_reviews` (
+  `review_id` int NOT NULL AUTO_INCREMENT,
+  `interview_id` int NOT NULL,
+  `reviewed_by` int NOT NULL,
+  `result` varchar(16) COLLATE utf8mb4_general_ci NOT NULL,
+  `no_show_party` varchar(16) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `private_notes` text COLLATE utf8mb4_general_ci,
+  `notified_at` datetime DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`review_id`),
+  KEY `idx_interview` (`interview_id`),
+  KEY `idx_reviewer` (`reviewed_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.helper_work_history: ~0 rows (approximately)
-
--- Dumping structure for table carelink.interview_schedules
-CREATE TABLE IF NOT EXISTS `interview_schedules` (
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `interview_schedules`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `interview_schedules` (
   `interview_id` int NOT NULL AUTO_INCREMENT,
   `application_id` int NOT NULL,
   `interview_date` datetime NOT NULL,
@@ -273,17 +449,18 @@ CREATE TABLE IF NOT EXISTS `interview_schedules` (
   `status` enum('Scheduled','Confirmed','Completed','Cancelled','Rescheduled') COLLATE utf8mb4_general_ci DEFAULT 'Scheduled',
   `notes` text COLLATE utf8mb4_general_ci,
   `result` enum('Pending','Pass','Fail','No Show') COLLATE utf8mb4_general_ci DEFAULT 'Pending',
+  `feedback_requested_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`interview_id`),
   KEY `idx_application` (`application_id`),
   CONSTRAINT `fk_isched_application` FOREIGN KEY (`application_id`) REFERENCES `job_applications` (`application_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.interview_schedules: ~0 rows (approximately)
-
--- Dumping structure for table carelink.job_applications
-CREATE TABLE IF NOT EXISTS `job_applications` (
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `job_applications`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `job_applications` (
   `application_id` int NOT NULL AUTO_INCREMENT,
   `job_post_id` int NOT NULL,
   `helper_id` int NOT NULL COMMENT 'users.user_id of helper',
@@ -298,7 +475,7 @@ CREATE TABLE IF NOT EXISTS `job_applications` (
   `termination_initiated_by` int DEFAULT NULL,
   `contract_generated_at` datetime DEFAULT NULL,
   `leave_days_used` int NOT NULL DEFAULT '0' COMMENT 'Paid leave days used (synced when requests are approved)',
-  `termination_reason` enum('moving_away','family_emergency','found_other_work','misconduct','unsafe_conditions','abuse_or_mistreatment','end_of_term','mutual_agreement','other') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `termination_reason` enum('moving_away','family_emergency','found_other_work','misconduct','unsafe_conditions','abuse_or_mistreatment','end_of_term','mutual_agreement','other') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `termination_note` varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `termination_notice_date` date DEFAULT NULL,
   `termination_last_day` date DEFAULT NULL,
@@ -311,66 +488,105 @@ CREATE TABLE IF NOT EXISTS `job_applications` (
   CONSTRAINT `fk_japps_helper` FOREIGN KEY (`helper_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_japps_job` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_japps_term_initiator` FOREIGN KEY (`termination_initiated_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.job_applications: ~7 rows (approximately)
-
--- Dumping structure for table carelink.payslip_records
-CREATE TABLE IF NOT EXISTS `payslip_records` (
-  `payslip_id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `application_id` int NOT NULL,
-  `pay_period_start` date NOT NULL,
-  `pay_period_end` date NOT NULL,
-  `paid_at` date NOT NULL,
-  `gross_amount` decimal(10,2) NOT NULL,
-  `deductions_json` json DEFAULT NULL,
-  `deductions_total` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `net_amount` decimal(10,2) NOT NULL,
-  `payment_method` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Cash',
-  `employer_note` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` enum('pending','acknowledged','disputed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `helper_acknowledged_at` datetime DEFAULT NULL,
-  `helper_disputed_at` datetime DEFAULT NULL,
-  `helper_dispute_reason` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`payslip_id`),
-  KEY `idx_payslips_application_paid` (`application_id`,`paid_at`),
-  CONSTRAINT `fk_payslips_application` FOREIGN KEY (`application_id`) REFERENCES `job_applications` (`application_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping structure for table carelink.job_posts
-CREATE TABLE IF NOT EXISTS `job_posts` (
+) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `job_invites`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `job_invites` (
+  `invite_id` int NOT NULL AUTO_INCREMENT,
+  `message_id` int NOT NULL,
+  `job_post_id` int NOT NULL,
+  `parent_id` int NOT NULL,
+  `helper_id` int NOT NULL,
+  `status` varchar(12) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
+  `responded_at` datetime DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`invite_id`),
+  UNIQUE KEY `uniq_invite` (`parent_id`,`helper_id`,`job_post_id`),
+  KEY `idx_msg` (`message_id`),
+  KEY `idx_helper` (`helper_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `job_post_categories`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `job_post_categories` (
+  `job_post_id` int NOT NULL,
+  `category_id` int NOT NULL,
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`job_post_id`,`category_id`),
+  KEY `idx_job_post_categories_category` (`category_id`),
+  CONSTRAINT `fk_job_post_categories_post` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `job_post_custom_skills`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `job_post_custom_skills` (
+  `job_post_id` int NOT NULL,
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  `custom_skill` text COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`job_post_id`,`sort_order`),
+  CONSTRAINT `fk_job_post_custom_skills_post` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `job_post_roles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `job_post_roles` (
+  `job_post_id` int NOT NULL,
+  `job_id` int NOT NULL,
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`job_post_id`,`job_id`),
+  KEY `idx_job_post_roles_job` (`job_id`),
+  CONSTRAINT `fk_job_post_roles_post` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `job_post_skills`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `job_post_skills` (
+  `job_post_id` int NOT NULL,
+  `skill_id` int NOT NULL,
+  `sort_order` int unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`job_post_id`,`skill_id`),
+  KEY `idx_job_post_skills_skill` (`skill_id`),
+  CONSTRAINT `fk_job_post_skills_post` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `job_posts`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `job_posts` (
   `job_post_id` int NOT NULL AUTO_INCREMENT,
   `parent_id` int NOT NULL COMMENT 'users.user_id of parent',
   `category_id` int NOT NULL COMMENT 'ref_categories.category_id',
-  `category_ids` json DEFAULT NULL COMMENT 'All selected ref_categories.category_id values',
-  `slots` int unsigned NOT NULL DEFAULT '1' COMMENT 'Number of helpers hired through this post',
   `custom_category` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `job_ids` json DEFAULT NULL COMMENT 'Array of selected job IDs',
   `title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `custom_job_title` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `description` text COLLATE utf8mb4_general_ci NOT NULL,
   `employment_type` enum('Stay-in','Stay-out','Any') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Any',
   `work_schedule` enum('Full-time','Part-time','Any') COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Hours commitment',
-  `salary_offered` decimal(10,2) NOT NULL COMMENT 'Minimum: ₱6,400/month',
-  `salary_period` enum('Daily','Weekly','Monthly') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Monthly',
+  `salary_offered` decimal(10,2) NOT NULL COMMENT 'Minimum: ₱6,000/month',
+  `salary_period` enum('Daily','Weekly','Semi-monthly','Monthly') COLLATE utf8mb4_general_ci DEFAULT 'Monthly',
   `benefits` text COLLATE utf8mb4_general_ci COMMENT 'SSS, PhilHealth, Pag-IBIG, etc.',
   `province` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `municipality` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `barangay` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `latitude` decimal(10,7) DEFAULT NULL,
   `longitude` decimal(10,7) DEFAULT NULL,
-  `preferred_religion` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `preferred_language_id` int DEFAULT NULL COMMENT 'ref_languages.language_id',
   `require_police_clearance` tinyint(1) DEFAULT '0' COMMENT 'Parent can require this',
   `prefer_tesda_nc2` tinyint(1) DEFAULT '0',
   `status` enum('Open','Filled','Closed','Expired','Pending','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Pending',
+  `visibility` enum('public','direct_hire') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'public' COMMENT 'direct_hire = private offer to one helper; never listed in search',
   `posted_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `expires_at` timestamp NULL DEFAULT NULL,
+  `featured_until` datetime DEFAULT NULL COMMENT 'Boost expiry; NULL = never boosted',
+  `featured_boost_paid_at` datetime DEFAULT NULL COMMENT 'When the boost payment settled',
   `filled_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `skill_ids` json DEFAULT NULL COMMENT 'Array of selected skill IDs',
-  `custom_skills` text COLLATE utf8mb4_general_ci,
   `min_age` int DEFAULT NULL COMMENT 'Minimum age requirement',
   `max_age` int DEFAULT NULL COMMENT 'Maximum age requirement',
   `min_experience_years` int DEFAULT NULL COMMENT 'Minimum years of experience',
@@ -388,6 +604,9 @@ CREATE TABLE IF NOT EXISTS `job_posts` (
   `verified_by` int DEFAULT NULL COMMENT 'PESO admin user_id',
   `verified_at` timestamp NULL DEFAULT NULL,
   `rejection_reason` text COLLATE utf8mb4_general_ci,
+  `salary_min` decimal(10,2) DEFAULT NULL,
+  `salary_max` decimal(10,2) DEFAULT NULL,
+  `slots` int unsigned NOT NULL DEFAULT '1' COMMENT 'Number of helpers hired through this post',
   PRIMARY KEY (`job_post_id`),
   KEY `idx_parent` (`parent_id`),
   KEY `idx_category` (`category_id`),
@@ -396,16 +615,18 @@ CREATE TABLE IF NOT EXISTS `job_posts` (
   KEY `fk_jposts_language` (`preferred_language_id`),
   KEY `idx_status_expires` (`status`,`expires_at`),
   KEY `idx_verified_by` (`verified_by`),
+  KEY `idx_featured` (`status`,`featured_until`),
+  KEY `idx_visibility` (`visibility`,`status`),
   CONSTRAINT `fk_jposts_category` FOREIGN KEY (`category_id`) REFERENCES `ref_categories` (`category_id`),
   CONSTRAINT `fk_jposts_language` FOREIGN KEY (`preferred_language_id`) REFERENCES `ref_languages` (`language_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_jposts_parent` FOREIGN KEY (`parent_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_jposts_verified_by` FOREIGN KEY (`verified_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.job_posts: ~10 rows (approximately)
-
--- Dumping structure for table carelink.job_views
-CREATE TABLE IF NOT EXISTS `job_views` (
+) ENGINE=InnoDB AUTO_INCREMENT=122 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `job_views`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `job_views` (
   `view_id` int NOT NULL AUTO_INCREMENT,
   `helper_id` int NOT NULL,
   `job_post_id` int NOT NULL,
@@ -416,11 +637,11 @@ CREATE TABLE IF NOT EXISTS `job_views` (
   CONSTRAINT `job_views_ibfk_1` FOREIGN KEY (`helper_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `job_views_ibfk_2` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table carelink.job_views: ~0 rows (approximately)
-
--- Dumping structure for table carelink.leave_requests
-CREATE TABLE IF NOT EXISTS `leave_requests` (
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leave_requests`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leave_requests` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `application_id` int unsigned NOT NULL,
   `helper_id` int unsigned NOT NULL,
@@ -430,22 +651,22 @@ CREATE TABLE IF NOT EXISTS `leave_requests` (
   `reason` text COLLATE utf8mb4_unicode_ci,
   `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
   `paid_leave` tinyint(1) DEFAULT NULL,
-  `paid_leave_source` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'statutory_sil, contract_sick, contract_vacation, or unpaid',
   `response_note` text COLLATE utf8mb4_unicode_ci,
   `responded_at` datetime DEFAULT NULL,
   `responded_by` int unsigned DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `paid_leave_source` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'statutory_sil, contract_sick, contract_vacation, or unpaid',
   PRIMARY KEY (`id`),
   KEY `idx_leave_app` (`application_id`),
   KEY `idx_leave_helper` (`helper_id`),
   KEY `idx_leave_date` (`date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table carelink.leave_requests: ~0 rows (approximately)
-
--- Dumping structure for table carelink.log_trail
-CREATE TABLE IF NOT EXISTS `log_trail` (
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `log_trail`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `log_trail` (
   `log_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
   `action` varchar(100) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'e.g., LOGIN, LOGOUT, APPLY_JOB, UPLOAD_DOC',
@@ -459,12 +680,12 @@ CREATE TABLE IF NOT EXISTS `log_trail` (
   KEY `idx_user` (`user_id`),
   KEY `idx_action` (`action`),
   CONSTRAINT `fk_log_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=592 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.log_trail: ~522 rows (approximately)
-
--- Dumping structure for table carelink.messages
-CREATE TABLE IF NOT EXISTS `messages` (
+) ENGINE=InnoDB AUTO_INCREMENT=462 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `messages`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `messages` (
   `message_id` int NOT NULL AUTO_INCREMENT,
   `sender_id` int NOT NULL,
   `receiver_id` int NOT NULL,
@@ -485,12 +706,12 @@ CREATE TABLE IF NOT EXISTS `messages` (
   CONSTRAINT `fk_msg_job` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_msg_receiver` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_msg_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.messages: ~28 rows (approximately)
-
--- Dumping structure for table carelink.notifications
-CREATE TABLE IF NOT EXISTS `notifications` (
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `notifications`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `notifications` (
   `notification_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL COMMENT 'Recipient (users.user_id)',
   `type` varchar(64) COLLATE utf8mb4_general_ci NOT NULL,
@@ -505,12 +726,12 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   KEY `idx_notifications_user_unread` (`user_id`,`is_read`),
   KEY `idx_notifications_created` (`created_at`),
   CONSTRAINT `fk_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=139 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.notifications: ~138 rows (approximately)
-
--- Dumping structure for table carelink.parent_children
-CREATE TABLE IF NOT EXISTS `parent_children` (
+) ENGINE=InnoDB AUTO_INCREMENT=295 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `parent_children`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `parent_children` (
   `child_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `age` int NOT NULL COMMENT '0-18 years old',
@@ -521,12 +742,12 @@ CREATE TABLE IF NOT EXISTS `parent_children` (
   PRIMARY KEY (`child_id`),
   KEY `idx_profile` (`profile_id`),
   CONSTRAINT `fk_pchildren_profile` FOREIGN KEY (`profile_id`) REFERENCES `parent_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.parent_children: ~6 rows (approximately)
-
--- Dumping structure for table carelink.parent_elderly
-CREATE TABLE IF NOT EXISTS `parent_elderly` (
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `parent_elderly`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `parent_elderly` (
   `elderly_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `age` int NOT NULL COMMENT '60+ years old',
@@ -538,12 +759,12 @@ CREATE TABLE IF NOT EXISTS `parent_elderly` (
   PRIMARY KEY (`elderly_id`),
   KEY `idx_profile` (`profile_id`),
   CONSTRAINT `fk_pelderly_profile` FOREIGN KEY (`profile_id`) REFERENCES `parent_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.parent_elderly: ~6 rows (approximately)
-
--- Dumping structure for table carelink.parent_household
-CREATE TABLE IF NOT EXISTS `parent_household` (
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `parent_household`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `parent_household` (
   `household_id` int NOT NULL AUTO_INCREMENT,
   `profile_id` int NOT NULL,
   `household_size` int DEFAULT NULL COMMENT 'Total number of people in the house',
@@ -557,15 +778,14 @@ CREATE TABLE IF NOT EXISTS `parent_household` (
   PRIMARY KEY (`household_id`),
   UNIQUE KEY `uk_profile_id` (`profile_id`),
   CONSTRAINT `fk_phousehold_profile` FOREIGN KEY (`profile_id`) REFERENCES `parent_profiles` (`profile_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.parent_household: ~5 rows (approximately)
-
--- Dumping structure for table carelink.parent_profiles
-CREATE TABLE IF NOT EXISTS `parent_profiles` (
+) ENGINE=InnoDB AUTO_INCREMENT=57 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `parent_profiles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `parent_profiles` (
   `profile_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
-  `contact_number` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `profile_image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `province` varchar(100) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Leyte',
   `municipality` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -586,12 +806,82 @@ CREATE TABLE IF NOT EXISTS `parent_profiles` (
   PRIMARY KEY (`profile_id`),
   UNIQUE KEY `uk_user_id` (`user_id`),
   CONSTRAINT `fk_pprofile_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.parent_profiles: ~7 rows (approximately)
-
--- Dumping structure for table carelink.peso_reports
-CREATE TABLE IF NOT EXISTS `peso_reports` (
+) ENGINE=InnoDB AUTO_INCREMENT=65 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `password_verify_attempts`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `password_verify_attempts` (
+  `user_id` int NOT NULL,
+  `attempt_count` int NOT NULL DEFAULT '0',
+  `last_attempt` datetime DEFAULT NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_password_verify_attempts_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `payment_checkouts`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `payment_checkouts` (
+  `checkout_id` int NOT NULL AUTO_INCREMENT,
+  `session_id` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `user_id` int NOT NULL,
+  `kind` varchar(32) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'subscription | boost | placement_fee',
+  `reference_id` int DEFAULT NULL,
+  `checkout_url` text COLLATE utf8mb4_general_ci,
+  `status` enum('pending','paid','cancelled') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `settled_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`checkout_id`),
+  UNIQUE KEY `uniq_session` (`session_id`),
+  KEY `idx_user_kind` (`user_id`,`kind`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `payment_events`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `payment_events` (
+  `event_id` int NOT NULL AUTO_INCREMENT,
+  `paymongo_event_id` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `event_type` varchar(64) COLLATE utf8mb4_general_ci NOT NULL,
+  `reference_type` varchar(32) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'boost | placement_fee | subscription',
+  `reference_id` int DEFAULT NULL,
+  `payload_summary` text COLLATE utf8mb4_general_ci COMMENT 'Sanitised. No payment method details.',
+  `received_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`event_id`),
+  UNIQUE KEY `uniq_event` (`paymongo_event_id`),
+  KEY `idx_type` (`event_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `payslip_records`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `payslip_records` (
+  `payslip_id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `application_id` int NOT NULL,
+  `pay_period_start` date NOT NULL,
+  `pay_period_end` date NOT NULL,
+  `paid_at` date NOT NULL,
+  `gross_amount` decimal(10,2) NOT NULL,
+  `deductions_json` json DEFAULT NULL,
+  `deductions_total` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `net_amount` decimal(10,2) NOT NULL,
+  `payment_method` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Cash',
+  `employer_note` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` enum('pending','acknowledged','disputed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `helper_acknowledged_at` datetime DEFAULT NULL,
+  `helper_disputed_at` datetime DEFAULT NULL,
+  `helper_dispute_reason` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`payslip_id`),
+  KEY `idx_payslips_application_paid` (`application_id`,`paid_at`),
+  CONSTRAINT `fk_payslips_application` FOREIGN KEY (`application_id`) REFERENCES `job_applications` (`application_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `peso_reports`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `peso_reports` (
   `report_id` int NOT NULL AUTO_INCREMENT,
   `report_type` enum('Monthly','Quarterly','Annual','Custom') COLLATE utf8mb4_general_ci NOT NULL,
   `report_period_start` date NOT NULL,
@@ -610,21 +900,109 @@ CREATE TABLE IF NOT EXISTS `peso_reports` (
   KEY `idx_generated_by` (`generated_by`),
   CONSTRAINT `fk_reports_generated_by` FOREIGN KEY (`generated_by`) REFERENCES `users` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.peso_reports: ~0 rows (approximately)
-
--- Dumping structure for table carelink.placements
-CREATE TABLE IF NOT EXISTS `placements` (
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `peso_user_moderation`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `peso_user_moderation` (
+  `moderation_id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `staff_user_id` int NOT NULL,
+  `action` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `reason` text COLLATE utf8mb4_general_ci NOT NULL,
+  `previous_user_status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `new_user_status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `previous_verification_status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `new_verification_status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `closed_job_posts` int unsigned NOT NULL DEFAULT '0',
+  `withdrawn_applications` int unsigned NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`moderation_id`),
+  KEY `idx_moderation_user` (`user_id`,`created_at`),
+  KEY `idx_moderation_staff` (`staff_user_id`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `placement_experience_confirmations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `placement_experience_confirmations` (
+  `placement_id` int NOT NULL,
+  `helper_confirmed_at` datetime DEFAULT NULL,
+  `parent_confirmed_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`placement_id`),
+  CONSTRAINT `fk_placement_experience_confirmation_placement` FOREIGN KEY (`placement_id`) REFERENCES `placements` (`placement_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `placement_fees`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `placement_fees` (
+  `fee_id` int NOT NULL AUTO_INCREMENT,
+  `placement_id` int NOT NULL,
+  `parent_id` int NOT NULL COMMENT 'Payer. Never a helper.',
+  `gross_amount` decimal(10,2) NOT NULL,
+  `peso_share_amount` decimal(10,2) NOT NULL,
+  `platform_share_amount` decimal(10,2) NOT NULL,
+  `status` enum('pending','paid','failed','refunded') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
+  `paymongo_payment_id` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `paid_at` datetime DEFAULT NULL,
+  `refunded_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`fee_id`),
+  UNIQUE KEY `uniq_placement_fee` (`placement_id`),
+  KEY `idx_parent_status` (`parent_id`,`status`),
+  CONSTRAINT `fk_fees_parent` FOREIGN KEY (`parent_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_fees_placement` FOREIGN KEY (`placement_id`) REFERENCES `placements` (`placement_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `placement_renewal_intent`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `placement_renewal_intent` (
+  `application_id` int NOT NULL COMMENT 'job_applications.application_id',
+  `parent_interested` tinyint(1) DEFAULT NULL COMMENT 'NULL undecided, 0 no, 1 yes',
+  `helper_interested` tinyint(1) DEFAULT NULL COMMENT 'NULL undecided, 0 no, 1 yes',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`application_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `placement_reviews`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `placement_reviews` (
+  `review_id` int NOT NULL AUTO_INCREMENT,
+  `placement_id` int NOT NULL,
+  `reviewer_id` int NOT NULL COMMENT 'Who gave the review',
+  `reviewee_id` int NOT NULL COMMENT 'Who was reviewed',
+  `reviewer_type` enum('parent','helper') COLLATE utf8mb4_general_ci NOT NULL,
+  `rating` decimal(2,1) NOT NULL COMMENT '1.0 to 5.0',
+  `review_text` text COLLATE utf8mb4_general_ci,
+  `is_visible` tinyint(1) DEFAULT '1' COMMENT '0 = hidden by admin',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`review_id`),
+  UNIQUE KEY `uk_placement_reviewer` (`placement_id`,`reviewer_id`),
+  KEY `idx_reviewee` (`reviewee_id`),
+  KEY `fk_reviews_reviewer` (`reviewer_id`),
+  CONSTRAINT `fk_reviews_placement` FOREIGN KEY (`placement_id`) REFERENCES `placements` (`placement_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_reviews_reviewer` FOREIGN KEY (`reviewer_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `placements`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `placements` (
   `placement_id` int NOT NULL AUTO_INCREMENT,
   `application_id` int DEFAULT NULL COMMENT 'Source application, if any',
   `parent_id` int NOT NULL,
   `helper_id` int NOT NULL,
   `job_post_id` int DEFAULT NULL,
   `ref_job_id` int DEFAULT NULL,
-  `employment_type` enum('Live-in','Live-out') COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Actual agreed arrangement',
-  `work_schedule` enum('Full-time','Part-time') COLLATE utf8mb4_general_ci NOT NULL,
+  `employment_type` enum('Stay-in','Stay-out','Any') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Any' COMMENT 'Accommodation arrangement (snapshot at hire time)',
+  `work_schedule` enum('Full-time','Part-time','Any') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `agreed_salary` decimal(10,2) NOT NULL,
-  `salary_period` enum('Daily','Monthly') COLLATE utf8mb4_general_ci DEFAULT 'Monthly',
+  `salary_period` enum('Daily','Weekly','Semi-monthly','Monthly') COLLATE utf8mb4_general_ci DEFAULT 'Monthly',
   `start_date` date NOT NULL,
   `end_date` date DEFAULT NULL COMMENT 'NULL = ongoing',
   `status` enum('Active','Completed','Terminated','On Hold') COLLATE utf8mb4_general_ci DEFAULT 'Active',
@@ -644,94 +1022,24 @@ CREATE TABLE IF NOT EXISTS `placements` (
   CONSTRAINT `fk_place_job` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_place_parent` FOREIGN KEY (`parent_id`) REFERENCES `users` (`user_id`),
   CONSTRAINT `fk_place_ref_job` FOREIGN KEY (`ref_job_id`) REFERENCES `ref_jobs` (`job_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.placements: ~3 rows (approximately)
-
--- Dumping structure for table carelink.placement_renewal_intent
-CREATE TABLE IF NOT EXISTS `placement_renewal_intent` (
-  `application_id` int NOT NULL COMMENT 'job_applications.application_id',
-  `parent_interested` tinyint(1) DEFAULT NULL COMMENT 'NULL undecided, 0 no, 1 yes',
-  `helper_interested` tinyint(1) DEFAULT NULL COMMENT 'NULL undecided, 0 no, 1 yes',
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`application_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- A CareLink placement only becomes a platform-verified experience after
--- both parties independently confirm the ended placement.
-CREATE TABLE IF NOT EXISTS `placement_experience_confirmations` (
-  `placement_id` int NOT NULL,
-  `helper_confirmed_at` datetime DEFAULT NULL,
-  `parent_confirmed_at` datetime DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`placement_id`),
-  CONSTRAINT `fk_placement_experience_confirmation_placement`
-    FOREIGN KEY (`placement_id`) REFERENCES `placements` (`placement_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.placement_renewal_intent: ~1 rows (approximately)
-
--- Dumping structure for table carelink.placement_reviews
-CREATE TABLE IF NOT EXISTS `placement_reviews` (
-  `review_id` int NOT NULL AUTO_INCREMENT,
-  `placement_id` int NOT NULL,
-  `reviewer_id` int NOT NULL COMMENT 'Who gave the review',
-  `reviewee_id` int NOT NULL COMMENT 'Who was reviewed',
-  `reviewer_type` enum('parent','helper') COLLATE utf8mb4_general_ci NOT NULL,
-  `rating` decimal(2,1) NOT NULL COMMENT '1.0 to 5.0',
-  `review_text` text COLLATE utf8mb4_general_ci,
-  `is_visible` tinyint(1) DEFAULT '1' COMMENT '0 = hidden by admin',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`review_id`),
-  UNIQUE KEY `uk_placement_reviewer` (`placement_id`,`reviewer_id`),
-  KEY `idx_reviewee` (`reviewee_id`),
-  KEY `fk_reviews_reviewer` (`reviewer_id`),
-  CONSTRAINT `fk_reviews_placement` FOREIGN KEY (`placement_id`) REFERENCES `placements` (`placement_id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_reviews_reviewer` FOREIGN KEY (`reviewer_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.placement_reviews: ~0 rows (approximately)
-
--- Dumping structure for table carelink.placement_tasks
-CREATE TABLE IF NOT EXISTS `placement_tasks` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `application_id` int NOT NULL,
-  `created_by` int NOT NULL,
-  `title` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `due_date` date DEFAULT NULL,
-  `requires_photo` tinyint(1) NOT NULL DEFAULT '0',
-  `is_recurring` tinyint(1) NOT NULL DEFAULT '0',
-  `recur_days` json DEFAULT NULL,
-  `status` enum('pending','done','skipped') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `completed_at` datetime DEFAULT NULL,
-  `photo_url` varchar(1024) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_placement_tasks_app_status` (`application_id`,`status`),
-  KEY `fk_placement_tasks_creator` (`created_by`),
-  CONSTRAINT `fk_placement_tasks_application` FOREIGN KEY (`application_id`) REFERENCES `job_applications` (`application_id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_placement_tasks_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table carelink.placement_tasks: ~0 rows (approximately)
-
--- Dumping structure for table carelink.ref_categories
-CREATE TABLE IF NOT EXISTS `ref_categories` (
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `ref_categories`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ref_categories` (
   `category_id` int NOT NULL AUTO_INCREMENT,
   `category_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'PESO Nature of Work',
   `icon` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Icon name for frontend',
   `description` text COLLATE utf8mb4_general_ci,
   PRIMARY KEY (`category_id`),
   UNIQUE KEY `uk_category_name` (`category_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.ref_categories: ~6 rows (approximately)
-
--- Dumping structure for table carelink.ref_jobs
-CREATE TABLE IF NOT EXISTS `ref_jobs` (
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `ref_jobs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ref_jobs` (
   `job_id` int NOT NULL AUTO_INCREMENT,
   `category_id` int NOT NULL,
   `job_title` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
@@ -739,22 +1047,22 @@ CREATE TABLE IF NOT EXISTS `ref_jobs` (
   PRIMARY KEY (`job_id`),
   KEY `idx_category` (`category_id`),
   CONSTRAINT `fk_rjobs_category` FOREIGN KEY (`category_id`) REFERENCES `ref_categories` (`category_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.ref_jobs: ~15 rows (approximately)
-
--- Dumping structure for table carelink.ref_languages
-CREATE TABLE IF NOT EXISTS `ref_languages` (
+) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `ref_languages`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ref_languages` (
   `language_id` int NOT NULL AUTO_INCREMENT,
   `language_name` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   PRIMARY KEY (`language_id`),
   UNIQUE KEY `uk_language` (`language_name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.ref_languages: ~10 rows (approximately)
-
--- Dumping structure for table carelink.ref_skills
-CREATE TABLE IF NOT EXISTS `ref_skills` (
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `ref_skills`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ref_skills` (
   `skill_id` int NOT NULL AUTO_INCREMENT,
   `job_id` int NOT NULL,
   `skill_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
@@ -762,12 +1070,12 @@ CREATE TABLE IF NOT EXISTS `ref_skills` (
   PRIMARY KEY (`skill_id`),
   KEY `idx_job` (`job_id`),
   CONSTRAINT `fk_rskills_job` FOREIGN KEY (`job_id`) REFERENCES `ref_jobs` (`job_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.ref_skills: ~21 rows (approximately)
-
--- Dumping structure for table carelink.saved_jobs
-CREATE TABLE IF NOT EXISTS `saved_jobs` (
+) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saved_jobs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saved_jobs` (
   `saved_id` int NOT NULL AUTO_INCREMENT,
   `helper_id` int NOT NULL,
   `job_post_id` int NOT NULL,
@@ -779,12 +1087,12 @@ CREATE TABLE IF NOT EXISTS `saved_jobs` (
   KEY `idx_saved_at` (`saved_at`),
   CONSTRAINT `saved_jobs_ibfk_1` FOREIGN KEY (`helper_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `saved_jobs_ibfk_2` FOREIGN KEY (`job_post_id`) REFERENCES `job_posts` (`job_post_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table carelink.saved_jobs: ~1 rows (approximately)
-
--- Dumping structure for table carelink.saved_profiles
-CREATE TABLE IF NOT EXISTS `saved_profiles` (
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saved_profiles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saved_profiles` (
   `save_id` int NOT NULL AUTO_INCREMENT,
   `parent_id` int NOT NULL,
   `helper_id` int NOT NULL,
@@ -795,11 +1103,11 @@ CREATE TABLE IF NOT EXISTS `saved_profiles` (
   CONSTRAINT `fk_saved_helper` FOREIGN KEY (`helper_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_saved_parent` FOREIGN KEY (`parent_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.saved_profiles: ~0 rows (approximately)
-
--- Dumping structure for table carelink.saved_searches
-CREATE TABLE IF NOT EXISTS `saved_searches` (
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saved_searches`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saved_searches` (
   `search_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
   `search_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -811,39 +1119,36 @@ CREATE TABLE IF NOT EXISTS `saved_searches` (
   KEY `idx_user` (`user_id`),
   CONSTRAINT `saved_searches_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table carelink.saved_searches: ~0 rows (approximately)
-
--- Dumping structure for table carelink.users
-CREATE TABLE IF NOT EXISTS `users` (
-  `user_id` int NOT NULL AUTO_INCREMENT,
-  `email` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `username` varchar(100) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
-  `password` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'bcrypt hashed',
-  `first_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `middle_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `last_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `user_type` enum('parent','helper','peso','admin') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'parent',
-  `status` enum('pending','approved','suspended') COLLATE utf8mb4_general_ci DEFAULT 'pending' COMMENT 'pending = awaiting profile/verification',
-  `profile_completed` tinyint(1) DEFAULT '0' COMMENT '0=not ready for PESO review, 1=ready for PESO review',
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `subscriptions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `subscriptions` (
+  `subscription_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `plan_type` enum('carelink_plus') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'carelink_plus',
+  `status` enum('active','cancelled','expired','past_due') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'active',
+  `started_at` datetime NOT NULL,
+  `current_period_end` datetime NOT NULL,
+  `cancelled_at` datetime DEFAULT NULL,
+  `paymongo_subscription_id` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `featured_credits_remaining` int NOT NULL DEFAULT '3',
+  `featured_credits_reset_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `last_login` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`user_id`),
-  UNIQUE KEY `uk_email` (`email`),
-  KEY `idx_usertype` (`user_type`),
-  KEY `idx_status` (`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.users: ~20 rows (approximately)
-
--- Dumping structure for table carelink.user_documents
-CREATE TABLE IF NOT EXISTS `user_documents` (
+  PRIMARY KEY (`subscription_id`),
+  KEY `idx_user_status` (`user_id`,`status`,`current_period_end`),
+  CONSTRAINT `fk_subs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `user_documents`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_documents` (
   `document_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
   `document_type` enum('Barangay Clearance','Valid ID','Police Clearance','TESDA NC2') COLLATE utf8mb4_general_ci NOT NULL,
-  `single_upload_type` varchar(32) COLLATE utf8mb4_general_ci GENERATED ALWAYS AS (CASE WHEN `document_type` = 'TESDA NC2' THEN NULL ELSE `document_type` END) STORED,
   `file_path` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Server path to uploaded file',
+  `file_path_back` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Back image for two-sided docs like Valid ID',
   `id_type` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'For Valid ID: PhilSys, Passport, Driver''s License, etc.',
   `expiry_date` date DEFAULT NULL COMMENT 'Confirm with PESO on validity periods',
   `status` enum('Pending','Verified','Rejected') COLLATE utf8mb4_general_ci DEFAULT 'Pending',
@@ -854,157 +1159,72 @@ CREATE TABLE IF NOT EXISTS `user_documents` (
   `verified_at` timestamp NULL DEFAULT NULL,
   `uploaded_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `ai_extracted_data` json DEFAULT NULL,
+  `ai_checked_at` datetime DEFAULT NULL,
+  `single_upload_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci GENERATED ALWAYS AS ((case when (`document_type` = _utf8mb4'TESDA NC2') then NULL else `document_type` end)) STORED,
   PRIMARY KEY (`document_id`),
   UNIQUE KEY `uk_user_single_doctype` (`user_id`,`single_upload_type`) COMMENT 'Only one record per non-TESDA document type per user',
   KEY `idx_status` (`status`),
   KEY `idx_verified_by` (`verified_by`),
   CONSTRAINT `fk_udocs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_udocs_verified_by` FOREIGN KEY (`verified_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table carelink.user_documents: ~34 rows (approximately)
-
-/*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
-/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
-/*!40014 SET FOREIGN_KEY_CHECKS=IFNULL(@OLD_FOREIGN_KEY_CHECKS, 1) */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40111 SET SQL_NOTES=IFNULL(@OLD_SQL_NOTES, 1) */;
-
--- ---------------------------------------------------------------------------
--- Migration: add profile_views to helper_profiles (Profile Views stat)
--- Run this against an existing database that predates this column.
--- ---------------------------------------------------------------------------
-ALTER TABLE `helper_profiles` ADD COLUMN IF NOT EXISTS `profile_views` int DEFAULT '0' AFTER `rating_count`;
-
--- ---------------------------------------------------------------------------
--- Migration: profile_view_log — tracks who viewed a helper profile and when
--- Allows helpers to see which parents viewed their profile (last 7 days).
--- Rate-limited at the app layer: one entry per viewer-helper pair per hour.
--- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `profile_view_log` (
-  `view_id`     int NOT NULL AUTO_INCREMENT,
-  `helper_id`   int NOT NULL,
-  `viewer_id`   int NOT NULL,
-  `viewer_type` enum('parent') NOT NULL DEFAULT 'parent',
-  `viewed_at`   timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`view_id`),
-  KEY `idx_helper_viewed` (`helper_id`, `viewed_at`),
-  KEY `idx_viewer` (`viewer_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- ---------------------------------------------------------------------------
--- Migration: salary range on job_posts (salary_min / salary_max)
--- salary_min replaces salary_offered as the advertised minimum (≥ ₱7,000).
--- salary_offered is kept for backward compat and set equal to salary_min.
--- ---------------------------------------------------------------------------
-ALTER TABLE `job_posts`
-  ADD COLUMN IF NOT EXISTS `salary_min` decimal(10,2) DEFAULT NULL COMMENT 'Minimum salary offered (≥ ₱7,000)',
-  ADD COLUMN IF NOT EXISTS `salary_max` decimal(10,2) DEFAULT NULL COMMENT 'Maximum salary offered (optional)';
-
--- ---------------------------------------------------------------------------
--- Migration: mixed-category job posts and hiring slots
--- category_id remains the primary category for compatibility; category_ids
--- stores the complete selection. Existing jobs retain their original category.
--- ---------------------------------------------------------------------------
-ALTER TABLE `job_posts`
-  ADD COLUMN IF NOT EXISTS `category_ids` json DEFAULT NULL COMMENT 'All selected ref_categories.category_id values',
-  ADD COLUMN IF NOT EXISTS `slots` int unsigned NOT NULL DEFAULT '1' COMMENT 'Number of helpers hired through this post';
-
-UPDATE `job_posts`
-SET `category_ids` = JSON_ARRAY(`category_id`)
-WHERE `category_ids` IS NULL OR JSON_LENGTH(`category_ids`) = 0;
-
--- ---------------------------------------------------------------------------
--- Migration: new contract confirmation fields on contracts table
--- These are set at hire time via HireContractTermsModal (not job post).
--- ---------------------------------------------------------------------------
-ALTER TABLE `contracts`
-  ADD COLUMN IF NOT EXISTS `contract_duration` varchar(50) DEFAULT NULL COMMENT '3 Months / 6 Months / 1 Year / 2 Years / Indefinite',
-  ADD COLUMN IF NOT EXISTS `confirmed_salary`  decimal(10,2) DEFAULT NULL COMMENT 'Salary confirmed at hire (≥ ₱7,000)',
-  ADD COLUMN IF NOT EXISTS `work_hours`        varchar(100) DEFAULT NULL COMMENT 'e.g. 8am–5pm',
-  ADD COLUMN IF NOT EXISTS `rest_days`         json DEFAULT NULL COMMENT 'Array of weekday names, e.g. ["Sun","Sat"]',
-  ADD COLUMN IF NOT EXISTS `vacation_leave_days` int DEFAULT 5 COMMENT 'Vacation leave days per year',
-  ADD COLUMN IF NOT EXISTS `sick_leave_days`   int DEFAULT 5 COMMENT 'Sick leave days per year',
-  ADD COLUMN IF NOT EXISTS `special_conditions` text DEFAULT NULL COMMENT 'Special agreements at hire time';
-
--- ---------------------------------------------------------------------------
--- Migration: PESO BK-1 18-item template fields on contracts table
--- Set at hire time via HireContractTermsModal (Compensation / Additional Terms).
--- ---------------------------------------------------------------------------
-ALTER TABLE `contracts`
-  ADD COLUMN IF NOT EXISTS `overtime_rate`          varchar(100) DEFAULT NULL COMMENT 'Item 7b: overtime rate per hour, e.g. 50',
-  ADD COLUMN IF NOT EXISTS `payment_schedule`       varchar(100) DEFAULT NULL COMMENT 'Item 7c: salary payment schedule',
-  ADD COLUMN IF NOT EXISTS `other_benefits`         text DEFAULT NULL COMMENT 'Item 10: other benefits, if any',
-  ADD COLUMN IF NOT EXISTS `debt_agreement`         text DEFAULT NULL COMMENT 'Item 11: debt agreement, if any',
-  ADD COLUMN IF NOT EXISTS `deployment_agreement`   text DEFAULT NULL COMMENT 'Item 12: deployment cost agreement, if any',
-  ADD COLUMN IF NOT EXISTS `termination_conditions` text DEFAULT NULL COMMENT 'Item 13: termination conditions, if any';
-
--- ---------------------------------------------------------------------------
--- Migration: numeric debt amount + helper acknowledgment (RA 10364 safeguard —
--- debt bondage via unchecked deployment/debt agreements). debt_amount lets the
--- system warn when it exceeds one month's salary; debt_acknowledged_at records
--- that the helper explicitly accepted the terms before signing.
--- ---------------------------------------------------------------------------
-ALTER TABLE `contracts`
-  ADD COLUMN IF NOT EXISTS `debt_amount`           decimal(10,2) DEFAULT NULL COMMENT 'Numeric debt/deployment amount, alongside the free-text debt_agreement',
-  ADD COLUMN IF NOT EXISTS `debt_acknowledged_at`  datetime DEFAULT NULL COMMENT 'When the helper explicitly acknowledged debt terms before signing';
-
--- ---------------------------------------------------------------------------
--- Migration: password re-entry attempts (digital signature confirmation, RA 8792)
--- Tracks failed attempts on /v1/auth/verify_password.php; 5 failures locks
--- further verification for that user for 5 minutes.
--- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `password_verify_attempts` (
+) ENGINE=InnoDB AUTO_INCREMENT=97 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `user_safety_flags`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_safety_flags` (
+  `safety_flag_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
-  `attempt_count` int NOT NULL DEFAULT 0,
-  `last_attempt` datetime DEFAULT NULL,
+  `complaint_id` int DEFAULT NULL,
+  `level` varchar(16) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'caution',
+  `public_reason` varchar(200) COLLATE utf8mb4_general_ci NOT NULL,
+  `internal_note` text COLLATE utf8mb4_general_ci,
+  `issued_by` int NOT NULL,
+  `issued_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `lifted_at` datetime DEFAULT NULL,
+  `lifted_by` int DEFAULT NULL,
+  `lift_reason` text COLLATE utf8mb4_general_ci,
+  PRIMARY KEY (`safety_flag_id`),
+  KEY `idx_user_active` (`user_id`,`lifted_at`),
+  KEY `idx_complaint` (`complaint_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `users`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `users` (
+  `user_id` int NOT NULL AUTO_INCREMENT,
+  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `phone` varchar(11) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `email_verified_at` datetime DEFAULT NULL,
+  `account_verified_at` datetime DEFAULT NULL,
+  `account_verification_channel` varchar(10) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'email',
+  `username` varchar(100) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+  `password` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'bcrypt hashed',
+  `first_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `middle_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `last_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `user_type` enum('parent','helper','peso','admin') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'parent',
+  `status` enum('pending','approved','suspended') COLLATE utf8mb4_general_ci DEFAULT 'pending' COMMENT 'pending = awaiting profile/verification',
+  `profile_completed` tinyint(1) DEFAULT '0' COMMENT '0=incomplete, 1=complete',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `last_login` timestamp NULL DEFAULT NULL,
+  `privacy_consent_at` datetime DEFAULT NULL,
   PRIMARY KEY (`user_id`),
-  CONSTRAINT `fk_password_verify_attempts_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  UNIQUE KEY `uk_email` (`email`),
+  UNIQUE KEY `uk_users_phone` (`phone`),
+  KEY `idx_usertype` (`user_type`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB AUTO_INCREMENT=91 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
--- ---------------------------------------------------------------------------
--- Migration: helper "request contract changes" flag on contracts table
--- Set by /v1/applications/request_contract_changes.php when the helper asks
--- the employer to review/regenerate the contract before signing; cleared by
--- /parent/edit_contract.php once the employer regenerates the contract.
--- ---------------------------------------------------------------------------
-ALTER TABLE `contracts`
-  ADD COLUMN IF NOT EXISTS `helper_decline_reason` varchar(1000) DEFAULT NULL COMMENT 'Helper-submitted reason for requesting contract changes',
-  ADD COLUMN IF NOT EXISTS `helper_decline_at` datetime DEFAULT NULL COMMENT 'When the helper last requested contract changes';
-
--- ---------------------------------------------------------------------------
--- Migration: align placements.employment_type / work_schedule with job_posts
--- job_posts.employment_type was renamed from ('Live-in','Live-out','Any') to
--- ('Stay-in','Stay-out','Any'), but placements.employment_type was left as
--- ('Live-in','Live-out') NOT NULL — carelink_finalize_hire_after_contract()
--- copies jp.employment_type/work_schedule straight into placements, so a
--- 'Stay-in'/'Stay-out'/'Any' value (or work_schedule = 'Any') triggers
--- "Data truncated for column 'employment_type'" when signing a contract.
--- ---------------------------------------------------------------------------
-ALTER TABLE `placements`
-  MODIFY COLUMN `employment_type` enum('Live-in','Live-out','Stay-in','Stay-out','Any') COLLATE utf8mb4_general_ci NOT NULL,
-  MODIFY COLUMN `work_schedule` enum('Full-time','Part-time','Any') COLLATE utf8mb4_general_ci NOT NULL;
-
-UPDATE `placements` SET `employment_type` = 'Stay-in'  WHERE `employment_type` = 'Live-in';
-UPDATE `placements` SET `employment_type` = 'Stay-out' WHERE `employment_type` = 'Live-out';
-
-ALTER TABLE `placements`
-  MODIFY COLUMN `employment_type` enum('Stay-in','Stay-out','Any') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Any' COMMENT 'Accommodation arrangement (snapshot at hire time)';
-
--- ---------------------------------------------------------------------------
--- Migration: privacy consent at registration (RA 10173 / NPC Circular 16-01).
--- Records when the user explicitly agreed to data collection/processing;
--- signup.php rejects registration if this consent is not given.
--- ---------------------------------------------------------------------------
-ALTER TABLE `users`
-  ADD COLUMN IF NOT EXISTS `privacy_consent_at` datetime DEFAULT NULL COMMENT 'When the user agreed to data processing at signup (RA 10173 / NPC Circular 16-01)';
-
--- ---------------------------------------------------------------------------
--- Migration: AI document pre-verification (Google Gemini vision).
--- Reuses the existing ai_verification_status / ai_confidence_score columns as
--- the "current result". Adds the AI-extracted fields (for PESO name-match
--- review) and a timestamp distinct from verified_at (PESO's manual decision).
--- ---------------------------------------------------------------------------
-ALTER TABLE `user_documents`
-  ADD COLUMN IF NOT EXISTS `ai_extracted_data` json DEFAULT NULL COMMENT 'AI-extracted fields from the Gemini scan (name, id number, dob, legitimacy_score, etc.)',
-  ADD COLUMN IF NOT EXISTS `ai_checked_at` datetime DEFAULT NULL COMMENT 'When the AI scan produced its result (distinct from verified_at = PESO manual decision)';
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;

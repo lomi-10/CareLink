@@ -1,5 +1,5 @@
 // app/(parent)/home/index.tsx
-// PHP: parent/get_stats.php (via useParentStats), parent/get_job_applications.php (via useParentRecentlyEndedPlacements)
+// PHP: parent/get_stats.php (via useParentStats)
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, ScrollView, RefreshControl, ActivityIndicator,
@@ -23,7 +23,7 @@ import {
   ParentTabBar, ParentStatTile, SafetyBanner, ParentWorkModeTabBar,
 } from '@/components/parent/home';
 import {
-  BROWN, CARAMEL, GOLD, DARK, MUTED, DIVIDER, ICON_BG, GREEN, SUCCESS_BG, BG_WEB,
+  BROWN, CARAMEL, GOLD, MUTED, DIVIDER, ICON_BG, GREEN, BG_WEB,
 } from '@/components/parent/home/parentWarmTheme';
 import { MobileHeader, QuickAction, SectionHeader } from '@/components/helper/home';
 import ParentWorkDashboard from './ParentWorkDashboard';
@@ -32,9 +32,6 @@ import { ParentHomeWeb } from '@/components/parent/web/ParentHomeWeb';
 import { ParentWorkHomeWeb } from '@/components/parent/web/ParentWorkHomeWeb';
 
 const INFO    = '#3B82F6';
-const INFO_BG = '#DBEAFE';
-const AMBER   = '#D97706';
-const AMBER_BG = '#FEF3C7';
 
 type PortalMode = 'recruitment' | 'work';
 const MODE_KEY = 'parent_portal_mode';
@@ -69,7 +66,7 @@ export default function ParentHome() {
   };
 
   // Staged guide: the chapter matching where this employer actually is
-  // (setup → verified → posted a job → managing a placement) auto-opens once
+  // (setup → verified → finding helpers → managing a placement) auto-opens once
   // each time they reach a new one, and never again. Re-openable anytime from
   // the menu. See contexts/GuideContext.tsx.
   //
@@ -79,10 +76,10 @@ export default function ParentHome() {
     syncStage({
       role: 'parent',
       verified: profileData?.profile?.verification_status === 'Verified',
-      hasActivity: (stats?.active_job_posts ?? 0) > 0,
+      hasActivity: (stats?.active_placements ?? 0) > 0,
       working: portalMode === 'work' && (stats?.active_placements ?? 0) > 0,
     });
-  }, [profileData, stats?.active_job_posts, stats?.active_placements, portalMode, modeReady, syncStage]);
+  }, [profileData, stats?.active_placements, portalMode, modeReady, syncStage]);
 
   // One-time celebration when the profile first reaches 90%+ (verification-ready).
   const [celebrateVisible, setCelebrateVisible] = useState(false);
@@ -183,23 +180,10 @@ export default function ParentHome() {
   );
 
   const renderStatsGrid = (mobile?: boolean) => {
-    const jobsApplicantsTab = { pathname: '/(parent)/jobs', params: { tab: 'applicants' } } as any;
     return (
       <View style={mobile ? h.mobileStatsRow : h.statsGrid}>
-        <ParentStatTile icon="briefcase"       color={BROWN}  iconBg={ICON_BG}
-          value={stats.active_job_posts}     label="Active Jobs"
-          onPress={() => router.push('/(parent)/jobs')} />
-        <ParentStatTile icon="people"           color={INFO}   iconBg={INFO_BG}
-          value={stats.total_applicants}     label="Applicants"
-          onPress={() => router.push(jobsApplicantsTab)} />
-        <ParentStatTile icon="time"             color={AMBER}  iconBg={AMBER_BG}
-          value={stats.pending_applications} label="Pending"
-          onPress={() => router.push(jobsApplicantsTab)} />
-        <ParentStatTile icon="star"             color={GOLD}   iconBg="#FBF0DB"
-          value={stats.shortlisted_count}    label="Shortlisted"
-          onPress={() => router.push(jobsApplicantsTab)} />
-        <ParentStatTile icon="checkmark-circle" color={GREEN}  iconBg={SUCCESS_BG}
-          value={stats.active_placements}    label="Hired"
+        <ParentStatTile icon="people"           color={BROWN}  iconBg={ICON_BG}
+          value={stats.active_placements}    label="Active Helpers"
           onPress={() => router.push('/(parent)/hire')} />
         <ParentStatTile icon="bookmark"         color={CARAMEL} iconBg="#FDF7EE"
           value={stats.saved_helpers}        label="Saved"
@@ -287,7 +271,6 @@ export default function ParentHome() {
               avatar={profileImage}
               verified={profileData?.profile?.verification_status === 'Verified'}
               onSwitchMode={switchMode}
-              announcement={<AnnouncementFeed />}
             />
           </>
         ) : (
@@ -324,7 +307,6 @@ export default function ParentHome() {
             userName={getFullName()}
             profileImage={profileImage}
             onSwitchToRecruitment={() => switchMode('recruitment')}
-            announcement={<AnnouncementFeed />}
           />
         </>
       ) : (
@@ -350,23 +332,23 @@ export default function ParentHome() {
           />
           <PlacementExperienceConfirmations userType="parent" accentColor={BROWN} refreshToken={placementReviewRefreshTok} />
           {profileData?.profile?.verification_status === 'Verified' && <RecommendedHelpersSection />}
-          <SectionHeader title="My Hiring Activity" />
+          <SectionHeader title="My Household" />
           {renderStatsGrid(true)}
           <SafetyBanner />
           <SectionHeader title="Quick Actions" />
           <View style={h.quickActionsGrid}>
-            <QuickAction icon="add-circle" label="Post Job"    color={BROWN}  onPress={() => router.push('/(parent)/jobs')} />
             <QuickAction icon="search"     label="Find Helpers" color={GREEN}  onPress={() => router.push('/(parent)/browse')} />
+            <QuickAction icon="people"     label="My Helpers"  color={BROWN}  onPress={() => router.push('/(parent)/hire')} />
             <QuickAction icon="chatbubbles" label="Messages"   color={INFO}   onPress={() => router.push('/(parent)/messages')} />
             <QuickAction icon="person"     label="My Profile"  color="#7C3AED" onPress={() => router.push('/(parent)/profile')} />
           </View>
           <View style={h.hireBanner}>
             <View style={h.hireBannerLeft}>
-              <Text style={h.hireBannerTitle}>Need help at home?</Text>
-              <Text style={h.hireBannerSub}>Post a job and find trusted helpers today.</Text>
+              <Text style={h.hireBannerTitle}>Looking for help at home?</Text>
+              <Text style={h.hireBannerSub}>Browse verified helper profiles and connect through CareLink.</Text>
             </View>
-            <TouchableOpacity style={h.hireBannerBtn} onPress={() => router.push('/(parent)/jobs')}>
-              <Text style={h.hireBannerBtnText}>Post Job</Text>
+            <TouchableOpacity style={h.hireBannerBtn} onPress={() => router.push('/(parent)/browse')}>
+              <Text style={h.hireBannerBtnText}>Find Helpers</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

@@ -68,9 +68,15 @@ function carelink_score_job_for_helper(array $helper, array $helperCatIds, array
     $helperJobIds   = array_map('intval', $helperJobIds);
     $helperSkillIds = array_map('intval', $helperSkillIds);
 
-    $jobJobIds   = array_map('intval', json_decode($job['job_ids']   ?? '[]', true) ?: []);
-    $jobSkillIds = array_map('intval', json_decode($job['skill_ids'] ?? '[]', true) ?: []);
-    $jobCatIds = array_map('intval', json_decode($job['category_ids'] ?? '[]', true) ?: []);
+    $jobJobIds = array_map('intval', is_array($job['job_ids'] ?? null)
+        ? $job['job_ids']
+        : (json_decode($job['job_ids'] ?? '[]', true) ?: []));
+    $jobSkillIds = array_map('intval', is_array($job['skill_ids'] ?? null)
+        ? $job['skill_ids']
+        : (json_decode($job['skill_ids'] ?? '[]', true) ?: []));
+    $jobCatIds = array_map('intval', is_array($job['category_ids'] ?? null)
+        ? $job['category_ids']
+        : (json_decode($job['category_ids'] ?? '[]', true) ?: []));
     if (!$jobCatIds && !empty($job['category_id'])) $jobCatIds = [(int) $job['category_id']];
     $jobCatIds = array_values(array_unique(array_filter($jobCatIds, fn($id) => $id > 0)));
 

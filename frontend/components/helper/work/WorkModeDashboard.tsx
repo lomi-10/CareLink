@@ -32,11 +32,9 @@ import {
 } from '@/components/helper/home/helperWarmTheme';
 import { applicationContractPdfUrl, applicationTerminationRecordUrl } from '@/constants/applications';
 import type { ActiveHire } from '@/contexts/HelperWorkModeContext';
-import { fetchWeekAttendance, postAttendance, ymdLocal, type WeekDayAttendance } from '@/lib/helperWorkApi';
+import { ymdLocal } from '@/lib/helperWorkApi';
 import { noticePeriodStillActive } from '@/lib/terminationApi';
-import { fetchApplicationTasks, type ApplicationTask } from '@/lib/applicationTasksApi';
-import { fetchAttendanceToday, formatAttendanceTime, type AttendanceToday } from '@/lib/attendanceApi';
-import { attendanceDayCellType, weekDotState, nextRestDayYmd, type WeekDotState } from '@/lib/attendanceUi';
+import { nextRestDayYmd } from '@/lib/attendanceUi';
 import { fetchLeaveRequests, type LeaveRequestRow, labelForLeaveReasonCode } from '@/lib/leaveRequestsApi';
 import { fetchPayrollSummary, salaryPeriodAbbr, formatPeso, type PayrollSummary } from '@/lib/payrollApi';
 import { useConversations, useNotice } from '@/hooks/shared';
@@ -81,18 +79,9 @@ export function WorkModeDashboard({
   const { conversations } = useConversations();
 
   const [loading, setLoading] = useState(true);
-  const [actionBusy, setActionBusy] = useState(false);
-  const [weekDays, setWeekDays] = useState<WeekDayAttendance[]>([]);
-  const [employmentStartDate, setEmploymentStartDate] = useState<string | null>(null);
-  const [todayDetail, setTodayDetail] = useState<AttendanceToday | null>(null);
-  const [todayCheckedIn, setTodayCheckedIn] = useState(false);
-  const [todayCheckedOut, setTodayCheckedOut] = useState(false);
-  const [tasks, setTasks] = useState<ApplicationTask[]>([]);
   const [upcomingLeave, setUpcomingLeave] = useState<LeaveRequestRow | null>(null);
   const [payroll, setPayroll] = useState<PayrollSummary | null>(null);
   const [endModal, setEndModal] = useState(false);
-  const [checkoutWarnVisible, setCheckoutWarnVisible] = useState(false);
-  const [checkoutWarnMessage, setCheckoutWarnMessage] = useState('');
   const [complaintModalVisible, setComplaintModalVisible] = useState(false);
 
   const placementTerminationPending = noticePeriodStillActive(
@@ -107,41 +96,11 @@ export function WorkModeDashboard({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [att, todayRes, taskRes, leaveRes, payrollRes] = await Promise.all([
-        fetchWeekAttendance(helperId, activeHire.application_id),
-        fetchAttendanceToday(activeHire.application_id, helperId),
-        fetchApplicationTasks(activeHire.application_id, helperId, 'helper'),
+      const [leaveRes, payrollRes] = await Promise.all([
         fetchLeaveRequests(activeHire.application_id, helperId, 'helper'),
         fetchPayrollSummary(activeHire.application_id, helperId, 'helper'),
       ]);
       if (payrollRes.success && payrollRes.data?.has_contract) setPayroll(payrollRes.data);
-      if (att.success && att.days) {
-        setWeekDays(att.days);
-        setEmploymentStartDate(att.employment_start_date ?? null);
-      }
-
-      if (todayRes.success && todayRes.data) {
-        const d = todayRes.data;
-        setTodayDetail(d);
-        setTodayCheckedIn(!!d.checked_in);
-        setTodayCheckedOut(!!d.checked_out);
-      } else if (att.success && att.today) {
-        const t = att.today;
-        setTodayDetail({
-          date: t.date,
-          is_rest_day: false,
-          checked_in: !!t.checked_in,
-          checked_out: !!t.checked_out,
-          checked_in_at: t.check_in_at,
-          checked_out_at: t.check_out_at,
-          status: null,
-          log_id: null,
-        });
-        setTodayCheckedIn(!!t.checked_in);
-        setTodayCheckedOut(!!t.checked_out);
-      }
-
-      if (taskRes.success && taskRes.data) setTasks(taskRes.data);
 
       if (leaveRes.success && leaveRes.data) {
         const todayYmd = ymdLocal();
@@ -162,32 +121,14 @@ export function WorkModeDashboard({
   }, [load]);
 
   const todayYmd = ymdLocal();
-  const attendanceOn = activeHire.attendance_tracking !== false; // off by default (backend sends false); absent flag = legacy on
-  const beforeStart = !!activeHire.employment_start_date && todayYmd < activeHire.employment_start_date;
-  const isRestNoCheckIn = !!todayDetail?.is_rest_day && !todayCheckedIn;
-  const openTasks = tasks.filter((t) => t.status === 'pending' || t.status === 'skipped');
-  const dueToday = openTasks.filter((t) => !t.due_date || t.due_date === todayYmd);
-  const todayTasks = dueToday.length > 0 ? dueToday : openTasks;
-  const todayDoneCount = tasks.filter((t) => t.status === 'done').length;
-  const todayTotalCount = tasks.length;
 
   const upcomingRestDayYmd = useMemo(() => {
-    if (beforeStart) {
-      return nextRestDayYmd(activeHire.rest_days, activeHire.employment_start_date as string);
-    }
-    const fromWeek = weekDays.find((d) => d.date >= todayYmd && attendanceDayCellType(d) === 'rest');
-    if (fromWeek) return fromWeek.date;
-    return nextRestDayYmd(activeHire.rest_days, todayYmd);
-  }, [weekDays, activeHire.rest_days, activeHire.employment_start_date, todayYmd, beforeStart]);
-
-  const presentCount = weekDays.filter((d) => weekDotState(d) === 'present').length;
-  const scheduledWorkdays = weekDays.filter((d) => attendanceDayCellType(d) !== 'rest').length;
-  const attendanceEncouragement =
-    scheduledWorkdays === 0
-      ? 'No work days scheduled this week.'
-      : presentCount >= scheduledWorkdays
-        ? "Great job — you're on track this week!"
-        : 'Keep it up — check in on your scheduled work days.';
+    const startDate = activeHire.employment_start_date;
+    return nextRestDayYmd(
+      activeHire.rest_days,
+      startDate && todayYmd < startDate ? startDate : todayYmd,
+    );
+  }, [activeHire.rest_days, activeHire.employment_start_date, todayYmd]);
 
   const todayLabel = useMemo(
     () => new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }),
@@ -221,103 +162,7 @@ export function WorkModeDashboard({
     }
   };
 
-  const onCheckIn = async () => {
-    setActionBusy(true);
-    try {
-      const res = await postAttendance(helperId, activeHire.application_id, 'check_in');
-      if (!res.success) {
-        notify('Check in', res.message || 'Failed', 'error');
-        return;
-      }
-      setTodayCheckedIn(true);
-      await load();
-    } finally {
-      setActionBusy(false);
-    }
-  };
-
-  const buildCheckoutWarnings = (): string | null => {
-    const parts: string[] = [];
-    const incomplete = tasks.filter((t) => t.status !== 'done');
-    if (incomplete.length > 0) {
-      parts.push(
-        `${incomplete.length} task(s) are not marked done yet (pending or skipped).`,
-      );
-    }
-    const endAt = todayDetail?.expected_shift_end_at;
-    if (endAt) {
-      try {
-        const endMs = new Date(endAt.replace(' ', 'T')).getTime();
-        if (!Number.isNaN(endMs) && Date.now() < endMs) {
-          const t = new Date(endMs).toLocaleTimeString(undefined, {
-            hour: 'numeric',
-            minute: '2-digit',
-          });
-          parts.push(`Your scheduled shift end is ${t}. You are checking out early.`);
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-    if (parts.length === 0) return null;
-    return parts.join('\n\n');
-  };
-
-  const runCheckOut = async () => {
-    setActionBusy(true);
-    try {
-      const res = await postAttendance(helperId, activeHire.application_id, 'check_out');
-      if (!res.success) {
-        notify('Check out', res.message || 'Failed', 'error');
-        return;
-      }
-      setTodayCheckedOut(true);
-      await load();
-    } finally {
-      setActionBusy(false);
-    }
-  };
-
-  const onCheckOut = () => {
-    const warn = buildCheckoutWarnings();
-    if (warn) {
-      setCheckoutWarnMessage(warn);
-      setCheckoutWarnVisible(true);
-      return;
-    }
-    void runCheckOut();
-  };
-
   // ── "Today's work" status pill ────────────────────────────────────────────
-  let statusLabel: string;
-  let statusBg: string;
-  let statusColor: string;
-  if (beforeStart) {
-    statusLabel = `Starts ${formatLongDate(activeHire.employment_start_date) || ''}`;
-    statusBg = INFO_BG;
-    statusColor = BLUE;
-  } else if (isRestNoCheckIn) {
-    statusLabel = 'Rest Day';
-    statusBg = DIVIDER;
-    statusColor = MUTED;
-  } else if (todayCheckedOut) {
-    statusLabel = 'Done for Today';
-    statusBg = DIVIDER;
-    statusColor = MUTED;
-  } else if (todayCheckedIn) {
-    statusLabel = todayDetail?.checked_in_at
-      ? `Checked In at ${formatAttendanceTime(todayDetail.checked_in_at)}`
-      : 'Checked In';
-    statusBg = SUCCESS_BG;
-    statusColor = GREEN;
-  } else {
-    // Not checked in is NOT an error — checking in is optional record-keeping,
-    // so this reads calm/neutral, never alarming red.
-    statusLabel = 'Not checked in';
-    statusBg = DIVIDER;
-    statusColor = MUTED;
-  }
-
   const heroName = userFullName || userFirstName || 'Helper';
 
   return (
@@ -365,7 +210,9 @@ export function WorkModeDashboard({
         <View style={styles.heroDetailsRow}>
           <View style={styles.heroDetailCol}>
             <Text style={styles.heroDetailLabel}>Start Date</Text>
-            <Text style={styles.heroDetailValue}>{formatLongDate(employmentStartDate) || '—'}</Text>
+            <Text style={styles.heroDetailValue}>
+              {formatLongDate(activeHire.employment_start_date) || '—'}
+            </Text>
           </View>
           <View style={styles.heroDetailCol}>
             <Text style={styles.heroDetailLabel}>Work Location</Text>
@@ -398,15 +245,6 @@ export function WorkModeDashboard({
         </View>
       ) : null}
 
-      {beforeStart ? (
-        <View style={[styles.noticeBanner, { backgroundColor: INFO_BG }]}>
-          <Ionicons name="information-circle-outline" size={20} color={BLUE} />
-          <Text style={styles.noticeBannerText}>
-            This is a preview of your placement. Check in/out unlocks on{' '}
-            {formatLongDate(activeHire.employment_start_date)}.
-          </Text>
-        </View>
-      ) : null}
 
       {loading ? (
         <ActivityIndicator color={ORANGE} style={{ marginVertical: 24 }} />
@@ -422,18 +260,10 @@ export function WorkModeDashboard({
 
               <Text style={styles.payrollAmount}>{formatPeso(payroll.estimated_earned)}</Text>
               <Text style={styles.payrollSub}>
-                {payroll.attendance_tracking
-                  ? `${payroll.is_estimate ? 'Estimated earnings so far' : 'Earned so far'}${payroll.salary_amount > 0 ? ` · agreed ${formatPeso(payroll.salary_amount)}/${salaryPeriodAbbr(payroll.salary_period)}` : ''}`
-                  : `Your agreed salary${payroll.salary_period ? ` · per ${salaryPeriodAbbr(payroll.salary_period)}` : ''}`}
+                {`${payroll.is_estimate ? 'Estimated pay' : 'Contract pay'}${payroll.salary_amount > 0 ? ` · agreed ${formatPeso(payroll.salary_amount)}/${salaryPeriodAbbr(payroll.salary_period)}` : ''}`}
               </Text>
 
               <View style={styles.payrollStatsRow}>
-                {payroll.attendance_tracking ? (
-                  <View style={styles.payrollStat}>
-                    <Text style={styles.payrollStatValue}>{payroll.days_worked}</Text>
-                    <Text style={styles.payrollStatLabel}>Days worked</Text>
-                  </View>
-                ) : null}
                 <View style={styles.payrollStat}>
                   <Text style={styles.payrollStatValue}>{payroll.leave_used}</Text>
                   <Text style={styles.payrollStatLabel}>Leave used</Text>
@@ -445,9 +275,7 @@ export function WorkModeDashboard({
               </View>
 
               <Text style={styles.payrollNote}>
-                {payroll.attendance_tracking
-                  ? 'Final pay is set by your employer — this is a summary to help you keep track.'
-                  : 'Attendance isn’t tracked for this placement, so this is your flat agreed salary. Final pay is set by your employer.'}
+                This summary reflects your contract pay schedule and approved paid/unpaid leave. Your employer issues final pay and payslips.
               </Text>
             </View>
           ) : null}
@@ -504,164 +332,8 @@ export function WorkModeDashboard({
               </View>
             </View>
 
-            {attendanceOn ? (
-            <>
-            <View style={[styles.statusPill, { backgroundColor: statusBg, alignSelf: 'flex-start' }]}>
-              <Text style={[styles.statusPillText, { color: statusColor }]}>{statusLabel}</Text>
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.mainCta,
-                beforeStart && styles.mainCtaRest,
-                !beforeStart && !todayCheckedIn && !todayCheckedOut && !isRestNoCheckIn && styles.mainCtaIn,
-                !beforeStart && todayCheckedIn && !todayCheckedOut && styles.mainCtaOut,
-                !beforeStart && todayCheckedOut && styles.mainCtaDone,
-                !beforeStart && isRestNoCheckIn && styles.mainCtaRest,
-              ]}
-              onPress={() => {
-                if (beforeStart || todayCheckedOut || isRestNoCheckIn) return;
-                if (!todayCheckedIn) void onCheckIn();
-                else void onCheckOut();
-              }}
-              disabled={actionBusy || beforeStart || todayCheckedOut || isRestNoCheckIn}
-              activeOpacity={0.9}
-            >
-              {actionBusy ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons
-                    name={
-                      beforeStart
-                        ? 'time-outline'
-                        : todayCheckedOut
-                          ? 'checkmark-done'
-                          : todayCheckedIn
-                            ? 'log-out-outline'
-                            : 'log-in-outline'
-                    }
-                    size={24}
-                    color="#fff"
-                  />
-                  <Text style={styles.mainCtaText}>
-                    {beforeStart
-                      ? `Starts ${formatLongDate(activeHire.employment_start_date) || ''}`
-                      : isRestNoCheckIn
-                        ? 'Rest day'
-                        : todayCheckedOut
-                          ? 'Done for today'
-                          : todayCheckedIn
-                            ? 'Check out'
-                            : 'Check in'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            {isRestNoCheckIn ? (
-              <Text style={styles.restHint}>Scheduled rest day — no check-in required.</Text>
-            ) : null}
-
-            {!beforeStart && !isRestNoCheckIn && !todayCheckedOut ? (
-              <Text style={styles.restHint}>
-                {todayCheckedIn
-                  ? "Check out when you're done — or don't; a missed check-out won't count against you."
-                  : 'Checking in is optional — it just records your day for your attendance and payroll.'}
-              </Text>
-            ) : null}
-            </>
-            ) : (
-              <Text style={styles.restHint}>Attendance tracking is off for this placement — no check-ins needed. Your schedule is shown above.</Text>
-            )}
           </View>
 
-          {/* Tasks (priority #4 — before attendance) */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="clipboard-outline" size={18} color={ORANGE} />
-              <Text style={styles.cardHeaderTitle}>TODAY'S TASKS</Text>
-            </View>
-
-            {todayTotalCount > 0 ? (
-              <Text style={styles.tasksProgress}>{todayDoneCount} of {todayTotalCount} completed</Text>
-            ) : null}
-
-            {todayTasks.length === 0 ? (
-              <Text style={styles.emptyText}>No open tasks right now.</Text>
-            ) : (
-              <View style={styles.taskList}>
-                {todayTasks.slice(0, 6).map((t) => {
-                  const done = t.status === 'done';
-                  return (
-                    <TouchableOpacity
-                      key={t.id}
-                      style={styles.taskRow}
-                      onPress={() => router.push('/(helper)/work/tasks')}
-                      activeOpacity={0.7}
-                      disabled={done}
-                    >
-                      <Ionicons
-                        name={done ? 'checkmark-circle' : 'ellipse-outline'}
-                        size={20}
-                        color={done ? GREEN : SUBTLE}
-                      />
-                      <Text
-                        style={[styles.taskTitle, done && styles.taskTitleDone]}
-                        numberOfLines={2}
-                      >
-                        {t.title}
-                      </Text>
-                      {done ? (
-                        <View style={styles.donePill}>
-                          <Text style={styles.donePillText}>Done</Text>
-                        </View>
-                      ) : (
-                        <Ionicons name="chevron-forward" size={16} color={SUBTLE} />
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-
-            <TouchableOpacity onPress={() => router.push('/(helper)/work/tasks')}>
-              <Text style={styles.link}>View all tasks</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Attendance (priority #5 — last; only when tracking is on) */}
-          {attendanceOn && (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="calendar-outline" size={18} color={ORANGE} />
-              <Text style={styles.cardHeaderTitle}>THIS WEEK'S ATTENDANCE</Text>
-            </View>
-
-            <View style={styles.weekRow}>
-              {weekDays.map((d) => {
-                const state = weekDotState(d);
-                return (
-                  <View key={d.date} style={styles.dayCol}>
-                    <Text style={styles.dayLbl}>{d.weekday.slice(0, 1)}</Text>
-                    <WeekDot state={state} styles={styles} />
-                  </View>
-                );
-              })}
-            </View>
-
-            <Text style={styles.daysWorkedText}>
-              {presentCount}/{scheduledWorkdays} Days Worked
-            </Text>
-            <Text style={styles.encourageText}>{attendanceEncouragement}</Text>
-
-            <View style={styles.legendRow}>
-              <LegendItem styles={styles} state="present" label="Present" />
-              <LegendItem styles={styles} state="scheduled" label="Scheduled" />
-              <LegendItem styles={styles} state="missed" label="Missed" />
-            </View>
-          </View>
-          )}
 
           {/* E — Upcoming */}
           <View style={styles.card}>
@@ -726,16 +398,6 @@ export function WorkModeDashboard({
                 <Text style={styles.quickLabel}>Request Leave</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.quickTile}
-                onPress={() => router.push('/(helper)/work')}
-                activeOpacity={0.88}
-              >
-                <View style={[styles.quickIconWrap, { backgroundColor: ICON_BG }]}>
-                  <Ionicons name="calendar-outline" size={22} color={ORANGE} />
-                </View>
-                <Text style={styles.quickLabel}>View Attendance</Text>
-              </TouchableOpacity>
             </View>
 
             {!placementTerminationPending ? (
@@ -774,19 +436,6 @@ export function WorkModeDashboard({
         }}
       />
 
-      <ConfirmationModal
-        visible={checkoutWarnVisible}
-        title="Check out anyway?"
-        message={checkoutWarnMessage}
-        type="warning"
-        confirmText="Check out"
-        cancelText="Stay checked in"
-        onCancel={() => setCheckoutWarnVisible(false)}
-        onConfirm={() => {
-          setCheckoutWarnVisible(false);
-          void runCheckOut();
-        }}
-      />
 
       <SubmitComplaintModal
         visible={complaintModalVisible}
@@ -813,36 +462,6 @@ export function WorkModeDashboard({
 
 type DashboardStyles = ReturnType<typeof createWorkModeDashboardStyles>;
 
-function WeekDot({ state, styles }: { state: WeekDotState; styles: DashboardStyles }) {
-  if (state === 'present') {
-    return (
-      <View style={[styles.weekDot, styles.weekDotPresent]}>
-        <Ionicons name="checkmark" size={12} color="#fff" />
-      </View>
-    );
-  }
-  if (state === 'missed') {
-    return <View style={[styles.weekDot, styles.weekDotMissed]} />;
-  }
-  return <View style={[styles.weekDot, styles.weekDotScheduled]} />;
-}
-
-function LegendItem({
-  styles,
-  state,
-  label,
-}: {
-  styles: DashboardStyles;
-  state: WeekDotState;
-  label: string;
-}) {
-  return (
-    <View style={styles.legendItem}>
-      <WeekDot state={state} styles={styles} />
-      <Text style={styles.legendText}>{label}</Text>
-    </View>
-  );
-}
 
 function createWorkModeDashboardStyles() {
   const CARD_SHADOW = Platform.select({

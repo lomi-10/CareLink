@@ -22,6 +22,7 @@ header('Content-Type: text/plain; charset=utf-8');
 
 require_once __DIR__ . '/../dbcon.php';
 require_once __DIR__ . '/../shared/job_title.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 $dryRun = isset($_GET['dry']) && $_GET['dry'] !== '0';
 
@@ -29,7 +30,7 @@ echo $dryRun
     ? "DRY RUN — nothing will be written.\n\n"
     : "APPLYING CHANGES.\n\n";
 
-$sql = "SELECT jp.job_post_id, jp.title, jp.job_ids, jp.custom_job_title, rc.category_name
+$sql = "SELECT jp.job_post_id, jp.title, jp.custom_job_title, rc.category_name
         FROM job_posts jp
         LEFT JOIN ref_categories rc ON rc.category_id = jp.category_id";
 $rows = $conn->query($sql);
@@ -39,11 +40,20 @@ if (!$rows) {
 }
 
 $upd = $conn->prepare("UPDATE job_posts SET title = ? WHERE job_post_id = ?");
+$jobRows = [];
+while ($row = $rows->fetch_assoc()) $jobRows[] = $row;
+$relationMap = carelink_load_job_post_relations(
+    $conn,
+    array_map(fn($row) => (int) $row['job_post_id'], $jobRows)
+);
 $changed = 0;
 $skipped = 0;
 
-while ($j = $rows->fetch_assoc()) {
-    $roles = carelink_role_names_for_job_ids($conn, $j['job_ids']);
+foreach ($jobRows as $j) {
+    $roles = carelink_role_names_for_job_ids(
+        $conn,
+        $relationMap[(int) $j['job_post_id']]['job_ids'] ?? []
+    );
     $new   = carelink_build_job_title($j['category_name'], $roles, $j['custom_job_title'] ?? null);
 
     if ($new === '' || $new === $j['title']) {

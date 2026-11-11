@@ -2,9 +2,7 @@
 // Turn rows into a CSV file the user actually receives — a download in the
 // browser, a share sheet on a phone.
 //
-// Opens cleanly in Excel and Google Sheets, which is the point: evaluation
-// responses need to leave the app and land somewhere they can be charted and
-// quoted for a written report.
+// Opens cleanly in Excel and Google Sheets for readable exports.
 
 import { Platform, Share } from 'react-native';
 

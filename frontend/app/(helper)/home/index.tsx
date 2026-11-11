@@ -15,7 +15,7 @@ import { useHelperWarm, PAGE_BG_WEB } from '@/components/helper/home/helperWarmT
 import { useHelperStats, useHelperProfile } from '@/hooks/helper';
 import { useAuth, useResponsive, useNotifications, useDemoSession } from '@/hooks/shared';
 import { FontFamily } from '@/constants/GlobalStyles';
-import FeedbackModal from '@/components/shared/FeedbackModal';
+import API_URL from '@/constants/api';
 
 import { AnnouncementFeed, NotificationModal, ConfirmationModal, PendingPlacementReviewsBanner, PlacementReviewModal, PostPlacementRenewalCard, PlacementExperienceConfirmations } from '@/components/shared';
 import { useGuide } from '@/contexts/GuideContext';
@@ -59,8 +59,8 @@ export default function HelperHome() {
   const { userData, loading: authLoading, handleLogout, getFullName } = useAuth();
   const { syncStage } = useGuide();
   const { isDemoParticipant } = useDemoSession();
-  // { open, demoEnd } — demoEnd also clears seeded-employer activity and signs out.
-  const [feedback, setFeedback] = useState<{ open: boolean; demoEnd: boolean }>({ open: false, demoEnd: false });
+  const [demoResetError, setDemoResetError] = useState<string | null>(null);
+  const [isFinishingDemo, setIsFinishingDemo] = useState(false);
   const { stats, loading: statsLoading, refresh } = useHelperStats();
   // Fetch profile to get the latest profile_image (userData in AsyncStorage may be stale)
   const { profileData, refresh: refreshProfile } = useHelperProfile();
@@ -143,6 +143,35 @@ export default function HelperHome() {
 
   const initiateLogout = () => { setIsMobileMenuOpen(false); setConfirmLogoutVisible(true); };
   const executeLogout  = () => { setConfirmLogoutVisible(false); setSuccessLogoutVisible(true); };
+
+  const finishDemoSession = async () => {
+    if (isFinishingDemo) return;
+    const userId = String(userData?.user_id ?? '');
+    if (!userId) {
+      setDemoResetError('Please sign in again before finishing the demo session.');
+      return;
+    }
+
+    setIsFinishingDemo(true);
+    setDemoResetError(null);
+    try {
+      const response = await fetch(`${API_URL}/shared/demo_reset.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, requester_id: userId }),
+      });
+      const data = await response.json() as { success?: boolean; message?: string };
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Could not clear demo activity. Please try again.');
+      }
+      await handleLogout();
+    } catch (error) {
+      console.error('Could not finish demo session:', error);
+      setDemoResetError(error instanceof Error ? error.message : 'Could not clear demo activity. Please try again.');
+    } finally {
+      setIsFinishingDemo(false);
+    }
+  };
 
   const switchMode = (mode: 'recruitment' | 'work') => {
     void setPortalMode(mode).catch((error) => {
@@ -267,14 +296,6 @@ export default function HelperHome() {
 
   const renderModals = () => (
     <>
-      <FeedbackModal
-        visible={feedback.open}
-        onClose={() => setFeedback({ open: false, demoEnd: false })}
-        role="helper"
-        accent={ORANGE}
-        context={feedback.demoEnd ? 'demo_end' : 'general'}
-        clearDemoDataOnSubmit={feedback.demoEnd}
-      />
       <NotificationModal
         visible={celebrateVisible}
         message={t('helper.home.profileCompleteNotice')}
@@ -282,6 +303,13 @@ export default function HelperHome() {
         autoClose
         duration={2800}
         onClose={() => setCelebrateVisible(false)}
+      />
+      <NotificationModal
+        visible={demoResetError !== null}
+        message={demoResetError ?? ''}
+        type="error"
+        autoClose={false}
+        onClose={() => setDemoResetError(null)}
       />
       <ConfirmationModal
         visible={confirmLogoutVisible}
@@ -437,6 +465,7 @@ export default function HelperHome() {
           onBrowse={() => router.push('/(helper)/browse')}
           banners={desktopBanners}
           announcement={<AnnouncementFeed />}
+          onFinishDemo={isDemoParticipant ? finishDemoSession : undefined}
         />
         {renderModals()}
       </View>
@@ -620,8 +649,7 @@ export default function HelperHome() {
         onClose={() => setIsMobileMenuOpen(false)}
         stats={stats}
         handleLogout={initiateLogout}
-        onOpenFeedback={() => setFeedback({ open: true, demoEnd: false })}
-        onFinishDemo={isDemoParticipant ? () => setFeedback({ open: true, demoEnd: true }) : undefined}
+        onFinishDemo={isDemoParticipant ? finishDemoSession : undefined}
       />
       {renderModals()}
     </SafeAreaView>

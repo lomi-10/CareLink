@@ -15,6 +15,7 @@ require_once '../dbcon.php';
 require_once __DIR__ . '/../shared/ownership_guard.php';
 require_once __DIR__ . '/../shared/job_match.php'; // carelink_haversine — same distance as Browse
 require_once __DIR__ . '/../shared/helper_safeguards.php';
+require_once __DIR__ . '/../shared/multivalue_relations.php';
 
 // Support two modes:
 //   ?job_post_id=X  — applications for a specific job
@@ -78,7 +79,7 @@ try {
             c.vacation_leave_days, c.sick_leave_days, c.special_conditions,
             c.overtime_rate, c.debt_agreement, c.debt_amount,
             c.deployment_agreement, c.termination_conditions,
-            jp.title AS job_title, jp.start_date AS job_start_date, jp.category_id, jp.skill_ids AS job_skill_ids, jp.custom_skills AS job_custom_skills,
+            jp.title AS job_title, jp.start_date AS job_start_date, jp.category_id,
             rc.category_name,
             u.first_name, u.last_name, u.email, u.phone AS contact_number,
             hp.profile_id, hp.profile_image, hp.gender, hp.preferred_rest_day,
@@ -117,8 +118,14 @@ try {
     
     $result = $conn->query($query);
     $applications = [];
+    $applicationRows = [];
+    while ($applicationRow = $result->fetch_assoc()) $applicationRows[] = $applicationRow;
+    $jobRelations = carelink_load_job_post_relations(
+        $conn,
+        array_map(fn($row) => (int) $row['job_post_id'], $applicationRows)
+    );
 
-    while ($row = $result->fetch_assoc()) {
+    foreach ($applicationRows as $row) {
         $helper_id = (int)$row['helper_id'];
         $profile_id = (int)$row['profile_id'];
 
@@ -173,10 +180,10 @@ try {
             }
         }
 
-        // The JOB's required skills (for the contract) — distinct from the helper's
-        // skills above. Resolve jp.skill_ids (+ any custom free-text) to names.
+        // The JOB's required skills (for the contract) — distinct from the helper's skills above.
         $jobSkillNames = [];
-        $jobSkillIds = json_decode($row['job_skill_ids'] ?? '[]', true) ?: [];
+        $jobPostValues = $jobRelations[(int) $row['job_post_id']] ?? [];
+        $jobSkillIds = $jobPostValues['skill_ids'] ?? [];
         if (!empty($jobSkillIds)) {
             $safeSkillIds = implode(',', array_filter(array_map('intval', $jobSkillIds), fn($n) => $n > 0));
             if ($safeSkillIds !== '') {
@@ -184,9 +191,9 @@ try {
                 if ($jsRes) { while ($jr = $jsRes->fetch_assoc()) $jobSkillNames[] = $jr['skill_name']; }
             }
         }
-        $jobCustomSk = json_decode($row['job_custom_skills'] ?? '[]', true);
-        if (is_array($jobCustomSk)) {
-            foreach ($jobCustomSk as $cs) { $cs = trim((string) $cs); if ($cs !== '') $jobSkillNames[] = $cs; }
+        foreach ($jobPostValues['custom_skill_values'] ?? [] as $cs) {
+            $cs = trim((string) $cs);
+            if ($cs !== '') $jobSkillNames[] = $cs;
         }
 
         // Map everything exactly as the Applications Screen expects it!

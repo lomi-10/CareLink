@@ -2,7 +2,7 @@
 /**
  * GET ?parent_id=&helper_id=
  * Returns active applications (Pending, Reviewed, Shortlisted, Interview Scheduled) for this helper with this employer.
- * needs_selection = true when more than one row (employer must pick before hire_helper.php).
+ * needs_selection = true when at least two applications are shortlisted.
  */
 header('Content-Type: application/json; charset=UTF-8');
 header('Access-Control-Allow-Origin: *');
@@ -119,6 +119,39 @@ try {
     }
     $st->close();
 
+    $shortlistedCount = 0;
+    foreach ($applications as $application) {
+        if ($application['status'] === 'Shortlisted') {
+            $shortlistedCount++;
+        }
+    }
+
+    $activeContractStmt = $conn->prepare("
+        SELECT ja.application_id, ja.job_post_id, ja.status, jp.title AS job_title
+        FROM job_applications ja
+        INNER JOIN job_posts jp ON jp.job_post_id = ja.job_post_id
+        WHERE jp.parent_id = ?
+          AND ja.helper_id = ?
+          AND ja.status IN ('contract_pending', 'hired', 'Accepted')
+        ORDER BY CASE WHEN ja.status = 'contract_pending' THEN 0 ELSE 1 END
+        LIMIT 1
+    ");
+    if (!$activeContractStmt) {
+        throw new Exception('Unable to check for an existing contract: ' . $conn->error);
+    }
+    $activeContractStmt->bind_param('ii', $parent_id, $helper_id);
+    if (!$activeContractStmt->execute()) {
+        throw new Exception('Unable to check for an existing contract: ' . $activeContractStmt->error);
+    }
+    $activeContractRow = $activeContractStmt->get_result()->fetch_assoc();
+    $activeContractStmt->close();
+    $activeContract = $activeContractRow ? [
+        'application_id' => (int) $activeContractRow['application_id'],
+        'job_post_id' => (int) $activeContractRow['job_post_id'],
+        'job_title' => $activeContractRow['job_title'],
+        'status' => $activeContractRow['status'],
+    ] : null;
+
     $hn = $conn->prepare('SELECT first_name, last_name FROM users WHERE user_id = ? LIMIT 1');
     $hn->bind_param('i', $helper_id);
     $hn->execute();
@@ -138,10 +171,11 @@ try {
 
     echo json_encode([
         'success' => true,
-        'needs_selection' => count($applications) > 1,
+        'needs_selection' => $shortlistedCount >= 2,
         'helper_name' => $helper_name,
         'helper_preferred_rest_day' => $helperRestDay,
         'applications' => $applications,
+        'active_contract' => $activeContract,
     ]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);

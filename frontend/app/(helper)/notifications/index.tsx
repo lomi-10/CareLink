@@ -55,8 +55,6 @@ function buildNotificationTypeConfig() {
     peso_queue_user: { icon: 'people-outline', color: ORANGE, bg: ICON_BG },
     peso_queue_job: { icon: 'briefcase-outline', color: ORANGE, bg: ICON_BG },
     message_received: { icon: 'chatbubble-outline', color: INFO, bg: INFO_BG },
-    task_completed: { icon: 'checkmark-done-outline', color: GREEN, bg: SUCCESS_BG },
-    attendance_checkin: { icon: 'log-in-outline', color: GREEN, bg: SUCCESS_BG },
     leave_request_submitted: { icon: 'umbrella-outline', color: WARNING, bg: WARNING_BG },
     leave_request_responded: { icon: 'checkmark-circle-outline', color: INFO, bg: INFO_BG },
     contract_terminated: { icon: 'document-text-outline', color: DANGER, bg: DANGER_BG },

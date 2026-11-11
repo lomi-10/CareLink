@@ -32,28 +32,13 @@ function carelink_v1_load_hire(mysqli $conn, int $application_id): ?array
     if (!$row) {
         return null;
     }
-    // DBs may store mixed case (e.g. Hired, HIRED). Normalize so attendance/leave APIs don't false-negative.
+    // DBs may store mixed case (e.g. Hired, HIRED). Normalize for hire access checks.
     $st = strtolower(trim((string) ($row['status'] ?? '')));
     $ok = in_array($st, ['hired', 'accepted', 'termination_pending'], true);
     if (!$ok) {
         return null;
     }
     return $row;
-}
-
-function carelink_v1_assert_can_view_attendance(mysqli $conn, int $application_id, int $user_id, string $user_type): ?array
-{
-    $hire = carelink_v1_load_hire($conn, $application_id);
-    if (!$hire) {
-        return null;
-    }
-    if ($user_type === 'parent' && (int) $hire['parent_id'] === $user_id) {
-        return $hire;
-    }
-    if ($user_type === 'helper' && (int) $hire['helper_id'] === $user_id) {
-        return $hire;
-    }
-    return null;
 }
 
 /** Parent (job owner) on active hire for this application. */

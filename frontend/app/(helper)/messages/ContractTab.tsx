@@ -41,7 +41,17 @@ export default function ContractTab({
           <Text style={s.contractEmptyTitle}>No contract yet</Text>
           <Text style={s.contractEmptySub}>No application linked to this conversation yet.</Text>
         </View>
-      ) : resolvedApp.status === 'Rejected' || resolvedApp.status === 'Withdrawn' || resolvedApp.status === 'auto_rejected' ? (
+      ) : resolvedApp.status === 'auto_rejected' ? (
+        <View style={s.contractEmptyState}>
+          <View style={s.contractEmptyIconWrap}>
+            <Ionicons name="document-text-outline" size={36} color={SUBTLE} />
+          </View>
+          <Text style={s.contractEmptyTitle}>No contract for this application</Text>
+          <Text style={s.contractEmptySub}>
+            {resolvedApp.parent_notes || 'The employer moved forward with another position for you.'}
+          </Text>
+        </View>
+      ) : resolvedApp.status === 'Rejected' || resolvedApp.status === 'Withdrawn' ? (
         <View style={s.contractEmptyState}>
           <View style={s.contractEmptyIconWrap}>
             <Ionicons name="document-text-outline" size={36} color={SUBTLE} />

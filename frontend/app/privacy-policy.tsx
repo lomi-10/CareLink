@@ -105,9 +105,7 @@ export default function PrivacyPolicyScreen() {
             <Bullet>
               <Text style={s.strong}>Identity and contact details</Text> you enter at signup and in your
               profile: name, email address, mobile number, birth date, sex, civil status, address,
-              and profile photo. Religion may be present in an employer's private profile; that
-              optional value is not shared in helper-facing profiles or used in matching. Helpers do
-              not provide religion, and employers cannot request it as a job preference.
+              and profile photo. CareLink does not collect religion or use it in recruitment.
             </Bullet>
             <Bullet>
               <Text style={s.strong}>Government-issued documents</Text> you upload: Valid ID, Barangay
@@ -121,8 +119,8 @@ export default function PrivacyPolicyScreen() {
               it determines what care is being asked for.
             </Bullet>
             <Bullet>
-              <Text style={s.strong}>Employment records</Text>: job posts, applications, interviews,
-              contracts, agreed salary, attendance and hours, leave, tasks, and placement history.
+              <Text style={s.strong}>Employment records</Text>: applications, interviews, contracts,
+              agreed salary and rest days, leave requests, payslips, and placement history.
             </Bullet>
             <Bullet>
               <Text style={s.strong}>Messages and calls</Text> exchanged with the other party through

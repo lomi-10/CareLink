@@ -24,6 +24,7 @@ include_once __DIR__ . '/../shared/ownership_guard.php';
 include_once __DIR__ . '/../shared/file_security.php';
 include_once __DIR__ . '/../shared/experience_verification.php';
 include_once __DIR__ . '/../shared/helper_safeguards.php';
+include_once __DIR__ . '/../shared/multivalue_relations.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -124,8 +125,6 @@ try {
                     END AS has_active_placement,
                     hp.rating_average,
                     hp.rating_count,
-                    hp.custom_jobs,
-                    hp.custom_skills,
                     hp.created_at,
                     hp.updated_at
                 FROM helper_profiles hp
@@ -143,9 +142,12 @@ try {
     if ($profileResult->num_rows > 0) {
         $profile = $profileResult->fetch_assoc();
         $profile_id = intval($profile['profile_id']);
-        // Decode free-text custom roles/skills (stored as JSON text) into arrays.
-        $profile['custom_jobs']   = $profile['custom_jobs']   ? (json_decode($profile['custom_jobs'], true)   ?: array()) : array();
-        $profile['custom_skills'] = $profile['custom_skills'] ? (json_decode($profile['custom_skills'], true) ?: array()) : array();
+        $customValues = carelink_load_helper_custom_values($conn, [$profile_id])[$profile_id] ?? [
+            'custom_jobs' => [],
+            'custom_skills' => [],
+        ];
+        $profile['custom_jobs'] = $customValues['custom_jobs'];
+        $profile['custom_skills'] = $customValues['custom_skills'];
         
         // Convert data types
         $profile['profile_id'] = $profile_id;

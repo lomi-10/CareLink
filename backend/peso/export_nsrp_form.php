@@ -25,6 +25,7 @@ error_reporting(0);
 include_once '../dbcon.php';
 include_once __DIR__ . '/peso_auth.php';
 include_once __DIR__ . '/../shared/auth_tokens.php';
+include_once __DIR__ . '/../shared/multivalue_relations.php';
 
 function nsrp_decode_string_list(?string $json, string $fieldName): array
 {
@@ -70,7 +71,7 @@ try {
                 u.phone AS contact_number,
                 h.birth_date, h.gender, h.civil_status, h.address, h.landmark, h.barangay, h.municipality, h.province,
                 h.education_level, h.experience_years, h.availability_status, h.employment_type, h.work_schedule,
-                h.expected_salary, h.salary_period, h.custom_jobs, h.custom_skills,
+                h.expected_salary, h.salary_period,
                 h.verification_status
            FROM users u
            INNER JOIN helper_profiles h ON h.user_id = u.user_id
@@ -109,6 +110,10 @@ try {
     if ($profileId <= 0) {
         throw new Exception('Helper profile not found.');
     }
+    $customValues = carelink_load_helper_custom_values($conn, [$profileId])[$profileId] ?? [
+        'custom_jobs' => [],
+        'custom_skills' => [],
+    ];
 
     $jobs = [];
     $jobsStmt = $conn->prepare(
@@ -135,7 +140,7 @@ try {
         ];
     }
     $jobsStmt->close();
-    foreach (nsrp_decode_string_list($profile['custom_jobs'] ?? null, 'custom jobs') as $customJob) {
+    foreach ($customValues['custom_jobs'] as $customJob) {
         $key = strtolower($customJob);
         $alreadyIncluded = false;
         foreach ($jobs as $job) {
@@ -172,7 +177,7 @@ try {
     $skillsStmt->close();
     $skills = array_merge(
         $skills,
-        nsrp_decode_string_list($profile['custom_skills'] ?? null, 'custom skills')
+        $customValues['custom_skills']
     );
     $uniqueSkills = [];
     $seenSkills = [];

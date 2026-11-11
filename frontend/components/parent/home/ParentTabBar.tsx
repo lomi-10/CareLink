@@ -2,7 +2,7 @@
 // Mobile bottom tab bar for the parent portal — mirrors the helper portal's
 // HelperTabBar look (dark warm bar, bold active labels, elevated center action,
 // message unread badge), trimmed to 5 tabs per the reference mockup:
-// Dashboard · Find Helpers · Post Job (elevated gold FAB) · Messages · Profile.
+// Dashboard · Find Helpers · Work Management (elevated gold FAB) · Messages · Profile.
 
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
@@ -34,7 +34,7 @@ type TabDef = {
 const TABS: TabDef[] = [
   { path: '/(parent)/home',     label: 'Dashboard',  icon: 'home-outline',        iconActive: 'home' },
   { path: '/(parent)/browse',   label: 'Find',       icon: 'search-outline',      iconActive: 'search' },
-  { path: '/(parent)/jobs',     label: 'Work',       icon: 'briefcase',           iconActive: 'briefcase', isCenter: true },
+  { path: '/(parent)/jobs',     label: 'Work',       icon: 'briefcase-outline',  iconActive: 'briefcase', isCenter: true },
   { path: '/(parent)/messages', label: 'Messages',   icon: 'chatbubbles-outline', iconActive: 'chatbubbles' },
   { path: '/(parent)/profile',  label: 'Profile',    icon: 'person-outline',      iconActive: 'person' },
 ];
@@ -174,7 +174,7 @@ const s = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // Center elevated "Post Job" button — gold FAB per reference mockup
+  // Center elevated "My Helpers" button.
   centerTab: {
     flex: 1,
     alignItems: 'center',

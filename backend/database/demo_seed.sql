@@ -75,17 +75,15 @@ JOIN (
 
 -- ── 4. Job posts ─────────────────────────────────────────────────────────────
 -- status='Open' = already PESO-approved, so helpers see them immediately.
--- job_ids / skill_ids are real ref_jobs / ref_skills ids — the matcher reads
--- these directly, and a helper's CATEGORIES are derived from their job roles,
--- so these must be valid or matching silently scores zero.
+-- Relation rows are inserted below using each post's unique title and employer.
 INSERT INTO job_posts
-  (parent_id, category_id, job_ids, skill_ids, title, description,
+  (parent_id, category_id, title, description,
    employment_type, work_schedule, salary_offered, salary_period,
    province, municipality, barangay, latitude, longitude,
    min_age, max_age, min_experience_years, work_hours, days_off, contract_duration,
    provides_meals, provides_accommodation, provides_sss, provides_philhealth, provides_pagibig,
    vacation_days, sick_days, status, posted_at, verified_at) 
-SELECT u.user_id, v.cat, v.jobs, v.skills, v.title, v.descr,
+SELECT u.user_id, v.cat, v.title, v.descr,
        v.etype, v.sched, v.salary, 'Monthly',
        'Leyte', 'Ormoc City', pp.barangay, pp.latitude, pp.longitude,
        v.min_age, v.max_age, v.min_exp, v.hours, v.days_off, v.duration,
@@ -95,78 +93,140 @@ FROM users u
 JOIN parent_profiles pp ON pp.user_id = u.user_id
 JOIN (
   -- General Househelp (category 1)
-  SELECT 'reyes@carelink-demo.test' AS email, 1 AS cat, '[1,17]' AS jobs, '[1,2,3]' AS skills,
+  SELECT 'reyes@carelink-demo.test' AS email, 1 AS cat,
          'General Househelp' AS title,
          'We need a reliable housekeeper for general cleaning, laundry and keeping the home orderly. Our two kids are in school most of the day, so mornings are quiet.' AS descr,
          'Stay-out' AS etype, 'Full-time' AS sched, 9000 AS salary, 21 AS min_age, 50 AS max_age, 1 AS min_exp,
          '8:00 AM - 5:00 PM' AS hours, '["Sunday"]' AS days_off, '1 year' AS duration, 1 AS meals, 0 AS accom, 2 AS age_days
-  UNION ALL SELECT 'reyes@carelink-demo.test', 1, '[16,20]', '[1,3]',
+  UNION ALL SELECT 'reyes@carelink-demo.test', 1,
          'All-around household help',
          'Looking for an all-around helper who can handle cleaning, dishes and light cooking. Friendly household, clear routine, no heavy lifting.',
          'Stay-in', 'Full-time', 11000, 22, 45, 2, '7:00 AM - 6:00 PM', '["Sunday"]', 'Indefinite', 1, 1, 9
-  UNION ALL SELECT 'lim@carelink-demo.test', 1, '[1,19]', '[1,2]',
+  UNION ALL SELECT 'lim@carelink-demo.test', 1,
          'Home cleaning',
          'Twice-weekly cleaning for a small apartment. Ideal for someone who prefers part-time work with a predictable schedule.',
          'Stay-out', 'Part-time', 7500, 20, 55, 0, '9:00 AM - 2:00 PM', '["Saturday","Sunday"]', '6 months', 0, 0, 5
 
   -- Yaya (category 2)
-  UNION ALL SELECT 'santos@carelink-demo.test', 2, '[3,21]', NULL,
+  UNION ALL SELECT 'santos@carelink-demo.test', 2,
          'Childcare',
          'Caring for a 1-year-old and a 3-year-old while both parents work. Patience and warmth matter most to us. No cooking or heavy cleaning expected.',
          'Stay-in', 'Full-time', 12000, 22, 45, 2, '6:00 AM - 6:00 PM', '["Sunday"]', 'Indefinite', 1, 1, 1
-  UNION ALL SELECT 'santos@carelink-demo.test', 2, '[5,22]', NULL,
+  UNION ALL SELECT 'santos@carelink-demo.test', 2,
          'Baby care',
          'Specialised newborn care for our youngest. Experience with infants is essential; we are happy to work around your preferred hours.',
          'Stay-out', 'Full-time', 13500, 25, 50, 3, '7:00 AM - 5:00 PM', '["Sunday"]', '1 year', 1, 0, 4
-  UNION ALL SELECT 'lim@carelink-demo.test', 2, '[4,23]', NULL,
+  UNION ALL SELECT 'lim@carelink-demo.test', 2,
          'After-school childcare',
          'Meet our 7-year-old after school, help with homework and prepare a light snack until we get home. Great fit for someone studying part-time.',
          'Stay-out', 'Part-time', 7000, 20, 45, 0, '3:00 PM - 7:00 PM', '["Saturday","Sunday"]', '6 months', 0, 0, 8
 
   -- Cook (category 3)
-  UNION ALL SELECT 'delacruz@carelink-demo.test', 3, '[6]', NULL,
+  UNION ALL SELECT 'delacruz@carelink-demo.test', 3,
          'Family cooking',
          'Preparing lunch and dinner for two. We eat simply — home-style Filipino cooking, low salt. Marketing budget provided.',
          'Stay-out', 'Full-time', 10000, 25, 60, 2, '9:00 AM - 6:00 PM', '["Sunday"]', 'Indefinite', 1, 0, 3
-  UNION ALL SELECT 'delacruz@carelink-demo.test', 3, '[28]', NULL,
+  UNION ALL SELECT 'delacruz@carelink-demo.test', 3,
          'Cooking special meals',
          'We both need low-sodium, diabetic-friendly meals. Someone comfortable following a doctor-recommended meal plan would suit us well.',
          'Stay-out', 'Part-time', 9500, 25, 60, 3, '8:00 AM - 1:00 PM', '["Saturday","Sunday"]', '1 year', 1, 0, 11
-  UNION ALL SELECT 'reyes@carelink-demo.test', 3, '[7,27]', NULL,
+  UNION ALL SELECT 'reyes@carelink-demo.test', 3,
          'Meal preparation',
          'Batch-cook for the week every Saturday plus tidy the kitchen afterwards. One long day rather than daily visits.',
          'Stay-out', 'Part-time', 8000, 21, 55, 1, '7:00 AM - 3:00 PM', '["Sunday","Monday"]', '6 months', 1, 0, 14
 
   -- Gardening (category 4)
-  UNION ALL SELECT 'bautista@carelink-demo.test', 4, '[8,30]', NULL,
+  UNION ALL SELECT 'bautista@carelink-demo.test', 4,
          'Garden care',
          'Maintaining our garden, fruit trees and lawn. Physically active outdoor work; tools and equipment are all provided.',
          'Stay-out', 'Full-time', 9000, 21, 55, 1, '6:00 AM - 3:00 PM', '["Sunday"]', '1 year', 1, 0, 6
-  UNION ALL SELECT 'bautista@carelink-demo.test', 4, '[31,33]', NULL,
+  UNION ALL SELECT 'bautista@carelink-demo.test', 4,
          'Lawn and vegetable garden care',
          'Weekend help with mowing, trimming and tending our vegetable plot. Perfect as extra income alongside other work.',
          'Stay-out', 'Part-time', 7200, 18, 60, 0, '7:00 AM - 12:00 NN', '["Monday","Tuesday","Wednesday","Thursday","Friday"]', '6 months', 0, 0, 16
 
   -- Laundry (category 5)
-  UNION ALL SELECT 'villanueva@carelink-demo.test', 5, '[10,11]', NULL,
+  UNION ALL SELECT 'villanueva@carelink-demo.test', 5,
          'Laundry',
          'Washing, drying and ironing for a household of five. We have a washing machine; you would handle sorting, folding and ironing.',
          'Stay-out', 'Full-time', 8500, 20, 55, 1, '8:00 AM - 4:00 PM', '["Sunday"]', 'Indefinite', 1, 0, 3
-  UNION ALL SELECT 'villanueva@carelink-demo.test', 5, '[11]', NULL,
+  UNION ALL SELECT 'villanueva@carelink-demo.test', 5,
          'Ironing',
          'Ironing only, three mornings a week. Office clothes and school uniforms — someone careful with fabrics would be ideal.',
          'Stay-out', 'Part-time', 7000, 20, 60, 0, '8:00 AM - 12:00 NN', '["Saturday","Sunday"]', '6 months', 0, 0, 10
 
   -- Others (category 6)
-  UNION ALL SELECT 'lim@carelink-demo.test', 6, '[12]', NULL,
+  UNION ALL SELECT 'lim@carelink-demo.test', 6,
          'Care for an older adult',
          'Daytime companionship and care for our grandmother — meals, medication reminders and light housekeeping. She is mobile and independent.',
          'Stay-out', 'Full-time', 11000, 25, 55, 2, '7:00 AM - 5:00 PM', '["Sunday"]', 'Indefinite', 1, 0, 7
-  UNION ALL SELECT 'bautista@carelink-demo.test', 6, '[14,15]', NULL,
+  UNION ALL SELECT 'bautista@carelink-demo.test', 6,
          'Errands and pet care',
          'Grocery runs, bills, and walking our two dogs. Flexible hours as long as the errands get done.',
          'Stay-out', 'Part-time', 7500, 18, 50, 0, 'Flexible', '["Sunday"]', '6 months', 0, 0, 20
 ) v ON v.email = u.email;
+
+INSERT INTO job_post_categories (job_post_id, category_id, sort_order)
+SELECT jp.job_post_id, jp.category_id, 0
+FROM job_posts jp
+JOIN users u ON u.user_id = jp.parent_id
+WHERE u.email LIKE '%@carelink-demo.test';
+
+INSERT INTO job_post_roles (job_post_id, job_id, sort_order)
+SELECT jp.job_post_id, v.job_id, v.sort_order
+FROM job_posts jp
+JOIN users u ON u.user_id = jp.parent_id
+JOIN (
+  SELECT 'General Househelp' AS title, 'reyes@carelink-demo.test' AS email, 1 AS job_id, 0 AS sort_order
+  UNION ALL SELECT 'General Househelp', 'reyes@carelink-demo.test', 17, 1
+  UNION ALL SELECT 'All-around household help', 'reyes@carelink-demo.test', 16, 0
+  UNION ALL SELECT 'All-around household help', 'reyes@carelink-demo.test', 20, 1
+  UNION ALL SELECT 'Home cleaning', 'lim@carelink-demo.test', 1, 0
+  UNION ALL SELECT 'Home cleaning', 'lim@carelink-demo.test', 19, 1
+  UNION ALL SELECT 'Childcare', 'santos@carelink-demo.test', 3, 0
+  UNION ALL SELECT 'Childcare', 'santos@carelink-demo.test', 21, 1
+  UNION ALL SELECT 'Baby care', 'santos@carelink-demo.test', 5, 0
+  UNION ALL SELECT 'Baby care', 'santos@carelink-demo.test', 22, 1
+  UNION ALL SELECT 'After-school childcare', 'lim@carelink-demo.test', 4, 0
+  UNION ALL SELECT 'After-school childcare', 'lim@carelink-demo.test', 23, 1
+  UNION ALL SELECT 'Family cooking', 'delacruz@carelink-demo.test', 6, 0
+  UNION ALL SELECT 'Cooking special meals', 'delacruz@carelink-demo.test', 28, 0
+  UNION ALL SELECT 'Meal preparation', 'reyes@carelink-demo.test', 7, 0
+  UNION ALL SELECT 'Meal preparation', 'reyes@carelink-demo.test', 27, 1
+  UNION ALL SELECT 'Garden care', 'bautista@carelink-demo.test', 8, 0
+  UNION ALL SELECT 'Garden care', 'bautista@carelink-demo.test', 30, 1
+  UNION ALL SELECT 'Lawn and vegetable garden care', 'bautista@carelink-demo.test', 31, 0
+  UNION ALL SELECT 'Lawn and vegetable garden care', 'bautista@carelink-demo.test', 33, 1
+  UNION ALL SELECT 'Laundry', 'villanueva@carelink-demo.test', 10, 0
+  UNION ALL SELECT 'Laundry', 'villanueva@carelink-demo.test', 11, 1
+  UNION ALL SELECT 'Ironing', 'villanueva@carelink-demo.test', 11, 0
+  UNION ALL SELECT 'Care for an older adult', 'lim@carelink-demo.test', 12, 0
+  UNION ALL SELECT 'Errands and pet care', 'bautista@carelink-demo.test', 14, 0
+  UNION ALL SELECT 'Errands and pet care', 'bautista@carelink-demo.test', 15, 1
+) v ON v.title = jp.title AND v.email = u.email
+WHERE u.email LIKE '%@carelink-demo.test';
+
+INSERT INTO job_post_skills (job_post_id, skill_id, sort_order)
+SELECT jp.job_post_id, v.skill_id, v.sort_order
+FROM job_posts jp
+JOIN users u ON u.user_id = jp.parent_id
+JOIN (
+  SELECT 'General Househelp' AS title, 'reyes@carelink-demo.test' AS email, 1 AS skill_id, 0 AS sort_order
+  UNION ALL SELECT 'General Househelp', 'reyes@carelink-demo.test', 2, 1
+  UNION ALL SELECT 'General Househelp', 'reyes@carelink-demo.test', 3, 2
+  UNION ALL SELECT 'All-around household help', 'reyes@carelink-demo.test', 1, 0
+  UNION ALL SELECT 'All-around household help', 'reyes@carelink-demo.test', 3, 1
+  UNION ALL SELECT 'Home cleaning', 'lim@carelink-demo.test', 1, 0
+  UNION ALL SELECT 'Home cleaning', 'lim@carelink-demo.test', 2, 1
+) v ON v.title = jp.title AND v.email = u.email
+WHERE u.email LIKE '%@carelink-demo.test';
+
+INSERT INTO job_post_custom_skills (job_post_id, sort_order, custom_skill)
+SELECT jp.job_post_id, 0, 'Low-sodium and diabetic-friendly meal planning'
+FROM job_posts jp
+JOIN users u ON u.user_id = jp.parent_id
+WHERE u.email = 'delacruz@carelink-demo.test'
+  AND jp.title = 'Cooking special meals';
 
 
 -- ── 5. Helper accounts ───────────────────────────────────────────────────────
@@ -184,41 +244,53 @@ INSERT INTO users (email, username, password, first_name, last_name, user_type, 
 ('marilou@carelink-demo.test', 'demo_marilou', '$2y$10$9yQqmtZ8vx.sedJ2C2OAp.v4MBks7CX0apSR9BiOlnf5n29qLVZOK', 'Marilou', 'Genson',   'helper', 'approved', 1, NOW(), NOW() - INTERVAL 12 DAY);
 
 INSERT INTO helper_profiles
-  (user_id, contact_number, birth_date, gender, civil_status, religion,
+  (user_id, contact_number, birth_date, gender, civil_status,
    province, municipality, barangay, latitude, longitude, address, bio,
    education_level, experience_years, employment_type, work_schedule,
    expected_salary, salary_period, verification_status, verified_at)
-SELECT u.user_id, v.contact, v.bday, v.sex, v.civil, v.religion,
+SELECT u.user_id, v.contact, v.bday, v.sex, v.civil,
        'Leyte', 'Ormoc City', v.brgy, v.lat, v.lng,
        CONCAT(v.brgy, ', Ormoc City, Leyte'), v.bio,
        v.educ, v.years, v.etype, v.sched, v.salary, 'Monthly', 'Verified', NOW()
 FROM users u
 JOIN (
-  SELECT 'rosa@carelink-demo.test' AS email, '09181000001' AS contact, DATE '1985-03-14' AS bday, 'Female' AS sex, 'Married' AS civil, 'Roman Catholic' AS religion,
+  SELECT 'rosa@carelink-demo.test' AS email, '09181000001' AS contact, DATE '1985-03-14' AS bday, 'Female' AS sex, 'Married' AS civil,
          'Cogon' AS brgy, 11.0071 AS lat, 124.6081 AS lng, 'High School Grad' AS educ, 12 AS years, 'Stay-in' AS etype, 'Full-time' AS sched, 10000 AS salary,
          'I have worked as an all-around kasambahay for twelve years, mostly with families who have young children. I am used to running a household on my own and I take pride in a clean, orderly home.' AS bio UNION ALL
-  SELECT 'nena@carelink-demo.test',       '09181000002', DATE '1992-07-02', 'Female', 'Single',  'Roman Catholic',
+  SELECT 'nena@carelink-demo.test',       '09181000002', DATE '1992-07-02', 'Female', 'Single',
          'Linao',      11.0192, 124.5993, 'College Undergrad', 6,  'Stay-out', 'Full-time', 9000,
          'Six years caring for babies and toddlers. I am patient and I enjoy teaching little ones through play. I completed a short first-aid course last year.' UNION ALL
-  SELECT 'luzviminda@carelink-demo.test', '09181000003', DATE '1978-11-20', 'Female', 'Widowed', 'Iglesia ni Cristo',
+  SELECT 'luzviminda@carelink-demo.test', '09181000003', DATE '1978-11-20', 'Female', 'Widowed',
          'Can-adieng', 11.0128, 124.6137, 'High School Grad',  20, 'Stay-out', 'Full-time', 11000,
          'Twenty years of cooking for households, including families needing low-salt and diabetic meals. I plan menus, do the marketing and keep the kitchen spotless.' UNION ALL
-  SELECT 'carmen@carelink-demo.test',     '09181000004', DATE '1995-01-09', 'Female', 'Single',  'Roman Catholic',
+  SELECT 'carmen@carelink-demo.test',     '09181000004', DATE '1995-01-09', 'Female', 'Single',
          'Punta',      11.0248, 124.6019, 'Vocational',        3,  'Stay-out', 'Part-time', 7500,
          'I specialise in laundry and ironing and I am careful with delicate fabrics and uniforms. Available mornings.' UNION ALL
-  SELECT 'teresita@carelink-demo.test',   '09181000005', DATE '1968-05-30', 'Female', 'Married', 'Roman Catholic',
+  SELECT 'teresita@carelink-demo.test',   '09181000005', DATE '1968-05-30', 'Female', 'Married',
          'Bantigue',   11.0094, 124.6272, 'Elementary',        25, 'Stay-in',  'Full-time', 12000,
          'I have cared for elderly lolos and lolas for most of my working life. I am gentle, I keep to medicine schedules, and I am good company for someone who is often alone.' UNION ALL
-  SELECT 'jomar@carelink-demo.test',      '09181000006', DATE '1990-09-17', 'Male',   'Married', 'Roman Catholic',
+  SELECT 'jomar@carelink-demo.test',      '09181000006', DATE '1990-09-17', 'Male',   'Married',
          'Alegria',    10.9941, 124.6188, 'High School Grad',  8,  'Stay-out', 'Full-time', 9500,
          'Gardener and all-around outdoor helper. I handle lawns, fruit trees and vegetable plots, and I can do small repairs and errands around the property.' UNION ALL
-  SELECT 'elena@carelink-demo.test',      '09181000007', DATE '1999-04-25', 'Female', 'Single',  'Born Again Christian',
+  SELECT 'elena@carelink-demo.test',      '09181000007', DATE '1999-04-25', 'Female', 'Single',
          'Cogon',      11.0065, 124.6077, 'College Undergrad', 1,  'Stay-out', 'Part-time', 7000,
          'I am still building experience but I learn quickly and I am honest and hardworking. I can help with cleaning, laundry and after-school childcare.' UNION ALL
-  SELECT 'marilou@carelink-demo.test',    '09181000008', DATE '1983-12-11', 'Female', 'Separated','Roman Catholic',
+  SELECT 'marilou@carelink-demo.test',    '09181000008', DATE '1983-12-11', 'Female', 'Separated',
          'Linao',      11.0186, 124.5988, 'High School Grad',  15, 'Stay-in',  'Full-time', 10500,
          'All-around househelp with fifteen years of experience. Cleaning, laundry, cooking and childcare — I can take on a whole household and I stay long term.'
 ) v ON v.email = u.email;
+
+INSERT INTO helper_custom_jobs (profile_id, sort_order, custom_value)
+SELECT hp.profile_id, 0, 'Minor home repairs'
+FROM helper_profiles hp
+JOIN users u ON u.user_id = hp.user_id
+WHERE u.email = 'jomar@carelink-demo.test';
+
+INSERT INTO helper_custom_skills (profile_id, sort_order, custom_value)
+SELECT hp.profile_id, 0, 'Delicate fabric care'
+FROM helper_profiles hp
+JOIN users u ON u.user_id = hp.user_id
+WHERE u.email = 'carmen@carelink-demo.test';
 
 -- Job roles. These drive the 25-point category weight AND the roles weight, so a
 -- demo helper with none would score near zero and look broken to a tester.

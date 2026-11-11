@@ -49,11 +49,6 @@ try {
     $pStmt->execute();
     $profile = $pStmt->get_result()->fetch_assoc();
     $pStmt->close();
-    if ($profile) {
-        // Employer religion is private and is not part of the helper-facing profile.
-        unset($profile['religion']);
-    }
-
     // Build profile image URL
     if ($profile && $profile['profile_image']) {
         $img = (string) $profile['profile_image'];

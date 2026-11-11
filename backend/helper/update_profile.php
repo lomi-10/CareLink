@@ -27,6 +27,7 @@ include_once __DIR__ . '/../shared/experience_verification_migration.php';
 include_once __DIR__ . '/../shared/phone.php';
 include_once __DIR__ . '/../shared/geocode.php';
 include_once __DIR__ . '/../shared/helper_safeguards.php';
+include_once __DIR__ . '/../shared/multivalue_relations.php';
 
 function sendResponse($success, $message, $data = null) {
     if (ob_get_level()) ob_clean();
@@ -376,7 +377,6 @@ try {
                 "birth_date = ?",
                 "gender = ?",
                 "civil_status = ?",
-                "religion = NULL",
                 "province = ?",
                 "municipality = ?",
                 "barangay = ?",
@@ -477,18 +477,18 @@ try {
             // CREATE new profile
             // contact_number omitted on purpose — owned by users.phone.
             $insertSql = "INSERT INTO helper_profiles (
-                user_id, birth_date, gender, civil_status, religion, preferred_rest_day,
+                user_id, birth_date, gender, civil_status, preferred_rest_day,
                 province, municipality, barangay, address, landmark, bio,
                 education_level, experience_years, employment_type, work_schedule,
                 expected_salary, salary_period, availability_status, profile_image, latitude, longitude, created_at
-            ) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
             $insertStmt = $conn->prepare($insertSql);
             if (!$insertStmt) {
                 throw new Exception("Failed to prepare insert: " . $conn->error);
             }
 
-            // 21 columns: user_id(i), 11 strings (birth_date…education_level),
+            // 22 columns: user_id(i), 11 strings (birth_date…education_level),
             // experience_years(i), employment_type(s), work_schedule(s),
             // expected_salary(d), salary_period(s), availability_status(s),
             // profile_image(s), latitude(d), longitude(d).
@@ -593,22 +593,27 @@ try {
         }
 
         // ====================================================================
-        // STEP 6b: Custom (free-text) roles & skills — stored as JSON on the
-        // profile row. Only written when the caller sent that key.
+        // STEP 6b: Custom free-text roles and skills are stored as ordered rows.
         // ====================================================================
-        if ($custom_jobs_sent) {
-            $cj = json_encode(array_values($custom_jobs));
-            $stmt = $conn->prepare("UPDATE helper_profiles SET custom_jobs = ? WHERE profile_id = ?");
-            $stmt->bind_param("si", $cj, $profile_id);
-            $stmt->execute();
-            $stmt->close();
-        }
-        if ($custom_skills_sent) {
-            $cs = json_encode(array_values($custom_skills));
-            $stmt = $conn->prepare("UPDATE helper_profiles SET custom_skills = ? WHERE profile_id = ?");
-            $stmt->bind_param("si", $cs, $profile_id);
-            $stmt->execute();
-            $stmt->close();
+        if ($custom_jobs_sent || $custom_skills_sent) {
+            if ($custom_jobs_sent) {
+                carelink_replace_relation_values(
+                    $conn,
+                    'helper_custom_jobs',
+                    'profile_id',
+                    (int) $profile_id,
+                    $custom_jobs
+                );
+            }
+            if ($custom_skills_sent) {
+                carelink_replace_relation_values(
+                    $conn,
+                    'helper_custom_skills',
+                    'profile_id',
+                    (int) $profile_id,
+                    $custom_skills
+                );
+            }
         }
 
         // ====================================================================

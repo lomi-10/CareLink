@@ -12,9 +12,9 @@ const TABS: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   iconActive: React.ComponentProps<typeof Ionicons>['name'];
 }[] = [
-  { path: '/(helper)/home', label: 'Home', icon: 'wallet-outline', iconActive: 'wallet' },
-  { path: '/(helper)/work/contract', label: 'Contract', icon: 'document-text-outline', iconActive: 'document-text' },
-  { path: '/(helper)/work/assistance', label: 'Assistance', icon: 'help-buoy-outline', iconActive: 'help-buoy' },
+  { path: '/(helper)/work', label: 'Work', icon: 'wallet-outline', iconActive: 'wallet' },
+  { path: '/(helper)/work/contract', label: 'Contract & Leave', icon: 'document-text-outline', iconActive: 'document-text' },
+  { path: '/(helper)/work/assistance', label: 'Complaints', icon: 'alert-circle-outline', iconActive: 'alert-circle' },
   { path: '/(helper)/messages', label: 'Messages', icon: 'chatbubbles-outline', iconActive: 'chatbubbles' },
   { path: '/(helper)/profile', label: 'Profile', icon: 'person-outline', iconActive: 'person' },
 ];

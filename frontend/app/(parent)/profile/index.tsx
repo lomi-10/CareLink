@@ -227,8 +227,7 @@ export default function ParentProfile() {
       {/* ── Quick Overview — warm caramel→rust→gold accents only, no rainbow ── */}
       <Text style={s.sectionLabel}>Quick Overview</Text>
       <View style={s.overviewRow}>
-        <OverviewTile icon="briefcase" iconBg="#FBE6CF" iconColor={ORANGE}     value={stats.active_job_posts}    label="Job Posts" />
-        <OverviewTile icon="people"    iconBg="#FBE6CF" iconColor={ORANGE}     value={stats.total_applicants}    label="Applications" />
+        <OverviewTile icon="people"    iconBg="#FBE6CF" iconColor={ORANGE}     value={stats.active_placements}   label="Active Helpers" />
         <OverviewTile icon="heart"     iconBg="#F6DCCB" iconColor={TERRACOTTA} value={stats.saved_helpers}       label="Saved Helpers" />
         <OverviewTile icon="star"      iconBg="#FBF0DB" iconColor={GOLD}       value="—"                          label="Employer Rating" sub="(0 reviews)" />
       </View>
@@ -312,7 +311,7 @@ export default function ParentProfile() {
         <NotificationModal
           visible={strengthCelebration}
           title="Profile Complete! 🎉"
-          message="Your profile is 100% complete. A complete profile helps helpers and PESO trust your job posts faster."
+          message="Your profile is 100% complete. A complete profile helps helpers and PESO trust you when arranging a placement."
           type="success"
           onClose={() => setStrengthCelebration(false)}
         />
@@ -369,7 +368,7 @@ export default function ParentProfile() {
       <NotificationModal
         visible={strengthCelebration}
         title="Profile Complete! 🎉"
-        message="Your profile is 100% complete. A complete profile helps helpers and PESO trust your job posts faster."
+        message="Your profile is 100% complete. A complete profile helps helpers and PESO trust you when arranging a placement."
         type="success"
         onClose={() => setStrengthCelebration(false)}
       />

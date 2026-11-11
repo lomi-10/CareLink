@@ -110,7 +110,7 @@ export function ParentMessagesWeb({ userName, avatar, verified, onLogout, suppor
               <View style={s.emptyList}>
                 <Ionicons name="chatbubbles-outline" size={40} color={pt.subtle} />
                 <Text style={s.emptyListTitle}>{search ? 'No matches' : 'No messages yet'}</Text>
-                <Text style={s.emptyListSub}>{search ? 'Try a different name.' : 'Shortlist an applicant to start a conversation.'}</Text>
+                <Text style={s.emptyListSub}>{search ? 'Try a different name.' : 'Select a helper to start a conversation.'}</Text>
               </View>
             ) : (
               filtered.map((c) => <ConvRow key={c.partner_id} conv={c} active={active?.partner_id === c.partner_id} onPress={() => setActive(c)} />)
@@ -146,7 +146,7 @@ export function ParentMessagesWeb({ userName, avatar, verified, onLogout, suppor
             <View style={s.noChat}>
               <View style={s.noChatIcon}><Ionicons name="chatbubbles-outline" size={40} color={pt.accent} /></View>
               <Text style={s.noChatTitle}>Your Messages</Text>
-              <Text style={s.noChatSub}>Select a conversation to start chatting, or shortlist an applicant to connect with a helper.</Text>
+              <Text style={s.noChatSub}>Select a conversation to start chatting, or find a helper to connect with.</Text>
             </View>
           )}
         </View>

@@ -33,8 +33,6 @@ const CONFIG: Record<string, Cfg> = {
   interview_confirmed: { icon: 'checkmark-circle-outline', color: pt.green, bg: pt.greenSoft },
   interview_declined: { icon: 'close-circle-outline', color: pt.red, bg: pt.redSoft },
   interview_request: { icon: 'calendar-outline', color: pt.blue, bg: pt.blueSoft },
-  task_completed: { icon: 'checkmark-done-outline', color: pt.green, bg: pt.greenSoft },
-  attendance_checkin: { icon: 'log-in-outline', color: pt.green, bg: pt.greenSoft },
   leave_request_submitted: { icon: 'file-tray-outline', color: pt.amber, bg: pt.amberSoft },
   leave_request_responded: { icon: 'checkmark-circle-outline', color: pt.blue, bg: pt.blueSoft },
   contract_terminated: { icon: 'document-text-outline', color: pt.red, bg: pt.redSoft },
@@ -96,7 +94,7 @@ export function ParentNotificationsWeb({ userName, avatar, verified, onLogout }:
                 <Text style={s.title}>Notifications</Text>
                 {unreadCount > 0 && <View style={s.headBadge}><Text style={s.headBadgeText}>{unreadCount} new</Text></View>}
               </View>
-              <Text style={s.sub}>Stay on top of applicants, interviews, and household updates.</Text>
+              <Text style={s.sub}>Stay on top of messages, interviews, and household updates.</Text>
             </View>
             <View style={s.headActions}>
               <Pressable onPress={refresh} style={({ hovered }: any) => [s.iconBtn, TRANS, hovered && { backgroundColor: pt.lineSoft }]}><Ionicons name="refresh" size={17} color={pt.muted} /></Pressable>

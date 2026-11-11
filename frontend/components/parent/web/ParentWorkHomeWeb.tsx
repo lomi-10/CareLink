@@ -30,10 +30,9 @@ type AttentionItem =
   | { kind: 'request'; key: string; placement: ActivePlacement };
 
 export function ParentWorkHomeWeb({
-  userName, avatar, verified, onSwitchMode, announcement,
+  userName, avatar, verified, onSwitchMode,
 }: {
   userName: string; avatar: string | null; verified?: boolean; onSwitchMode: (m: 'recruitment' | 'work') => void;
-  announcement?: React.ReactNode;
 }) {
   const router = useRouter();
   const { open: openCareBot } = useCareBot();
@@ -94,8 +93,6 @@ export function ParentWorkHomeWeb({
             primary={{ label: 'Helper Management', icon: 'people-outline', onPress: () => go('/(parent)/hire') }}
             secondary={{ label: 'Payment records', icon: 'wallet-outline', onPress: () => go('/(parent)/work/payslips') }}
           />
-          {announcement}
-
           {loading ? (
             <View style={s.center}><ActivityIndicator color={pt.accent} /></View>
           ) : perPlacement.length === 0 ? (
@@ -177,9 +174,8 @@ export function ParentWorkHomeWeb({
                   <WQA icon="people-outline" label="Helper Management" onPress={() => go('/(parent)/hire')} />
                   <WQA icon="wallet-outline" label="Payment records" onPress={() => go('/(parent)/work/payslips')} />
                   <WQA icon="document-text-outline" label="Contract reference" onPress={() => go('/(parent)/work/contract')} />
-                  <WQA icon="help-buoy-outline" label="Assistance" onPress={() => go('/(parent)/work/assistance')} />
+                  <WQA icon="alert-circle-outline" label="Complaints" onPress={() => go('/(parent)/work/assistance')} />
                   <WQA icon="time-outline" label="Placement History" onPress={() => go('/(parent)/hire/history')} />
-                  <WQA icon="add-circle-outline" label="Post New Job" onPress={() => { onSwitchMode('recruitment'); go('/(parent)/jobs'); }} />
                 </View>
               </View>
             </>

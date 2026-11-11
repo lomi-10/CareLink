@@ -46,8 +46,7 @@ export function computeScheduledWorkHours(start: string, end: string): number | 
 }
 
 /** Free-text "work_hours" value sent to the backend */
-export function workHoursToString(start: string, end: string, flexible: boolean): string {
-  if (flexible) return 'Flexible (varies by daily agreement)';
+export function workHoursToString(start: string, end: string): string {
   const startLabel = formatTime12h(start);
   const endLabel = formatTime12h(end);
   if (!startLabel || !endLabel) return '';
@@ -72,21 +71,20 @@ function parseTime12hToHHMM(value: string): string | null {
 
 /**
  * Reverse of workHoursToString. Parses "8:00 AM – 5:00 PM" back into 24h start/end
- * times, or detects the "Flexible (...)" sentinel. Falls back to the default work
+ * times. Falls back to the default work
  * empty times if the string is blank or unrecognized, so an unspecified
  * schedule is not silently presented as an agreed 8:00 AM–5:00 PM shift.
  */
-export function parseWorkHoursString(s: string): { start: string; end: string; flexible: boolean } {
+export function parseWorkHoursString(s: string): { start: string; end: string } {
   const trimmed = s.trim();
-  if (trimmed === '') return { start: '', end: '', flexible: false };
-  if (/^flexible/i.test(trimmed)) return { start: '', end: '', flexible: true };
+  if (trimmed === '') return { start: '', end: '' };
   const parts = trimmed.split(/\s*[–—-]\s*/);
   if (parts.length === 2) {
     const start = parseTime12hToHHMM(parts[0]);
     const end = parseTime12hToHHMM(parts[1]);
     if (start && end) {
-      return { start, end, flexible: false };
+      return { start, end };
     }
   }
-  return { start: '', end: '', flexible: false };
+  return { start: '', end: '' };
 }

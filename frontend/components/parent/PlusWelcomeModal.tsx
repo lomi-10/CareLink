@@ -27,16 +27,6 @@ type Perk = { icon: keyof typeof Ionicons.glyphMap; title: string; body: string 
 
 const PERKS: Perk[] = [
   {
-    icon: 'megaphone',
-    title: '3 job post boosts every month',
-    body: 'Open a job post → “Feature this post”. It jumps to the top of helper search for 7 days. Your credits renew monthly.',
-  },
-  {
-    icon: 'briefcase',
-    title: 'Unlimited open job posts',
-    body: 'Free accounts can keep 3 posts open at once. You no longer have a limit.',
-  },
-  {
     icon: 'flash',
     title: 'Priority AI document pre-screening for faster submission',
     body: 'AI pre-screening can help catch document issues before submission. It does not change PESO’s review order.',
@@ -44,7 +34,7 @@ const PERKS: Perk[] = [
   {
     icon: 'download',
     title: 'Export payroll to PDF or CSV',
-    body: 'From any active placement → Payroll → Export. Useful for your own records.',
+    body: 'From Work Mode → Work Home → Payroll & Payslips. Useful for your own records.',
   },
   {
     icon: 'pricetag',
@@ -54,14 +44,13 @@ const PERKS: Perk[] = [
 ];
 
 export function PlusWelcomeModal({
-  visible, onClose, price, started, renews, credits,
+  visible, onClose, price, started, renews,
 }: {
   visible: boolean;
   onClose: () => void;
   price: string;
   started: string | null;
   renews: string | null;
-  credits: number;
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -95,10 +84,6 @@ export function PlusWelcomeModal({
                 <Text style={s.receiptValue}>{renews}</Text>
               </View>
             )}
-            <View style={[s.receiptRow, { borderBottomWidth: 0 }]}>
-              <Text style={s.receiptLabel}>Boost credits</Text>
-              <Text style={s.receiptValue}>{credits} this month</Text>
-            </View>
           </View>
 
           <Text style={s.sectionLabel}>HERE&apos;S WHAT YOU CAN DO NOW</Text>

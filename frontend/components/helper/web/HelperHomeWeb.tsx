@@ -1,5 +1,5 @@
 // components/helper/web/HelperHomeWeb.tsx — desktop dashboard for the helper Home.
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Pressable, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,8 +7,6 @@ import { useRouter } from 'expo-router';
 import { FontFamily } from '@/constants/GlobalStyles';
 import { useRecommendations, useMyApplications } from '@/hooks/helper';
 import { useCareBot } from '@/contexts/CareBotContext';
-import { useDemoSession } from '@/hooks/shared';
-import FeedbackModal from '@/components/shared/FeedbackModal';
 import { HelperTopNav } from './HelperTopNav';
 import { wt, FEATURE_GRADIENT, ACCENT_GRADIENT } from './webTheme';
 
@@ -44,7 +42,7 @@ const STATUS_PILL: Record<string, { label: string; bg: string; color: string }> 
 };
 
 export function HelperHomeWeb({
-  userName, avatar, verified, completeness, readyForReview, stats, onLogout, onBrowse, banners, announcement,
+  userName, avatar, verified, completeness, readyForReview, stats, onLogout, onBrowse, banners, announcement, onFinishDemo,
 }: {
   userName: string;
   avatar: string | null;
@@ -56,6 +54,7 @@ export function HelperHomeWeb({
   onBrowse: () => void;
   banners?: React.ReactNode;
   announcement?: React.ReactNode;
+  onFinishDemo?: () => void;
 }) {
   const router = useRouter();
   const { open: openCareBot } = useCareBot();
@@ -64,8 +63,6 @@ export function HelperHomeWeb({
   const first = (userName || 'Helper').split(' ')[0];
   const recent = useMemo(() => applications.slice(0, 3), [applications]);
   const recs = useMemo(() => recommendations.slice(0, 4), [recommendations]);
-  const { isDemoParticipant } = useDemoSession();
-  const [feedback, setFeedback] = useState<{ open: boolean; demoEnd: boolean }>({ open: false, demoEnd: false });
 
   const go = (p: string) => router.push(p as never);
 
@@ -77,16 +74,7 @@ export function HelperHomeWeb({
         avatar={avatar}
         verified={verified}
         onLogout={onLogout}
-        onOpenFeedback={() => setFeedback({ open: true, demoEnd: false })}
-        onFinishDemo={isDemoParticipant ? () => setFeedback({ open: true, demoEnd: true }) : undefined}
-      />
-      <FeedbackModal
-        visible={feedback.open}
-        onClose={() => setFeedback({ open: false, demoEnd: false })}
-        role="helper"
-        accent={wt.accent}
-        context={feedback.demoEnd ? 'demo_end' : 'general'}
-        clearDemoDataOnSubmit={feedback.demoEnd}
+        onFinishDemo={onFinishDemo}
       />
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {banners ? <View style={s.banners}>{banners}</View> : null}
@@ -255,7 +243,7 @@ export function HelperHomeWeb({
                 <QA icon="chatbubble-outline" fill={wt.purpleSoft} color={wt.purple} label="Messages" onPress={() => go('/(helper)/messages')} />
                 <QA icon="person-outline" fill={wt.amberSoft} color={wt.amber} label="My Profile" onPress={() => go('/(helper)/profile')} />
                 <QA icon="bookmark-outline" fill={wt.redSoft} color={wt.red} label="Saved Jobs" onPress={() => go('/(helper)/browse/saved_jobs')} />
-                <QA icon="calendar-outline" fill={wt.blueSoft} color={wt.blue} label="My Schedule" onPress={() => go('/(helper)/work')} />
+                <QA icon="wallet-outline" fill={wt.blueSoft} color={wt.blue} label="Payroll & Payslips" onPress={() => go('/(helper)/work')} />
               </View>
             </View>
 
@@ -266,7 +254,7 @@ export function HelperHomeWeb({
                 <Text style={s.featTitle}>CareBot Assistant</Text>
                 <View style={s.botAi}><Text style={s.botAiText}>AI</Text></View>
               </View>
-              <Text style={s.featText}>Need help with jobs, hiring, attendance, or Kasambahay Law basics?</Text>
+              <Text style={s.featText}>Need help with jobs, contracts, leave, or Kasambahay Law basics?</Text>
               <TouchableOpacity onPress={openCareBot} activeOpacity={0.9} style={{ alignSelf: 'flex-start' }}>
                 <LinearGradient colors={ACCENT_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.featBtn, { paddingHorizontal: 18 }]}>
                   <Ionicons name="chatbubble-ellipses-outline" size={16} color="#fff" />

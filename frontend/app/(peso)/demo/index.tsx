@@ -306,7 +306,7 @@ export default function DemoPanelScreen() {
               <EmptyState
                 icon="briefcase-outline"
                 title="No job posts yet"
-                sub="Ask the tester to post a job, then approve it in Job Verification."
+                sub="Open a pending submission and review it in Job Verification."
               />
             ) : (
               <>
@@ -466,9 +466,8 @@ export default function DemoPanelScreen() {
               <SectionHeader eyebrow="STEP 4" title="Ending the session" />
               <Text style={{ fontSize: 12, color: c.muted, lineHeight: 19 }}>
                 Ask the tester to open their menu and tap{' '}
-                <Text style={{ fontWeight: '800', color: c.ink }}>Finish demo session</Text>. That collects their
-                feedback, clears everything they did with these mock households, and signs them out — their profile
-                and documents stay.
+                <Text style={{ fontWeight: '800', color: c.ink }}>Finish demo session</Text>. That clears
+                everything they did with these mock households and signs them out — their profile and documents stay.
               </Text>
             </Card>
           </>
