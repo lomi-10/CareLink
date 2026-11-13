@@ -123,8 +123,6 @@ try {
     $province = $data['province'] ?? '';
     $municipality = $data['municipality'] ?? '';
     $barangay = $data['barangay'] ?? '';
-    $min_age = null;
-    $max_age = null;
     $min_experience_years = isset($data['min_experience_years']) ? intval($data['min_experience_years']) : null;
     $start_date = $data['start_date'] ?? null;
     $work_hours = $data['work_hours'] ?? null;
@@ -159,7 +157,7 @@ try {
             category_id = ?, custom_category = ?,
             title = ?, description = ?, employment_type = ?,
             work_schedule = ?, salary_offered = ?, salary_min = ?, salary_max = ?, salary_period = ?, province = ?,
-            municipality = ?, barangay = ?, min_age = ?, max_age = ?,
+            municipality = ?, barangay = ?,
             min_experience_years = ?, start_date = ?, work_hours = ?, days_off = ?,
             contract_duration = ?, benefits = ?,
             provides_meals = ?, provides_accommodation = ?, provides_sss = ?, provides_philhealth = ?,
@@ -172,7 +170,7 @@ try {
 
     if (!$stmt) throw new Exception('Database Error: ' . mysqli_error($conn));
 
-    $types = 'i' . str_repeat('s', 5) . 'ddd' . str_repeat('s', 4) . 'iii'
+    $types = 'i' . str_repeat('s', 5) . 'ddd' . str_repeat('s', 4) . 'i'
         . str_repeat('s', 5) . str_repeat('i', 10) . 's' . 'iii';
 
     mysqli_stmt_bind_param(
@@ -180,7 +178,7 @@ try {
         $category_id, $custom_category,
         $final_title, $description, $employment_type,
         $work_schedule, $salary, $salary_min, $salary_max, $salary_period, $province,
-        $municipality, $barangay, $min_age, $max_age,
+        $municipality, $barangay,
         $min_experience_years, $start_date, $work_hours, $days_off_json,
         $contract_duration, $benefits,
         $provides_meals, $provides_accommodation, $provides_sss, $provides_philhealth,

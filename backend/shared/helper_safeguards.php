@@ -13,19 +13,21 @@ function carelink_ensure_helper_safeguards_schema(mysqli $conn): void
     }
 
     $columnsToRemove = [
-        'helper_profiles' => 'religion',
-        'parent_profiles' => 'religion',
-        'job_posts' => 'preferred_religion',
+        'helper_profiles' => ['religion'],
+        'parent_profiles' => ['religion'],
+        'job_posts' => ['preferred_religion', 'min_age', 'max_age'],
     ];
-    foreach ($columnsToRemove as $table => $columnName) {
-        $result = $conn->query("SHOW COLUMNS FROM `$table` LIKE '$columnName'");
-        if (!$result) {
-            throw new Exception("Unable to inspect $table.$columnName: " . $conn->error);
-        }
-        $exists = $result->num_rows > 0;
-        $result->free();
-        if ($exists && !$conn->query("ALTER TABLE `$table` DROP COLUMN `$columnName`")) {
-            throw new Exception("Unable to remove $table.$columnName: " . $conn->error);
+    foreach ($columnsToRemove as $table => $tableColumns) {
+        foreach ((array) $tableColumns as $columnName) {
+            $result = $conn->query("SHOW COLUMNS FROM `$table` LIKE '$columnName'");
+            if (!$result) {
+                throw new Exception("Unable to inspect $table.$columnName: " . $conn->error);
+            }
+            $exists = $result->num_rows > 0;
+            $result->free();
+            if ($exists && !$conn->query("ALTER TABLE `$table` DROP COLUMN `$columnName`")) {
+                throw new Exception("Unable to remove $table.$columnName: " . $conn->error);
+            }
         }
     }
 

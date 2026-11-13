@@ -21,12 +21,12 @@ export type AdminNavKey = 'dashboard' | 'users' | 'accounts' | 'logs' | 'complai
 
 const NAV: { key: AdminNavKey; icon: keyof typeof Ionicons.glyphMap; label: string; route: string; group: string }[] = [
   { key: 'dashboard', icon: 'grid', label: 'Dashboard', route: '/admin/dashboard', group: 'OVERVIEW' },
-  { key: 'users', icon: 'people', label: 'User Verification', route: '/admin/user_management', group: 'USER & ADMIN' },
+  { key: 'users', icon: 'people', label: 'User Accounts', route: '/admin/user_management', group: 'USER & ADMIN' },
   { key: 'accounts', icon: 'person-add', label: 'Admin & PESO Accounts', route: '/admin/create_admin_user', group: 'USER & ADMIN' },
   { key: 'messages', icon: 'chatbubbles', label: 'Messages', route: '/admin/messages', group: 'COMMUNICATION' },
-  // Peer reviews between helpers and households. Ratings are public on
+  // Ratings between helpers and households. Ratings are public on
   // profiles; the written text is readable only by PESO and system administrator.
-  { key: 'reviews', icon: 'chatbox-ellipses', label: 'Peer Reviews', route: '/admin/reviews', group: 'COMMUNICATION' },
+  { key: 'reviews', icon: 'chatbox-ellipses', label: 'Ratings Moderation', route: '/admin/reviews', group: 'COMMUNICATION' },
   // The Chapter 4 instrument, grouped by ISO/IEC 25010 characteristic.
   { key: 'logs', icon: 'list', label: 'Audit Trail', route: '/admin/logs', group: 'SYSTEM' },
   { key: 'complaints', icon: 'warning', label: 'Complaints', route: '/admin/complaints', group: 'SYSTEM' },

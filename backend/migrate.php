@@ -24,9 +24,10 @@
  * SAFETY
  *
  * It creates missing tables/columns, backfills category data, updates known
- * reference labels, removes deprecated religion columns, and removes retired
- * feedback, attendance, and task tables. Those specified values/records are
- * intentionally deleted; unrelated tables and data are preserved.
+ * reference labels, removes deprecated religion and job-age-preference columns,
+ * and removes retired feedback, attendance, and task tables. Those specified
+ * values/records are intentionally deleted; unrelated tables and data are
+ * preserved.
  * The registered steps are safe to repeat on every deploy.
  *
  * It still runs DDL, so it is NOT public — see the token check below.

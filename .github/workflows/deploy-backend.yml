@@ -71,9 +71,10 @@ jobs:
       # "unknown table" error, which under PHP 8.1's throwing mysqli surfaces as
       # a blank screen rather than a missing section.
       #
-      # backend/migrate.php runs every one of them in a single pass, so the
-      # schema is complete when the deploy finishes instead of whenever someone
-      # clicks the right thing. It only ever CREATEs, so re-running is a no-op.
+      # backend/migrate.php runs every registered migration in one pass, so the
+      # schema is updated when the deploy finishes. Migrations are repeatable:
+      # they create or alter required schema and remove only explicitly retired
+      # fields/tables, preserving unrelated data.
       - name: 🗄️ Update database schema
         env:
           # NOTE: NOT derivable from server-dir above. That is a filesystem

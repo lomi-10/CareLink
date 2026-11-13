@@ -6,9 +6,8 @@
 // and stays consistent (the old dashboard was navy while the data screens were a
 // separate light iOS palette — this unifies them).
 //
-// Only the neutral SURFACE changes between palettes. The green brand accent and the
-// (brightened-for-dark) status colours are shared, so "verified" is the same green
-// whichever surface you pick.
+// Only the neutral SURFACE changes between palettes. The warm brand accent and
+// the (brightened-for-dark) semantic status colours are shared across both.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
@@ -46,9 +45,9 @@ const SURFACES: Record<AdminThemeName, Surface> = {
 
 // Shared across both palettes. Status hues are lifted for dark backgrounds.
 const SHARED = {
-  accent: '#22A06B',       // staff green — official/verified
+  accent: '#C86446',
   accentText: '#FFFFFF',
-  accentSoft: 'rgba(34,160,107,0.16)',
+  accentSoft: 'rgba(200,100,70,0.16)',
   blue: '#5B9BF5',
   green: '#2FBF87',
   red: '#F2635C',

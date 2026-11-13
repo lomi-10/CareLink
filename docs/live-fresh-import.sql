@@ -600,8 +600,6 @@ CREATE TABLE `job_posts` (
   `featured_boost_paid_at` datetime DEFAULT NULL COMMENT 'When the boost payment settled',
   `filled_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `min_age` int DEFAULT NULL COMMENT 'Minimum age requirement',
-  `max_age` int DEFAULT NULL COMMENT 'Maximum age requirement',
   `min_experience_years` int DEFAULT NULL COMMENT 'Minimum years of experience',
   `start_date` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Preferred start date',
   `work_hours` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Work hours (e.g., 8am-5pm)',

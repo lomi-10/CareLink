@@ -1,4 +1,4 @@
-// app/admin/reviews.tsx — system administrator view of peer reviews.
+// app/admin/reviews.tsx — Super Admin moderation view of ratings and written reviews.
 //
 // Same data and same privacy rule as the PESO Reviews screen: helpers and
 // households see each other's star RATING on profiles; the written text is
@@ -60,7 +60,7 @@ export default function AdminReviews() {
   ];
 
   return (
-    <AdminShell active="reviews" title="Peer Reviews">
+    <AdminShell active="reviews" title="Ratings Moderation">
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(filter, q); setRefreshing(false); }} />}>
 
@@ -88,7 +88,7 @@ export default function AdminReviews() {
               value={q} onChangeText={setQ} onSubmitEditing={() => load(filter, q)} returnKeyType="search"
             />
           </View>
-          <Pressable style={s.exportBtn} onPress={() => downloadCsv('peer_reviews.csv', toCsv(
+          <Pressable style={s.exportBtn} onPress={() => downloadCsv('ratings_moderation.csv', toCsv(
             ['Reviewed', 'Role', 'Rating', 'Review', 'Reviewer', 'Reviewer role', 'Job', 'Date'],
             rows.map((r) => [r.reviewee_name, r.reviewee_role, r.rating, r.review_text, r.reviewer_name, r.reviewer_role, r.job_title ?? '', r.created_at ?? '']),
           ))}>

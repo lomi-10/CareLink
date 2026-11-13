@@ -198,8 +198,6 @@ try {
     $require_police_clearance = !empty($data['require_police_clearance']) ? 1 : 0;
     $prefer_tesda_nc2 = !empty($data['prefer_tesda_nc2']) ? 1 : 0;
     $custom_skills = $data['custom_skills'] ?? [];
-    $min_age = null;
-    $max_age = null;
     $min_experience_years = isset($data['min_experience_years']) ? intval($data['min_experience_years']) : null;
     $start_date = $data['start_date'] ?? null;
     $work_hours = $data['work_hours'] ?? null;
@@ -231,7 +229,7 @@ try {
             description, employment_type, work_schedule, salary_offered, salary_min, salary_max, salary_period,
             benefits, province, municipality, barangay, latitude, longitude,
             preferred_language_id, require_police_clearance, prefer_tesda_nc2,
-            min_age, max_age, min_experience_years, start_date,
+            min_experience_years, start_date,
             work_hours, days_off, contract_duration,
             provides_meals, provides_accommodation, provides_sss,
             provides_philhealth, provides_pagibig, vacation_days, sick_days,
@@ -243,7 +241,7 @@ try {
             ?, ?, ?, ?, ?,
             ?, ?, ?,
             ?, ?, ?, ?, ?,
-            ?, ?, ?,
+            ?,
             ?, ?, ?,
             ?, ?, ?, ?,
             'Pending', NOW()
@@ -252,7 +250,7 @@ try {
 
     if (!$stmt) throw new Exception('Database Error: ' . mysqli_error($conn));
 
-    $types = 'ii' . str_repeat('s', 5) . 'ddd' . str_repeat('s', 5) . 'dd' . str_repeat('i', 6)
+    $types = 'ii' . str_repeat('s', 5) . 'ddd' . str_repeat('s', 5) . 'dd' . str_repeat('i', 4)
         . str_repeat('s', 4) . str_repeat('i', 7) . 'si';
 
     mysqli_stmt_bind_param(
@@ -261,7 +259,7 @@ try {
         $description, $employment_type, $work_schedule, $salary, $salary_min, $salary_max, $salary_period,
         $benefits, $province, $municipality, $barangay, $latitude, $longitude,
         $preferred_language_id, $require_police_clearance, $prefer_tesda_nc2,
-        $min_age, $max_age, $min_experience_years, $start_date,
+        $min_experience_years, $start_date,
         $work_hours, $days_off_json, $contract_duration,
         $provides_meals, $provides_accommodation, $provides_sss,
         $provides_philhealth, $provides_pagibig, $vacation_days, $sick_days,

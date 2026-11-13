@@ -69,7 +69,12 @@ export default function UserManagementScreen() {
     return (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q);
   });
 
-  const roleLabel = (t: string) => t === 'admin' ? 'SYSTEM ADMIN' : t === 'peso' ? 'PESO OFFICER' : (t || '').toUpperCase();
+  const roleLabel = (t: string) => ({
+    admin: 'SUPER ADMIN',
+    peso: 'PESO ADMIN',
+    helper: 'DOMESTIC HELPER',
+    parent: 'HOUSEHOLD EMPLOYER',
+  }[t] ?? (t || '').toUpperCase());
   const statusStyle = (st: string) => st === 'approved' ? { bg: c.accentSoft, fg: c.green } : st === 'pending' ? { bg: 'rgba(232,163,61,0.16)', fg: c.amber } : { bg: c.redSoft, fg: c.red };
 
   const renderUserCard = ({ item }: { item: any }) => {
@@ -138,12 +143,12 @@ export default function UserManagementScreen() {
   );
 
   return (
-    <AdminShell active="users" title="User Verification" subtitle="Approve staff, suspend or reactivate any account" headerRight={refreshBtn} scroll={false}>
+    <AdminShell active="users" title="User Accounts" subtitle="Manage accounts and staff access; PESO verifies helper and employer documents" headerRight={refreshBtn} scroll={false}>
       {/* Tabs */}
       <View style={s.tabsRow}>
         {(['all', 'pending'] as const).map((f) => (
           <TouchableOpacity key={f} style={[s.tab, filter === f && s.tabActive]} onPress={() => setFilter(f)}>
-            <Text style={[s.tabText, filter === f && s.tabTextActive]}>{f === 'all' ? 'All Users' : 'Pending Approval'}</Text>
+            <Text style={[s.tabText, filter === f && s.tabTextActive]}>{f === 'all' ? 'All Users' : 'Pending Staff Approval'}</Text>
           </TouchableOpacity>
         ))}
       </View>
